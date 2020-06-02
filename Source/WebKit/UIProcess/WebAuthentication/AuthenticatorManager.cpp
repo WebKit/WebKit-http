@@ -35,6 +35,7 @@
 #include "NfcService.h"
 #include "WebPageProxy.h"
 #include "WebPreferencesKeys.h"
+#include "WebProcessProxy.h"
 #include <WebCore/AuthenticatorAssertionResponse.h>
 #include <WebCore/AuthenticatorTransport.h>
 #include <WebCore/PublicKeyCredentialCreationOptions.h>
@@ -122,8 +123,11 @@ static AuthenticatorManager::TransportSet collectTransports(const Vector<PublicK
 // Only roaming authenticators are supported for Google legacy AppID support.
 static void processGoogleLegacyAppIdSupportExtension(const Optional<AuthenticationExtensionsClientInputs>& extensions, AuthenticatorManager::TransportSet& transports)
 {
-    // AuthenticatorCoordinator::create should always set it.
-    ASSERT(!!extensions);
+    if (!extensions) {
+        // AuthenticatorCoordinator::create should always set it.
+        ASSERT_NOT_REACHED();
+        return;
+    }
     if (!extensions->googleLegacyAppidSupport)
         return;
     transports.remove(AuthenticatorTransport::Internal);
@@ -179,9 +183,7 @@ void AuthenticatorManager::cancelRequest(const PageIdentifier& pageID, const Opt
         if (frameID && frameID != pendingFrameID->frameID)
             return;
     }
-    invokePendingCompletionHandler(ExceptionData { NotAllowedError, "Operation timed out."_s });
-    clearState();
-    m_requestTimeOutTimer.stop();
+    cancelRequest();
 }
 
 // The following implements part of Step 20. of https://www.w3.org/TR/webauthn/#createCredential
@@ -192,9 +194,7 @@ void AuthenticatorManager::cancelRequest(const API::WebAuthenticationPanel& pane
     RELEASE_ASSERT(RunLoop::isMain());
     if (!m_pendingCompletionHandler || m_pendingRequestData.panel.get() != &panel)
         return;
-    invokePendingCompletionHandler(ExceptionData { NotAllowedError, "This request has been cancelled by the user."_s });
-    clearState();
-    m_requestTimeOutTimer.stop();
+    cancelRequest();
 }
 
 void AuthenticatorManager::clearStateAsync()
@@ -276,14 +276,9 @@ void AuthenticatorManager::requestPin(uint64_t retries, CompletionHandler<void(c
     });
 }
 
-void AuthenticatorManager::selectAssertionResponse(const HashSet<Ref<AuthenticatorAssertionResponse>>& responses, WebAuthenticationSource source, CompletionHandler<void(AuthenticatorAssertionResponse*)>&& completionHandler)
+void AuthenticatorManager::selectAssertionResponse(Vector<Ref<WebCore::AuthenticatorAssertionResponse>>&& responses, WebAuthenticationSource source, CompletionHandler<void(AuthenticatorAssertionResponse*)>&& completionHandler)
 {
-    Vector<Ref<AuthenticatorAssertionResponse>> responseVector;
-    responseVector.reserveInitialCapacity(responses.size());
-    for (auto& response : responses)
-        responseVector.uncheckedAppend(response.copyRef());
-
-    dispatchPanelClientCall([responses = WTFMove(responseVector), source, completionHandler = WTFMove(completionHandler)] (const API::WebAuthenticationPanel& panel) mutable {
+    dispatchPanelClientCall([responses = WTFMove(responses), source, completionHandler = WTFMove(completionHandler)] (const API::WebAuthenticationPanel& panel) mutable {
         panel.client().selectAssertionResponse(WTFMove(responses), source, WTFMove(completionHandler));
     });
 }
@@ -293,6 +288,13 @@ void AuthenticatorManager::decidePolicyForLocalAuthenticator(CompletionHandler<v
     dispatchPanelClientCall([completionHandler = WTFMove(completionHandler)] (const API::WebAuthenticationPanel& panel) mutable {
         panel.client().decidePolicyForLocalAuthenticator(WTFMove(completionHandler));
     });
+}
+
+void AuthenticatorManager::cancelRequest()
+{
+    invokePendingCompletionHandler(ExceptionData { NotAllowedError, "This request has been cancelled by the user."_s });
+    clearState();
+    m_requestTimeOutTimer.stop();
 }
 
 UniqueRef<AuthenticatorTransportService> AuthenticatorManager::createService(AuthenticatorTransport transport, AuthenticatorTransportService::Observer& observer) const
@@ -305,6 +307,12 @@ void AuthenticatorManager::filterTransports(TransportSet& transports) const
     if (!NfcService::isAvailable())
         transports.remove(AuthenticatorTransport::Nfc);
     if (!LocalService::isAvailable())
+        transports.remove(AuthenticatorTransport::Internal);
+
+    if (!isFeatureEnabled(m_pendingRequestData.page.get(), WebPreferencesKey::webAuthenticationLocalAuthenticatorEnabledKey()))
+        transports.remove(AuthenticatorTransport::Internal);
+    // Local authenticator might invoke system UI which should definitely not be able to trigger by scripts automatically.
+    if (!m_pendingRequestData.processingUserGesture)
         transports.remove(AuthenticatorTransport::Internal);
 }
 
@@ -391,8 +399,6 @@ auto AuthenticatorManager::getTransports() const -> TransportSet
     }, [&](const PublicKeyCredentialRequestOptions& options) {
         transports = collectTransports(options.allowCredentials);
     });
-    if (!isFeatureEnabled(m_pendingRequestData.page.get(), WebPreferencesKey::webAuthenticationLocalAuthenticatorEnabledKey()))
-        transports.remove(AuthenticatorTransport::Internal);
     filterTransports(transports);
     return transports;
 }

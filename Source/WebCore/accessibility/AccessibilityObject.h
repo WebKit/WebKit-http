@@ -104,7 +104,6 @@ public:
     bool isAttachmentElement() const override { return false; }
     bool isHeading() const override { return false; }
     bool isLink() const override { return false; }
-    bool isImage() const override { return false; }
     bool isNativeImage() const override { return false; }
     bool isImageButton() const override { return false; }
     bool isPasswordField() const override { return false; }
@@ -160,6 +159,8 @@ public:
     std::pair<unsigned, unsigned> rowIndexRange() const override { return { 0, 1 }; }
     // Returns the start location and column span of the cell.
     std::pair<unsigned, unsigned> columnIndexRange() const override { return { 0, 1 }; }
+    bool isColumnHeaderCell() const override { return false; }
+    bool isRowHeaderCell() const override { return false; }
     int axColumnIndex() const override { return -1; }
     int axRowIndex() const override { return -1; }
 
@@ -195,7 +196,6 @@ public:
     bool isARIATextControl() const override;
     bool isNonNativeTextControl() const override;
     bool isButton() const override;
-    bool isBlockquote() const override;
     bool isLandmark() const override;
     bool isRangeControl() const override;
     bool isMeter() const override;
@@ -234,9 +234,9 @@ public:
     bool hasMisspelling() const override;
     RefPtr<Range> getMisspellingRange(RefPtr<Range> const& start, AccessibilitySearchDirection) const override;
     bool hasPlainText() const override { return false; }
-    bool hasSameFont(RenderObject*) const override { return false; }
-    bool hasSameFontColor(RenderObject*) const override { return false; }
-    bool hasSameStyle(RenderObject*) const override { return false; }
+    bool hasSameFont(const AXCoreObject&) const override { return false; }
+    bool hasSameFontColor(const AXCoreObject&) const override { return false; }
+    bool hasSameStyle(const AXCoreObject&) const override { return false; }
     bool hasUnderline() const override { return false; }
     bool hasHighlighting() const override;
 
@@ -327,11 +327,11 @@ public:
     int posInSet() const override;
 
     // ARIA drag and drop
-    bool supportsARIADropping() const override { return false; }
-    bool supportsARIADragging() const override { return false; }
-    bool isARIAGrabbed() override { return false; }
+    bool supportsDropping() const override { return false; }
+    bool supportsDragging() const override { return false; }
+    bool isGrabbed() override { return false; }
     void setARIAGrabbed(bool) override { }
-    Vector<String> determineARIADropEffects() override { return { }; }
+    Vector<String> determineDropEffects() const override { return { }; }
 
     // Called on the root AX object to return the deepest available element.
     AXCoreObject* accessibilityHitTest(const IntPoint&) const override { return nullptr; }
@@ -358,7 +358,7 @@ public:
     // Text selection
 private:
     RefPtr<Range> rangeOfStringClosestToRangeInDirection(Range*, AccessibilitySearchDirection, Vector<String> const&) const;
-    RefPtr<Range> selectionRange() const;
+    Optional<SimpleRange> selectionRange() const;
     RefPtr<Range> findTextRange(Vector<String> const& searchStrings, RefPtr<Range> const& start, AccessibilitySearchTextDirection) const;
 public:
     Vector<RefPtr<Range>> findTextRanges(AccessibilitySearchTextCriteria const&) const override;

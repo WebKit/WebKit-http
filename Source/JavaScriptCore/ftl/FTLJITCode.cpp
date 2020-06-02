@@ -43,11 +43,15 @@ JITCode::JITCode()
 JITCode::~JITCode()
 {
     if (FTL::shouldDumpDisassembly()) {
-        dataLog("Destroying FTL JIT code at ");
-        CommaPrinter comma;
-        dataLog(comma, m_b3Code);
-        dataLog(comma, m_arityCheckEntrypoint);
-        dataLog("\n");
+        if (m_b3Code || m_arityCheckEntrypoint) {
+            dataLog("Destroying FTL JIT code at ");
+            CommaPrinter comma;
+            if (m_b3Code)
+                dataLog(comma, m_b3Code);
+            if (m_arityCheckEntrypoint)
+                dataLog(comma, m_arityCheckEntrypoint);
+            dataLog("\n");
+        }
     }
 }
 
@@ -97,7 +101,7 @@ void* JITCode::dataAddressAtOffset(size_t)
     // We can't patch FTL code, yet. Even if we did, it's not clear that we would do so
     // through this API.
     RELEASE_ASSERT_NOT_REACHED();
-    return 0;
+    return nullptr;
 }
 
 unsigned JITCode::offsetOf(void*)

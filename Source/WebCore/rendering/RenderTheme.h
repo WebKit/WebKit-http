@@ -154,14 +154,13 @@ public:
     Color inactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
     Color inactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
-    // Highlighting colors for search matches.
-    Color activeTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
-    Color inactiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
+    // Highlighting color for search matches.
+    Color textSearchHighlightColor(OptionSet<StyleColor::Options>) const;
 
     virtual Color disabledTextColor(const Color& textColor, const Color& backgroundColor) const;
 
     WEBCORE_EXPORT Color focusRingColor(OptionSet<StyleColor::Options>) const;
-    virtual Color platformFocusRingColor(OptionSet<StyleColor::Options>) const { return Color(0, 0, 0); }
+    virtual Color platformFocusRingColor(OptionSet<StyleColor::Options>) const { return Color::black; }
     static void setCustomFocusRingColor(const Color&);
     static float platformFocusRingWidth() { return 3; }
     static float platformFocusRingOffset(float outlineWidth) { return std::max<float>(outlineWidth - platformFocusRingWidth(), 0); }
@@ -275,9 +274,7 @@ protected:
     virtual Color platformActiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
     virtual Color platformInactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
-    // The platform highlighting colors for search matches.
-    virtual Color platformActiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
-    virtual Color platformInactiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
 
     virtual bool supportsSelectionForegroundColors(OptionSet<StyleColor::Options>) const { return true; }
     virtual bool supportsListBoxSelectionForegroundColors(OptionSet<StyleColor::Options>) const { return true; }
@@ -433,8 +430,7 @@ protected:
         Color activeListBoxSelectionForegroundColor;
         Color inactiveListBoxSelectionForegroundColor;
 
-        Color activeTextSearchHighlightColor;
-        Color inactiveTextSearchHighlightColor;
+        Color textSearchHighlightColor;
     };
 
     virtual ColorCache& colorCache(OptionSet<StyleColor::Options>) const;

@@ -105,12 +105,51 @@ enum CompositingPolicy {
     Conditional=VIDEO,
     JSGenerateToJSObject,
 ] dictionary NowPlayingState {
-    boolean hasActiveSession;
-    boolean registeredAsNowPlayingApplication;
     DOMString title;
     unrestricted double duration;
     unrestricted double elapsedTime;
     unsigned long long uniqueIdentifier;
+    boolean hasActiveSession;
+    boolean registeredAsNowPlayingApplication;
+    boolean haveEverRegisteredAsNowPlayingApplication;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    Conditional=VIDEO,
+    JSGenerateToJSObject,
+] dictionary MediaUsageState {
+    DOMString mediaURL;
+    boolean isPlaying;
+    boolean canShowControlsManager;
+    boolean canShowNowPlayingControls;
+    boolean isSuspended;
+    boolean isInActiveDocument;
+    boolean isFullscreen;
+    boolean isMuted;
+    boolean isMediaDocumentInMainFrame;
+    boolean isVideo;
+    boolean isAudio;
+    boolean hasVideo;
+    boolean hasAudio;
+    boolean hasRenderer;
+    boolean audioElementWithUserGesture;
+    boolean userHasPlayedAudioBefore;
+    boolean isElementRectMostlyInMainFrame;
+    boolean playbackPermitted;
+    boolean pageMediaPlaybackSuspended;
+    boolean isMediaDocumentAndNotOwnerElement;
+    boolean pageExplicitlyAllowsElementToAutoplayInline;
+    boolean requiresFullscreenForVideoPlaybackAndFullscreenNotPermitted;
+    boolean hasHadUserInteractionAndQuirksContainsShouldAutoplayForArbitraryUserGesture;
+    boolean isVideoAndRequiresUserGestureForVideoRateChange;
+    boolean isAudioAndRequiresUserGestureForAudioRateChange;
+    boolean isVideoAndRequiresUserGestureForVideoDueToLowPowerMode;
+    boolean noUserGestureRequired;
+    boolean requiresPlaybackAndIsNotPlaying;
+    boolean hasEverNotifiedAboutPlaying;
+    boolean outsideOfFullscreen;
+    boolean isLargeEnoughForMainContent;
 };
 
 [
@@ -258,6 +297,7 @@ enum CompositingPolicy {
     // Web Animations testing.
     sequence<AcceleratedAnimation> acceleratedAnimationsForElement(Element element);
     unsigned long numberOfAnimationTimelineInvalidations();
+    double timeToNextAnimationTick(WebAnimation animation);
 
     // For animations testing, we need a way to get at pseudo elements.
     [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
@@ -278,7 +318,6 @@ enum CompositingPolicy {
     [MayThrowException] Range? markerRangeForNode(Node node, DOMString markerType, unsigned long index);
     [MayThrowException] DOMString markerDescriptionForNode(Node node, DOMString markerType, unsigned long index);
     [MayThrowException] DOMString dumpMarkerRects(DOMString markerType);
-    void addTextMatchMarker(Range range, boolean isActive);
     [MayThrowException] void setMarkedTextMatchesAreHighlighted(boolean flag);
 
     void invalidateFontCache();
@@ -364,6 +403,7 @@ enum CompositingPolicy {
     boolean hasSpellingMarker(long from, long length);
     boolean hasGrammarMarker(long from, long length);
     boolean hasAutocorrectedMarker(long from, long length);
+    boolean hasDictationAlternativesMarker(long from, long length);
     void setContinuousSpellCheckingEnabled(boolean enabled);
     void setAutomaticQuoteSubstitutionEnabled(boolean enabled);
     void setAutomaticLinkDetectionEnabled(boolean enabled);
@@ -422,8 +462,11 @@ enum CompositingPolicy {
 
     [MayThrowException] DOMString scrollbarOverlayStyle(optional Node? node = null);
     [MayThrowException] boolean scrollbarUsingDarkAppearance(optional Node? node = null);
+    [MayThrowException] DOMString horizontalScrollbarState(optional Node? node = null);
+    [MayThrowException] DOMString verticalScrollbarState(optional Node? node = null);
 
     [MayThrowException] DOMString scrollingStateTreeAsText();
+    [MayThrowException] DOMString scrollingTreeAsText();
     [MayThrowException] DOMString mainThreadScrollingReasons(); // FIXME: rename to synchronousScrollingReasons().
     [MayThrowException] DOMRectList nonFastScrollableRects();
 
@@ -493,6 +536,8 @@ enum CompositingPolicy {
     void setFullscreenAutoHideDuration(double duration);
     void setFullscreenControlsHidden(boolean hidden);
 
+    [Conditional=VIDEO_PRESENTATION_MODE] void setMockVideoPresentationModeEnabled(boolean enabled);
+
     void setApplicationCacheOriginQuota(unsigned long long quota);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(DOMString scheme);
@@ -517,10 +562,11 @@ enum CompositingPolicy {
     // Query if a timer is currently throttled, to debug timer throttling.
     [MayThrowException] boolean isTimerThrottled(long timerHandle);
 
-    boolean isRequestAnimationFrameThrottled();
+    DOMString requestAnimationFrameThrottlingReasons();
     boolean areTimersThrottled();
 
     [MayThrowException] void setLowPowerModeEnabled(boolean enabled);
+    [MayThrowException] void setOutsideViewportThrottlingEnabled(boolean enabled);
     readonly attribute double requestAnimationFrameInterval;
     readonly attribute boolean scriptedAnimationsAreSuspended;
 
@@ -739,6 +785,7 @@ enum CompositingPolicy {
     [Conditional=MEDIA_STREAM] void setMediaStreamTrackIdentifier(MediaStreamTrack track, DOMString identifier);
     [Conditional=MEDIA_STREAM] void setMediaStreamSourceInterrupted(MediaStreamTrack track, boolean interrupted);
     [Conditional=MEDIA_STREAM] boolean isMockRealtimeMediaSourceCenterEnabled();
+    [Conditional=MEDIA_STREAM] boolean shouldAudioTrackPlay(AudioTrack track);
 
     unsigned long long documentIdentifier(Document document);
     boolean isDocumentAlive(unsigned long long documentIdentifier);
@@ -771,7 +818,7 @@ enum CompositingPolicy {
 
     [Conditional=SERVICE_WORKER] Promise<boolean> hasServiceWorkerRegistration(DOMString scopeURL);
     [Conditional=SERVICE_WORKER] Promise<void> terminateServiceWorker(ServiceWorker worker);
-    [Conditional=SERVICE_WORKER] Promise<boolean> isServiceWorkerRunning(ServiceWorker worker);
+    [Conditional=SERVICE_WORKER] Promise<void> whenServiceWorkerIsTerminated(ServiceWorker worker);
 
     [CallWith=Document, Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
 
@@ -795,6 +842,9 @@ enum CompositingPolicy {
 
     [Conditional=VIDEO] HTMLMediaElement bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose purpose);
     [Conditional=VIDEO] MediaSessionState mediaSessionState(HTMLMediaElement element);
+
+    [Conditional=VIDEO, MayThrowException] MediaUsageState mediaUsageState(HTMLMediaElement element);
+    [Conditional=VIDEO, MayThrowException] boolean elementShouldDisplayPosterImage(HTMLVideoElement element);
 
     DOMString ongoingLoadsDescriptions();
     void setCaptureExtraNetworkLoadMetricsEnabled(boolean value);
@@ -836,8 +886,6 @@ enum CompositingPolicy {
 
     [Conditional=WEB_AUTHN] void setMockWebAuthenticationConfiguration(MockWebAuthenticationConfiguration configuration);
 
-    [Conditional=PICTURE_IN_PICTURE_API] void setPictureInPictureAPITestEnabled(HTMLVideoElement videoElement, boolean enabled);
-
     InternalsMapLike createInternalsMapLike();
     InternalsSetLike createInternalsSetLike();
 
@@ -845,7 +893,8 @@ enum CompositingPolicy {
 
     boolean hasSandboxMachLookupAccessToGlobalName(DOMString process, DOMString service);
     boolean hasSandboxMachLookupAccessToXPCServiceName(DOMString process, DOMString service);
-    
+    boolean hasSandboxIOKitOpenAccessToClass(DOMString process, DOMString ioKitClass);
+
     DOMString systemColorForCSSValue(DOMString cssValue, boolean useDarkModeAppearance, boolean useElevatedUserInterfaceLevel);
     DOMString focusRingColor();
 
@@ -853,8 +902,6 @@ enum CompositingPolicy {
 
     long readPreferenceInteger(DOMString domain, DOMString key);
     DOMString encodedPreferenceValue(DOMString domain, DOMString key);
-
-    DOMString mediaMIMETypeForExtension(DOMString extension);
 
     DOMString getUTIFromTag(DOMString tagClass, DOMString tag, DOMString conformingToUTI);
 
@@ -864,4 +911,6 @@ enum CompositingPolicy {
 
     unsigned long createSleepDisabler(DOMString reason, boolean display);
     boolean destroySleepDisabler(unsigned long identifier);
+
+    [Conditional=WEBXR, MayThrowException] readonly attribute WebXRTest xrTest;
 };

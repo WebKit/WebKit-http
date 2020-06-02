@@ -204,6 +204,9 @@ void Scavenger::enableMiniMode()
 
 void Scavenger::scavenge()
 {
+    if (!m_isEnabled)
+        return;
+
     UniqueLockHolder lock(m_scavengingMutex);
 
     if (verbose) {
@@ -220,7 +223,7 @@ void Scavenger::scavenge()
 #if !BUSE(PARTIAL_SCAVENGE)
             size_t deferredDecommits = 0;
 #endif
-            LockHolder lock(Heap::mutex());
+            UniqueLockHolder lock(Heap::mutex());
             for (unsigned i = numHeaps; i--;) {
                 if (!isActiveHeapKind(static_cast<HeapKind>(i)))
                     continue;
@@ -279,6 +282,9 @@ void Scavenger::scavenge()
 #if BUSE(PARTIAL_SCAVENGE)
 void Scavenger::partialScavenge()
 {
+    if (!m_isEnabled)
+        return;
+
     UniqueLockHolder lock(m_scavengingMutex);
 
     if (verbose) {
@@ -291,7 +297,7 @@ void Scavenger::partialScavenge()
         BulkDecommit decommitter;
         {
             PrintTime printTime("\npartialScavenge under lock time");
-            LockHolder lock(Heap::mutex());
+            UniqueLockHolder lock(Heap::mutex());
             for (unsigned i = numHeaps; i--;) {
                 if (!isActiveHeapKind(static_cast<HeapKind>(i)))
                     continue;
@@ -349,7 +355,7 @@ size_t Scavenger::freeableMemory()
 {
     size_t result = 0;
     {
-        LockHolder lock(Heap::mutex());
+        UniqueLockHolder lock(Heap::mutex());
         for (unsigned i = numHeaps; i--;) {
             if (!isActiveHeapKind(static_cast<HeapKind>(i)))
                 continue;

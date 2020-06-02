@@ -86,7 +86,8 @@ WEBCORE_EXPORT bool isWebBookmarksD();
 WEBCORE_EXPORT bool isDumpRenderTree();
 WEBCORE_EXPORT bool isMiniBrowser();
 bool isMobileStore();
-bool isJesusCalling();
+WEBCORE_EXPORT bool isJesusCalling();
+WEBCORE_EXPORT bool isFamilyHealthApp();
 bool isSpringBoard();
 WEBCORE_EXPORT bool isWebProcess();
 WEBCORE_EXPORT bool isIBooks();
@@ -103,6 +104,8 @@ WEBCORE_EXPORT bool isDataActivation();
 WEBCORE_EXPORT bool isNews();
 WEBCORE_EXPORT bool isStocks();
 WEBCORE_EXPORT bool isFeedly();
+WEBCORE_EXPORT bool isPocketCity();
+WEBCORE_EXPORT bool isEssentialSkeleton();
 
 } // IOSApplication
 

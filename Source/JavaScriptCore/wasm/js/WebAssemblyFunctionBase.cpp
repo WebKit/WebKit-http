@@ -28,8 +28,10 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCInlines.h"
+#include "HeapCellInlines.h"
+#include "HeapInlines.h"
 #include "JSWebAssemblyInstance.h"
+#include "SlotVisitorInlines.h"
 
 namespace JSC {
 

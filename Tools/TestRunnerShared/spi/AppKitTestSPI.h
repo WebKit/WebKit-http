@@ -23,23 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #if PLATFORM(MAC)
 
-#if USE(APPLE_INTERNAL_SDK)
+#import <AppKit/NSDraggingItem.h>
 
-#import <AppKit/NSTextInputContext_Private.h>
-
-#else
-
-extern "C" {
-extern NSString *NSTextInputReplacementRangeAttributeName;
-}
-
-#endif
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+// FIXME: Move this to PlatformHave.h.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
 #define HAVE_NSDRAGGINGITEM_INITWITHITEM 1
 #endif
 
@@ -52,4 +41,3 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 @end
 
 #endif // PLATFORM(MAC)
-

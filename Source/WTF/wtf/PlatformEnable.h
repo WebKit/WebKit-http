@@ -95,7 +95,10 @@
 #include <wtf/PlatformEnableWinCairo.h>
 #endif
 
-
+/* --------- PlayStation port --------- */
+#if PLATFORM(PLAYSTATION)
+#include <wtf/PlatformEnablePlayStation.h>
+#endif
 
 /* ---------  ENABLE macro defaults --------- */
 
@@ -270,6 +273,12 @@
 #define ENABLE_FULLSCREEN_API 0
 #endif
 
+#if ((PLATFORM(IOS) || PLATFORM(WATCHOS) || PLATFORM(MACCATALYST)) && HAVE(AVKIT)) || PLATFORM(MAC)
+#if !defined(ENABLE_VIDEO_PRESENTATION_MODE)
+#define ENABLE_VIDEO_PRESENTATION_MODE 1
+#endif
+#endif
+
 #if !defined(ENABLE_GAMEPAD)
 #define ENABLE_GAMEPAD 0
 #endif
@@ -326,10 +335,6 @@
 
 #if !defined(ENABLE_INSPECTOR_TELEMETRY)
 #define ENABLE_INSPECTOR_TELEMETRY 0
-#endif
-
-#if !defined(ENABLE_INTL)
-#define ENABLE_INTL 0
 #endif
 
 #if !defined(ENABLE_LAYOUT_FORMATTING_CONTEXT)
@@ -414,6 +419,10 @@
 #define ENABLE_PAYMENT_REQUEST 0
 #endif
 
+#if !defined(ENABLE_PERIODIC_MEMORY_MONITOR)
+#define ENABLE_PERIODIC_MEMORY_MONITOR 0
+#endif
+
 #if !defined(ENABLE_POINTER_LOCK)
 #define ENABLE_POINTER_LOCK 1
 #endif
@@ -475,6 +484,10 @@
 
 #if !defined(ENABLE_TOUCH_EVENTS)
 #define ENABLE_TOUCH_EVENTS 0
+#endif
+
+#if !defined(ENABLE_TOUCH_ACTION_REGIONS)
+#define ENABLE_TOUCH_ACTION_REGIONS 0
 #endif
 
 #if !defined(ENABLE_VIDEO)
@@ -545,6 +558,10 @@
 #define ENABLE_DATA_DETECTION 0
 #endif
 
+#if !defined(ENABLE_FILE_SHARE)
+#define ENABLE_FILE_SHARE 1
+#endif
+
 /*
  * Enable this to put each IsoHeap and other allocation categories into their own malloc heaps, so that tools like vmmap can show how big each heap is.
  * Turn BENABLE_MALLOC_HEAP_BREAKDOWN on in bmalloc together when using this.
@@ -580,11 +597,9 @@
 #define ENABLE_JIT 1
 #endif
 #else
-/* Disable JIT and force C_LOOP on all other 32bit architectures. */
+/* Disable JIT on all other 32bit architectures. */
 #undef ENABLE_JIT
 #define ENABLE_JIT 0
-#undef ENABLE_C_LOOP
-#define ENABLE_C_LOOP 1
 #endif
 #endif
 
@@ -877,4 +892,8 @@
 
 #if ENABLE(WEBGL2) && !ENABLE(WEBGL)
 #error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
+#endif
+
+#if CPU(ARM64) && CPU(ADDRESS64)
+#define USE_JUMP_ISLANDS 1
 #endif

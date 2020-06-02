@@ -30,7 +30,6 @@
 #include "CPU.h"
 #include "LLIntCommon.h"
 #include "MinimumReservedZoneSize.h"
-#include "SigillCrashAnalyzer.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -43,17 +42,12 @@
 #include <wtf/NumberOfCores.h>
 #include <wtf/Optional.h>
 #include <wtf/OSLogPrintStream.h>
-#include <wtf/PointerPreparations.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/threads/Signals.h>
 
 #if PLATFORM(COCOA)
 #include <crt_externs.h>
-#endif
-
-#if ENABLE(JIT)
-#include "MacroAssembler.h"
 #endif
 
 namespace JSC {
@@ -353,7 +347,7 @@ static void overrideDefaults()
     Options::mediumHeapRAMFraction() = 0.9;
 #endif
 
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(WATCHOS) && defined(__LP64__)
+#if ENABLE(SIGILL_CRASH_ANALYZER)
     Options::useSigillCrashAnalyzer() = true;
 #endif
 
@@ -535,6 +529,14 @@ inline void* Options::addressOfOptionDefault(Options::ID id)
     return reinterpret_cast<uint8_t*>(&g_jscConfig.options) + offset;
 }
 
+#if OS(WINDOWS)
+// FIXME: Use equalLettersIgnoringASCIICase.
+inline bool strncasecmp(const char* str1, const char* str2, size_t n)
+{
+    return _strnicmp(str1, str2, n);
+}
+#endif
+
 void Options::initialize()
 {
     static std::once_flag initializeOptionsOnceFlag;
@@ -676,7 +678,7 @@ static bool isSeparator(char c)
 
 bool Options::setOptions(const char* optionsStr)
 {
-    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen);
+    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen());
     Vector<char*> options;
 
     size_t length = strlen(optionsStr);
@@ -773,8 +775,8 @@ bool Options::setOptionWithoutAlias(const char* arg)
     // if the value makes sense. Otherwise, move on to checking the next option.
 #define SET_OPTION_IF_MATCH(type_, name_, defaultValue_, availability_, description_) \
     if (strlen(#name_) == static_cast<size_t>(equalStr - arg)      \
-        && !strncmp(arg, #name_, equalStr - arg)) {                \
-        if (Availability::availability_ != Availability::Normal     \
+        && !strncasecmp(arg, #name_, equalStr - arg)) {            \
+        if (Availability::availability_ != Availability::Normal    \
             && !isAvailable(name_##ID, Availability::availability_)) \
             return false;                                          \
         Optional<OptionsStorage::type_> value;                     \
@@ -817,7 +819,7 @@ bool Options::setAliasedOption(const char* arg)
     // if the value makes sense. Otherwise, move on to checking the next option.
 #define FOR_EACH_OPTION(aliasedName_, unaliasedName_, equivalence) \
     if (strlen(#aliasedName_) == static_cast<size_t>(equalStr - arg)    \
-        && !strncmp(arg, #aliasedName_, equalStr - arg)) {              \
+        && !strncasecmp(arg, #aliasedName_, equalStr - arg)) {          \
         String unaliasedOption(#unaliasedName_);                        \
         if (equivalence == SameOption)                                  \
             unaliasedOption = unaliasedOption + equalStr;               \
@@ -828,7 +830,7 @@ bool Options::setAliasedOption(const char* arg)
                 return false;                                           \
             unaliasedOption = unaliasedOption + "=" + invertedValueStr; \
         }                                                               \
-        return setOptionWithoutAlias(unaliasedOption.utf8().data());   \
+        return setOptionWithoutAlias(unaliasedOption.utf8().data());    \
     }
 
     FOR_EACH_JSC_ALIASED_OPTION(FOR_EACH_OPTION)

@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
+#import "config.h"
 
 #if ENABLE(GRAPHICS_CONTEXT_GL)
 #import "GraphicsContextGLOpenGL.h"
@@ -64,21 +64,21 @@
 #define GL_ANGLE_explicit_context
 #define GL_ANGLE_explicit_context_gles1
 typedef void* GLeglContext;
-#include <ANGLE/egl.h>
-#include <ANGLE/eglext.h>
-#include <ANGLE/eglext_angle.h>
-#include <ANGLE/entry_points_egl.h>
-#include <ANGLE/entry_points_egl_ext.h>
-#include <ANGLE/entry_points_gles_2_0_autogen.h>
-#include <ANGLE/entry_points_gles_ext_autogen.h>
-#include <ANGLE/gl2ext.h>
-#include <ANGLE/gl2ext_angle.h>
+#import <ANGLE/egl.h>
+#import <ANGLE/eglext.h>
+#import <ANGLE/eglext_angle.h>
+#import <ANGLE/entry_points_egl.h>
+#import <ANGLE/entry_points_egl_ext.h>
+#import <ANGLE/entry_points_gles_2_0_autogen.h>
+#import <ANGLE/entry_points_gles_ext_autogen.h>
+#import <ANGLE/gl2ext.h>
+#import <ANGLE/gl2ext_angle.h>
 #endif
 
 #if USE(OPENGL_ES) || USE(OPENGL)
-#include "ExtensionsGLOpenGL.h"
+#import "ExtensionsGLOpenGL.h"
 #elif USE(ANGLE)
-#include "ExtensionsGLANGLE.h"
+#import "ExtensionsGLANGLE.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -345,8 +345,15 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
         eglContextAttributes.append(EGL_CONTEXT_OPENGL_BACKWARDS_COMPATIBLE_ANGLE);
         eglContextAttributes.append(EGL_FALSE);
     }
-    eglContextAttributes.append(EGL_CONTEXT_WEBGL_COMPATIBILITY_ANGLE);
-    eglContextAttributes.append(EGL_TRUE);
+    if (!sharedContext) {
+        // The shared context is only non-null when creating a context
+        // on behalf of the VideoTextureCopier. WebGL-specific rendering
+        // feedback loop validation does not work in multi-context
+        // scenarios, and must be disabled for the VideoTextureCopier's
+        // context.
+        eglContextAttributes.append(EGL_CONTEXT_WEBGL_COMPATIBILITY_ANGLE);
+        eglContextAttributes.append(EGL_TRUE);
+    }
     // WebGL requires that all resources are cleared at creation.
     eglContextAttributes.append(EGL_ROBUST_RESOURCE_INITIALIZATION_ANGLE);
     eglContextAttributes.append(EGL_TRUE);
@@ -488,8 +495,19 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
         gl::GenRenderbuffers(1, &m_multisampleColorBuffer);
         if (attrs.stencil || attrs.depth)
             gl::GenRenderbuffers(1, &m_multisampleDepthStencilBuffer);
+    } else if (attrs.preserveDrawingBuffer) {
+        // If necessary, create another texture to handle preserveDrawingBuffer:true without
+        // antialiasing.
+        gl::GenTextures(1, &m_preserveDrawingBufferTexture);
+        gl::BindTexture(GL_TEXTURE_2D, m_preserveDrawingBufferTexture);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        gl::BindTexture(GL_TEXTURE_2D, 0);
+        // Create an FBO with which to perform BlitFramebuffer from one texture to the other.
+        gl::GenFramebuffers(1, &m_preserveDrawingBufferFBO);
     }
-
 #endif // USE(ANGLE)
 
 #if !USE(ANGLE)
@@ -573,6 +591,10 @@ GraphicsContextGLOpenGL::~GraphicsContextGLOpenGL()
                 gl::DeleteRenderbuffers(1, &m_depthStencilBuffer);
         }
         gl::DeleteFramebuffers(1, &m_fbo);
+        if (m_preserveDrawingBufferTexture)
+            gl::DeleteTextures(1, &m_preserveDrawingBufferTexture);
+        if (m_preserveDrawingBufferFBO)
+            gl::DeleteFramebuffers(1, &m_preserveDrawingBufferFBO);
 #endif
 
 #if USE(OPENGL_ES)
@@ -582,6 +604,7 @@ GraphicsContextGLOpenGL::~GraphicsContextGLOpenGL()
         CGLSetCurrentContext(0);
         CGLDestroyContext(cglContext);
 #elif USE(ANGLE)
+        [m_webGLLayer releaseGLResources];
         EGL_MakeCurrent(m_displayObj, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         EGL_DestroyContext(m_displayObj, m_contextObj);
 #endif
@@ -771,21 +794,16 @@ void GraphicsContextGLOpenGL::updateCGLContext()
 
 void GraphicsContextGLOpenGL::allocateIOSurfaceBackingStore(IntSize size)
 {
-#if HAVE(IOSURFACE)
     LOG(WebGL, "GraphicsContextGLOpenGL::allocateIOSurfaceBackingStore at %d x %d. (%p)", size.width(), size.height(), this);
     [m_webGLLayer allocateIOSurfaceBackingStoreWithSize:size usingAlpha:contextAttributes().alpha];
-#else
-    UNUSED_PARAM(size);
-#endif
 }
 
 void GraphicsContextGLOpenGL::updateFramebufferTextureBackingStoreFromLayer()
 {
-#if HAVE(IOSURFACE)
     LOG(WebGL, "GraphicsContextGLOpenGL::updateFramebufferTextureBackingStoreFromLayer(). (%p)", this);
     [m_webGLLayer bindFramebufferToNextAvailableSurface];
-#endif
 }
+
 #endif // USE(ANGLE)
 
 bool GraphicsContextGLOpenGL::isGLES2Compliant() const
@@ -848,6 +866,11 @@ void GraphicsContextGLOpenGL::screenDidChange(PlatformDisplayID displayID)
 #endif // USE(ANGLE)
 }
 #endif // !PLATFORM(MAC)
+
+void GraphicsContextGLOpenGL::prepareForDisplay()
+{
+    [m_webGLLayer prepareForDisplay];
+}
 
 }
 

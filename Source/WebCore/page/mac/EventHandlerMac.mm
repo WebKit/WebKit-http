@@ -23,56 +23,56 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "EventHandler.h"
+#import "config.h"
+#import "EventHandler.h"
 
 #if PLATFORM(MAC)
 
-#include "AXObjectCache.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
-#include "DataTransfer.h"
-#include "DictionaryLookup.h"
-#include "DragController.h"
-#include "Editor.h"
-#include "FocusController.h"
-#include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameView.h"
-#include "HTMLBodyElement.h"
-#include "HTMLDocument.h"
-#include "HTMLFrameSetElement.h"
-#include "HTMLHtmlElement.h"
-#include "HTMLIFrameElement.h"
-#include "KeyboardEvent.h"
-#include "Logging.h"
-#include "MouseEventWithHitTestResults.h"
-#include "Page.h"
-#include "Pasteboard.h"
-#include "PlatformEventFactoryMac.h"
-#include "PlatformScreen.h"
-#include "Range.h"
-#include "RenderLayer.h"
-#include "RenderListBox.h"
-#include "RenderView.h"
-#include "RenderWidget.h"
-#include "RuntimeApplicationChecks.h"
-#include "ScreenProperties.h"
-#include "ScrollAnimator.h"
-#include "ScrollLatchingState.h"
-#include "ScrollableArea.h"
-#include "Scrollbar.h"
-#include "Settings.h"
-#include "ShadowRoot.h"
-#include "SimpleRange.h"
-#include "WheelEventDeltaFilter.h"
-#include "WheelEventTestMonitor.h"
-#include <wtf/BlockObjCExceptions.h>
-#include <wtf/MainThread.h>
-#include <wtf/NeverDestroyed.h>
-#include <wtf/ObjCRuntimeExtras.h>
-#include <wtf/ProcessPrivilege.h>
-#include <wtf/text/TextStream.h>
+#import "AXObjectCache.h"
+#import "Chrome.h"
+#import "ChromeClient.h"
+#import "DataTransfer.h"
+#import "DictionaryLookup.h"
+#import "DragController.h"
+#import "Editor.h"
+#import "FocusController.h"
+#import "Frame.h"
+#import "FrameLoader.h"
+#import "FrameView.h"
+#import "HTMLBodyElement.h"
+#import "HTMLDocument.h"
+#import "HTMLFrameSetElement.h"
+#import "HTMLHtmlElement.h"
+#import "HTMLIFrameElement.h"
+#import "KeyboardEvent.h"
+#import "Logging.h"
+#import "MouseEventWithHitTestResults.h"
+#import "Page.h"
+#import "Pasteboard.h"
+#import "PlatformEventFactoryMac.h"
+#import "PlatformScreen.h"
+#import "Range.h"
+#import "RenderLayer.h"
+#import "RenderListBox.h"
+#import "RenderView.h"
+#import "RenderWidget.h"
+#import "RuntimeApplicationChecks.h"
+#import "ScreenProperties.h"
+#import "ScrollAnimator.h"
+#import "ScrollLatchingState.h"
+#import "ScrollableArea.h"
+#import "Scrollbar.h"
+#import "Settings.h"
+#import "ShadowRoot.h"
+#import "SimpleRange.h"
+#import "WheelEventDeltaFilter.h"
+#import "WheelEventTestMonitor.h"
+#import <wtf/BlockObjCExceptions.h>
+#import <wtf/MainThread.h>
+#import <wtf/NeverDestroyed.h>
+#import <wtf/ObjCRuntimeExtras.h>
+#import <wtf/ProcessPrivilege.h>
+#import <wtf/text/TextStream.h>
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 #import <WebKitAdditions/EventHandlerMacGesture.cpp>
@@ -375,7 +375,7 @@ bool EventHandler::eventLoopHandleMouseUp(const MouseEventWithHitTestResults&)
     return true;
 }
     
-bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& event, Frame* subframe, HitTestResult* hoveredNode)
+bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& event, Frame& subframe, HitTestResult* hitTestResult)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
@@ -388,7 +388,7 @@ bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& eve
         if (!m_mouseDownWasInSubframe)
             return false;
 #if ENABLE(DRAG_SUPPORT)
-        if (subframe->page()->dragController().didInitiateDrag())
+        if (subframe.page()->dragController().didInitiateDrag())
             return false;
 #endif
     case NSEventTypeMouseMoved:
@@ -397,7 +397,7 @@ bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& eve
         // currentNSEvent() that mouseMoved() does would have no effect.
         ASSERT(!m_sendingEventToSubview);
         m_sendingEventToSubview = true;
-        subframe->eventHandler().handleMouseMoveEvent(currentPlatformMouseEvent(), hoveredNode);
+        subframe.eventHandler().handleMouseMoveEvent(currentPlatformMouseEvent(), hitTestResult);
         m_sendingEventToSubview = false;
         return true;
         
@@ -421,7 +421,7 @@ bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& eve
             return false;
         ASSERT(!m_sendingEventToSubview);
         m_sendingEventToSubview = true;
-        subframe->eventHandler().handleMouseReleaseEvent(currentPlatformMouseEvent());
+        subframe.eventHandler().handleMouseReleaseEvent(currentPlatformMouseEvent());
         m_sendingEventToSubview = false;
         return true;
     }
@@ -467,7 +467,7 @@ static void selfRetainingNSScrollViewScrollWheel(NSScrollView *self, SEL selecto
         CFRelease((__bridge CFTypeRef)self);
 }
 
-bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& wheelEvent, Widget& widget)
+bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& wheelEvent, Widget& widget)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
@@ -683,22 +683,22 @@ static bool frameHasPlatformWidget(const Frame& frame)
     return false;
 }
 
-bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
+bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mouseEventAndResult, Frame& subframe)
 {
     // WebKit1 code path.
     if (frameHasPlatformWidget(m_frame))
-        return passSubframeEventToSubframe(mev, subframe);
+        return passSubframeEventToSubframe(mouseEventAndResult, subframe);
 
     // WebKit2 code path.
-    subframe->eventHandler().handleMousePressEvent(mev.event());
+    subframe.eventHandler().handleMousePressEvent(mouseEventAndResult.event());
     return true;
 }
 
-bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe, HitTestResult* hoveredNode)
+bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& mouseEventAndResult, Frame& subframe, HitTestResult* hitTestResult)
 {
     // WebKit1 code path.
     if (frameHasPlatformWidget(m_frame))
-        return passSubframeEventToSubframe(mev, subframe, hoveredNode);
+        return passSubframeEventToSubframe(mouseEventAndResult, subframe, hitTestResult);
 
 #if ENABLE(DRAG_SUPPORT)
     // WebKit2 code path.
@@ -706,18 +706,18 @@ bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& me
         return false;
 #endif
 
-    subframe->eventHandler().handleMouseMoveEvent(mev.event(), hoveredNode);
+    subframe.eventHandler().handleMouseMoveEvent(mouseEventAndResult.event(), hitTestResult);
     return true;
 }
 
-bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
+bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults& mouseEventAndResult, Frame& subframe)
 {
     // WebKit1 code path.
     if (frameHasPlatformWidget(m_frame))
-        return passSubframeEventToSubframe(mev, subframe);
+        return passSubframeEventToSubframe(mouseEventAndResult, subframe);
 
     // WebKit2 code path.
-    subframe->eventHandler().handleMouseReleaseEvent(mev.event());
+    subframe.eventHandler().handleMouseReleaseEvent(mouseEventAndResult.event());
     return true;
 }
 
@@ -785,7 +785,7 @@ static ScrollableArea* scrollableAreaForBox(RenderBox& box)
     return box.layer();
 }
     
-static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, float deltaX, float deltaY)
+static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, const PlatformWheelEvent& wheelEvent)
 {
     // Find the first node with a valid scrollable area starting with the current
     // node and traversing its parents (or shadow hosts).
@@ -797,14 +797,21 @@ static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, floa
             return nullptr;
 
         RenderBox* box = candidate->renderBox();
-        if (box && box->canBeScrolledAndHasScrollableArea()) {
-            if (ScrollableArea* scrollableArea = scrollableAreaForBox(*box)) {
-                if (((deltaY > 0) && !scrollableArea->scrolledToTop()) || ((deltaY < 0) && !scrollableArea->scrolledToBottom())
-                    || ((deltaX > 0) && !scrollableArea->scrolledToLeft()) || ((deltaX < 0) && !scrollableArea->scrolledToRight())) {
-                    return candidate;
-                }
-            }
-        }
+        if (!box || !box->canBeScrolledAndHasScrollableArea())
+            continue;
+        
+        auto* scrollableArea = scrollableAreaForBox(*box);
+        if (!scrollableArea)
+            continue;
+
+        if (wheelEvent.phase() == PlatformWheelEventPhaseMayBegin || wheelEvent.phase() == PlatformWheelEventPhaseCancelled)
+            return candidate;
+
+        auto deltaX = wheelEvent.deltaX();
+        auto deltaY = wheelEvent.deltaY();
+        if ((deltaY > 0 && !scrollableArea->scrolledToTop()) || (deltaY < 0 && !scrollableArea->scrolledToBottom())
+            || (deltaX > 0 && !scrollableArea->scrolledToLeft()) || (deltaX < 0 && !scrollableArea->scrolledToRight()))
+            return candidate;
     }
     
     return nullptr;
@@ -963,7 +970,7 @@ void EventHandler::determineWheelEventTarget(const PlatformWheelEvent& wheelEven
             scrollableContainer = wheelEventTarget;
             scrollableArea = scrollableAreaForEventTarget(wheelEventTarget.get());
         } else {
-            scrollableContainer = findEnclosingScrollableContainer(wheelEventTarget.get(), wheelEvent.deltaX(), wheelEvent.deltaY());
+            scrollableContainer = findEnclosingScrollableContainer(wheelEventTarget.get(), wheelEvent);
             if (scrollableContainer && !is<HTMLIFrameElement>(wheelEventTarget))
                 scrollableArea = scrollableAreaForContainerNode(*scrollableContainer);
             else {

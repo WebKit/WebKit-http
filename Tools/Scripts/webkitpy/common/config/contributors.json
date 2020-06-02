@@ -1413,13 +1413,17 @@
       ]
    },
    "Daniel Bates" : {
+      "aliases" : [
+         "Dan Bates"
+      ],
       "emails" : [
          "dbates@webkit.org",
          "dabates@apple.com"
       ],
       "expertise" : "Text Layout, Event Handling, Security, XSSAuditor, Drag and Drop, Basic types and data structures, Tools, General (probably a good backup on most topics even if not specifically an expert)",
       "nicks" : [
-         "dydz"
+         "dydz",
+         "dydx"
       ],
       "status" : "reviewer"
    },
@@ -1918,6 +1922,7 @@
          "emilio@crisal.io"
       ],
       "nicks" : [
+         "emilio",
          "ecobos"
       ],
       "status" : "committer"
@@ -2641,6 +2646,15 @@
          "jamesr"
       ]
    },
+   "James Savage" : {
+      "emails" : [
+         "james.savage@apple.com"
+      ],
+      "nicks" : [
+         "axiixc"
+      ],
+      "status" : "committer"
+   },
    "James Simonsen" : {
       "emails" : [
          "simonjam@chromium.org"
@@ -3354,7 +3368,8 @@
       "nicks" : [
          "kbr_google",
          "kbrgg"
-      ]
+      ],
+      "status" : "committer"
    },
    "Kent Hansen" : {
       "emails" : [
@@ -4417,6 +4432,17 @@
          "TingPing"
       ]
    },
+   "Paulo Matos" : {
+      "emails" : [
+         "pmatos@igalia.com",
+         "pmatos@linki.tools"
+      ],
+      "expertise" : "JavaScriptCore",
+      "nicks" : [
+         "pmatos"
+      ],
+      "status" : "committer"
+   },
    "Pavel Feldman" : {
       "emails" : [
          "pfeldman@chromium.org",
@@ -5027,7 +5053,7 @@
       "nicks" : [
          "sihuil"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Silvia Pfeiffer" : {
       "emails" : [

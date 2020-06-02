@@ -36,6 +36,9 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._readOnly = options.readOnly || false;
         this._element = document.createElement("div");
 
+        if (options.selectable)
+            this._element.tabIndex = -1;
+
         this._contentElement = null;
         this._nameElement = null;
         this._valueElement = null;
@@ -52,7 +55,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         property.addEventListener(WI.CSSProperty.Event.Changed, this.updateStatus, this);
 
         if (!this._readOnly) {
-            this._element.tabIndex = -1;
             property.addEventListener(WI.CSSProperty.Event.ModifiedChanged, this.updateStatus, this);
 
             this._element.addEventListener("blur", (event) => {
@@ -411,7 +413,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         if (changed) {
             let target = WI.assumingMainTarget();
-            if (target.hasDomain("DOM"))
+            if (target.hasCommand("DOM.markUndoableState"))
                 target.DOMAgent.markUndoableState();
         }
     }
@@ -555,8 +557,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (this._property.name === "box-shadow")
             return this._addBoxShadowTokens(tokens);
 
-        tokens = this._addVariableTokens(tokens);
-
         if (this._property.isVariable || WI.CSSKeywordCompletions.isColorAwareProperty(this._property.name)) {
             tokens = this._addGradientTokens(tokens);
             tokens = this._addColorTokens(tokens);
@@ -566,6 +566,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             tokens = this._addTimingFunctionTokens(tokens, "cubic-bezier");
             tokens = this._addTimingFunctionTokens(tokens, "spring");
         }
+
+        tokens = this._addVariableTokens(tokens);
 
         return tokens;
     }
@@ -592,7 +594,10 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 }
 
                 let rawTokens = tokens.slice(gradientStartIndex, i + 1);
+
                 let text = this._resolveVariables(rawTokens.map((token) => token.value).join(""));
+                rawTokens = this._addVariableTokens(rawTokens);
+
                 let gradient = WI.Gradient.fromString(text);
                 if (gradient)
                     newTokens.push(this._createInlineSwatch(WI.InlineSwatch.Type.Gradient, rawTokens, gradient));
@@ -639,16 +644,17 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                     continue;
                 }
 
-                if (token.value === ")") {
-                    --openParentheses;
-                    if (openParentheses)
-                        continue;
-                }
+                if (token.value !== ")")
+                    continue;
 
-                // Color Function end
+                if (--openParentheses)
+                    continue;
 
                 let rawTokens = tokens.slice(colorFunctionStartIndex, i + 1);
+
                 let text = this._resolveVariables(rawTokens.map((token) => token.value).join(""));
+                rawTokens = this._addVariableTokens(rawTokens);
+
                 pushPossibleColorToken(text, ...rawTokens);
                 colorFunctionStartIndex = NaN;
             } else
@@ -678,7 +684,9 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                     continue;
 
                 let rawTokens = tokens.slice(startIndex, i + 1);
+
                 let text = this._resolveVariables(rawTokens.map((token) => token.value).join(""));
+                rawTokens = this._addVariableTokens(rawTokens);
 
                 let valueObject;
                 let inlineSwatchType;
@@ -731,6 +739,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 newTokens.pushAll(rawTokens.slice(0, firstNonWhitespaceIndex));
 
                 let text = this._resolveVariables(nonWhitespaceTokens.map((rawToken) => rawToken.value).join(""));
+                nonWhitespaceTokens = this._addVariableTokens(nonWhitespaceTokens);
+
                 let boxShadow = WI.BoxShadow.fromString(text);
                 if (boxShadow)
                     newTokens.push(this._createInlineSwatch(WI.InlineSwatch.Type.BoxShadow, nonWhitespaceTokens, boxShadow));
@@ -783,13 +793,37 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 let rawTokens = tokens.slice(startIndex, i + 1);
                 let variableNameIndex = rawTokens.findIndex((token) => token.value.startsWith("--") && /\bvariable-2\b/.test(token.type));
                 if (variableNameIndex !== -1) {
-                    let contents = [];
+                    let contents = rawTokens.slice(0, variableNameIndex + 1);
+
+                    if (WI.settings.experimentalEnableStyelsJumpToVariableDeclaration.value && this._property.ownerStyle.type !== WI.CSSStyleDeclaration.Type.Computed && this._delegate && this._delegate.spreadsheetStylePropertySelectByProperty) {
+                        const dontCreateIfMissing = true;
+                        let effectiveVariableProperty = this._property.ownerStyle.nodeStyles.effectivePropertyForName(rawTokens[variableNameIndex].value, dontCreateIfMissing);
+                        if (effectiveVariableProperty) {
+                            let arrowElement = WI.createGoToArrowButton();
+                            arrowElement.classList.add("select-variable-property");
+                            arrowElement.title = WI.UIString("Go to variable");
+                            arrowElement.addEventListener("click", (event) => {
+                                event.stop();
+                                this._delegate.spreadsheetStylePropertySelectByProperty(effectiveVariableProperty);
+                            });
+                            contents.push(arrowElement);
+                        }
+                    }
+
                     let fallbackStartIndex = rawTokens.findIndex((value, i) => i > variableNameIndex + 1 && /\bm-css\b/.test(value.type));
                     if (fallbackStartIndex !== -1) {
-                        contents.pushAll(rawTokens.slice(0, fallbackStartIndex));
-                        contents.pushAll(this._replaceSpecialTokens(rawTokens.slice(fallbackStartIndex, i)));
+                        contents.pushAll(rawTokens.slice(variableNameIndex + 1, fallbackStartIndex));
+
+                        let fallbackTokens = rawTokens.slice(fallbackStartIndex, i);
+                        fallbackTokens = this._addBoxShadowTokens(fallbackTokens);
+                        fallbackTokens = this._addGradientTokens(fallbackTokens);
+                        fallbackTokens = this._addColorTokens(fallbackTokens);
+                        fallbackTokens = this._addTimingFunctionTokens(fallbackTokens, "cubic-bezier");
+                        fallbackTokens = this._addTimingFunctionTokens(fallbackTokens, "spring");
+                        fallbackTokens = this._addVariableTokens(fallbackTokens);
+                        contents.pushAll(fallbackTokens);
                     } else
-                        contents.pushAll(rawTokens.slice(0, i));
+                        contents.pushAll(rawTokens.slice(variableNameIndex + 1, i));
                     contents.push(token);
 
                     let text = rawTokens.reduce((accumulator, token) => accumulator + token.value, "");

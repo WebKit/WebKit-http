@@ -431,59 +431,89 @@ CheckedArithmeticTest(uint64_t, CoerceLiteralToUnsigned, IgnoreMixedSignednessTe
 TEST(CheckedArithmeticTest, IsInBounds)
 {
     // bigger precision, signed, signed
-    EXPECT_TRUE(WTF::isInBounds<int32_t>(std::numeric_limits<int16_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<int32_t>(std::numeric_limits<int16_t>::min()));
+    EXPECT_TRUE(isInBounds<int32_t>(std::numeric_limits<int16_t>::max()));
+    EXPECT_TRUE(isInBounds<int32_t>(std::numeric_limits<int16_t>::min()));
 
     // bigger precision, unsigned, signed
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>(std::numeric_limits<int32_t>::max()));
-    EXPECT_FALSE(WTF::isInBounds<uint32_t>(std::numeric_limits<int16_t>::min()));
+    EXPECT_TRUE(isInBounds<uint32_t>(std::numeric_limits<int32_t>::max()));
+    EXPECT_FALSE(isInBounds<uint32_t>(std::numeric_limits<int16_t>::min()));
 
-    EXPECT_FALSE(WTF::isInBounds<uint32_t>((int32_t)-1));
-    EXPECT_FALSE(WTF::isInBounds<uint16_t>((int32_t)-1));
-    EXPECT_FALSE(WTF::isInBounds<unsigned long>((int)-1));
+    EXPECT_FALSE(isInBounds<uint32_t>((int32_t)-1));
+    EXPECT_FALSE(isInBounds<uint16_t>((int32_t)-1));
+    EXPECT_FALSE(isInBounds<unsigned long>((int)-1));
 
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>((int32_t)1));
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>((int16_t)1));
-    EXPECT_TRUE(WTF::isInBounds<unsigned>((int)1));
+    EXPECT_TRUE(isInBounds<uint32_t>((int32_t)1));
+    EXPECT_TRUE(isInBounds<uint32_t>((int16_t)1));
+    EXPECT_TRUE(isInBounds<unsigned>((int)1));
 
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>((int32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<uint16_t>((int32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>((int16_t)0));
-    EXPECT_TRUE(WTF::isInBounds<unsigned>((int)0));
+    EXPECT_TRUE(isInBounds<uint32_t>((int32_t)0));
+    EXPECT_TRUE(isInBounds<uint16_t>((int32_t)0));
+    EXPECT_TRUE(isInBounds<uint32_t>((int16_t)0));
+    EXPECT_TRUE(isInBounds<unsigned>((int)0));
 
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>(std::numeric_limits<int32_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>(std::numeric_limits<int16_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<unsigned>(std::numeric_limits<int>::max()));
+    EXPECT_TRUE(isInBounds<uint32_t>(std::numeric_limits<int32_t>::max()));
+    EXPECT_TRUE(isInBounds<uint32_t>(std::numeric_limits<int16_t>::max()));
+    EXPECT_TRUE(isInBounds<unsigned>(std::numeric_limits<int>::max()));
 
     // bigger precision, signed, unsigned
-    EXPECT_TRUE(WTF::isInBounds<int32_t>(std::numeric_limits<uint16_t>::max()));
-    EXPECT_FALSE(WTF::isInBounds<int32_t>(std::numeric_limits<uint32_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<int32_t>((uint32_t)0));
+    EXPECT_TRUE(isInBounds<int32_t>(std::numeric_limits<uint16_t>::max()));
+    EXPECT_FALSE(isInBounds<int32_t>(std::numeric_limits<uint32_t>::max()));
+    EXPECT_TRUE(isInBounds<int32_t>((uint32_t)0));
 
     // bigger precision, unsigned, unsigned
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>(std::numeric_limits<uint16_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<uint32_t>(std::numeric_limits<uint16_t>::min()));
+    EXPECT_TRUE(isInBounds<uint32_t>(std::numeric_limits<uint16_t>::max()));
+    EXPECT_TRUE(isInBounds<uint32_t>(std::numeric_limits<uint16_t>::min()));
 
     // lower precision, signed signed
-    EXPECT_FALSE(WTF::isInBounds<int16_t>(std::numeric_limits<int32_t>::max()));
-    EXPECT_FALSE(WTF::isInBounds<int16_t>(std::numeric_limits<int32_t>::min()));
-    EXPECT_TRUE(WTF::isInBounds<int16_t>((int32_t)-1));
-    EXPECT_TRUE(WTF::isInBounds<int16_t>((int32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<int16_t>((int32_t)1));
+    EXPECT_FALSE(isInBounds<int16_t>(std::numeric_limits<int32_t>::max()));
+    EXPECT_FALSE(isInBounds<int16_t>(std::numeric_limits<int32_t>::min()));
+    EXPECT_TRUE(isInBounds<int16_t>((int32_t)-1));
+    EXPECT_TRUE(isInBounds<int16_t>((int32_t)0));
+    EXPECT_TRUE(isInBounds<int16_t>((int32_t)1));
     // lower precision, unsigned, signed
-    EXPECT_FALSE(WTF::isInBounds<uint16_t>(std::numeric_limits<int32_t>::max()));
-    EXPECT_FALSE(WTF::isInBounds<uint16_t>(std::numeric_limits<int32_t>::min()));
-    EXPECT_FALSE(WTF::isInBounds<uint16_t>((int32_t)-1));
-    EXPECT_TRUE(WTF::isInBounds<uint16_t>((int32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<uint16_t>((int32_t)1));
+    EXPECT_FALSE(isInBounds<uint16_t>(std::numeric_limits<int32_t>::max()));
+    EXPECT_FALSE(isInBounds<uint16_t>(std::numeric_limits<int32_t>::min()));
+    EXPECT_FALSE(isInBounds<uint16_t>((int32_t)-1));
+    EXPECT_TRUE(isInBounds<uint16_t>((int32_t)0));
+    EXPECT_TRUE(isInBounds<uint16_t>((int32_t)1));
     // lower precision, signed, unsigned
-    EXPECT_FALSE(WTF::isInBounds<int16_t>(std::numeric_limits<uint32_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<int16_t>((uint32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<int16_t>((uint32_t)1));
+    EXPECT_FALSE(isInBounds<int16_t>(std::numeric_limits<uint32_t>::max()));
+    EXPECT_TRUE(isInBounds<int16_t>((uint32_t)0));
+    EXPECT_TRUE(isInBounds<int16_t>((uint32_t)1));
     // lower precision, unsigned, unsigned
-    EXPECT_FALSE(WTF::isInBounds<uint16_t>(std::numeric_limits<uint32_t>::max()));
-    EXPECT_TRUE(WTF::isInBounds<uint16_t>((uint32_t)0));
-    EXPECT_TRUE(WTF::isInBounds<uint16_t>((uint32_t)1));
+    EXPECT_FALSE(isInBounds<uint16_t>(std::numeric_limits<uint32_t>::max()));
+    EXPECT_TRUE(isInBounds<uint16_t>((uint32_t)0));
+    EXPECT_TRUE(isInBounds<uint16_t>((uint32_t)1));
+}
+
+TEST(CheckedArithmeticTest, Division)
+{
+    CheckedSize size = 100;
+    EXPECT_EQ(100U, size.unsafeGet());
+    size /= 10U;
+    EXPECT_FALSE(size.hasOverflowed());
+    EXPECT_EQ(10U, size.unsafeGet());
+
+    size /= 11U;
+    EXPECT_FALSE(size.hasOverflowed());
+    EXPECT_EQ(0U, size.unsafeGet());
+
+    size = 100;
+    EXPECT_FALSE(size.hasOverflowed());
+
+    size /= 0U;
+    EXPECT_TRUE(size.hasOverflowed());
+
+    size = 100;
+    EXPECT_FALSE(size.hasOverflowed());
+    EXPECT_EQ(100U, size.unsafeGet());
+
+    size /= 10.5;
+    EXPECT_FALSE(size.hasOverflowed());
+    EXPECT_EQ(9U, size.unsafeGet());
+
+    size /= 0.0;
+    EXPECT_TRUE(size.hasOverflowed());
 }
 
 } // namespace TestWebKitAPI

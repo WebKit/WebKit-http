@@ -262,9 +262,7 @@ enum {
 #if PLATFORM(IOS_FAMILY)
 #define WebPDFView ([WebView _getPDFViewClass])
 #endif
-#if !PLATFORM(MACCATALYST)
             addTypesFromClass(viewTypes, [WebPDFView class], [WebPDFView supportedMIMETypes]);
-#endif
 #if PLATFORM(IOS_FAMILY)
 #undef WebPDFView
 #endif
@@ -356,6 +354,7 @@ enum {
         
         // Need to tell WebCore what function to call for the "History Item has Changed" notification.
         // Note: We also do this in WebHistoryItem's init method.
+        // FIXME: This means that if we mix legacy WebKit and modern WebKit in the same process, we won't get both notifications.
         WebCore::notifyHistoryItemChanged = WKNotifyHistoryItemChanged;
 
 #if !PLATFORM(IOS_FAMILY)

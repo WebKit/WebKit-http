@@ -12,10 +12,13 @@
 #include "common/Optional.h"
 #include "common/angleutils.h"
 
+#include <string>
+
 namespace angle
 {
 std::string GetExecutablePath();
 std::string GetExecutableDirectory();
+std::string GetHelperExecutableDir();
 const char *GetSharedLibraryExtension();
 const char *GetExecutableExtension();
 char GetPathSeparator();
@@ -65,6 +68,7 @@ enum class SearchType
 };
 
 Library *OpenSharedLibrary(const char *libraryName, SearchType searchType);
+Library *OpenSharedLibraryWithExtension(const char *libraryName);
 
 // Returns true if the process is currently being debugged.
 bool IsDebuggerAttached();

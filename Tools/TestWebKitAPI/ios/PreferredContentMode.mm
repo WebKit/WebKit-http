@@ -27,10 +27,10 @@
 
 #if PLATFORM(IOS_FAMILY)
 
-#import "IPadUserInterfaceSwizzler.h"
 #import "PlatformUtilities.h"
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
+#import "UserInterfaceSwizzler.h"
 #import <WebKit/WKWebpagePreferences.h>
 #import <WebKit/WKWebpagePreferencesPrivate.h>
 #import <wtf/BlockPtr.h>
@@ -165,22 +165,6 @@
 }
 
 @end
-
-class IPhoneUserInterfaceSwizzler {
-public:
-    IPhoneUserInterfaceSwizzler()
-        : m_swizzler(UIDevice.class, @selector(userInterfaceIdiom), reinterpret_cast<IMP>(phoneUserInterfaceIdiom))
-    {
-    }
-
-private:
-    static UIUserInterfaceIdiom phoneUserInterfaceIdiom(id, SEL)
-    {
-        return UIUserInterfaceIdiomPhone;
-    }
-
-    InstanceMethodSwizzler m_swizzler;
-};
 
 namespace TestWebKitAPI {
 
@@ -448,6 +432,19 @@ TEST(PreferredContentMode, ApplicationNameForDesktopUserAgent)
         NSString *userAgent = [webView navigatorUserAgent];
         EXPECT_FALSE([userAgent containsString:@"Mobile"]);
         EXPECT_TRUE([userAgent containsString:@"Macintosh"]);
+    }
+}
+
+TEST(PreferredContentMode, IdempotentModeAutosizingOnlyHonorsPercentages)
+{
+    IPadUserInterfaceSwizzler iPadUserInterface;
+    {
+        auto [webView, delegate] = setUpWebViewForPreferredContentModeTesting<WKWebView>(WKContentModeMobile);
+        [webView loadTestPageNamed:@"idempotent-mode-autosizing-only-honors-percentages" andExpectEffectiveContentMode:WKContentModeMobile withPolicyDecisionHandler:nil];
+        EXPECT_EQ(static_cast<NSNumber *>([webView objectByEvaluatingJavaScript:@"run1()"]).intValue, 12);
+        EXPECT_EQ(static_cast<NSNumber *>([webView objectByEvaluatingJavaScript:@"run2()"]).intValue, 6);
+        EXPECT_EQ(static_cast<NSNumber *>([webView objectByEvaluatingJavaScript:@"run3()"]).intValue, 6);
+        EXPECT_EQ(static_cast<NSNumber *>([webView objectByEvaluatingJavaScript:@"run4()"]).intValue, 12);
     }
 }
 

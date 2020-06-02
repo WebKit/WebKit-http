@@ -26,13 +26,11 @@
 #include "config.h"
 #include "SparseArrayValueMap.h"
 
-#include "ClassInfo.h"
 #include "GetterSetter.h"
-#include "JSObject.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
+#include "JSObjectInlines.h"
 #include "PropertySlot.h"
-#include "SlotVisitor.h"
-#include "Structure.h"
+#include "StructureInlines.h"
 #include "TypeError.h"
 
 namespace JSC {
@@ -203,7 +201,7 @@ bool SparseArrayEntry::put(JSGlobalObject* globalObject, JSValue thisValue, Spar
         return true;
     }
 
-    RELEASE_AND_RETURN(scope, callSetter(globalObject, thisValue, Base::get(), value, shouldThrow ? StrictMode : NotStrictMode));
+    RELEASE_AND_RETURN(scope, callSetter(globalObject, thisValue, Base::get(), value, shouldThrow ? ECMAMode::strict() : ECMAMode::sloppy()));
 }
 
 JSValue SparseArrayEntry::getNonSparseMode() const

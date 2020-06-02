@@ -35,7 +35,6 @@
 #include "ObjectToStringAdaptiveStructureWatchpoint.h"
 #include "StructureStubClearingWatchpoint.h"
 #include "VM.h"
-#include <wtf/CompilationThread.h>
 
 namespace JSC {
 
@@ -183,7 +182,7 @@ WatchpointSet* InlineWatchpointSet::inflateSlow()
 {
     ASSERT(isThin());
     ASSERT(!isCompilationThread());
-    WatchpointSet* fat = adoptRef(new WatchpointSet(decodeState(m_data))).leakRef();
+    WatchpointSet* fat = &WatchpointSet::create(decodeState(m_data)).leakRef();
     WTF::storeStoreFence();
     m_data = bitwise_cast<uintptr_t>(fat);
     return fat;

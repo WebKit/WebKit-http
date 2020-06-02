@@ -39,7 +39,6 @@
 #include "WebInspectorInterruptDispatcher.h"
 #include "WebPageProxyIdentifier.h"
 #include "WebProcessCreationParameters.h"
-#include "WebSQLiteDatabaseTracker.h"
 #include "WebSocketChannelManager.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/FrameIdentifier.h>
@@ -98,7 +97,6 @@ struct ServiceWorkerContextData;
 
 namespace WebKit {
 
-class DependencyProcessAssertion;
 class EventDispatcher;
 class GamepadData;
 class GPUProcessConnection;
@@ -107,6 +105,7 @@ class LibWebRTCCodecs;
 class LibWebRTCNetwork;
 class NetworkProcessConnection;
 class ObjCObjectGraph;
+class ProcessAssertion;
 struct ServiceWorkerInitializationData;
 class StorageAreaMap;
 class UserData;
@@ -298,10 +297,10 @@ public:
 #if ENABLE(REMOTE_INSPECTOR)
     void enableRemoteWebInspector(const SandboxExtension::Handle&);
 #endif
-    void unblockAccessibilityServer(const SandboxExtension::Handle&);
+    void unblockServicesRequiredByAccessibility(const SandboxExtension::HandleArray&);
 #if ENABLE(CFPREFS_DIRECT_MODE)
     void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
-    void unblockPreferenceService(const SandboxExtension::Handle&);
+    void unblockPreferenceService(SandboxExtension::HandleArray&&);
 #endif
 #endif
 
@@ -343,7 +342,7 @@ private:
     void registerWithStateDumper();
 #endif
 
-    void markAllLayersVolatile(WTF::Function<void(bool)>&& completionHandler);
+    void markAllLayersVolatile(CompletionHandler<void()>&&);
     void cancelMarkAllLayersVolatile();
 
     void freezeAllLayerTrees();
@@ -459,7 +458,7 @@ private:
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void setShouldBlockThirdPartyCookiesForTesting(WebCore::ThirdPartyCookieBlockingMode, CompletionHandler<void()>&&);
+    void setThirdPartyCookieBlockingMode(WebCore::ThirdPartyCookieBlockingMode, CompletionHandler<void()>&&);
 #endif
 
     void platformInitializeProcess(const AuxiliaryProcessInitializationParameters&);
@@ -475,7 +474,6 @@ private:
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void scrollerStylePreferenceChanged(bool useOverlayScrollbars);
     void displayConfigurationChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags);
-    void displayWasRefreshed(CGDirectDisplayID);
 #endif
 
 #if PLATFORM(COCOA)
@@ -501,6 +499,10 @@ private:
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void sendMessageToWebExtension(UserMessage&&);
+#endif
+
+#if PLATFORM(GTK) && !USE(GTK4)
+    void setUseSystemAppearanceForScrollbars(bool);
 #endif
 
     bool isAlwaysOnLoggingAllowed() { return m_sessionID ? m_sessionID->isAlwaysOnLoggingAllowed() : true; }
@@ -576,14 +578,8 @@ private:
     RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
 
 #if PLATFORM(IOS_FAMILY)
-    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
-    std::unique_ptr<DependencyProcessAssertion> m_uiProcessDependencyProcessAssertion;
+    std::unique_ptr<ProcessAssertion> m_uiProcessDependencyProcessAssertion;
 #endif
-
-    enum PageMarkingLayersAsVolatileCounterType { };
-    using PageMarkingLayersAsVolatileCounter = RefCounter<PageMarkingLayersAsVolatileCounterType>;
-    std::unique_ptr<PageMarkingLayersAsVolatileCounter> m_pageMarkingLayersAsVolatileCounter;
-    unsigned m_countOfPagesFailingToMarkVolatile { 0 };
 
     bool m_suppressMemoryPressureHandler { false };
 #if PLATFORM(MAC)

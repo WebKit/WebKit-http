@@ -38,6 +38,7 @@ namespace WebCore {
 #endif
 
 #define WEBCORE_LOG_CHANNELS(M) \
+    M(Accessibility) \
     M(AdClickAttribution) \
     M(Animations) \
     M(ApplePay) \
@@ -82,6 +83,7 @@ namespace WebCore {
     M(MessagePorts) \
     M(Network) \
     M(NotYetImplemented) \
+    M(OverlayScrollbars) \
     M(PerformanceLogging) \
     M(PlatformLeaks) \
     M(Plugins) \
@@ -93,7 +95,9 @@ namespace WebCore {
     M(ResourceLoadObserver) \
     M(ResourceLoadStatistics) \
     M(Scrolling) \
+    M(ScrollingTree) \
     M(ScrollLatching) \
+    M(Selection) \
     M(Services) \
     M(ServiceWorker) \
     M(SpellingAndGrammar) \

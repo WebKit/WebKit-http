@@ -334,7 +334,7 @@ void DeleteSelectionCommand::saveTypingStyleState()
     // However, if typing style was previously set from another text node at the previous
     // position (now deleted), we need to clear that style as well.
     if (m_upstreamStart.deprecatedNode() == m_downstreamEnd.deprecatedNode() && m_upstreamStart.deprecatedNode()->isTextNode()) {
-        frame().selection().clearTypingStyle();
+        document().selection().clearTypingStyle();
         return;
     }
 
@@ -503,19 +503,23 @@ void DeleteSelectionCommand::deleteTextFromNode(Text& node, unsigned offset, uns
 
 void DeleteSelectionCommand::makeStylingElementsDirectChildrenOfEditableRootToPreventStyleLoss()
 {
-    RefPtr<Range> range = m_selectionToDelete.toNormalizedRange();
-    RefPtr<Node> node = range ? range->firstNode() : nullptr;
-    while (node && node != range->pastLastNode()) {
-        RefPtr<Node> nextNode = NodeTraversal::next(*node);
-        if ((is<HTMLStyleElement>(*node) && !downcast<HTMLStyleElement>(*node).hasAttributeWithoutSynchronization(scopedAttr)) || is<HTMLLinkElement>(*node)) {
-            nextNode = NodeTraversal::nextSkippingChildren(*node);
-            RefPtr<ContainerNode> rootEditableElement = node->rootEditableElement();
-            if (rootEditableElement) {
-                removeNode(*node);
-                appendNode(*node, *rootEditableElement);
+    auto range = m_selectionToDelete.toNormalizedRange();
+    if (!range)
+        return;
+    auto nodes = intersectingNodes(*range).begin();
+    while (nodes) {
+        auto node = makeRef(*nodes);
+        auto shouldMove = is<HTMLLinkElement>(node)
+            || (is<HTMLStyleElement>(node) && !downcast<HTMLStyleElement>(node.get()).hasAttributeWithoutSynchronization(scopedAttr));
+        if (!shouldMove)
+            nodes.advance();
+        else {
+            nodes.advanceSkippingChildren();
+            if (auto rootEditableElement = makeRefPtr(node->rootEditableElement())) {
+                removeNode(node.get());
+                appendNode(node.get(), *rootEditableElement);
             }
         }
-        node = nextNode;
     }
 }
 
@@ -740,7 +744,7 @@ void DeleteSelectionCommand::mergeParagraphs()
     
     auto range = Range::create(document(), startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent(), endOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent());
     auto rangeToBeReplaced = Range::create(document(), mergeDestination.deepEquivalent().parentAnchoredEquivalent(), mergeDestination.deepEquivalent().parentAnchoredEquivalent());
-    if (!frame().editor().client()->shouldMoveRangeAfterDelete(range.ptr(), rangeToBeReplaced.ptr()))
+    if (!document().editor().client()->shouldMoveRangeAfterDelete(range.ptr(), rangeToBeReplaced.ptr()))
         return;
     
     // moveParagraphs will insert placeholders if it removes blocks that would require their use, don't let block
@@ -750,7 +754,10 @@ void DeleteSelectionCommand::mergeParagraphs()
     moveParagraph(startOfParagraphToMove, endOfParagraphToMove, mergeDestination, false, !paragraphToMergeIsEmpty);
     m_needPlaceholder = needPlaceholder;
     // The endingPosition was likely clobbered by the move, so recompute it (moveParagraph selects the moved paragraph).
-    m_endingPosition = endingSelection().start();
+
+    // FIXME (Bug 211793): endingSelection() becomes disconnected in moveParagraph
+    if (endingSelection().start().anchorNode()->isConnected())
+        m_endingPosition = endingSelection().start();
 }
 
 void DeleteSelectionCommand::removePreviouslySelectedEmptyTableRows()
@@ -814,7 +821,7 @@ void DeleteSelectionCommand::calculateTypingStyleAfterDelete()
     // In this case if we start typing, the new characters should have the same style as the just deleted ones,
     // but, if we change the selection, come back and start typing that style should be lost.  Also see 
     // preserveTypingStyle() below.
-    frame().selection().setTypingStyle(m_typingStyle.copyRef());
+    document().selection().setTypingStyle(m_typingStyle.copyRef());
 }
 
 void DeleteSelectionCommand::clearTransientState()
@@ -885,7 +892,7 @@ void DeleteSelectionCommand::doApply()
     if (!m_replace) {
         Element* textControl = enclosingTextFormControl(m_selectionToDelete.start());
         if (textControl && textControl->focused())
-            frame().editor().textWillBeDeletedInTextField(textControl);
+            document().editor().textWillBeDeletedInTextField(textControl);
     }
 
     // save this to later make the selection with
@@ -940,7 +947,7 @@ void DeleteSelectionCommand::doApply()
     }
 
     bool shouldRebalaceWhiteSpace = true;
-    if (!frame().editor().behavior().shouldRebalanceWhiteSpacesInSecureField()) {
+    if (!document().editor().behavior().shouldRebalanceWhiteSpacesInSecureField()) {
         Node* node = m_endingPosition.deprecatedNode();
         if (is<Text>(node)) {
             Text& textNode = downcast<Text>(*node);
@@ -954,7 +961,7 @@ void DeleteSelectionCommand::doApply()
     calculateTypingStyleAfterDelete();
 
     if (!originalString.isEmpty())
-        frame().editor().deletedAutocorrectionAtPosition(m_endingPosition, originalString);
+        document().editor().deletedAutocorrectionAtPosition(m_endingPosition, originalString);
 
     setEndingSelection(VisibleSelection(m_endingPosition, affinity, endingSelection().isDirectional()));
     clearTransientState();

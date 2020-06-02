@@ -48,12 +48,18 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
         });
         this._dataGrid.sortOrder = WI.DataGrid.SortOrder.Ascending;
         this._dataGrid.sortColumnIdentifier = "key";
+        this._dataGrid.allowsMultipleSelection = true;
         this._dataGrid.createSettings("dom-storage-content-view");
         this._dataGrid.addEventListener(WI.DataGrid.Event.SortChanged, this._sortDataGrid, this);
         this.addSubview(this._dataGrid);
 
         this._filterBarNavigationItem = new WI.FilterBarNavigationItem;
         this._filterBarNavigationItem.filterBar.addEventListener(WI.FilterBar.Event.FilterDidChange, this._handleFilterBarFilterDidChange, this);
+
+        let clearButtonLabel = representedObject.isLocalStorage() ? WI.UIString("Clear Local Storage") : WI.UIString("Clear Session Storage");
+        this._clearButtonNavigationItem = new WI.ButtonNavigationItem("dom-storage-clear", clearButtonLabel, "Images/NavigationItemTrash.svg", 15, 15);
+        this._clearButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
+        this._clearButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._handleClearNavigationItemClicked, this);
 
         this._populate();
     }
@@ -62,7 +68,11 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
 
     get navigationItems()
     {
-        return [this._filterBarNavigationItem];
+        return [
+            this._filterBarNavigationItem,
+            new WI.DividerNavigationItem,
+            this._clearButtonNavigationItem,
+        ];
     }
 
     saveToCookie(cookie)
@@ -184,13 +194,14 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
         this._dataGrid.sortNodesImmediately(comparator);
     }
 
-    _deleteCallback(node)
+    _deleteCallback()
     {
-        if (!node || node.isPlaceholderNode)
-            return;
-
-        this._dataGrid.removeChild(node);
-        this.representedObject.removeItem(node.data["key"]);
+        for (let dataGridNode of this._dataGrid.selectedDataGridNodes) {
+            if (dataGridNode.isPlaceholderNode)
+                continue;
+            this._dataGrid.removeChild(dataGridNode);
+            this.representedObject.removeItem(dataGridNode.data["key"]);
+        }
     }
 
     _editingCallback(editingNode, columnIdentifier, oldText, newText, moveDirection)
@@ -289,6 +300,11 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
     _handleFilterBarFilterDidChange(event)
     {
         this._dataGrid.filterText = this._filterBarNavigationItem.filterBar.filters.text || "";
+    }
+
+    _handleClearNavigationItemClicked(event)
+    {
+        this.representedObject.clear();
     }
 };
 

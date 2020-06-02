@@ -200,7 +200,6 @@ public:
     void getSessionPermissions(Inspector::ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions) override;
     void setSessionPermissions(Inspector::ErrorString&, const JSON::Array& in_permissions) override;
 
-    // Platform: macOS
 #if PLATFORM(MAC)
     void inspectBrowsingContext(const String&, const bool* optionalEnableAutoCapturing, Ref<InspectBrowsingContextCallback>&&) override;
 #endif
@@ -247,6 +246,8 @@ private:
 
     // Platform-dependent implementations.
 #if ENABLE(WEBDRIVER_MOUSE_INTERACTIONS)
+    void updateClickCount(MouseButton, const WebCore::IntPoint&, Seconds maxTime, int maxDistance);
+    void resetClickCount();
     void platformSimulateMouseInteraction(WebPageProxy&, MouseInteraction, MouseButton, const WebCore::IntPoint& locationInViewport, OptionSet<WebEvent::Modifier>);
 #endif
 #if ENABLE(WEBDRIVER_TOUCH_INTERACTIONS)
@@ -333,6 +334,12 @@ private:
 #endif
 #if ENABLE(WEBDRIVER_TOUCH_INTERACTIONS)
     bool m_simulatingTouchInteraction { false };
+#endif
+#if ENABLE(WEBDRIVER_MOUSE_INTERACTIONS)
+    MonotonicTime m_lastClickTime;
+    MouseButton m_lastClickButton { MouseButton::None };
+    WebCore::IntPoint m_lastClickPosition;
+    unsigned m_clickCount { 1 };
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)

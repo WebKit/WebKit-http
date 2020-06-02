@@ -28,7 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include "TrackedReferences.h"
 
 namespace JSC { namespace DFG {

@@ -128,7 +128,9 @@ public:
 
 class JITPutByIdGenerator : public JITByIdGenerator {
 public:
-    JITPutByIdGenerator() { }
+    JITPutByIdGenerator()
+        : m_ecmaMode(ECMAMode::strict())
+    { }
 
     JITPutByIdGenerator(
         CodeBlock*, CodeOrigin, CallSiteIndex, const RegisterSet& usedRegisters, CacheableIdentifier, JSValueRegs base,
@@ -150,7 +152,7 @@ public:
 
     JITDelByValGenerator(
         CodeBlock*, CodeOrigin, CallSiteIndex, const RegisterSet& usedRegisters,
-        JSValueRegs base, JSValueRegs property, GPRReg result, GPRReg scratch);
+        JSValueRegs base, JSValueRegs property, JSValueRegs result, GPRReg scratch);
 
     MacroAssembler::Jump slowPathJump() const
     {
@@ -175,7 +177,7 @@ public:
 
     JITDelByIdGenerator(
         CodeBlock*, CodeOrigin, CallSiteIndex, const RegisterSet& usedRegisters, CacheableIdentifier,
-        JSValueRegs base, GPRReg result, GPRReg scratch);
+        JSValueRegs base, JSValueRegs result, GPRReg scratch);
 
     MacroAssembler::Jump slowPathJump() const
     {

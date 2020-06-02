@@ -23,28 +23,8 @@
 * THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
-
-#import <pal/spi/cocoa/NSUserDefaultsSPI.h>
-#import <wtf/Vector.h>
-#import <wtf/text/WTFString.h>
-
-OBJC_CLASS WKPreferenceObserver;
-
 __attribute__((visibility("default")))
-@interface WKUserDefaults : NSUserDefaults {
-@private
-    NSString *m_suiteName;
-@public
-    WKPreferenceObserver *m_observer;
-}
-@end
-
-__attribute__((visibility("default")))
-@interface WKPreferenceObserver : NSObject {
-@private
-    Vector<RetainPtr<WKUserDefaults>> m_userDefaults;
-}
+@interface WKPreferenceObserver : NSObject
 + (id)sharedInstance;
 - (void)preferenceDidChange:(NSString *)domain key:(NSString *)key encodedValue:(NSString *)encodedValue;
 @end

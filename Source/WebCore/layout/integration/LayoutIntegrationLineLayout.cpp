@@ -110,7 +110,7 @@ void LineLayout::layout()
     auto horizontalConstraints = Layout::HorizontalConstraints { m_flow.borderAndPaddingStart(), m_flow.contentSize().width() };
     auto verticalConstraints = Layout::VerticalConstraints { m_flow.borderAndPaddingBefore(), { } };
 
-    inlineFormattingContext.layoutInFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
+    inlineFormattingContext.layoutInFlowContent(invalidationState, { horizontalConstraints, verticalConstraints });
     m_inlineFormattingState.shrinkDisplayInlineContent();
 }
 
@@ -361,7 +361,7 @@ ShadowData* LineLayout::debugTextShadow()
     if (!m_flow.settings().simpleLineLayoutDebugBordersEnabled())
         return nullptr;
 
-    static NeverDestroyed<ShadowData> debugTextShadow(IntPoint(0, 0), 10, 20, ShadowStyle::Normal, true, Color(0, 0, 150, 150));
+    static NeverDestroyed<ShadowData> debugTextShadow(IntPoint(0, 0), 10, 20, ShadowStyle::Normal, true, makeSimpleColor(0, 0, 150, 150));
     return &debugTextShadow.get();
 }
 

@@ -28,10 +28,12 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "FunctionPrototype.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
+#include "JSGlobalObjectInlines.h"
+#include "JSObjectInlines.h"
 #include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyTable.h"
+#include "StructureInlines.h"
 #include "WebAssemblyTablePrototype.h"
 
 #include "WebAssemblyTableConstructor.lut.h"

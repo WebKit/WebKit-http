@@ -43,9 +43,8 @@ namespace WebCore {
 
 static inline JSC::JSValue readableStreamCallFunction(JSC::JSGlobalObject& lexicalGlobalObject, JSC::JSValue jsFunction, JSC::JSValue thisValue, const JSC::ArgList& arguments)
 {
-    JSC::CallData callData;
-    auto callType = JSC::getCallData(lexicalGlobalObject.vm(), jsFunction, callData);
-    return call(&lexicalGlobalObject, jsFunction, callType, callData, thisValue, arguments);
+    auto callData = JSC::getCallData(lexicalGlobalObject.vm(), jsFunction);
+    return call(&lexicalGlobalObject, jsFunction, callData, thisValue, arguments);
 }
 
 JSC::JSValue ReadableStreamDefaultController::invoke(JSC::JSGlobalObject& lexicalGlobalObject, JSC::JSObject& object, const char* propertyName, JSC::JSValue parameter)
@@ -57,7 +56,7 @@ JSC::JSValue ReadableStreamDefaultController::invoke(JSC::JSGlobalObject& lexica
     auto function = object.get(&lexicalGlobalObject, JSC::Identifier::fromString(vm, propertyName));
     RETURN_IF_EXCEPTION(scope, JSC::JSValue());
 
-    if (!function.isFunction(vm)) {
+    if (!function.isCallable(vm)) {
         if (!function.isUndefined())
             throwTypeError(&lexicalGlobalObject, scope, "ReadableStream trying to call a property that is not callable"_s);
         return JSC::jsUndefined();

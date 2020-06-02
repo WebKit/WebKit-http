@@ -32,7 +32,11 @@
 #include "WebPageProxy.h"
 // These includes need to be in this order because wayland-egl.h defines WL_EGL_PLATFORM
 // and eglplatform.h, included by egl.h, checks that to decide whether it's Wayland platform.
+#if USE(GTK4)
+#include <gdk/wayland/gdkwayland.h>
+#else
 #include <gdk/gdkwayland.h>
+#endif
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <WebCore/CairoUtilities.h>
@@ -92,7 +96,12 @@ bool AcceleratedBackingStoreWayland::checkRequirements()
 {
 #if USE(WPE_RENDERER)
     if (!glImageTargetTexture2D) {
-        if (!wpe_fdo_initialize_for_egl_display(PlatformDisplay::sharedDisplay().eglDisplay()))
+        auto* eglDisplay = PlatformDisplay::sharedDisplay().eglDisplay();
+        const char* extensions = eglQueryString(eglDisplay, EGL_EXTENSIONS);
+        if (!GLContext::isExtensionSupported(extensions, "EGL_WL_bind_wayland_display"))
+            return false;
+
+        if (!wpe_fdo_initialize_for_egl_display(eglDisplay))
             return false;
 
         std::unique_ptr<WebCore::GLContext> eglContext = GLContext::createOffscreenContext();
@@ -205,14 +214,19 @@ void AcceleratedBackingStoreWayland::tryEnsureGLContext()
         return;
 
     m_glContextInitialized = true;
-
     GUniqueOutPtr<GError> error;
+#if USE(GTK4)
+    m_gdkGLContext = adoptGRef(gdk_surface_create_gl_context(gtk_native_get_surface(gtk_widget_get_native(m_webPage.viewWidget())), &error.outPtr()));
+#else
     m_gdkGLContext = adoptGRef(gdk_window_create_gl_context(gtk_widget_get_window(m_webPage.viewWidget()), &error.outPtr()));
+#endif
     if (m_gdkGLContext) {
 #if USE(OPENGL_ES)
         gdk_gl_context_set_use_es(m_gdkGLContext.get(), TRUE);
 #endif
-        return;
+        gdk_gl_context_realize(m_gdkGLContext.get(), &error.outPtr());
+        if (!error)
+            return;
     }
 
     g_warning("GDK is not able to create a GL context, falling back to glReadPixels (slow!): %s", error->message);
@@ -267,14 +281,11 @@ void AcceleratedBackingStoreWayland::displayBuffer(struct wpe_fdo_egl_exported_i
 }
 #endif
 
-bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
+bool AcceleratedBackingStoreWayland::tryEnsureTexture(unsigned& texture, IntSize& textureSize)
 {
-    GLuint texture;
-    IntSize textureSize;
-
 #if USE(WPE_RENDERER)
     if (!makeContextCurrent())
-        return true;
+        return false;
 
     if (m_pendingImage) {
         wpe_view_backend_exportable_fdo_dispatch_frame_complete(m_exportable);
@@ -286,7 +297,7 @@ bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
     }
 
     if (!m_committedImage)
-        return true;
+        return false;
 
     if (!m_viewTexture) {
         glGenTextures(1, &m_viewTexture);
@@ -306,14 +317,11 @@ bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
         return false;
 #endif
 
-    cairo_save(cr);
+    return true;
+}
 
-    if (m_gdkGLContext) {
-        gdk_cairo_draw_from_gl(cr, gtk_widget_get_window(m_webPage.viewWidget()), texture, GL_TEXTURE, m_webPage.deviceScaleFactor(), 0, 0, textureSize.width(), textureSize.height());
-        cairo_restore(cr);
-        return true;
-    }
-
+void AcceleratedBackingStoreWayland::downloadTexture(unsigned texture, const IntSize& textureSize)
+{
     ASSERT(m_glContext);
 
     if (!m_surface || cairo_image_surface_get_width(m_surface.get()) != textureSize.width() || cairo_image_surface_get_height(m_surface.get()) != textureSize.height())
@@ -353,9 +361,54 @@ bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &fb);
 
-    // The surface can be modified by the web process at any time, so we mark it
-    // as dirty to ensure we always render the updated contents as soon as possible.
     cairo_surface_mark_dirty(m_surface.get());
+}
+
+#if USE(GTK4)
+void AcceleratedBackingStoreWayland::snapshot(GtkSnapshot* gtkSnapshot)
+{
+    GLuint texture;
+    IntSize textureSize;
+    if (!tryEnsureTexture(texture, textureSize))
+        return;
+
+    graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, static_cast<float>(textureSize.width()), static_cast<float>(textureSize.height()));
+    if (m_gdkGLContext) {
+        GRefPtr<GdkTexture> gdkTexture = adoptGRef(gdk_gl_texture_new(m_gdkGLContext.get(), texture, textureSize.width(), textureSize.height(), nullptr, nullptr));
+        gtk_snapshot_append_texture(gtkSnapshot, gdkTexture.get(), &bounds);
+        return;
+    }
+
+    downloadTexture(texture, textureSize);
+
+    RefPtr<cairo_t> cr = adoptRef(gtk_snapshot_append_cairo(gtkSnapshot, &bounds));
+
+    // The compositor renders the texture flipped for gdk, fix that here.
+    cairo_matrix_t transform;
+    cairo_matrix_init(&transform, 1, 0, 0, -1, 0, textureSize.height() / m_webPage.deviceScaleFactor());
+    cairo_transform(cr.get(), &transform);
+
+    cairo_set_source_surface(cr.get(), m_surface.get(), 0, 0);
+    cairo_set_operator(cr.get(), CAIRO_OPERATOR_OVER);
+    cairo_paint(cr.get());
+}
+#else
+bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
+{
+    GLuint texture;
+    IntSize textureSize;
+    if (!tryEnsureTexture(texture, textureSize))
+        return true;
+
+    cairo_save(cr);
+
+    if (m_gdkGLContext) {
+        gdk_cairo_draw_from_gl(cr, gtk_widget_get_window(m_webPage.viewWidget()), texture, GL_TEXTURE, m_webPage.deviceScaleFactor(), 0, 0, textureSize.width(), textureSize.height());
+        cairo_restore(cr);
+        return true;
+    }
+
+    downloadTexture(texture, textureSize);
 
     // The compositor renders the texture flipped for gdk_cairo_draw_from_gl, fix that here.
     cairo_matrix_t transform;
@@ -371,6 +424,7 @@ bool AcceleratedBackingStoreWayland::paint(cairo_t* cr, const IntRect& clipRect)
 
     return true;
 }
+#endif
 
 } // namespace WebKit
 

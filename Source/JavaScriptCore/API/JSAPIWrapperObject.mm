@@ -23,21 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "JSAPIWrapperObject.h"
+#import "config.h"
+#import "JSAPIWrapperObject.h"
 
-#include "JSCInlines.h"
-#include "JSCallbackObject.h"
-#include "JSVirtualMachineInternal.h"
-#include "Structure.h"
-#include <wtf/NeverDestroyed.h>
+#import "JSCInlines.h"
+#import "JSCallbackObject.h"
+#import "JSVirtualMachineInternal.h"
+#import "Structure.h"
+#import <wtf/NeverDestroyed.h>
 
 #if JSC_OBJC_API_ENABLED
 
-class JSAPIWrapperObjectHandleOwner : public JSC::WeakHandleOwner {
+class JSAPIWrapperObjectHandleOwner final : public JSC::WeakHandleOwner {
 public:
-    void finalize(JSC::Handle<JSC::Unknown>, void*) override;
-    bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&, const char**) override;
+    void finalize(JSC::Handle<JSC::Unknown>, void*) final;
+    bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&, const char**) final;
 };
 
 static JSAPIWrapperObjectHandleOwner* jsAPIWrapperObjectHandleOwner()

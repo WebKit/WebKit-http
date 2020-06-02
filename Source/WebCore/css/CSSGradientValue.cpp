@@ -111,7 +111,7 @@ Ref<CSSGradientValue> CSSGradientValue::gradientWithStylesResolved(Style::Builde
 {
     auto result = hasColorDerivedFromElement() ? clone(*this) : makeRef(*this);
     resolveStopColors(result->m_stops, [&](const CSSPrimitiveValue& colorValue) {
-        return builderState.colorFromPrimitiveValue(colorValue);
+        return builderState.colorFromPrimitiveValueWithResolvedCurrentColor(colorValue);
     });
     return result;
 }
@@ -483,7 +483,7 @@ Gradient::ColorStopVector CSSGradientValue::computeStops(GradientAdapter& gradie
             float relativeOffset = (*newStops[y].offset - offset1) / (offset2 - offset1);
             float multiplier = std::pow(relativeOffset, std::log(.5f) / std::log(midpoint));
             // FIXME: Why not premultiply here?
-            newStops[y].color = blend(color1, color2, multiplier, false /* do not premultiply */);
+            newStops[y].color = blendWithoutPremultiply(color1, color2, multiplier);
         }
 
         stops.remove(x);
@@ -807,7 +807,7 @@ Ref<Gradient> CSSLinearGradientValue::createGradient(RenderElement& renderer, co
 {
     ASSERT(!size.isEmpty());
 
-    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), &renderer.view());
+    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), renderer.parentStyle(), &renderer.view());
 
     FloatPoint firstPoint;
     FloatPoint secondPoint;
@@ -1056,7 +1056,7 @@ Ref<Gradient> CSSRadialGradientValue::createGradient(RenderElement& renderer, co
 {
     ASSERT(!size.isEmpty());
 
-    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), &renderer.view());
+    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), renderer.parentStyle(), &renderer.view());
 
     FloatPoint firstPoint = computeEndPoint(firstX(), firstY(), conversionData, size);
     if (!firstX())
@@ -1247,7 +1247,7 @@ Ref<Gradient> CSSConicGradientValue::createGradient(RenderElement& renderer, con
 {
     ASSERT(!size.isEmpty());
 
-    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), &renderer.view());
+    CSSToLengthConversionData conversionData(&renderer.style(), renderer.document().documentElement()->renderStyle(), renderer.parentStyle(), &renderer.view());
 
     FloatPoint centerPoint = computeEndPoint(firstX(), firstY(), conversionData, size);
     if (!firstX())

@@ -292,6 +292,8 @@ interface TestRunner {
     void disconnectMockGamepad(unsigned long index);
 
     // Resource Load Statistics
+    void clearStatisticsDataForDomain(DOMString domain);
+    boolean doesStatisticsDomainIDExistInDatabase(unsigned long domainID);
     void setStatisticsEnabled(boolean value);
     boolean isStatisticsEphemeral();
     void installStatisticsDidModifyDataRecordsCallback(object callback);
@@ -301,6 +303,7 @@ interface TestRunner {
     void setStatisticsPrevalentResourceForDebugMode(DOMString hostName, object completionHandler);
     void setStatisticsLastSeen(DOMString hostName, double seconds, object completionHandler);
     void setStatisticsMergeStatistic(DOMString hostName, DOMString topFrameDomain1, DOMString topFrameDomain2, double lastSeen, boolean hadUserInteraction, double mostRecentUserInteraction, boolean isGrandfathered, boolean isPrevalent, boolean isVeryPrevalent, unsigned long dataRecordsRemoved, object completionHandler);
+    void setStatisticsExpiredStatistic(DOMString hostName, boolean hadUserInteraction, boolean isScheduledForAllButCookieDataRemoval, boolean isPrevalent, object completionHandler);
     void setStatisticsPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     void setStatisticsVeryPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsPrevalentResource(DOMString hostName);
@@ -356,9 +359,6 @@ interface TestRunner {
     // Storage Access API
     void getAllStorageAccessEntries(object callback);
 
-    void getWebViewCategory(object callback);
-    void setInAppBrowserPrivacyEnabled(boolean value, object callback);
-
     // Open panel
     void setOpenPanelFiles(object filesArray);
     void setOpenPanelFilesMediaIcon(object mediaIcon);
@@ -394,7 +394,10 @@ interface TestRunner {
     void resetMockMediaDevices();
     void setMockCameraOrientation(unsigned long orientation);
     boolean isMockRealtimeMediaSourceCenterEnabled();
+
     boolean hasAppBoundSession();
+    void clearAppBoundSession();
+    void setAppBoundDomains(object originsArray, object callback);
 
     void injectUserScript(DOMString string);
     readonly attribute unsigned long userScriptInjectedCount;

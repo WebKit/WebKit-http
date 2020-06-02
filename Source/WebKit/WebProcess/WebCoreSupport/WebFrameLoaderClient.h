@@ -213,12 +213,10 @@ private:
 
     void didRestoreFromBackForwardCache() final;
 
-    void dispatchDidBecomeFrameset(bool) final;
-
     bool canCachePage() const final;
     void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) final;
 
-    RefPtr<WebCore::Frame> createFrame(const URL&, const String& name, WebCore::HTMLFrameOwnerElement&, const String& referrer) final;
+    RefPtr<WebCore::Frame> createFrame(const String& name, WebCore::HTMLFrameOwnerElement&) final;
 
     RefPtr<WebCore::Widget> createPlugin(const WebCore::IntSize&, WebCore::HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool loadManually) final;
     void redirectDataToPlugin(WebCore::Widget&) final;
@@ -292,8 +290,8 @@ private:
     Optional<FrameSpecificStorageAccessIdentifier> m_frameSpecificStorageAccessIdentifier;
 #endif
 
-    bool hasNavigatedAwayFromAppBoundDomain() final;
-    bool needsInAppBrowserPrivacyQuirks() const final;
+    bool shouldEnableInAppBrowserPrivacyProtections() const final;
+    void notifyPageOfAppBoundBehavior() final;
 };
 
 // As long as EmptyFrameLoaderClient exists in WebCore, this can return 0.

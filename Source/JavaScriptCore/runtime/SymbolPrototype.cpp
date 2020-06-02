@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,9 +27,8 @@
 #include "config.h"
 #include "SymbolPrototype.h"
 
-#include "Error.h"
+#include "IntegrityInlines.h"
 #include "JSCInlines.h"
-#include "JSString.h"
 #include "SymbolObject.h"
 
 namespace JSC {
@@ -62,11 +61,11 @@ SymbolPrototype::SymbolPrototype(VM& vm, Structure* structure)
 void SymbolPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "Symbol"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     ASSERT(inherits(vm, info()));
 
     JSFunction* toPrimitiveFunction = JSFunction::create(vm, globalObject, 1, "[Symbol.toPrimitive]"_s, symbolProtoFuncValueOf, NoIntrinsic);
     putDirectWithoutTransition(vm, vm.propertyNames->toPrimitiveSymbol, toPrimitiveFunction, PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 // ------------------------------ Functions ---------------------------
@@ -97,6 +96,7 @@ EncodedJSValue JSC_HOST_CALL symbolProtoGetterDescription(JSGlobalObject* global
     if (!symbol)
         return throwVMTypeError(globalObject, scope, SymbolDescriptionTypeError);
     scope.release();
+    Integrity::auditStructureID(vm, symbol->structureID());
     const auto description = symbol->description();
     return JSValue::encode(description.isNull() ? jsUndefined() : jsString(vm, description));
 }
@@ -109,6 +109,7 @@ EncodedJSValue JSC_HOST_CALL symbolProtoFuncToString(JSGlobalObject* globalObjec
     Symbol* symbol = tryExtractSymbol(vm, callFrame->thisValue());
     if (!symbol)
         return throwVMTypeError(globalObject, scope, SymbolToStringTypeError);
+    Integrity::auditStructureID(vm, symbol->structureID());
     RELEASE_AND_RETURN(scope, JSValue::encode(jsNontrivialString(vm, symbol->descriptiveString())));
 }
 
@@ -121,6 +122,7 @@ EncodedJSValue JSC_HOST_CALL symbolProtoFuncValueOf(JSGlobalObject* globalObject
     if (!symbol)
         return throwVMTypeError(globalObject, scope, SymbolValueOfTypeError);
 
+    Integrity::auditStructureID(vm, symbol->structureID());
     RELEASE_AND_RETURN(scope, JSValue::encode(symbol));
 }
 

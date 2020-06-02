@@ -94,8 +94,10 @@ RefPtr<ImageControlsButtonElementMac> ImageControlsButtonElementMac::tryCreate(D
     if (!document.page())
         return nullptr;
 
+    static MainThreadNeverDestroyed<const AtomString> xWebkitImageControlsButtonName("x-webkit-image-controls-button", AtomString::ConstructFromLiteral);
+
     auto button = adoptRef(*new ImageControlsButtonElementMac(document));
-    button->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("x-webkit-image-controls-button", AtomString::ConstructFromLiteral));
+    button->setAttributeWithoutSynchronization(HTMLNames::classAttr, xWebkitImageControlsButtonName);
 
     IntSize positionOffset = RenderTheme::singleton().imageControlsButtonPositionOffset();
     button->setInlineStyleProperty(CSSPropertyTop, positionOffset.height(), CSSUnitType::CSS_PX);

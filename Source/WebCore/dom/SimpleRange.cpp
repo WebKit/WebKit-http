@@ -27,6 +27,7 @@
 #include "SimpleRange.h"
 
 #include "CharacterData.h"
+#include "NodeTraversal.h"
 #include "Range.h"
 
 namespace WebCore {
@@ -54,28 +55,68 @@ bool operator==(const SimpleRange& a, const SimpleRange& b)
     return a.start == b.start && a.end == b.end;
 }
 
-// FIXME: Node::isCharacterData should use an algorithm like this, since I'm assuming it's faster than the isCharacterDataNode virtual call in most cases.
-static bool fastIsCharacterData(const Node& node)
+Optional<SimpleRange> makeRangeSelectingNode(Node& node)
 {
-    return !node.isContainerNode() && (node.isTextNode() || node.isCharacterDataNode());
-}
-
-// FIXME: This should be Node::length since the DOM specification calls this a node's length.
-static unsigned length(const Node& node)
-{
-    if (fastIsCharacterData(node))
-        return downcast<CharacterData>(node).length();
-    return node.countChildNodes();
-}
-
-static BoundaryPoint makeBoundaryPointAfterNodeContents(Node& node)
-{
-    return { node, length(node) };
+    auto parent = node.parentNode();
+    if (!parent)
+        return WTF::nullopt;
+    unsigned offset = node.computeNodeIndex();
+    return SimpleRange { { *parent, offset }, { *parent, offset + 1 } };
 }
 
 SimpleRange makeRangeSelectingNodeContents(Node& node)
 {
     return { makeBoundaryPointBeforeNodeContents(node), makeBoundaryPointAfterNodeContents(node) };
+}
+
+OffsetRange characterDataOffsetRange(const SimpleRange& range, const Node& node)
+{
+    return { &node == range.start.container.ptr() ? range.start.offset : 0,
+        &node == range.end.container.ptr() ? range.end.offset : std::numeric_limits<unsigned>::max() };
+}
+
+static RefPtr<Node> firstIntersectingNode(const SimpleRange& range)
+{
+    if (range.start.container->isCharacterDataNode())
+        return range.start.container.ptr();
+    if (auto child = range.start.container->traverseToChildAt(range.start.offset))
+        return child;
+    return NodeTraversal::nextSkippingChildren(range.start.container);
+}
+
+static RefPtr<Node> nodePastLastIntersectingNode(const SimpleRange& range)
+{
+    if (range.end.container->isCharacterDataNode())
+        return NodeTraversal::nextSkippingChildren(range.end.container);
+    if (auto child = range.end.container->traverseToChildAt(range.end.offset))
+        return child;
+    return NodeTraversal::nextSkippingChildren(range.end.container);
+}
+
+IntersectingNodeIterator::IntersectingNodeIterator(const SimpleRange& range)
+    : m_node(firstIntersectingNode(range))
+    , m_pastLastNode(nodePastLastIntersectingNode(range))
+{
+}
+
+void IntersectingNodeIterator::advance()
+{
+    ASSERT(m_node);
+    m_node = NodeTraversal::next(*m_node);
+    if (m_node == m_pastLastNode || !m_node) {
+        m_node = nullptr;
+        m_pastLastNode = nullptr;
+    }
+}
+
+void IntersectingNodeIterator::advanceSkippingChildren()
+{
+    ASSERT(m_node);
+    m_node = m_node->contains(m_pastLastNode.get()) ? nullptr : NodeTraversal::nextSkippingChildren(*m_node);
+    if (m_node == m_pastLastNode || !m_node) {
+        m_node = nullptr;
+        m_pastLastNode = nullptr;
+    }
 }
 
 }

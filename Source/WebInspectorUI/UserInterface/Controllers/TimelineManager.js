@@ -89,9 +89,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
             this._updateAutoCaptureInstruments([target]);
 
-            // COMPATIBILITY (iOS 9): Timeline.setAutoCaptureEnabled did not exist.
-            if (target.hasCommand("Timeline.setAutoCaptureEnabled"))
-                target.TimelineAgent.setAutoCaptureEnabled(this._autoCaptureOnPageLoad);
+            target.TimelineAgent.setAutoCaptureEnabled(this._autoCaptureOnPageLoad);
         }
     }
 
@@ -104,32 +102,30 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     static defaultTimelineTypes()
     {
-        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript) {
-            let defaultTypes = [WI.TimelineRecord.Type.Script];
-            if (WI.HeapAllocationsInstrument.supported())
-                defaultTypes.push(WI.TimelineRecord.Type.HeapAllocations);
-            return defaultTypes;
+        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ITML) {
+            return [
+                WI.TimelineRecord.Type.Script,
+                WI.TimelineRecord.Type.HeapAllocations,
+            ];
         }
 
         if (WI.sharedApp.debuggableType === WI.DebuggableType.ServiceWorker) {
             // FIXME: Support Network Timeline in ServiceWorker.
-            let defaultTypes = [WI.TimelineRecord.Type.Script];
-            if (WI.HeapAllocationsInstrument.supported())
-                defaultTypes.push(WI.TimelineRecord.Type.HeapAllocations);
-            return defaultTypes;
+            return [
+                WI.TimelineRecord.Type.Script,
+                WI.TimelineRecord.Type.HeapAllocations,
+            ];
         }
 
         let defaultTypes = [
             WI.TimelineRecord.Type.Network,
             WI.TimelineRecord.Type.Layout,
             WI.TimelineRecord.Type.Script,
+            WI.TimelineRecord.Type.RenderingFrame,
         ];
 
         if (WI.CPUInstrument.supported())
             defaultTypes.push(WI.TimelineRecord.Type.CPU);
-
-        if (WI.FPSInstrument.supported())
-            defaultTypes.push(WI.TimelineRecord.Type.RenderingFrame);
 
         return defaultTypes;
     }
@@ -137,14 +133,11 @@ WI.TimelineManager = class TimelineManager extends WI.Object
     static availableTimelineTypes()
     {
         let types = WI.TimelineManager.defaultTimelineTypes();
-        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ServiceWorker)
+        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ServiceWorker || WI.sharedApp.debuggableType === WI.DebuggableType.ITML)
             return types;
 
-        if (WI.MemoryInstrument.supported())
-            types.push(WI.TimelineRecord.Type.Memory);
-
-        if (WI.HeapAllocationsInstrument.supported())
-            types.push(WI.TimelineRecord.Type.HeapAllocations);
+        types.push(WI.TimelineRecord.Type.Memory);
+        types.push(WI.TimelineRecord.Type.HeapAllocations);
 
         if (WI.MediaInstrument.supported()) {
             let insertionIndex = types.indexOf(WI.TimelineRecord.Type.Layout) + 1;
@@ -214,7 +207,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this._autoCaptureOnPageLoad = autoCapture;
 
         for (let target of WI.targets) {
-            // COMPATIBILITY (iOS 9): Timeline.setAutoCaptureEnabled did not exist yet.
             if (target.hasCommand("Timeline.setAutoCaptureEnabled"))
                 target.TimelineAgent.setAutoCaptureEnabled(this._autoCaptureOnPageLoad);
         }
@@ -688,7 +680,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
             // Associate the ScriptProfiler created records with Web Timeline records.
             // Filter out the already added ScriptProfiler events which should not have been wrapped.
-            if (WI.sharedApp.debuggableType !== WI.DebuggableType.JavaScript) {
+            if (WI.sharedApp.debuggableType !== WI.DebuggableType.JavaScript && WI.sharedApp.debuggableType !== WI.DebuggableType.ITML) {
                 this._scriptProfilerRecords = this._scriptProfilerRecords.filter((x) => x.__scriptProfilerType === InspectorBackend.Enum.ScriptProfiler.EventType.Other);
                 this._mergeScriptProfileRecords();
             }
@@ -896,10 +888,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
             return record;
 
         case InspectorBackend.Enum.Timeline.EventType.ConsoleProfile:
-            var profileData = recordPayload.data.profile;
-            // COMPATIBILITY (iOS 9): With the Sampling Profiler, profiles no longer include legacy profile data.
-            console.assert(profileData || InspectorBackend.hasCommand("Timeline.setInstruments"));
-            return new WI.ScriptTimelineRecord(WI.ScriptTimelineRecord.EventType.ConsoleProfileRecorded, startTime, endTime, callFrames, sourceCodeLocation, recordPayload.data.title, profileData);
+            return new WI.ScriptTimelineRecord(WI.ScriptTimelineRecord.EventType.ConsoleProfileRecorded, startTime, endTime, callFrames, sourceCodeLocation, recordPayload.data.title);
 
         case InspectorBackend.Enum.Timeline.EventType.TimerFire:
         case InspectorBackend.Enum.Timeline.EventType.EventDispatch:
@@ -1043,17 +1032,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
         this._activeRecording = newRecording;
 
-        // COMPATIBILITY (iOS 8): When using Legacy timestamps, a navigation will have computed
-        // the main resource's will send request timestamp in terms of the last page's base timestamp.
-        // Now that we have navigated, we should reset the legacy base timestamp and the
-        // will send request timestamp for the new main resource. This way, all new timeline
-        // records will be computed relative to the new navigation.
-        if (this._mainResourceForAutoCapturing && WI.TimelineRecording.isLegacy) {
-            console.assert(this._mainResourceForAutoCapturing.originalRequestWillBeSentTimestamp);
-            this._activeRecording.setLegacyBaseTimestamp(this._mainResourceForAutoCapturing.originalRequestWillBeSentTimestamp);
-            this._mainResourceForAutoCapturing._requestSentTimestamp = 0;
-        }
-
         this.dispatchEventToListeners(WI.TimelineManager.Event.RecordingLoaded, {oldRecording});
     }
 
@@ -1084,11 +1062,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
         if (!InspectorBackend.hasDomain("Timeline"))
             return false;
-
-        // COMPATIBILITY (iOS 9): Timeline.setAutoCaptureEnabled did not exist.
-        // Perform auto capture in the frontend.
-        if (!InspectorBackend.hasCommand("Timeline.setAutoCaptureEnabled"))
-            return this._legacyAttemptStartAutoCapturingForFrame(frame);
 
         if (!this._shouldSetAutoCapturingMainResource)
             return false;

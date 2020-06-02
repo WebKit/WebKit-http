@@ -26,9 +26,8 @@
 #include "config.h"
 #include "ProfilerProfiledBytecodes.h"
 
-#include "JSGlobalObject.h"
-#include "ObjectConstructor.h"
 #include "JSCInlines.h"
+#include "ObjectConstructor.h"
 
 namespace JSC { namespace Profiler {
 

@@ -361,6 +361,11 @@ void InspectorController::getHighlight(Highlight& highlight, InspectorOverlay::C
     m_overlay->getHighlight(highlight, coordinateSystem);
 }
 
+bool InspectorController::shouldShowOverlay() const
+{
+    return m_overlay->shouldShowOverlay();
+}
+
 void InspectorController::inspect(Node* node)
 {
     if (!enabled())
@@ -485,9 +490,9 @@ void InspectorController::frontendInitialized()
 #endif
 }
 
-Ref<Stopwatch> InspectorController::executionStopwatch()
+Stopwatch& InspectorController::executionStopwatch() const
 {
-    return m_executionStopwatch.copyRef();
+    return m_executionStopwatch;
 }
 
 PageScriptDebugServer& InspectorController::scriptDebugServer()

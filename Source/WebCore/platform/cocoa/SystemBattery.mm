@@ -39,22 +39,32 @@ void setSystemHasBattery(bool battery)
 
 bool systemHasBattery()
 {
-    if (hasBattery.hasValue())
-        return *hasBattery;
-
-    RetainPtr<CFTypeRef> powerSourcesInfo = adoptCF(IOPSCopyPowerSourcesInfo());
-    if (!powerSourcesInfo)
-        return false;
-    RetainPtr<CFArrayRef> powerSourcesList = adoptCF(IOPSCopyPowerSourcesList(powerSourcesInfo.get()));
-    if (!powerSourcesList)
-        return false;
-    for (CFIndex i = 0, count = CFArrayGetCount(powerSourcesList.get()); i < count; ++i) {
-        CFDictionaryRef description = IOPSGetPowerSourceDescription(powerSourcesInfo.get(), CFArrayGetValueAtIndex(powerSourcesList.get(), i));
-        CFTypeRef value = CFDictionaryGetValue(description, CFSTR(kIOPSTypeKey));
-        if (!value || CFEqual(value, CFSTR(kIOPSInternalBatteryType)))
+    if (!hasBattery.hasValue()) {
+        hasBattery = [] {
+#if PLATFORM(IOS) || PLATFORM(WATCHOS)
+            // Devices running iOS / WatchOS always have a battery.
             return true;
+#elif PLATFORM(APPLETV)
+            return false;
+#else
+            RetainPtr<CFTypeRef> powerSourcesInfo = adoptCF(IOPSCopyPowerSourcesInfo());
+            if (!powerSourcesInfo)
+                return false;
+            RetainPtr<CFArrayRef> powerSourcesList = adoptCF(IOPSCopyPowerSourcesList(powerSourcesInfo.get()));
+            if (!powerSourcesList)
+                return false;
+            for (CFIndex i = 0, count = CFArrayGetCount(powerSourcesList.get()); i < count; ++i) {
+                CFDictionaryRef description = IOPSGetPowerSourceDescription(powerSourcesInfo.get(), CFArrayGetValueAtIndex(powerSourcesList.get(), i));
+                CFTypeRef value = CFDictionaryGetValue(description, CFSTR(kIOPSTypeKey));
+                if (!value || CFEqual(value, CFSTR(kIOPSInternalBatteryType)))
+                    return true;
+            }
+            return false;
+#endif
+        }();
     }
-    return false;
+
+    return *hasBattery;
 }
 
 }

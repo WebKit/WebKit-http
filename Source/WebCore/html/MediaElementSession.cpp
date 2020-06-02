@@ -40,6 +40,7 @@
 #include "HTMLVideoElement.h"
 #include "HitTestResult.h"
 #include "Logging.h"
+#include "MediaUsageInfo.h"
 #include "NowPlayingInfo.h"
 #include "Page.h"
 #include "PlatformMediaSessionManager.h"
@@ -119,6 +120,31 @@ MediaElementSession::MediaElementSession(HTMLMediaElement& element)
     , m_logIdentifier(element.logIdentifier())
 #endif
 {
+    addedMediaUsageManagerSessionIfNecessary();
+}
+
+MediaElementSession::~MediaElementSession()
+{
+#if ENABLE(MEDIA_USAGE)
+    auto page = m_element.document().page();
+    if (page && m_haveAddedMediaUsageManagerSession)
+        page->chrome().client().removeMediaUsageManagerSession(mediaSessionIdentifier());
+#endif
+}
+
+void MediaElementSession::addedMediaUsageManagerSessionIfNecessary()
+{
+#if ENABLE(MEDIA_USAGE)
+    if (m_haveAddedMediaUsageManagerSession)
+        return;
+
+    auto page = m_element.document().page();
+    if (!page)
+        return;
+
+    m_haveAddedMediaUsageManagerSession = true;
+    page->chrome().client().addMediaUsageManagerSession(mediaSessionIdentifier(), m_element.sourceApplicationIdentifier(), m_element.document().url());
+#endif
 }
 
 void MediaElementSession::registerWithDocument(Document& document)
@@ -187,6 +213,7 @@ void MediaElementSession::inActiveDocumentChanged()
 {
     m_elementIsHiddenBecauseItWasRemovedFromDOM = !m_element.inActiveDocument();
     scheduleClientDataBufferingCheck();
+    addedMediaUsageManagerSessionIfNecessary();
 }
 
 void MediaElementSession::scheduleClientDataBufferingCheck()
@@ -289,7 +316,7 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted() co
     if (topDocument.mediaState() & MediaProducer::HasUserInteractedWithMediaElement && topDocument.quirks().needsPerDocumentAutoplayBehavior())
         return { };
 
-    if (document.hasHadUserInteraction() && document.quirks().shouldAutoplayForArbitraryUserGesture())
+    if (topDocument.hasHadUserInteraction() && document.quirks().shouldAutoplayForArbitraryUserGesture())
         return { };
 
     if (m_restrictions & RequireUserGestureForVideoRateChange && m_element.isVideo() && !document.processingUserGestureForMedia()) {
@@ -483,7 +510,7 @@ bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose
     }
 
 #if ENABLE(FULLSCREEN_API)
-    // Elements which are not descendents of the current fullscreen element cannot be main content.
+    // Elements which are not descendants of the current fullscreen element cannot be main content.
     auto* fullscreenElement = m_element.document().fullscreenManager().currentFullscreenElement();
     if (fullscreenElement && !m_element.isDescendantOf(*fullscreenElement)) {
         INFO_LOG(LOGIDENTIFIER, "returning FALSE: outside of full screen");
@@ -996,6 +1023,68 @@ Optional<NowPlayingInfo> MediaElementSession::nowPlayingInfo() const
         currentTime = MediaPlayer::invalidTime();
 
     return NowPlayingInfo { m_element.mediaSessionTitle(), m_element.sourceApplicationIdentifier(), duration, currentTime, supportsSeeking, m_element.mediaSessionUniqueIdentifier(), isPlaying, allowsNowPlayingControlsVisibility };
+}
+
+void MediaElementSession::updateMediaUsageIfChanged()
+{
+    auto& document = m_element.document();
+    auto* page = document.page();
+    if (!page)
+        return;
+
+    bool isOutsideOfFullscreen = false;
+#if ENABLE(FULLSCREEN_API)
+    if (auto* fullscreenElement = document.fullscreenManager().currentFullscreenElement())
+        isOutsideOfFullscreen = !m_element.isDescendantOf(*fullscreenElement);
+#endif
+    bool isAudio = client().presentationType() == MediaType::Audio;
+    bool isVideo = client().presentationType() == MediaType::Video;
+    bool processingUserGesture = document.processingUserGestureForMedia();
+    bool isPlaying = m_element.isPlaying();
+
+    MediaUsageInfo usage =  {
+        m_element.currentSrc(),
+        state() == PlatformMediaSession::Playing,
+        canShowControlsManager(PlaybackControlsPurpose::ControlsManager),
+        !page->isVisibleAndActive(),
+        m_element.isSuspended(),
+        m_element.inActiveDocument(),
+        m_element.isFullscreen(),
+        m_element.muted(),
+        document.isMediaDocument() && (document.frame() && document.frame()->isMainFrame()),
+        isVideo,
+        isAudio,
+        m_element.hasVideo(),
+        m_element.hasAudio(),
+        m_element.hasRenderer(),
+        isAudio && hasBehaviorRestriction(RequireUserGestureToControlControlsManager) && !processingUserGesture,
+        m_element.hasAudio() && isPlaying && allowsPlaybackControlsForAutoplayingAudio(), // userHasPlayedAudioBefore
+        isElementRectMostlyInMainFrame(m_element),
+        !!playbackPermitted(),
+        page->mediaPlaybackIsSuspended(),
+        document.isMediaDocument() && !document.ownerElement(),
+        pageExplicitlyAllowsElementToAutoplayInline(m_element),
+        requiresFullscreenForVideoPlayback() && !fullscreenPermitted(),
+        document.topDocument().hasHadUserInteraction() && document.quirks().shouldAutoplayForArbitraryUserGesture(),
+        isVideo && hasBehaviorRestriction(RequireUserGestureForVideoRateChange) && !processingUserGesture,
+        isAudio && hasBehaviorRestriction(RequireUserGestureForAudioRateChange) && !processingUserGesture && !m_element.muted() && m_element.volume(),
+        isVideo && hasBehaviorRestriction(RequireUserGestureForVideoDueToLowPowerMode) && !processingUserGesture,
+        !hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || processingUserGesture,
+        hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !isPlaying,
+        m_element.hasEverNotifiedAboutPlaying(),
+        isOutsideOfFullscreen,
+        isLargeEnoughForMainContent(MediaSessionMainContentPurpose::MediaControls),
+    };
+
+    if (m_mediaUsageInfo && *m_mediaUsageInfo == usage)
+        return;
+
+    m_mediaUsageInfo = WTFMove(usage);
+
+#if ENABLE(MEDIA_USAGE)
+    ASSERT(m_haveAddedMediaUsageManagerSession);
+    page->chrome().client().updateMediaUsageManagerSessionState(mediaSessionIdentifier(), *m_mediaUsageInfo);
+#endif
 }
 
 String convertEnumerationToString(const MediaPlaybackDenialReason enumerationValue)

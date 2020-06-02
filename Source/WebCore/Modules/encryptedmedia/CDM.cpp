@@ -96,9 +96,11 @@ void CDM::getSupportedConfiguration(MediaKeySystemConfiguration&& candidateConfi
         return;
     }
 
+    bool isEphemeral = !document->page() || document->page()->sessionID().isEphemeral();
+
     SecurityOrigin& origin = document->securityOrigin();
     SecurityOrigin& topOrigin = document->topOrigin();
-    CDMPrivate::LocalStorageAccess access = origin.canAccessLocalStorage(&topOrigin) ? CDMPrivate::LocalStorageAccess::Allowed : CDMPrivate::LocalStorageAccess::NotAllowed;
+    CDMPrivate::LocalStorageAccess access = !isEphemeral && origin.canAccessLocalStorage(&topOrigin) ? CDMPrivate::LocalStorageAccess::Allowed : CDMPrivate::LocalStorageAccess::NotAllowed;
     m_private->getSupportedConfiguration(WTFMove(candidateConfiguration), access, WTFMove(callback));
 }
 
@@ -113,7 +115,8 @@ RefPtr<CDMInstance> CDM::createInstance()
     if (!m_private)
         return nullptr;
     auto instance = m_private->createInstance();
-    instance->setStorageDirectory(storageDirectory());
+    if (instance)
+        instance->setStorageDirectory(storageDirectory());
     return instance;
 }
 

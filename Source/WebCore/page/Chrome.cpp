@@ -421,10 +421,13 @@ void Chrome::disableSuddenTermination()
 std::unique_ptr<ColorChooser> Chrome::createColorChooser(ColorChooserClient& client, const Color& initialColor)
 {
 #if PLATFORM(IOS_FAMILY)
+    UNUSED_PARAM(client);
+    UNUSED_PARAM(initialColor);
     return nullptr;
-#endif
+#else
     notifyPopupOpeningObservers();
     return m_client.createColorChooser(client, initialColor);
+#endif
 }
 
 #endif
@@ -506,25 +509,15 @@ std::unique_ptr<ImageBuffer> Chrome::createImageBuffer(const FloatSize& size, Re
 
 PlatformDisplayID Chrome::displayID() const
 {
-    return m_displayID;
+    return m_page.displayID();
 }
 
-void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
+void Chrome::windowScreenDidChange(PlatformDisplayID displayID, Optional<unsigned> nominalFrameInterval)
 {
-    if (displayID == m_displayID)
+    if (displayID == m_page.displayID() && nominalFrameInterval == m_page.displayNominalFramesPerSecond())
         return;
 
-    m_displayID = displayID;
-
-    for (Frame* frame = &m_page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->document())
-            frame->document()->windowScreenDidChange(displayID);
-    }
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    m_page.renderingUpdateScheduler().windowScreenDidChange(displayID);
-#endif
-    m_page.setNeedsRecalcStyleInAllFrames();
+    m_page.windowScreenDidChange(displayID, nominalFrameInterval);
 
 #if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_GL)
     GraphicsContextGLOpenGLManager::sharedManager().screenDidChange(displayID, this);

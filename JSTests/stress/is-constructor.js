@@ -1,11 +1,12 @@
-var createBuiltin = $vm.createBuiltin;
-
 function assert(x) {
     if (!x)
         throw Error("Bad");
 }
 
-let isConstructor = createBuiltin("(function (c) { return @isConstructor(c); })");
+const isConstructor = $vm.createBuiltin("(function (c) { return @isConstructor(c); })");
+noInline(isConstructor);
+
+for (let i = 0; i < 1e4; ++i) {
 
 // Functions.
 assert(isConstructor(assert));
@@ -37,6 +38,7 @@ assert(isConstructor(Proxy));
 assert(isConstructor(RegExp));
 assert(isConstructor(Set));
 assert(isConstructor(String));
+assert(isConstructor(Symbol));
 assert(isConstructor(WeakMap));
 assert(isConstructor(WeakSet));
 
@@ -65,9 +67,6 @@ assert(!isConstructor(new Error));
 assert(!isConstructor(new Proxy({}, {})));
 assert(!isConstructor(Array.prototype));
 
-// Symbol is not a constructor.
-assert(!isConstructor(Symbol));
-
 // Getters / setters are not constructors.
 assert(!isConstructor(Object.getOwnPropertyDescriptor({get f(){}}, "f").get));
 assert(!isConstructor(Object.getOwnPropertyDescriptor({set f(x){}}, "f").set));
@@ -91,11 +90,14 @@ assert(!isConstructor(Date.now));
 assert(!isConstructor(Math.cos));
 assert(!isConstructor(JSON.stringify));
 assert(!isConstructor(Promise.all));
+assert(!isConstructor(Proxy.revocable));
 assert(!isConstructor(Symbol.for));
 assert(!isConstructor(Array.prototype.push));
 
 // Proxy and bound functions carry forward non-constructor-ness.
-assert(!isConstructor(new Proxy(Symbol, {})));
+assert(isConstructor(new Proxy(Symbol, {})));
+assert(isConstructor(Symbol.bind(null)));
 assert(!isConstructor(new Proxy(Math.cos, {})));
-assert(!isConstructor(Symbol.bind(null)));
 assert(!isConstructor(Math.cos.bind(null)));
+
+}

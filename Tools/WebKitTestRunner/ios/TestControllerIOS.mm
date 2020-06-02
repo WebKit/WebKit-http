@@ -56,6 +56,15 @@ static void overridePresentViewControllerOrPopover()
 {
 }
 
+#if !HAVE(NONDESTRUCTIVE_IMAGE_PASTE_SUPPORT_QUERY)
+
+static BOOL overrideKeyboardDelegateSupportsImagePaste(id, SEL)
+{
+    return NO;
+}
+
+#endif
+
 namespace WTR {
 
 static bool isDoneWaitingForKeyboardToDismiss = true;
@@ -157,6 +166,12 @@ bool TestController::platformResetStateToConsistentValues(const TestOptions& opt
 
     GSEventSetHardwareKeyboardAttached(true, 0);
 
+#if !HAVE(NONDESTRUCTIVE_IMAGE_PASTE_SUPPORT_QUERY)
+    // FIXME: Remove this workaround once -[UIKeyboardImpl delegateSupportsImagePaste] no longer increments the general pasteboard's changeCount.
+    if (!m_keyboardDelegateSupportsImagePasteSwizzler)
+        m_keyboardDelegateSupportsImagePasteSwizzler = makeUnique<InstanceMethodSwizzler>(UIKeyboardImpl.class, @selector(delegateSupportsImagePaste), reinterpret_cast<IMP>(overrideKeyboardDelegateSupportsImagePaste));
+#endif
+
     m_inputModeSwizzlers.clear();
     m_overriddenKeyboardInputMode = nil;
 
@@ -213,6 +228,8 @@ bool TestController::platformResetStateToConsistentValues(const TestOptions& opt
 
     if (shouldRestoreFirstResponder)
         [mainWebView()->platformView() becomeFirstResponder];
+
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"WebKitDebugIsInAppBrowserPrivacyEnabled"];
 
     return true;
 }

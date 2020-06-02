@@ -54,11 +54,16 @@ Ref<WebAudioSourceProviderAVFObjC> WebAudioSourceProviderAVFObjC::create(MediaSt
 
 WebAudioSourceProviderAVFObjC::WebAudioSourceProviderAVFObjC(MediaStreamTrackPrivate& source)
     : m_captureSource(&source)
+    , m_source(source.source())
+    , m_enabled(source.enabled())
 {
+    m_source->addAudioSampleObserver(*this);
 }
 
 WebAudioSourceProviderAVFObjC::~WebAudioSourceProviderAVFObjC()
 {
+    m_source->removeAudioSampleObserver(*this);
+
     auto locker = holdLock(m_mutex);
 
     if (m_connected && m_captureSource)
@@ -68,7 +73,7 @@ WebAudioSourceProviderAVFObjC::~WebAudioSourceProviderAVFObjC()
 void WebAudioSourceProviderAVFObjC::provideInput(AudioBus* bus, size_t framesToProcess)
 {
     std::unique_lock<Lock> lock(m_mutex, std::try_to_lock);
-    if (!lock.owns_lock() || !m_dataSource) {
+    if (!lock.owns_lock() || !m_dataSource || !m_audioBufferList) {
         bus->zero();
         return;
     }
@@ -78,26 +83,25 @@ void WebAudioSourceProviderAVFObjC::provideInput(AudioBus* bus, size_t framesToP
         return;
     }
 
-    WebAudioBufferList list { m_outputDescription.value() };
-    if (bus->numberOfChannels() < list.bufferCount()) {
+    if (bus->numberOfChannels() < m_audioBufferList->bufferCount()) {
         bus->zero();
         return;
     }
 
     for (unsigned i = 0; i < bus->numberOfChannels(); ++i) {
         auto& channel = *bus->channel(i);
-        if (i >= list.bufferCount()) {
+        if (i >= m_audioBufferList->bufferCount()) {
             channel.zero();
             continue;
         }
-        auto* buffer = list.buffer(i);
+        auto* buffer = m_audioBufferList->buffer(i);
         buffer->mNumberChannels = 1;
         buffer->mData = channel.mutableData();
         buffer->mDataByteSize = channel.length() * sizeof(float);
     }
 
     ASSERT(framesToProcess <= bus->length());
-    m_dataSource->pullSamples(*list.list(), framesToProcess, m_readCount, 0, AudioSampleDataSource::Copy);
+    m_dataSource->pullSamples(*m_audioBufferList->list(), framesToProcess, m_readCount, 0, AudioSampleDataSource::Copy);
     m_readCount += framesToProcess;
 }
 
@@ -139,6 +143,7 @@ void WebAudioSourceProviderAVFObjC::prepare(const AudioStreamBasicDescription& f
     AudioStreamBasicDescription outputDescription { };
     FillOutASBDForLPCM(outputDescription, sampleRate, numberOfChannels, bitsPerByte * bytesPerFloat, bitsPerByte * bytesPerFloat, isFloat, isBigEndian, isNonInterleaved);
     m_outputDescription = CAAudioStreamDescription(outputDescription);
+    m_audioBufferList = makeUnique<WebAudioBufferList>(m_outputDescription.value());
 
     if (!m_dataSource)
         m_dataSource = AudioSampleDataSource::create(kRingBufferDuration * sampleRate, *m_captureSource);
@@ -157,6 +162,7 @@ void WebAudioSourceProviderAVFObjC::unprepare()
 
     m_inputDescription = WTF::nullopt;
     m_outputDescription = WTF::nullopt;
+    m_audioBufferList = nullptr;
     m_dataSource = nullptr;
     m_listBufferSize = 0;
     if (m_captureSource) {
@@ -165,10 +171,15 @@ void WebAudioSourceProviderAVFObjC::unprepare()
     }
 }
 
-// May get called on a background thread.
-void WebAudioSourceProviderAVFObjC::audioSamplesAvailable(MediaStreamTrackPrivate& track, const MediaTime&, const PlatformAudioData& data, const AudioStreamDescription& description, size_t frameCount)
+void WebAudioSourceProviderAVFObjC::trackEnabledChanged(MediaStreamTrackPrivate& track)
 {
-    if (!track.enabled())
+    m_enabled = track.enabled();
+}
+
+// May get called on a background thread.
+void WebAudioSourceProviderAVFObjC::audioSamplesAvailable(const MediaTime&, const PlatformAudioData& data, const AudioStreamDescription& description, size_t frameCount)
+{
+    if (!m_enabled || !m_connected)
         return;
 
     ASSERT(description.platformDescription().type == PlatformDescription::CAAudioStreamBasicType);

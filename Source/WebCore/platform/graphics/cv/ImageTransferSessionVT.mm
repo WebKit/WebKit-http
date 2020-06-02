@@ -26,8 +26,6 @@
 #import "config.h"
 #import "ImageTransferSessionVT.h"
 
-#if USE(VIDEOTOOLBOX)
-
 #import "GraphicsContextCG.h"
 #import "Logging.h"
 #import "MediaSampleAVFObjC.h"
@@ -35,13 +33,13 @@
 #import <CoreMedia/CMFormatDescription.h>
 #import <CoreMedia/CMSampleBuffer.h>
 
-#import "CoreVideoSoftLink.h"
-#import <pal/cf/CoreMediaSoftLink.h>
-#import "VideoToolboxSoftLink.h"
-
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
-#include <pal/spi/cocoa/IOSurfaceSPI.h>
+#if !PLATFORM(MACCATALYST)
+#import <pal/spi/cocoa/IOSurfaceSPI.h>
 #endif
+
+#import "CoreVideoSoftLink.h"
+#import "VideoToolboxSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 
 namespace WebCore {
 using namespace PAL;
@@ -268,7 +266,7 @@ RetainPtr<CMSampleBufferRef> ImageTransferSessionVT::createCMSampleBuffer(CGImag
     return createCMSampleBuffer(pixelBuffer.get(), sampleTime, size);
 }
 
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if !PLATFORM(MACCATALYST)
 
 #if PLATFORM(MAC)
 static int32_t roundUpToMacroblockMultiple(int32_t size)
@@ -367,7 +365,7 @@ RefPtr<MediaSample> ImageTransferSessionVT::convertMediaSample(MediaSample& samp
     return MediaSampleAVFObjC::create(resizedBuffer.get(), sample.videoRotation(), sample.videoMirrored());
 }
 
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if !PLATFORM(MACCATALYST)
 #if ENABLE(MEDIA_STREAM)
 RefPtr<MediaSample> ImageTransferSessionVT::createMediaSample(const RemoteVideoSample& remoteSample)
 {
@@ -404,5 +402,3 @@ RefPtr<MediaSample> ImageTransferSessionVT::createMediaSample(CMSampleBufferRef 
 }
 
 } // namespace WebCore
-
-#endif // USE(VIDEOTOOLBOX)

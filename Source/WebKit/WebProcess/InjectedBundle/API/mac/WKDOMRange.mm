@@ -31,6 +31,7 @@
 #import "WKDOMInternals.h"
 #import <WebCore/Document.h>
 #import <WebCore/VisibleUnits.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 @implementation WKDOMRange
 
@@ -128,14 +129,12 @@
 - (NSArray *)textRects
 {
     _impl->ownerDocument().updateLayoutIgnorePendingStylesheets();
-    Vector<WebCore::IntRect> rects;
-    _impl->absoluteTextRects(rects);
-    return WebKit::toNSArray(rects);
+    return createNSArray(WebCore::RenderObject::absoluteTextRects(*_impl)).autorelease();
 }
 
 - (WKDOMRange *)rangeByExpandingToWordBoundaryByCharacters:(NSUInteger)characters inDirection:(WKDOMRangeDirection)direction
 {
-    RefPtr<WebCore::Range> newRange = rangeExpandedByCharactersInDirectionAtWordBoundary(direction == WKDOMRangeDirectionForward ?  _impl->endPosition() : _impl->startPosition(), characters, direction == WKDOMRangeDirectionForward ? WebCore::DirectionForward : WebCore::DirectionBackward);
+    RefPtr<WebCore::Range> newRange = rangeExpandedByCharactersInDirectionAtWordBoundary(direction == WKDOMRangeDirectionForward ?  _impl->endPosition() : _impl->startPosition(), characters, direction == WKDOMRangeDirectionForward ? WebCore::SelectionDirection::Forward : WebCore::SelectionDirection::Backward);
 
     return [[[WKDOMRange alloc] _initWithImpl:newRange.get()] autorelease];
 }

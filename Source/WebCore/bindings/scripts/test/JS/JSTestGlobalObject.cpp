@@ -54,7 +54,6 @@
 #include "JSTestIterable.h"
 #include "JSTestJSBuiltinConstructor.h"
 #include "JSTestMapLike.h"
-#include "JSTestMediaQueryListListener.h"
 #include "JSTestNamedAndIndexedSetterNoIdentifier.h"
 #include "JSTestNamedAndIndexedSetterThrowingException.h"
 #include "JSTestNamedAndIndexedSetterWithIdentifier.h"
@@ -110,6 +109,10 @@
 #if ENABLE(Condition1) || ENABLE(Condition2)
 #include "JSTestInterface.h"
 #include "JSTestSerializedScriptValueInterface.h"
+#endif
+
+#if ENABLE(ConditionDerived)
+#include "JSTestOperationConditional.h"
 #endif
 
 #if ENABLE(TEST_CONDITIONAL)
@@ -209,8 +212,6 @@ JSC::EncodedJSValue jsTestGlobalObjectTestJSBuiltinConstructorConstructor(JSC::J
 bool setJSTestGlobalObjectTestJSBuiltinConstructorConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestGlobalObjectTestMapLikeConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestGlobalObjectTestMapLikeConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestGlobalObjectTestMediaQueryListListenerConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
-bool setJSTestGlobalObjectTestMediaQueryListListenerConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestGlobalObjectTestNamedAndIndexedSetterNoIdentifierConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestGlobalObjectTestNamedAndIndexedSetterNoIdentifierConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestGlobalObjectTestNamedAndIndexedSetterThrowingExceptionConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
@@ -251,6 +252,10 @@ JSC::EncodedJSValue jsTestGlobalObjectTestNamedSetterWithUnforgablePropertiesCon
 bool setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuiltinsConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuiltinsConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#if ENABLE(ConditionDerived)
+JSC::EncodedJSValue jsTestGlobalObjectTestOperationConditionalConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestGlobalObjectTestOperationConditionalConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
 JSC::EncodedJSValue jsTestGlobalObjectTestOverloadedConstructorsConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestGlobalObjectTestOverloadedConstructorsConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestGlobalObjectTestOverloadedConstructorsWithSequenceConstructor(JSC::JSGlobalObject*, JSC::EncodedJSValue, JSC::PropertyName);
@@ -300,13 +305,13 @@ using JSTestGlobalObjectConstructor = JSDOMConstructorNotConstructable<JSTestGlo
 
 /* Hash table */
 
-static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
+static const struct CompactHashIndex JSTestGlobalObjectTableIndex[267] = {
     { -1, -1 },
-    { 37, -1 },
+    { 36, -1 },
     { -1, -1 },
     { 0, -1 },
-    { 4, 262 },
-    { 41, -1 },
+    { 4, 263 },
+    { 40, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -336,7 +341,7 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 31, -1 },
+    { 30, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -351,8 +356,8 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 35, -1 },
-    { 16, 263 },
+    { 34, -1 },
+    { 16, 264 },
     { 6, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -364,14 +369,14 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 33, -1 },
+    { 32, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 18, 264 },
+    { 18, 265 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -399,13 +404,13 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { 15, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 43, -1 },
+    { 42, -1 },
     { 14, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 32, -1 },
+    { 31, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -416,7 +421,7 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { 21, -1 },
     { -1, -1 },
     { 2, -1 },
-    { 34, -1 },
+    { 33, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -432,10 +437,10 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 28, -1 },
-    { 24, -1 },
+    { 27, -1 },
     { -1, -1 },
-    { 39, -1 },
+    { -1, -1 },
+    { 38, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -463,8 +468,8 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 29, -1 },
-    { 26, 261 },
+    { 28, -1 },
+    { 25, 262 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -485,7 +490,7 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 30, 265 },
+    { 29, 266 },
     { -1, -1 },
     { 13, -1 },
     { -1, -1 },
@@ -530,12 +535,12 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 46, -1 },
+    { 44, 261 },
     { 7, 260 },
     { -1, -1 },
     { 60, -1 },
     { -1, -1 },
-    { 44, -1 },
+    { 43, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -545,10 +550,10 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { 22, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 25, -1 },
+    { 24, -1 },
     { -1, -1 },
     { -1, -1 },
-    { 42, -1 },
+    { 41, -1 },
     { 3, -1 },
     { 48, -1 },
     { -1, -1 },
@@ -558,10 +563,11 @@ static const struct CompactHashIndex JSTestGlobalObjectTableIndex[266] = {
     { -1, -1 },
     { -1, -1 },
     { 23, 259 },
-    { 27, -1 },
-    { 36, -1 },
-    { 38, -1 },
-    { 40, -1 },
+    { 26, -1 },
+    { 35, -1 },
+    { 37, -1 },
+    { 39, -1 },
+    { 46, -1 },
     { 52, -1 },
     { 54, -1 },
     { 56, -1 },
@@ -608,7 +614,6 @@ static const HashTableValue JSTestGlobalObjectTableValues[] =
     { "TestIterable", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestIterableConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestIterableConstructor) } },
     { "TestJSBuiltinConstructor", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestJSBuiltinConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestJSBuiltinConstructorConstructor) } },
     { "TestMapLike", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestMapLikeConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestMapLikeConstructor) } },
-    { "TestMediaQueryListListener", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestMediaQueryListListenerConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestMediaQueryListListenerConstructor) } },
     { "TestNamedAndIndexedSetterNoIdentifier", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedAndIndexedSetterNoIdentifierConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedAndIndexedSetterNoIdentifierConstructor) } },
     { "TestNamedAndIndexedSetterThrowingException", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedAndIndexedSetterThrowingExceptionConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedAndIndexedSetterThrowingExceptionConstructor) } },
     { "TestNamedAndIndexedSetterWithIdentifier", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedAndIndexedSetterWithIdentifierConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedAndIndexedSetterWithIdentifierConstructor) } },
@@ -629,6 +634,11 @@ static const HashTableValue JSTestGlobalObjectTableValues[] =
     { "TestNamedSetterWithOverrideBuiltins", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedSetterWithOverrideBuiltinsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedSetterWithOverrideBuiltinsConstructor) } },
     { "TestNamedSetterWithUnforgableProperties", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedSetterWithUnforgablePropertiesConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesConstructor) } },
     { "TestNamedSetterWithUnforgablePropertiesAndOverrideBuiltins", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuiltinsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuiltinsConstructor) } },
+#if ENABLE(ConditionDerived)
+    { "TestOperationConditional", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestOperationConditionalConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestOperationConditionalConstructor) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
     { "TestOverloadedConstructors", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestOverloadedConstructorsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestOverloadedConstructorsConstructor) } },
     { "TestOverloadedConstructorsWithSequence", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestOverloadedConstructorsWithSequenceConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestOverloadedConstructorsWithSequenceConstructor) } },
     { "TestOverrideBuiltins", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGlobalObjectTestOverrideBuiltinsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGlobalObjectTestOverrideBuiltinsConstructor) } },
@@ -678,7 +688,7 @@ template<> JSValue JSTestGlobalObjectConstructor::prototypeForStructure(JSC::VM&
 template<> void JSTestGlobalObjectConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, globalObject.getPrototypeDirect(vm), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(vm, String("TestGlobalObject"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(vm, "TestGlobalObject"_s), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
     reifyStaticProperties(vm, JSTestGlobalObject::info(), JSTestGlobalObjectConstructorTableValues, *this);
 }
@@ -699,7 +709,13 @@ static const HashTableValue JSTestGlobalObjectPrototypeTableValues[] =
 };
 
 static const HashTable JSTestGlobalObjectPrototypeTable = { 1, 1, true, JSTestGlobalObject::info(), JSTestGlobalObjectPrototypeTableValues, JSTestGlobalObjectPrototypeTableIndex };
-const ClassInfo JSTestGlobalObjectPrototype::s_info = { "TestGlobalObjectPrototype", &Base::s_info, &JSTestGlobalObjectPrototypeTable, nullptr, CREATE_METHOD_TABLE(JSTestGlobalObjectPrototype) };
+const ClassInfo JSTestGlobalObjectPrototype::s_info = { "TestGlobalObject", &Base::s_info, &JSTestGlobalObjectPrototypeTable, nullptr, CREATE_METHOD_TABLE(JSTestGlobalObjectPrototype) };
+
+void JSTestGlobalObjectPrototype::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
+}
 
 const ClassInfo JSTestGlobalObject::s_info = { "TestGlobalObject", &Base::s_info, &JSTestGlobalObjectTable, nullptr, CREATE_METHOD_TABLE(JSTestGlobalObject) };
 
@@ -1503,31 +1519,6 @@ bool setJSTestGlobalObjectTestMapLikeConstructor(JSGlobalObject* lexicalGlobalOb
     return IDLAttribute<JSTestGlobalObject>::set<setJSTestGlobalObjectTestMapLikeConstructorSetter>(*lexicalGlobalObject, thisValue, encodedValue, "TestMapLike");
 }
 
-static inline JSValue jsTestGlobalObjectTestMediaQueryListListenerConstructorGetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(lexicalGlobalObject);
-    return JSTestMediaQueryListListener::getConstructor(JSC::getVM(&lexicalGlobalObject), thisObject.globalObject());
-}
-
-EncodedJSValue jsTestGlobalObjectTestMediaQueryListListenerConstructor(JSGlobalObject* lexicalGlobalObject, EncodedJSValue thisValue, PropertyName)
-{
-    return IDLAttribute<JSTestGlobalObject>::get<jsTestGlobalObjectTestMediaQueryListListenerConstructorGetter>(*lexicalGlobalObject, thisValue, "TestMediaQueryListListener");
-}
-
-static inline bool setJSTestGlobalObjectTestMediaQueryListListenerConstructorSetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, JSValue value, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(lexicalGlobalObject);
-    VM& vm = throwScope.vm();
-    // Shadowing a built-in constructor.
-    return thisObject.putDirect(vm, Identifier::fromString(vm, reinterpret_cast<const LChar*>("TestMediaQueryListListener"), strlen("TestMediaQueryListListener")), value);
-}
-
-bool setJSTestGlobalObjectTestMediaQueryListListenerConstructor(JSGlobalObject* lexicalGlobalObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    return IDLAttribute<JSTestGlobalObject>::set<setJSTestGlobalObjectTestMediaQueryListListenerConstructorSetter>(*lexicalGlobalObject, thisValue, encodedValue, "TestMediaQueryListListener");
-}
-
 static inline JSValue jsTestGlobalObjectTestNamedAndIndexedSetterNoIdentifierConstructorGetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, ThrowScope& throwScope)
 {
     UNUSED_PARAM(throwScope);
@@ -2027,6 +2018,37 @@ bool setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuil
 {
     return IDLAttribute<JSTestGlobalObject>::set<setJSTestGlobalObjectTestNamedSetterWithUnforgablePropertiesAndOverrideBuiltinsConstructorSetter>(*lexicalGlobalObject, thisValue, encodedValue, "TestNamedSetterWithUnforgablePropertiesAndOverrideBuiltins");
 }
+
+#if ENABLE(ConditionDerived)
+static inline JSValue jsTestGlobalObjectTestOperationConditionalConstructorGetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(lexicalGlobalObject);
+    return JSTestOperationConditional::getConstructor(JSC::getVM(&lexicalGlobalObject), thisObject.globalObject());
+}
+
+EncodedJSValue jsTestGlobalObjectTestOperationConditionalConstructor(JSGlobalObject* lexicalGlobalObject, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestGlobalObject>::get<jsTestGlobalObjectTestOperationConditionalConstructorGetter>(*lexicalGlobalObject, thisValue, "TestOperationConditional");
+}
+
+#endif
+
+#if ENABLE(ConditionDerived)
+static inline bool setJSTestGlobalObjectTestOperationConditionalConstructorSetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(lexicalGlobalObject);
+    VM& vm = throwScope.vm();
+    // Shadowing a built-in constructor.
+    return thisObject.putDirect(vm, Identifier::fromString(vm, reinterpret_cast<const LChar*>("TestOperationConditional"), strlen("TestOperationConditional")), value);
+}
+
+bool setJSTestGlobalObjectTestOperationConditionalConstructor(JSGlobalObject* lexicalGlobalObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestGlobalObject>::set<setJSTestGlobalObjectTestOperationConditionalConstructorSetter>(*lexicalGlobalObject, thisValue, encodedValue, "TestOperationConditional");
+}
+
+#endif
 
 static inline JSValue jsTestGlobalObjectTestOverloadedConstructorsConstructorGetter(JSGlobalObject& lexicalGlobalObject, JSTestGlobalObject& thisObject, ThrowScope& throwScope)
 {

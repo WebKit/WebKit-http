@@ -64,12 +64,15 @@ void SearchInputType::addSearchResult()
 
 static void updateResultButtonPseudoType(SearchFieldResultsButtonElement& resultButton, int maxResults)
 {
+    static MainThreadNeverDestroyed<const AtomString> webkitSearchDecorationName("-webkit-search-decoration", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> webkitSearchResultsDecorationName("-webkit-search-results-decoration", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> webkitSearchResultsButtonName("-webkit-search-results-button", AtomString::ConstructFromLiteral);
     if (!maxResults)
-        resultButton.setPseudo(AtomString("-webkit-search-results-decoration", AtomString::ConstructFromLiteral));
+        resultButton.setPseudo(webkitSearchResultsDecorationName);
     else if (maxResults < 0)
-        resultButton.setPseudo(AtomString("-webkit-search-decoration", AtomString::ConstructFromLiteral));
+        resultButton.setPseudo(webkitSearchDecorationName);
     else
-        resultButton.setPseudo(AtomString("-webkit-search-results-button", AtomString::ConstructFromLiteral));
+        resultButton.setPseudo(webkitSearchResultsButtonName);
 }
 
 void SearchInputType::attributeChanged(const QualifiedName& name)

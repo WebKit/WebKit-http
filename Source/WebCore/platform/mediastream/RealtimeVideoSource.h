@@ -31,8 +31,12 @@
 
 namespace WebCore {
 
-// FIXME: Make RealtimeVideoSource derive from RealtimeMediaSource directly.
-class RealtimeVideoSource final : public RealtimeVideoCaptureSource, public RealtimeMediaSource::Observer {
+class ImageTransferSessionVT;
+
+class RealtimeVideoSource final
+    : public RealtimeMediaSource
+    , public RealtimeMediaSource::Observer
+    , public RealtimeMediaSource::VideoSampleObserver {
 public:
     static Ref<RealtimeVideoSource> create(Ref<RealtimeVideoCaptureSource>&& source) { return adoptRef(*new RealtimeVideoSource(WTFMove(source))); }
 
@@ -40,7 +44,7 @@ private:
     explicit RealtimeVideoSource(Ref<RealtimeVideoCaptureSource>&&);
     ~RealtimeVideoSource();
 
-    // RealtimeVideoCaptureSource
+    // RealtimeMediaSiource
     void startProducingData() final;
     void stopProducingData() final;
     bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double> frameRate) final;
@@ -51,18 +55,24 @@ private:
 
     const RealtimeMediaSourceCapabilities& capabilities() final { return m_source->capabilities(); }
     const RealtimeMediaSourceSettings& settings() final { return m_currentSettings; }
-    void generatePresets() final { m_source->generatePresets(); }
     bool isCaptureSource() const final { return m_source->isCaptureSource(); }
     CaptureDevice::DeviceType deviceType() const final { return m_source->deviceType(); }
     void monitorOrientation(OrientationNotifier& notifier) final { m_source->monitorOrientation(notifier); }
     bool interrupted() const final { return m_source->interrupted(); }
+    bool isSameAs(RealtimeMediaSource& source) const final { return this == &source || m_source.ptr() == &source; }
 
-    // Observer
+    // RealtimeMediaSource::Observer
     void sourceMutedChanged() final;
     void sourceSettingsChanged() final;
     void sourceStopped() final;
     bool preventSourceFromStopping() final;
+
+    // RealtimeMediaSource::VideoSampleObserver
     void videoSampleAvailable(MediaSample&) final;
+
+#if PLATFORM(COCOA)
+    RefPtr<MediaSample> adaptVideoSample(MediaSample&);
+#endif
 
 #if !RELEASE_LOG_DISABLED
     void setLogger(const Logger&, const void*) final;
@@ -70,6 +80,11 @@ private:
 
     Ref<RealtimeVideoCaptureSource> m_source;
     RealtimeMediaSourceSettings m_currentSettings;
+#if PLATFORM(COCOA)
+    std::unique_ptr<ImageTransferSessionVT> m_imageTransferSession;
+#endif
+    size_t m_frameDecimation { 1 };
+    size_t m_frameDecimationCounter { 0 };
 #if !RELEASE_LOG_DISABLED
     uint64_t m_cloneCounter { 0 };
 #endif

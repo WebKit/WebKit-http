@@ -26,14 +26,11 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "InternalFunction.h"
 #include "IntlObject.h"
 
 namespace JSC {
 
-class IntlCollator;
 class IntlCollatorPrototype;
 
 class IntlCollatorConstructor final : public InternalFunction {
@@ -46,16 +43,10 @@ public:
 
     DECLARE_INFO;
 
-    Structure* collatorStructure(VM&) const { return globalObject()->collatorStructure(); }
-
-protected:
-    void finishCreation(VM&, IntlCollatorPrototype*);
-
 private:
     IntlCollatorConstructor(VM&, Structure*);
+    void finishCreation(VM&, IntlCollatorPrototype*);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(IntlCollatorConstructor, InternalFunction);
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

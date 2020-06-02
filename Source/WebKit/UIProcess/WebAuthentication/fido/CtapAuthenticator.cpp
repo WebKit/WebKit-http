@@ -173,8 +173,8 @@ void CtapAuthenticator::continueGetAssertionAfterResponseReceived(Vector<uint8_t
     }
 
     m_remainingAssertionResponses = response->numberOfCredentials() - 1;
-    auto addResult = m_assertionResponses.add(response.releaseNonNull());
-    ASSERT_UNUSED(addResult, addResult.isNewEntry);
+    m_assertionResponses.reserveInitialCapacity(response->numberOfCredentials());
+    m_assertionResponses.uncheckedAppend(response.releaseNonNull());
     driver().transact(encodeEmptyAuthenticatorRequest(CtapRequestCommand::kAuthenticatorGetNextAssertion), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
@@ -192,19 +192,25 @@ void CtapAuthenticator::continueGetNextAssertionAfterResponseReceived(Vector<uin
         return;
     }
     m_remainingAssertionResponses--;
-    auto addResult = m_assertionResponses.add(response.releaseNonNull());
-    ASSERT_UNUSED(addResult, addResult.isNewEntry);
+    m_assertionResponses.uncheckedAppend(response.releaseNonNull());
 
     if (!m_remainingAssertionResponses) {
         if (auto* observer = this->observer()) {
-            observer->selectAssertionResponse(m_assertionResponses, WebAuthenticationSource::External, [this, weakThis = makeWeakPtr(*this)] (AuthenticatorAssertionResponse* response) {
+            Vector<Ref<AuthenticatorAssertionResponse>> responsesCopy;
+            responsesCopy.reserveInitialCapacity(m_assertionResponses.size());
+            for (auto& response : m_assertionResponses)
+                responsesCopy.uncheckedAppend(response.copyRef());
+
+            observer->selectAssertionResponse(WTFMove(responsesCopy), WebAuthenticationSource::External, [this, weakThis = makeWeakPtr(*this)] (AuthenticatorAssertionResponse* response) {
                 ASSERT(RunLoop::isMain());
                 if (!weakThis)
                     return;
-                auto returnResponse = m_assertionResponses.take(response);
-                if (!returnResponse)
+                auto result = m_assertionResponses.findMatching([expectedResponse = response] (auto& response) {
+                    return response.ptr() == expectedResponse;
+                });
+                if (result == notFound)
                     return;
-                receiveRespond(WTFMove(*returnResponse));
+                receiveRespond(m_assertionResponses[result].copyRef());
             });
         }
         return;
@@ -349,9 +355,12 @@ bool CtapAuthenticator::tryDowngrade()
 // Only U2F protocol is supported for Google legacy AppID support.
 bool CtapAuthenticator::processGoogleLegacyAppIdSupportExtension()
 {
-    // AuthenticatorCoordinator::create should always set it.
     auto& extensions = WTF::get<PublicKeyCredentialCreationOptions>(requestData().options).extensions;
-    ASSERT(!!extensions);
+    if (!extensions) {
+        // AuthenticatorCoordinator::create should always set it.
+        ASSERT_NOT_REACHED();
+        return false;
+    }
     if (extensions->googleLegacyAppidSupport)
         tryDowngrade();
     return extensions->googleLegacyAppidSupport;

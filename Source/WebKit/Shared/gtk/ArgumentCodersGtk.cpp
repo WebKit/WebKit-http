@@ -50,7 +50,7 @@ static void encodeImage(Encoder& encoder, Image& image)
     encoder << handle;
 }
 
-static bool decodeImage(Decoder& decoder, RefPtr<Image>& image)
+static WARN_UNUSED_RETURN bool decodeImage(Decoder& decoder, RefPtr<Image>& image)
 {
     ShareableBitmap::Handle handle;
     if (!decoder.decode(handle))
@@ -92,88 +92,85 @@ void ArgumentCoder<SelectionData>::encode(Encoder& encoder, const SelectionData&
     if (hasImage)
         encodeImage(encoder, *selection.image());
 
-    bool hasUnknownTypeData = selection.hasUnknownTypeData();
-    encoder << hasUnknownTypeData;
-    if (hasUnknownTypeData)
-        encoder << selection.unknownTypes();
+    bool hasCustomData = selection.hasCustomData();
+    encoder << hasCustomData;
+    if (hasCustomData)
+        encoder << RefPtr<SharedBuffer>(selection.customData());
 
     bool canSmartReplace = selection.canSmartReplace();
     encoder << canSmartReplace;
 }
 
-bool ArgumentCoder<SelectionData>::decode(Decoder& decoder, SelectionData& selection)
+Optional<SelectionData> ArgumentCoder<SelectionData>::decode(Decoder& decoder)
 {
-    selection.clearAll();
+    SelectionData selection;
 
     bool hasText;
     if (!decoder.decode(hasText))
-        return false;
+        return WTF::nullopt;
     if (hasText) {
         String text;
         if (!decoder.decode(text))
-            return false;
+            return WTF::nullopt;
         selection.setText(text);
     }
 
     bool hasMarkup;
     if (!decoder.decode(hasMarkup))
-        return false;
+        return WTF::nullopt;
     if (hasMarkup) {
         String markup;
         if (!decoder.decode(markup))
-            return false;
+            return WTF::nullopt;
         selection.setMarkup(markup);
     }
 
     bool hasURL;
     if (!decoder.decode(hasURL))
-        return false;
+        return WTF::nullopt;
     if (hasURL) {
         String url;
         if (!decoder.decode(url))
-            return false;
+            return WTF::nullopt;
         selection.setURL(URL(URL(), url), String());
     }
 
     bool hasURIList;
     if (!decoder.decode(hasURIList))
-        return false;
+        return WTF::nullopt;
     if (hasURIList) {
         String uriList;
         if (!decoder.decode(uriList))
-            return false;
+            return WTF::nullopt;
         selection.setURIList(uriList);
     }
 
     bool hasImage;
     if (!decoder.decode(hasImage))
-        return false;
+        return WTF::nullopt;
     if (hasImage) {
         RefPtr<Image> image;
         if (!decodeImage(decoder, image))
-            return false;
+            return WTF::nullopt;
         selection.setImage(image.get());
     }
 
-    bool hasUnknownTypeData;
-    if (!decoder.decode(hasUnknownTypeData))
-        return false;
-    if (hasUnknownTypeData) {
-        HashMap<String, String> unknownTypes;
-        if (!decoder.decode(unknownTypes))
-            return false;
-
-        auto end = unknownTypes.end();
-        for (auto it = unknownTypes.begin(); it != end; ++it)
-            selection.setUnknownTypeData(it->key, it->value);
+    bool hasCustomData;
+    if (!decoder.decode(hasCustomData))
+        return WTF::nullopt;
+    if (hasCustomData) {
+        RefPtr<SharedBuffer> buffer;
+        if (!decoder.decode(buffer))
+            return WTF::nullopt;
+        selection.setCustomData(Ref<SharedBuffer>(*buffer));
     }
 
     bool canSmartReplace;
     if (!decoder.decode(canSmartReplace))
-        return false;
+        return WTF::nullopt;
     selection.setCanSmartReplace(canSmartReplace);
 
-    return true;
+    return selection;
 }
 
 static void encodeGKeyFile(Encoder& encoder, GKeyFile* keyFile)
@@ -183,7 +180,7 @@ static void encodeGKeyFile(Encoder& encoder, GKeyFile* keyFile)
     encoder << DataReference(reinterpret_cast<uint8_t*>(data.get()), dataSize);
 }
 
-static bool decodeGKeyFile(Decoder& decoder, GUniquePtr<GKeyFile>& keyFile)
+static WARN_UNUSED_RETURN bool decodeGKeyFile(Decoder& decoder, GUniquePtr<GKeyFile>& keyFile)
 {
     DataReference dataReference;
     if (!decoder.decode(dataReference))

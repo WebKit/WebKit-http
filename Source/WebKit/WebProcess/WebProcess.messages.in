@@ -119,7 +119,6 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     ScrollerStylePreferenceChanged(bool useOvelayScrollbars)
     DisplayConfigurationChanged(CGDirectDisplayID displayID, CGDisplayChangeSummaryFlags flags)
-    DisplayWasRefreshed(uint32_t displayID)
 #endif
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
@@ -158,7 +157,7 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     SeedResourceLoadStatisticsForTesting(WebCore::RegistrableDomain firstPartyDomain, WebCore::RegistrableDomain thirdPartyDomain, bool shouldScheduleNotification) -> () Async
-    SetShouldBlockThirdPartyCookiesForTesting(enum:uint8_t WebCore::ThirdPartyCookieBlockingMode blockingMode) -> () Async
+    SetThirdPartyCookieBlockingMode(enum:uint8_t WebCore::ThirdPartyCookieBlockingMode blockingMode) -> () Async
 #endif
 
 #if PLATFORM(IOS)
@@ -167,10 +166,14 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #endif
 
 #if PLATFORM(COCOA)
-    UnblockAccessibilityServer(WebKit::SandboxExtension::Handle handle)
+    UnblockServicesRequiredByAccessibility(WebKit::SandboxExtension::HandleArray handleArray)
 #if ENABLE(CFPREFS_DIRECT_MODE)
     NotifyPreferencesChanged(String domain, String key, Optional<String> encodedValue)
-    UnblockPreferenceService(WebKit::SandboxExtension::Handle handle)
+    UnblockPreferenceService(WebKit::SandboxExtension::HandleArray handleArray)
 #endif
+#endif
+
+#if PLATFORM(GTK) && !USE(GTK4)
+    SetUseSystemAppearanceForScrollbars(bool useSystemAppearanceForScrollbars)
 #endif
 }

@@ -149,7 +149,7 @@ inline bool isValidCSSContentType(Element& element, const AtomString& type)
     // FIXME: Should MIME types really be case sensitive in XML documents? Doesn't seem like they should,
     // even though other things are case sensitive in that context. MIME types should never be case sensitive.
     // We should verify this and then remove the isHTMLElement check here.
-    static NeverDestroyed<const AtomString> cssContentType("text/css", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> cssContentType("text/css", AtomString::ConstructFromLiteral);
     return element.isHTMLElement() ? equalLettersIgnoringASCIICase(type, "text/css") : type == cssContentType;
 }
 
@@ -169,7 +169,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     ASSERT(document.contentSecurityPolicy());
     const ContentSecurityPolicy& contentSecurityPolicy = *document.contentSecurityPolicy();
     bool hasKnownNonce = contentSecurityPolicy.allowStyleWithNonce(element.attributeWithoutSynchronization(HTMLNames::nonceAttr), element.isInUserAgentShadowTree());
-    if (!contentSecurityPolicy.allowInlineStyle(document.url(), m_startTextPosition.m_line, text, hasKnownNonce))
+    if (!contentSecurityPolicy.allowInlineStyle(document.url().string(), m_startTextPosition.m_line, text, hasKnownNonce))
         return;
 
     auto mediaQueries = MediaQuerySet::create(m_media, MediaQueryParserContext(document));

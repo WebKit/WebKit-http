@@ -41,6 +41,7 @@
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "StyleSheetList.h"
+#include "WebAnimation.h"
 #include "markup.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -366,5 +367,12 @@ HTMLVideoElement* ShadowRoot::pictureInPictureElement() const
     return nullptr;
 }
 #endif
+
+Vector<RefPtr<WebAnimation>> ShadowRoot::getAnimations()
+{
+    return document().matchingAnimations([&] (Element& target) -> bool {
+        return target.containingShadowRoot() == this;
+    });
+}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Igalia S.L.
+ * Copyright (C) 2017, 2020 Igalia S.L.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -49,6 +49,7 @@ gboolean webkitWebViewScriptDialog(WebKitWebView* webView, WebKitScriptDialog* s
     return TRUE;
 }
 
+#if !USE(GTK4)
 static void fileChooserDialogResponseCallback(GtkFileChooser* dialog, gint responseID, WebKitFileChooserRequest* request)
 {
     GRefPtr<WebKitFileChooserRequest> adoptedRequest = adoptGRef(request);
@@ -64,9 +65,11 @@ static void fileChooserDialogResponseCallback(GtkFileChooser* dialog, gint respo
 
     g_object_unref(dialog);
 }
+#endif
 
 gboolean webkitWebViewRunFileChooser(WebKitWebView* webView, WebKitFileChooserRequest* request)
 {
+#if !USE(GTK4)
     GtkWidget* toplevel = gtk_widget_get_toplevel(GTK_WIDGET(webView));
     if (!WebCore::widgetIsOnscreenToplevelWindow(toplevel))
         toplevel = 0;
@@ -88,10 +91,12 @@ gboolean webkitWebViewRunFileChooser(WebKitWebView* webView, WebKitFileChooserRe
     g_signal_connect(dialog, "response", G_CALLBACK(fileChooserDialogResponseCallback), g_object_ref(request));
 
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(dialog));
+#endif
 
     return TRUE;
 }
 
+#if !USE(GTK4)
 struct WindowStateEvent {
     enum class Type { Maximize, Minimize, Restore };
 
@@ -153,9 +158,11 @@ static gboolean windowStateEventCallback(GtkWidget* window, GdkEventWindowState*
 
     return FALSE;
 }
+#endif
 
 void webkitWebViewMaximizeWindow(WebKitWebView* view, CompletionHandler<void()>&& completionHandler)
 {
+#if !USE(GTK4)
     auto* topLevel = gtk_widget_get_toplevel(GTK_WIDGET(view));
     if (!gtk_widget_is_toplevel(topLevel)) {
         completionHandler();
@@ -185,10 +192,12 @@ void webkitWebViewMaximizeWindow(WebKitWebView* view, CompletionHandler<void()>&
     }
 #endif
     gtk_widget_show(topLevel);
+#endif
 }
 
 void webkitWebViewMinimizeWindow(WebKitWebView* view, CompletionHandler<void()>&& completionHandler)
 {
+#if !USE(GTK4)
     auto* topLevel = gtk_widget_get_toplevel(GTK_WIDGET(view));
     if (!gtk_widget_is_toplevel(topLevel)) {
         completionHandler();
@@ -202,10 +211,12 @@ void webkitWebViewMinimizeWindow(WebKitWebView* view, CompletionHandler<void()>&
     g_signal_connect_object(window, "window-state-event", G_CALLBACK(windowStateEventCallback), view, G_CONNECT_AFTER);
     gtk_window_iconify(window);
     gtk_widget_hide(topLevel);
+#endif
 }
 
 void webkitWebViewRestoreWindow(WebKitWebView* view, CompletionHandler<void()>&& completionHandler)
 {
+#if !USE(GTK4)
     auto* topLevel = gtk_widget_get_toplevel(GTK_WIDGET(view));
     if (!gtk_widget_is_toplevel(topLevel)) {
         completionHandler();
@@ -238,6 +249,7 @@ void webkitWebViewRestoreWindow(WebKitWebView* view, CompletionHandler<void()>&&
     }
 #endif
     gtk_widget_show(topLevel);
+#endif
 }
 
 /**

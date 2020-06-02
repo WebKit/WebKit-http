@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
+#include "JSCJSValueInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -372,7 +373,7 @@ void StructureAbstractValue::dumpInContext(PrintStream& out, DumpContext* contex
 
 void StructureAbstractValue::dump(PrintStream& out) const
 {
-    dumpInContext(out, 0);
+    dumpInContext(out, nullptr);
 }
 
 void StructureAbstractValue::validateReferences(const TrackedReferences& trackedReferences) const

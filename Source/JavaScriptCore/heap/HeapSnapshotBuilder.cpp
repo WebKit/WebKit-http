@@ -420,9 +420,9 @@ String HeapSnapshotBuilder::json(Function<bool (const HeapSnapshotNode&)> allowN
             nextClassNameIndex++;
         unsigned classNameIndex = result.iterator->value;
 
-        void* wrappedAddress = 0;
+        void* wrappedAddress = nullptr;
         unsigned labelIndex = 0;
-        if (!node.cell->isString() && !node.cell->isBigInt()) {
+        if (!node.cell->isString() && !node.cell->isHeapBigInt()) {
             Structure* structure = node.cell->structure(vm);
             if (!structure || !structure->globalObject())
                 flags |= static_cast<unsigned>(NodeFlags::Internal);

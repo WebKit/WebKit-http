@@ -280,7 +280,7 @@ void RenderText::removeAndDestroyTextBoxes()
     else
         m_lineBoxes.invalidateParentChildLists();
 #endif
-    m_lineBoxes.deleteAll();
+    deleteLineBoxes();
 }
 
 void RenderText::willBeDestroyed()
@@ -1166,6 +1166,8 @@ void RenderText::setRenderedText(const String& newText)
     if (style.textTransform() != TextTransform::None)
         m_text = applyTextTransform(style, m_text, previousCharacter());
 
+    // At rendering time, if certain fonts are used, these characters get swapped out with higher-quality PUA characters.
+    // See RenderBlock::updateSecurityDiscCharacters().
     switch (style.textSecurity()) {
     case TextSecurity::None:
         break;
@@ -1298,10 +1300,15 @@ String RenderText::textWithoutConvertingBackslashToYenSymbol() const
 void RenderText::dirtyLineBoxes(bool fullLayout)
 {
     if (fullLayout)
-        m_lineBoxes.deleteAll();
+        deleteLineBoxes();
     else if (!m_linesDirty)
         m_lineBoxes.dirtyAll();
     m_linesDirty = false;
+}
+
+void RenderText::deleteLineBoxes()
+{
+    m_lineBoxes.deleteAll();
 }
 
 std::unique_ptr<InlineTextBox> RenderText::createTextBox()

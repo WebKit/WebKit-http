@@ -58,7 +58,7 @@
     (subpath "/System/Library/Frameworks")
     (subpath "/System/Library/PrivateFrameworks")
     (subpath "/usr/lib")
-    (literal "/usr/local/lib/sanitizers") ;; FIXME(209820)
+    (subpath "/usr/local/lib/sanitizers") ;; FIXME(209820)
     (subpath "/usr/appleinternal/lib/sanitizers"))
 
 (allow file-read-metadata
@@ -115,17 +115,13 @@
         (iokit-registry-entry-class "IOAccelerationUserClient")
         (iokit-registry-entry-class "IOSurfaceRootUserClient")
         (iokit-registry-entry-class "IOSurfaceSendRight"))
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101600
     ;; CoreVideo CVCGDisplayLink
     (allow iokit-open
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
-        (with report) (with telemetry)
-#endif
         (iokit-registry-entry-class "IOFramebufferSharedUserClient"))
+#endif
     ;; H.264 Acceleration
     (allow iokit-open
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
-        (with report) (with telemetry)
-#endif
         (iokit-registry-entry-class "AppleIntelMEUserClient")
         (iokit-registry-entry-class "AppleSNBFBUserClient"))
     ;; QuartzCore
@@ -178,6 +174,7 @@
         "kern.memorystatus_level"
         "kern.osproductversion" ;; <rdar://problem/51756739>
         "kern.ostype"
+        "kern.osversion"
         "kern.safeboot"
         "kern.version"
         "machdep.cpu.brand_string"
@@ -599,20 +596,30 @@
     (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_TEMP_DIR")))
 
 ;; IOKit user clients
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101600
 (allow iokit-open
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
-    (with report) (with telemetry)
-#endif
     (iokit-user-client-class "AppleMultitouchDeviceUserClient")
     (iokit-user-client-class "IOHIDParamUserClient")
     (iokit-user-client-class "IOAudioControlUserClient")
     (iokit-user-client-class "IOAudioEngineUserClient")
-    ;; Following is needed due to <rdar://problem/10427451> && <rdar://problem/10808817>
-    (iokit-user-client-class "AudioAUUC"))
+)
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101600
+(deny iokit-open
+    (with send-signal SIGKILL)
+    (iokit-user-client-class "AppleMultitouchDeviceUserClient")
+    (iokit-user-client-class "IOHIDParamUserClient")
+    (iokit-user-client-class "IOAudioControlUserClient")
+    (iokit-user-client-class "IOAudioEngineUserClient")
+    (iokit-registry-entry-class "IOFramebufferSharedUserClient")
+)
+#endif
 
 (allow iokit-open
     (iokit-user-client-class "AppleUpstreamUserClient")
     (iokit-user-client-class "RootDomainUserClient") ;; Needed by WebCore::PerformanceMonitor
+    (iokit-user-client-class "AudioAUUC") ;; <rdar://problem/10427451> && <rdar://problem/10808817>
 )
 
 ;; cookied.
@@ -682,9 +689,10 @@
     (global-name "com.apple.trustd.agent")
 )
 
-(deny mach-lookup
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101600
-    (with telemetry-backtrace)
+(deny mach-lookup (with telemetry-backtrace)
+#else
+(allow mach-lookup
 #endif
     (global-name "com.apple.lsd.mapdb")
 )
@@ -709,10 +717,12 @@
     (global-name "com.apple.windowserver.active"))
 #endif
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101600
 ;; Needed to support encrypted media playback <rdar://problem/40038478>
 (allow mach-lookup
     (global-name "com.apple.SecurityServer")
     (global-name "com.apple.ocspd"))
+#endif
 
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
 
@@ -896,9 +906,11 @@
             "com.apple.nesessionmanager"
 #endif
             "com.apple.webinspector"
+            "com.apple.cfprefsd.agent"
             "com.apple.cfprefsd.daemon"
             "com.apple.tccd"
             "com.apple.lsd.mapdb"
+            "com.apple.BluetoothServices"
 
             ;;; FIXME(207716): The following should be removed when the GPU process is complete
             "com.apple.audio.AudioComponentRegistrar" "com.apple.coremedia.endpoint.xpc" "com.apple.coremedia.endpointstream.xpc"
@@ -1075,7 +1087,13 @@
         (syscall-number SYS_faccessat) ;; <rdar://problem/56690456>
         (syscall-number SYS_fsetxattr) ;; <rdar://problem/56332491>
 #if __MAC_OS_X_VERSION_MIN_REQUIRED > 101500
-        (syscall-number SYS_objc_bp_assist_cfg_np) ;; <rdar://problem/55924791>
+        (syscall-number SYS_ulock_wait2) ;; <rdar://problem/58743778>
 #endif
+        (syscall-number SYS_fstat64_extended) ;; <rdar://problem/61310019>
     )
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED > 101500
+    (if (defined? 'SYS_objc_bp_assist_cfg_np)
+        (allow syscall-unix (syscall-number SYS_objc_bp_assist_cfg_np)))
+#endif
 )

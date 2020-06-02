@@ -27,7 +27,7 @@
 #include "Nodes.h"
 #include "NodeConstructors.h"
 
-#include "JSCInlines.h"
+#include "ExecutableInfo.h"
 #include "ModuleScopeData.h"
 #include <wtf/Assertions.h>
 
@@ -126,7 +126,7 @@ ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocat
     , m_features(inStrictContext ? StrictModeFeature : NoFeatures)
     , m_innerArrowFunctionCodeFeatures(NoInnerArrowFunctionFeatures)
     , m_numConstants(0)
-    , m_statements(0)
+    , m_statements(nullptr)
 {
 }
 

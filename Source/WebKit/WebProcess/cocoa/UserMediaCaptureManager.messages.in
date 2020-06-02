@@ -28,8 +28,6 @@ messages -> UserMediaCaptureManager NotRefCounted {
     SourceStopped(WebCore::RealtimeMediaSourceIdentifier id)
     SourceMutedChanged(WebCore::RealtimeMediaSourceIdentifier id, bool muted)
     SourceSettingsChanged(WebCore::RealtimeMediaSourceIdentifier id, WebCore::RealtimeMediaSourceSettings settings)
-    StorageChanged(WebCore::RealtimeMediaSourceIdentifier id, WebKit::SharedMemory::Handle storageHandle, WebCore::CAAudioStreamDescription description, uint64_t numberOfFrames)
-    AudioSamplesAvailable(WebCore::RealtimeMediaSourceIdentifier id, MediaTime time, uint64_t numberOfFrames, uint64_t startFrame, uint64_t endFrame)
     ApplyConstraintsSucceeded(WebCore::RealtimeMediaSourceIdentifier id, WebCore::RealtimeMediaSourceSettings settings)
     ApplyConstraintsFailed(WebCore::RealtimeMediaSourceIdentifier id, String failedConstraint, String message)
     RemoteVideoSampleAvailable(WebCore::RealtimeMediaSourceIdentifier id, WebCore::RemoteVideoSample sample)

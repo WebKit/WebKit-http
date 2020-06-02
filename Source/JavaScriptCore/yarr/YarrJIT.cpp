@@ -69,7 +69,7 @@ MatchingContextHolder::~MatchingContextHolder()
 }
 
 template<YarrJITCompileMode compileMode>
-class YarrGenerator : public YarrJITInfo, private MacroAssembler {
+class YarrGenerator final : public YarrJITInfo, private MacroAssembler {
 
 #if CPU(ARM_THUMB2)
     static const RegisterID input = ARMRegisters::r0;
@@ -3510,7 +3510,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         YarrOp& lastOp = m_ops.last();
         ASSERT(lastOp.m_op == alternativeNextOpCode);
         lastOp.m_op = alternativeEndOpCode;
-        lastOp.m_alternative = 0;
+        lastOp.m_alternative = nullptr;
         lastOp.m_nextOp = notFound;
 
         size_t parenEnd = m_ops.size();
@@ -3566,7 +3566,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         YarrOp& lastOp = m_ops.last();
         ASSERT(lastOp.m_op == OpSimpleNestedAlternativeNext);
         lastOp.m_op = OpSimpleNestedAlternativeEnd;
-        lastOp.m_alternative = 0;
+        lastOp.m_alternative = nullptr;
         lastOp.m_nextOp = notFound;
 
         size_t parenEnd = m_ops.size();
@@ -3654,7 +3654,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
 
             ASSERT(lastOp.m_op == OpBodyAlternativeNext);
             lastOp.m_op = OpBodyAlternativeEnd;
-            lastOp.m_alternative = 0;
+            lastOp.m_alternative = nullptr;
             lastOp.m_nextOp = notFound;
         }
 
@@ -3688,7 +3688,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         YarrOp& lastOp = m_ops.last();
         ASSERT(lastOp.m_op == OpBodyAlternativeNext);
         lastOp.m_op = OpBodyAlternativeEnd;
-        lastOp.m_alternative = 0;
+        lastOp.m_alternative = nullptr;
         lastOp.m_nextOp = repeatLoop;
     }
 
@@ -3982,7 +3982,7 @@ public:
             codeBlock.setFallBackWithFailureReason(*m_failureReason);
     }
 
-    const char* variant() override
+    const char* variant() final
     {
         if (compileMode == MatchOnly) {
             if (m_charSize == Char8)
@@ -3997,17 +3997,17 @@ public:
         return "16-bit regular expression";
     }
 
-    unsigned opCount() override
+    unsigned opCount() final
     {
         return m_ops.size();
     }
 
-    void dumpPatternString(PrintStream& out) override
+    void dumpPatternString(PrintStream& out) final
     {
         m_pattern.dumpPatternString(out, m_patternString);
     }
 
-    int dumpFor(PrintStream& out, unsigned opIndex) override
+    int dumpFor(PrintStream& out, unsigned opIndex) final
     {
         if (opIndex >= opCount())
             return 0;

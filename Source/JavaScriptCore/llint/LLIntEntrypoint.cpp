@@ -28,14 +28,10 @@
 #include "CodeBlock.h"
 #include "HeapInlines.h"
 #include "JITCode.h"
-#include "JSCellInlines.h"
-#include "JSObject.h"
 #include "LLIntData.h"
 #include "LLIntThunks.h"
-#include "LowLevelInterpreter.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "StackAlignment.h"
-#include "VM.h"
 
 namespace JSC { namespace LLInt {
 

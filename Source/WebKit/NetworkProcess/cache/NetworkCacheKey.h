@@ -44,7 +44,7 @@ struct DataKey {
         encoder << partition << type << identifier;
     }
 
-    template <class Decoder> static bool decode(Decoder& decoder, DataKey& dataKey)
+    template <class Decoder> static WARN_UNUSED_RETURN bool decode(Decoder& decoder, DataKey& dataKey)
     {
         return decoder.decode(dataKey.partition) && decoder.decode(dataKey.type) && decoder.decode(dataKey.identifier);
     }
@@ -83,7 +83,7 @@ public:
     String partitionHashAsString() const { return hashAsString(m_partitionHash); }
 
     void encode(WTF::Persistence::Encoder&) const;
-    static bool decode(WTF::Persistence::Decoder&, Key&);
+    static Optional<Key> decode(WTF::Persistence::Decoder&);
 
     bool operator==(const Key&) const;
     bool operator!=(const Key& other) const { return !(*this == other); }

@@ -25,13 +25,11 @@
 #include "config.h"
 #include <wtf/text/StringImpl.h>
 
-#include <wtf/ProcessID.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/AtomString.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/ExternalStringImpl.h>
 #include <wtf/text/StringBuffer.h>
-#include <wtf/text/StringHash.h>
 #include <wtf/text/StringView.h>
 #include <wtf/text/SymbolImpl.h>
 #include <wtf/text/SymbolRegistry.h>
@@ -182,7 +180,7 @@ Ref<StringImpl> StringImpl::createWithoutCopying(const LChar* characters, unsign
 template<typename CharacterType> inline Ref<StringImpl> StringImpl::createUninitializedInternal(unsigned length, CharacterType*& data)
 {
     if (!length) {
-        data = 0;
+        data = nullptr;
         return *empty();
     }
     return createUninitializedInternalNonEmpty(length, data);
@@ -218,7 +216,7 @@ template<typename CharacterType> inline Expected<Ref<StringImpl>, UTF8Conversion
     ASSERT(originalString->bufferOwnership() == BufferInternal);
 
     if (!length) {
-        data = 0;
+        data = nullptr;
         return Ref<StringImpl>(*empty());
     }
 
@@ -1302,11 +1300,12 @@ Ref<StringImpl> StringImpl::replace(UChar target, UChar replacement)
     UChar* data;
     auto newImpl = createUninitializedInternalNonEmpty(m_length, data);
 
-    for (i = 0; i != m_length; ++i) {
-        UChar character = m_data16[i];
+    copyCharacters(data, m_data16, i);
+    for (unsigned j = i; j != m_length; ++j) {
+        UChar character = m_data16[j];
         if (character == target)
             character = replacement;
-        data[i] = character;
+        data[j] = character;
     }
     return newImpl;
 }

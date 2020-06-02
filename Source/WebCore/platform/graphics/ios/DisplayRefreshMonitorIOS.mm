@@ -26,7 +26,7 @@
 #import "config.h"
 #import "DisplayRefreshMonitorIOS.h"
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && PLATFORM(IOS_FAMILY)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebCoreThread.h"
 #import <QuartzCore/CADisplayLink.h>
@@ -40,6 +40,7 @@ using WebCore::DisplayRefreshMonitorIOS;
 }
 
 - (id)initWithMonitor:(DisplayRefreshMonitorIOS*)monitor;
+- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond;
 - (void)handleDisplayLink:(CADisplayLink *)sender;
 - (void)invalidate;
 
@@ -63,6 +64,11 @@ using WebCore::DisplayRefreshMonitorIOS;
 {
     ASSERT(!m_displayLink); // -invalidate should have been called already.
     [super dealloc];
+}
+
+- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond
+{
+    m_displayLink.preferredFramesPerSecond = preferredFramesPerSecond;
 }
 
 - (void)handleDisplayLink:(CADisplayLink *)sender
@@ -117,4 +123,4 @@ void DisplayRefreshMonitorIOS::displayLinkFired()
 
 }
 
-#endif // USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && PLATFORM(IOS_FAMILY)
+#endif // PLATFORM(IOS_FAMILY)

@@ -1147,11 +1147,9 @@ enum class ApplePayButtonType : uint8_t {
     Buy,
     SetUp,
     Donate,
-#if ENABLE(APPLE_PAY_SESSION_V4)
     CheckOut,
     Book,
     Subscribe,
-#endif
 };
 #endif
 
@@ -1178,6 +1176,11 @@ enum class FontLoadingBehavior : uint8_t {
     Swap,
     Fallback,
     Optional
+};
+
+enum class EventListenerRegionType : uint8_t {
+    Wheel           = 1 << 0,
+    NonPassiveWheel = 1 << 1,
 };
 
 extern const float defaultMiterLimit;
@@ -1222,6 +1225,7 @@ WTF::TextStream& operator<<(WTF::TextStream&, CursorVisibility);
 WTF::TextStream& operator<<(WTF::TextStream&, DisplayType);
 WTF::TextStream& operator<<(WTF::TextStream&, Edge);
 WTF::TextStream& operator<<(WTF::TextStream&, EmptyCell);
+WTF::TextStream& operator<<(WTF::TextStream&, EventListenerRegionType);
 WTF::TextStream& operator<<(WTF::TextStream&, FillAttachment);
 WTF::TextStream& operator<<(WTF::TextStream&, FillBox);
 WTF::TextStream& operator<<(WTF::TextStream&, FillRepeat);

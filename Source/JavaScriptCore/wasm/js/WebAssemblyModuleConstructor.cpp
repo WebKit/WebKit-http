@@ -29,19 +29,15 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "ArrayBuffer.h"
-#include "ExceptionHelpers.h"
-#include "FunctionPrototype.h"
+#include "ButterflyInlines.h"
 #include "JSArrayBuffer.h"
-#include "JSCInlines.h"
-#include "JSTypedArrays.h"
-#include "JSWebAssemblyCompileError.h"
+#include "JSCJSValueInlines.h"
+#include "JSGlobalObjectInlines.h"
+#include "JSObjectInlines.h"
 #include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyModule.h"
 #include "ObjectConstructor.h"
-#include "SymbolTable.h"
-#include "WasmCallee.h"
 #include "WasmModuleInformation.h"
-#include "WasmPlan.h"
 #include "WebAssemblyModulePrototype.h"
 #include <wtf/StdLibExtras.h>
 
@@ -181,7 +177,10 @@ JSWebAssemblyModule* WebAssemblyModuleConstructor::createModule(JSGlobalObject* 
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto* structure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), globalObject->webAssemblyModuleStructure());
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* structure = newTarget == callFrame->jsCallee()
+        ? globalObject->webAssemblyModuleStructure()
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->webAssemblyModuleStructure());
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     RELEASE_AND_RETURN(scope, JSWebAssemblyModule::createStub(vm, globalObject, structure, Wasm::Module::validateSync(&vm.wasmContext, WTFMove(buffer))));

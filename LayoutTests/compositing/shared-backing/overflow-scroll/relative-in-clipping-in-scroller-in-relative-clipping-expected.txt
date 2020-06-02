@@ -21,7 +21,7 @@ Relative
                   (position 10.00 10.00)
                   (bounds 304.00 304.00)
                   (drawsContent 1)
-                  (children 1
+                  (children 2
                     (GraphicsLayer
                       (offsetFromRenderer width=2 height=2)
                       (position 2.00 2.00)
@@ -31,6 +31,17 @@ Relative
                           (offsetFromRenderer width=2 height=2)
                           (anchor 0.00 0.00)
                           (bounds 285.00 426.00)
+                          (drawsContent 1)
+                        )
+                      )
+                    )
+                    (GraphicsLayer
+                      (position 2.00 2.00)
+                      (bounds 300.00 300.00)
+                      (children 1
+                        (GraphicsLayer
+                          (position 285.00 0.00)
+                          (bounds 15.00 300.00)
                           (drawsContent 1)
                         )
                       )

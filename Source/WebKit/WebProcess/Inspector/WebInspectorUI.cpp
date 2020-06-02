@@ -48,16 +48,21 @@ Ref<WebInspectorUI> WebInspectorUI::create(WebPage& page)
     return adoptRef(*new WebInspectorUI(page));
 }
 
-WebInspectorUI::WebInspectorUI(WebPage& page)
-    : m_page(page)
-    , m_frontendAPIDispatcher(page)
-    , m_debuggableInfo(DebuggableInfoData::empty())
+void WebInspectorUI::enableFrontendFeatures()
 {
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(true);
     RuntimeEnabledFeatures::sharedFeatures().setImageBitmapEnabled(true);
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(true);
 #endif
+}
+
+WebInspectorUI::WebInspectorUI(WebPage& page)
+    : m_page(page)
+    , m_frontendAPIDispatcher(page)
+    , m_debuggableInfo(DebuggableInfoData::empty())
+{
+    WebInspectorUI::enableFrontendFeatures();
 }
 
 void WebInspectorUI::establishConnection(WebPageProxyIdentifier inspectedPageIdentifier, const DebuggableInfoData& debuggableInfo, bool underTest, unsigned inspectionLevel)
@@ -267,6 +272,13 @@ void WebInspectorUI::setIsVisible(bool visible)
     m_isVisible = visible;
 
     m_frontendAPIDispatcher.dispatchCommand("setIsVisible"_s, visible);
+}
+
+void WebInspectorUI::updateFindString(const String& findString)
+{
+    StringBuilder builder;
+    JSON::Value::escapeString(builder, findString);
+    m_frontendAPIDispatcher.dispatchCommand("updateFindString"_s, builder.toString());
 }
 
 void WebInspectorUI::changeAttachedWindowHeight(unsigned height)

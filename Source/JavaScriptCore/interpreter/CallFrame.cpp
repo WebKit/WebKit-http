@@ -29,11 +29,9 @@
 #include "CodeBlock.h"
 #include "ExecutableAllocator.h"
 #include "InlineCallFrame.h"
-#include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSWebAssemblyInstance.h"
 #include "LLIntPCRanges.h"
-#include "VMEntryScope.h"
 #include "WasmContextInlines.h"
 #include "WasmInstance.h"
 #include <wtf/StringPrintStream.h>
@@ -44,7 +42,7 @@ void CallFrame::initDeprecatedCallFrameForDebugger(CallFrame* globalExec, JSCall
 {
     globalExec->setCodeBlock(nullptr);
     globalExec->setCallerFrame(noCaller());
-    globalExec->setReturnPC(0);
+    globalExec->setReturnPC(nullptr);
     globalExec->setArgumentCountIncludingThis(0);
     globalExec->setCallee(globalCallee);
     ASSERT(globalExec->isDeprecatedCallFrameForDebugger());

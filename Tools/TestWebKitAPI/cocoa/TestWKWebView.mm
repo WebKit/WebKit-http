@@ -71,22 +71,6 @@ static NSString *overrideBundleIdentifier(id, SEL)
 
 @implementation WKWebView (TestWebKitAPI)
 
-#if PLATFORM(IOS_FAMILY)
-
-+ (void)initialize
-{
-    // FIXME: This hack should no longer be necessary on builds that have the fix for <rdar://problem/56790195>.
-    // Calling +displayIdentifier will guarantee a call to an internal UIKit helper method that caches the fake
-    // bundle name "com.apple.TestWebKitAPI" for the rest of the process' lifetime. This allows us to avoid crashing
-    // under -[UIScrollView setContentOffset:animated:] due to telemetry code that requires a bundle identifier.
-    // Note that this swizzling is temporary, since unconditionally swizzling -[NSBundle bundleIdentifier] for the
-    // entirely of the test causes other tests to fail or time out.
-    InstanceMethodSwizzler bundleIdentifierSwizzler(NSBundle.class, @selector(bundleIdentifier), reinterpret_cast<IMP>(overrideBundleIdentifier));
-    [UIApplication displayIdentifier];
-}
-
-#endif // PLATFORM(IOS_FAMILY)
-
 - (void)loadTestPageNamed:(NSString *)pageName
 {
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:pageName withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
@@ -399,6 +383,7 @@ static InputSessionChangeCount nextInputSessionChangeCount()
 @implementation TestWKWebView {
     RetainPtr<TestWKWebViewHostWindow> _hostWindow;
     RetainPtr<TestMessageHandler> _testHandler;
+    RetainPtr<WKUserScript> _onloadScript;
 #if PLATFORM(IOS_FAMILY)
     std::unique_ptr<ClassMethodSwizzler> _sharedCalloutBarSwizzler;
     InputSessionChangeCount _inputSessionChangeCount;
@@ -490,6 +475,15 @@ static UICalloutBar *suppressUICalloutBar()
     [_testHandler addMessage:message withHandler:action];
 }
 
+- (void)synchronouslyLoadHTMLStringAndWaitUntilAllImmediateChildFramesPaint:(NSString *)html
+{
+    bool didFireDOMLoadEvent = false;
+    [self performAfterLoading:[&] { didFireDOMLoadEvent = true; }];
+    [self loadHTMLString:html baseURL:[NSBundle.mainBundle.bundleURL URLByAppendingPathComponent:@"TestWebKitAPI.resources"]];
+    TestWebKitAPI::Util::run(&didFireDOMLoadEvent);
+    [self waitForNextPresentationUpdate];
+}
+
 - (void)waitForMessage:(NSString *)message
 {
     __block bool isDoneWaiting = false;
@@ -502,15 +496,13 @@ static UICalloutBar *suppressUICalloutBar()
 
 - (void)performAfterLoading:(dispatch_block_t)actions
 {
-    TestMessageHandler *handler = [[TestMessageHandler alloc] init];
-    [handler addMessage:@"loaded" withHandler:actions];
-
-    NSString *onloadScript = @"window.onload = () => window.webkit.messageHandlers.onloadHandler.postMessage('loaded')";
-    WKUserScript *script = [[WKUserScript alloc] initWithSource:onloadScript injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO];
-
-    WKUserContentController* contentController = [[self configuration] userContentController];
-    [contentController addUserScript:script];
-    [contentController addScriptMessageHandler:handler name:@"onloadHandler"];
+    NSString *const viewDidLoadMessage = @"TestWKWebViewDidLoad";
+    if (!_onloadScript) {
+        NSString *onloadScript = [NSString stringWithFormat:@"window.addEventListener('load', () => window.webkit.messageHandlers.testHandler.postMessage('%@'), true /* useCapture */)", viewDidLoadMessage];
+        _onloadScript = adoptNS([[WKUserScript alloc] initWithSource:onloadScript injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]);
+        [self.configuration.userContentController addUserScript:_onloadScript.get()];
+    }
+    [self performAfterReceivingMessage:viewDidLoadMessage action:actions];
 }
 
 - (void)waitForNextPresentationUpdate
@@ -759,6 +751,15 @@ static WKContentView *recursiveFindWKContentView(UIView *view)
     NSEventType keyUpEventType = NSEventTypeKeyUp;
     [self keyDown:[NSEvent keyEventWithType:keyDownEventType location:NSZeroPoint modifierFlags:0 timestamp:GetCurrentEventTime() windowNumber:[_hostWindow windowNumber] context:nil characters:characterAsString charactersIgnoringModifiers:characterAsString isARepeat:NO keyCode:character]];
     [self keyUp:[NSEvent keyEventWithType:keyUpEventType location:NSZeroPoint modifierFlags:0 timestamp:GetCurrentEventTime() windowNumber:[_hostWindow windowNumber] context:nil characters:characterAsString charactersIgnoringModifiers:characterAsString isARepeat:NO keyCode:character]];
+}
+
+- (void)waitForPendingMouseEvents
+{
+    __block bool doneProcessingMouseEvents = false;
+    [self _doAfterProcessingAllPendingMouseEvents:^{
+        doneProcessingMouseEvents = true;
+    }];
+    TestWebKitAPI::Util::run(&doneProcessingMouseEvents);
 }
 
 @end

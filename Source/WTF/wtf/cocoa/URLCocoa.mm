@@ -26,7 +26,6 @@
 #import "config.h"
 #import <wtf/URL.h>
 
-#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/URLParser.h>
 #import <wtf/cf/CFURLExtras.h>
 #import <wtf/cocoa/NSURLExtras.h>
@@ -70,15 +69,11 @@ RetainPtr<CFURLRef> URL::createCFURL() const
     }
 
     RetainPtr<CFURLRef> cfURL;
-
-    // Fast path if the input data is 8-bit to avoid copying into a temporary buffer.
     if (LIKELY(m_string.is8Bit()))
-        cfURL = WTF::createCFURLFromBuffer(reinterpret_cast<const char*>(m_string.characters8()), m_string.length());
+        cfURL = adoptCF(CFURLCreateAbsoluteURLWithBytes(nullptr, reinterpret_cast<const UInt8*>(m_string.characters8()), m_string.length(), kCFStringEncodingISOLatin1, nullptr, true));
     else {
-        // Slower path.
-        WTF::URLCharBuffer buffer;
-        copyToBuffer(buffer);
-        cfURL = WTF::createCFURLFromBuffer(buffer.data(), buffer.size());
+        CString utf8 = m_string.utf8();
+        cfURL = adoptCF(CFURLCreateAbsoluteURLWithBytes(nullptr, reinterpret_cast<const UInt8*>(utf8.data()), utf8.length(), kCFStringEncodingUTF8, nullptr, true));
     }
 
     if (protocolIsInHTTPFamily() && !WTF::isCFURLSameOrigin(cfURL.get(), *this))
@@ -90,6 +85,18 @@ RetainPtr<CFURLRef> URL::createCFURL() const
 bool URL::hostIsIPAddress(StringView host)
 {
     return [host.createNSStringWithoutCopying().get() _web_looksLikeIPAddress];
+}
+
+RetainPtr<id> makeNSArrayElement(const URL& vectorElement)
+{
+    return adoptNS((__bridge_transfer id)vectorElement.createCFURL().leakRef());
+}
+
+Optional<URL> makeVectorElement(const URL*, id arrayElement)
+{
+    if (![arrayElement isKindOfClass:NSURL.class])
+        return WTF::nullopt;
+    return { { arrayElement } };
 }
 
 }

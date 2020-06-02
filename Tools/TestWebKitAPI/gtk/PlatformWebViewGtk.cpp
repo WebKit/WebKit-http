@@ -27,6 +27,7 @@
 #include "PlatformWebView.h"
 
 #include <WebCore/GUniquePtrGtk.h>
+#include <WebCore/GtkVersioning.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKView.h>
 #include <gtk/gtk.h>
@@ -90,12 +91,13 @@ static void doKeyStroke(GtkWidget* viewWidget, unsigned int keyVal)
     event->key.state = 0;
     event->key.window = gtk_widget_get_window(viewWidget);
     g_object_ref(event->key.window);
-    gdk_event_set_device(event.get(), gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gtk_widget_get_display(viewWidget))));
+    GdkDisplay* display = gtk_widget_get_display(viewWidget);
+    gdk_event_set_device(event.get(), gdk_seat_get_pointer(gdk_display_get_default_seat(display)));
 
     // When synthesizing an event, an invalid hardware_keycode value can cause it to be badly processed by GTK+.
     GUniqueOutPtr<GdkKeymapKey> keys;
     int keysCount;
-    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(), keyVal, &keys.outPtr(), &keysCount) && keysCount)
+    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_for_display(display), keyVal, &keys.outPtr(), &keysCount) && keysCount)
         event->key.hardware_keycode = keys.get()[0].keycode;
 
     gtk_main_do_event(event.get());
@@ -130,7 +132,7 @@ static void doMouseButtonEvent(GtkWidget* viewWidget, GdkEventType eventType, in
     event->button.state = 0;
     event->button.window = gtk_widget_get_window(viewWidget);
     g_object_ref(event->button.window);
-    event->button.device = gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gtk_widget_get_display(viewWidget)));
+    event->button.device = gdk_seat_get_pointer(gdk_display_get_default_seat(gtk_widget_get_display(viewWidget)));
 
     int xRoot, yRoot;
     gdk_window_get_root_coords(gtk_widget_get_window(viewWidget), x, y, &xRoot, &yRoot);
@@ -162,7 +164,7 @@ void PlatformWebView::simulateMouseMove(unsigned x, unsigned y, WKEventModifiers
         gtk_widget_show(m_window);
     event->motion.window = gtk_widget_get_window(viewWidget);
     g_object_ref(event->motion.window);
-    event->motion.device = gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gtk_widget_get_display(viewWidget)));
+    event->motion.device = gdk_seat_get_pointer(gdk_display_get_default_seat(gtk_widget_get_display(viewWidget)));
 
     int xRoot, yRoot;
     gdk_window_get_root_coords(gtk_widget_get_window(viewWidget), x, y, &xRoot, &yRoot);

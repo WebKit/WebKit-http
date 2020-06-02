@@ -28,7 +28,6 @@
 
 #include <wtf/CommaPrinter.h>
 #include <wtf/PrintStream.h>
-#include <wtf/StringPrintStream.h>
 
 namespace WTF {
 
@@ -36,8 +35,10 @@ using namespace JSC;
 
 void printInternal(PrintStream& out, PutByIdFlags flags) {
     CommaPrinter comma("|");
-    if (flags & PutByIdIsDirect)
+    if (flags.isDirect())
         out.print(comma, "IsDirect");
+    if (flags.ecmaMode().isStrict())
+        out.print(comma, "Strict");
 }
 
 } // namespace WTF

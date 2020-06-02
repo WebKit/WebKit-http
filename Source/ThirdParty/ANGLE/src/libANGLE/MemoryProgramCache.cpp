@@ -116,7 +116,7 @@ void MemoryProgramCache::ComputeHash(const Context *context,
 
     // Hash pre-link program properties.
     hashStream << program->getAttributeBindings() << program->getUniformLocationBindings()
-               << program->getFragmentInputBindings()
+               << program->getFragmentOutputLocations() << program->getFragmentOutputIndexes()
                << program->getState().getTransformFeedbackVaryingNames()
                << program->getState().getTransformFeedbackBufferMode()
                << program->getState().getOutputLocations()

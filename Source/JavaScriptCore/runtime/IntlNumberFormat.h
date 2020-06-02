@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
+ * Copyright (C) 2020 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,17 +26,11 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "JSObject.h"
 #include <unicode/unum.h>
-#include <unicode/uvernum.h>
-
-#define HAVE_ICU_FORMAT_DOUBLE_FOR_FIELDS (U_ICU_VERSION_MAJOR_NUM >= 59)
 
 namespace JSC {
 
-class IntlNumberFormatConstructor;
 class JSBoundFunction;
 
 class IntlNumberFormat final : public JSNonFinalObject {
@@ -61,21 +56,23 @@ public:
     DECLARE_INFO;
 
     void initializeNumberFormat(JSGlobalObject*, JSValue locales, JSValue optionsValue);
-    JSValue formatNumber(JSGlobalObject*, double number);
-#if HAVE(ICU_FORMAT_DOUBLE_FOR_FIELDS)
-    JSValue formatToParts(JSGlobalObject*, double value);
-#endif
-    JSObject* resolvedOptions(JSGlobalObject*);
+    JSValue format(JSGlobalObject*, double) const;
+    JSValue format(JSGlobalObject*, JSBigInt*) const;
+    JSValue formatToParts(JSGlobalObject*, double) const;
+    JSObject* resolvedOptions(JSGlobalObject*) const;
 
     JSBoundFunction* boundFormat() const { return m_boundFormat.get(); }
     void setBoundFormat(VM&, JSBoundFunction*);
 
-protected:
+    static void formatToPartsInternal(JSGlobalObject*, double, const String& formatted, UFieldPositionIterator*, JSArray*, JSString* unit = nullptr);
+
+private:
     IntlNumberFormat(VM&, Structure*);
     void finishCreation(VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-private:
+    static Vector<String> localeData(const String&, size_t);
+
     enum class Style : uint8_t { Decimal, Percent, Currency };
     enum class CurrencyDisplay : uint8_t { Code, Symbol, Name };
 
@@ -86,11 +83,12 @@ private:
     static ASCIILiteral styleString(Style);
     static ASCIILiteral currencyDisplayString(CurrencyDisplay);
 
+    WriteBarrier<JSBoundFunction> m_boundFormat;
+    std::unique_ptr<UNumberFormat, UNumberFormatDeleter> m_numberFormat;
+
     String m_locale;
     String m_numberingSystem;
     String m_currency;
-    std::unique_ptr<UNumberFormat, UNumberFormatDeleter> m_numberFormat;
-    WriteBarrier<JSBoundFunction> m_boundFormat;
     unsigned m_minimumIntegerDigits { 1 };
     unsigned m_minimumFractionDigits { 0 };
     unsigned m_maximumFractionDigits { 3 };
@@ -99,26 +97,6 @@ private:
     Style m_style { Style::Decimal };
     CurrencyDisplay m_currencyDisplay;
     bool m_useGrouping { true };
-    bool m_initializedNumberFormat { false };
-
-#if HAVE(ICU_FORMAT_DOUBLE_FOR_FIELDS)
-    struct UFieldPositionIteratorDeleter {
-        void operator()(UFieldPositionIterator*) const;
-    };
-
-    struct IntlNumberFormatField {
-        int32_t type;
-        int32_t size;
-        IntlNumberFormatField(int32_t type, int32_t size)
-            : type(type)
-            , size(size)
-        { }
-    };
-
-    static ASCIILiteral partTypeString(UNumberFormatFields, double);
-#endif
 };
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

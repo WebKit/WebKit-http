@@ -23,11 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#if PLATFORM(MAC)
 
 #import <WebKit/WKWebView.h>
-
-#if PLATFORM(MAC)
 
 @protocol WKInspectorWKWebViewDelegate;
 
@@ -37,6 +35,7 @@
 
 @protocol WKInspectorWKWebViewDelegate
 @required
+- (void)inspectorWKWebViewDidBecomeActive:(WKInspectorWKWebView *)webView;
 - (void)inspectorWKWebViewReload:(WKInspectorWKWebView *)webView;
 - (void)inspectorWKWebViewReloadFromOrigin:(WKInspectorWKWebView *)webView;
 - (void)inspectorWKWebView:(WKInspectorWKWebView *)webView willMoveToWindow:(NSWindow *)newWindow;

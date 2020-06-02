@@ -42,6 +42,7 @@ accessibility/atk/WebKitAccessibleUtil.cpp
 editing/atk/FrameSelectionAtk.cpp
 
 editing/gtk/EditorGtk.cpp
+editing/gtk/WebContentReaderGtk.cpp
 
 loader/soup/ResourceLoaderSoup.cpp
 
@@ -60,13 +61,14 @@ page/scrolling/nicosia/ScrollingTreeOverflowScrollingNodeNicosia.cpp
 page/scrolling/nicosia/ScrollingTreePositionedNode.cpp
 page/scrolling/nicosia/ScrollingTreeStickyNode.cpp
 
-page/scrolling/generic/ScrollingThreadGeneric.cpp
-
 platform/ScrollAnimationKinetic.cpp
 platform/UserAgentQuirks.cpp
 
 platform/adwaita/ScrollbarThemeAdwaita.cpp
 platform/adwaita/ThemeAdwaita.cpp
+
+platform/gamepad/manette/ManetteGamepad.cpp
+platform/gamepad/manette/ManetteGamepadProvider.cpp
 
 platform/generic/ScrollAnimatorGeneric.cpp
 
@@ -85,7 +87,6 @@ platform/graphics/glx/GLContextGLX.cpp
 platform/graphics/gtk/ColorGtk.cpp
 platform/graphics/gtk/DisplayRefreshMonitorGtk.cpp
 platform/graphics/gtk/GdkCairoUtilities.cpp
-platform/graphics/gtk/IconGtk.cpp
 platform/graphics/gtk/ImageGtk.cpp
 
 platform/graphics/gstreamer/ImageGStreamerCairo.cpp
@@ -109,12 +110,12 @@ platform/gtk/GRefPtrGtk.cpp
 platform/gtk/GtkUtilities.cpp
 platform/gtk/LocalizedStringsGtk.cpp
 platform/gtk/PasteboardGtk.cpp
-platform/gtk/PasteboardHelper.cpp
 platform/gtk/PlatformKeyboardEventGtk.cpp
-platform/gtk/PlatformMouseEventGtk.cpp
-platform/gtk/PlatformPasteboardGtk.cpp
 platform/gtk/PlatformScreenGtk.cpp
 platform/gtk/PlatformWheelEventGtk.cpp
+platform/gtk/RenderThemeGadget.cpp
+platform/gtk/RenderThemeScrollbar.cpp
+platform/gtk/ScrollbarThemeGtk.cpp
 platform/gtk/SelectionData.cpp
 platform/gtk/ThemeGtk.cpp
 platform/gtk/WidgetGtk.cpp

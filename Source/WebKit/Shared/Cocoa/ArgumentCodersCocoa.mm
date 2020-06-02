@@ -29,6 +29,8 @@
 #if PLATFORM(COCOA)
 
 #import "ArgumentCodersCF.h"
+#import "CocoaColor.h"
+#import "CocoaFont.h"
 #import "CoreTextHelpers.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
@@ -47,14 +49,27 @@
 #import <UIKit/UIFontDescriptor.h>
 #endif
 
-#if USE(APPKIT)
-using PlatformColor = NSColor;
-using PlatformFont = NSFont;
-using PlatformFontDescriptor = NSFontDescriptor;
-#else
-using PlatformColor = UIColor;
-using PlatformFont = UIFont;
-using PlatformFontDescriptor = UIFontDescriptor;
+#if HAVE(NSFONT_WITH_OPTICAL_SIZING_BUG)
+
+@interface WKSecureCodingFontAttributeNormalizer : NSObject <NSKeyedArchiverDelegate>
+@end
+
+@implementation WKSecureCodingFontAttributeNormalizer
+
+- (id)archiver:(NSKeyedArchiver *)archiver willEncodeObject:(id)object
+{
+    if ([object isKindOfClass:[NSFont class]]) {
+        NSFont *font = static_cast<NSFont *>(object);
+        // Recreate any serialized fonts after normalizing the
+        // font attributes to work around <rdar://problem/51657880>.
+        return WebKit::fontWithAttributes(font.fontDescriptor.fontAttributes, 0);
+    }
+
+    return object;
+}
+
+@end
+
 #endif
 
 namespace IPC {
@@ -78,34 +93,6 @@ enum class NSType {
 
 #pragma mark - Helpers
 
-static Class platformColorClass()
-{
-    static Class colorClass;
-    static std::once_flag flag;
-    std::call_once(flag, [] {
-#if USE(APPKIT)
-        colorClass = NSClassFromString(@"NSColor");
-#else
-        colorClass = NSClassFromString(@"UIColor");
-#endif
-    });
-    return colorClass;
-}
-
-static Class platformFontClass()
-{
-    static Class fontClass;
-    static std::once_flag flag;
-    std::call_once(flag, [] {
-#if USE(APPKIT)
-        fontClass = NSClassFromString(@"NSFont");
-#else
-        fontClass = NSClassFromString(@"UIFont");
-#endif
-    });
-    return fontClass;
-}
-
 static NSType typeFromObject(id object)
 {
     ASSERT(object);
@@ -113,7 +100,7 @@ static NSType typeFromObject(id object)
     // Specific classes handled.
     if ([object isKindOfClass:[NSArray class]])
         return NSType::Array;
-    if ([object isKindOfClass:platformColorClass()])
+    if ([object isKindOfClass:[CocoaColor class]])
         return NSType::Color;
     if ([object isKindOfClass:[NSData class]])
         return NSType::Data;
@@ -121,7 +108,7 @@ static NSType typeFromObject(id object)
         return NSType::Date;
     if ([object isKindOfClass:[NSDictionary class]])
         return NSType::Dictionary;
-    if ([object isKindOfClass:platformFontClass()])
+    if ([object isKindOfClass:[CocoaFont class]])
         return NSType::Font;
     if ([object isKindOfClass:[NSNumber class]])
         return NSType::Number;
@@ -147,7 +134,7 @@ static inline bool isSerializableFont(CTFontRef font)
 
 static inline bool isSerializableValue(id value)
 {
-    if ([value isKindOfClass:[PlatformFont class]])
+    if ([value isKindOfClass:[CocoaFont class]])
         return isSerializableFont((__bridge CTFontRef)value);
     return typeFromObject(value) != NSType::Unknown;
 }
@@ -318,7 +305,7 @@ static Optional<RetainPtr<id>> decodeDictionaryInternal(Decoder& decoder, NSArra
 
 #pragma mark - NSFont / UIFont
 
-static inline void encodeFontInternal(Encoder& encoder, PlatformFont *font)
+static inline void encodeFontInternal(Encoder& encoder, CocoaFont *font)
 {
     encode(encoder, font.fontDescriptor.fontAttributes);
 }
@@ -331,8 +318,7 @@ static Optional<RetainPtr<id>> decodeFontInternal(Decoder& decoder)
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    PlatformFontDescriptor *fontDescriptor = WebKit::fontDescriptorWithFontAttributes(fontAttributes.get());
-    return { [PlatformFont fontWithDescriptor:fontDescriptor size:0] };
+    return { WebKit::fontWithAttributes(fontAttributes.get(), 0) };
 
     END_BLOCK_OBJC_EXCEPTIONS
 
@@ -359,8 +345,18 @@ static inline Optional<RetainPtr<id>> decodeNumberInternal(Decoder& decoder)
 static void encodeSecureCodingInternal(Encoder& encoder, id <NSObject, NSSecureCoding> object)
 {
     auto archiver = adoptNS([[NSKeyedArchiver alloc] initRequiringSecureCoding:YES]);
+
+#if HAVE(NSFONT_WITH_OPTICAL_SIZING_BUG)
+    auto delegate = adoptNS([[WKSecureCodingFontAttributeNormalizer alloc] init]);
+    [archiver setDelegate:delegate.get()];
+#endif
+
     [archiver encodeObject:object forKey:NSKeyedArchiveRootObjectKey];
     [archiver finishEncoding];
+
+#if HAVE(NSFONT_WITH_OPTICAL_SIZING_BUG)
+    [archiver setDelegate:nil];
+#endif
 
     encode(encoder, (__bridge CFDataRef)[archiver encodedData]);
 }
@@ -435,13 +431,13 @@ void encodeObject(Encoder& encoder, id object)
         encodeArrayInternal(encoder, static_cast<NSArray *>(object));
         return;
     case NSType::Color:
-        encodeColorInternal(encoder, static_cast<PlatformColor *>(object));
+        encodeColorInternal(encoder, static_cast<CocoaColor *>(object));
         return;
     case NSType::Dictionary:
         encodeDictionaryInternal(encoder, static_cast<NSDictionary *>(object));
         return;
     case NSType::Font:
-        encodeFontInternal(encoder, static_cast<PlatformFont *>(object));
+        encodeFontInternal(encoder, static_cast<CocoaFont *>(object));
         return;
     case NSType::Number:
         encodeNumberInternal(encoder, static_cast<NSNumber *>(object));

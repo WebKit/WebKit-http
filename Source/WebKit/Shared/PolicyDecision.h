@@ -27,32 +27,31 @@
 
 #include "DownloadID.h"
 #include "NavigatingToAppBoundDomain.h"
+#include "SandboxExtension.h"
 #include "WebsitePoliciesData.h"
 #include <wtf/Forward.h>
 
 namespace WebKit {
 
-enum class NavigatedAwayFromAppBoundDomain : bool { Yes, No};
-
 struct PolicyDecision {
     WebCore::PolicyCheckIdentifier identifier { };
-    NavigatingToAppBoundDomain isNavigatingToAppBoundDomain { NavigatingToAppBoundDomain::No };
-    NavigatedAwayFromAppBoundDomain hasNavigatedAwayFromAppBoundDomain { NavigatedAwayFromAppBoundDomain::No };
+    Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain { WTF::nullopt };
     WebCore::PolicyAction policyAction { WebCore::PolicyAction::Ignore };
     uint64_t navigationID { 0 };
     DownloadID downloadID { 0 };
     Optional<WebsitePoliciesData> websitePoliciesData { WTF::nullopt };
+    Optional<SandboxExtension::Handle> sandboxExtensionHandle { WTF::nullopt };
 
     template<class Encoder>
     void encode(Encoder& encoder) const
     {
         encoder << identifier;
         encoder << isNavigatingToAppBoundDomain;
-        encoder << hasNavigatedAwayFromAppBoundDomain;
         encoder << policyAction;
         encoder << navigationID;
         encoder << downloadID;
         encoder << websitePoliciesData;
+        encoder << sandboxExtensionHandle;
     }
 
     template<class Decoder>
@@ -63,14 +62,9 @@ struct PolicyDecision {
         if (!decodedIdentifier)
             return WTF::nullopt;
         
-        Optional<NavigatingToAppBoundDomain> decodedIsNavigatingToAppBoundDomain;
+        Optional<Optional<NavigatingToAppBoundDomain>> decodedIsNavigatingToAppBoundDomain;
         decoder >> decodedIsNavigatingToAppBoundDomain;
         if (!decodedIsNavigatingToAppBoundDomain)
-            return WTF::nullopt;
-        
-        Optional<NavigatedAwayFromAppBoundDomain> decodedHasNavigatedAwayFromAppBoundDomain;
-        decoder >> decodedHasNavigatedAwayFromAppBoundDomain;
-        if (!decodedHasNavigatedAwayFromAppBoundDomain)
             return WTF::nullopt;
 
         Optional<WebCore::PolicyAction> decodedPolicyAction;
@@ -93,7 +87,12 @@ struct PolicyDecision {
         if (!decodedWebsitePoliciesData)
             return WTF::nullopt;
 
-        return {{ WTFMove(*decodedIdentifier), WTFMove(*decodedIsNavigatingToAppBoundDomain), WTFMove(*decodedHasNavigatedAwayFromAppBoundDomain), WTFMove(*decodedPolicyAction), WTFMove(*decodedNavigationID), WTFMove(*decodedDownloadID), WTFMove(*decodedWebsitePoliciesData) }};
+        Optional<Optional<SandboxExtension::Handle>> sandboxExtensionHandle;
+        decoder >> sandboxExtensionHandle;
+        if (!sandboxExtensionHandle)
+            return WTF::nullopt;
+
+        return {{ WTFMove(*decodedIdentifier), WTFMove(*decodedIsNavigatingToAppBoundDomain), WTFMove(*decodedPolicyAction), WTFMove(*decodedNavigationID), WTFMove(*decodedDownloadID), WTFMove(*decodedWebsitePoliciesData), WTFMove(*sandboxExtensionHandle)}};
     }
 };
 

@@ -39,7 +39,9 @@
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 
-#define HAS_CORE_TEXT_WIDTH_ATTRIBUTE (PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
+// FIXME: This seems like it should be in PlatformHave.h.
+// FIXME: Likely we can remove this special case for watchOS and tvOS.
+#define HAS_CORE_TEXT_WIDTH_ATTRIBUTE (PLATFORM(COCOA) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV))
 
 namespace WebCore {
 
@@ -705,13 +707,13 @@ RefPtr<Font> FontCache::similarFont(const FontDescription& description, const At
 #if PLATFORM(IOS_FAMILY)
     // Substitute the default monospace font for well-known monospace fonts.
     if (equalLettersIgnoringASCIICase(family, "monaco") || equalLettersIgnoringASCIICase(family, "menlo")) {
-        static NeverDestroyed<AtomString> courier("courier", AtomString::ConstructFromLiteral);
+        static MainThreadNeverDestroyed<const AtomString> courier("courier", AtomString::ConstructFromLiteral);
         return fontForFamily(description, courier);
     }
 
     // Substitute Verdana for Lucida Grande.
     if (equalLettersIgnoringASCIICase(family, "lucida grande")) {
-        static NeverDestroyed<AtomString> verdana("verdana", AtomString::ConstructFromLiteral);
+        static MainThreadNeverDestroyed<const AtomString> verdana("verdana", AtomString::ConstructFromLiteral);
         return fontForFamily(description, verdana);
     }
 #endif
@@ -720,8 +722,8 @@ RefPtr<Font> FontCache::similarFont(const FontDescription& description, const At
     static NeverDestroyed<String> pashto(MAKE_STATIC_STRING_IMPL("Pashto"));
     static NeverDestroyed<String> urdu(MAKE_STATIC_STRING_IMPL("Urdu"));
     static String* matchWords[3] = { &arabic.get(), &pashto.get(), &urdu.get() };
-    static NeverDestroyed<AtomString> geezaPlain("GeezaPro", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<AtomString> geezaBold("GeezaPro-Bold", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> geezaPlain("GeezaPro", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> geezaBold("GeezaPro-Bold", AtomString::ConstructFromLiteral);
     for (String* matchWord : matchWords) {
         if (family.containsIgnoringASCIICase(*matchWord))
             return fontForFamily(description, isFontWeightBold(description.weight()) ? geezaBold : geezaPlain);
@@ -848,32 +850,16 @@ void FontCache::setFontWhitelist(const Vector<String>& inputWhitelist)
 
 class FontDatabase {
 public:
-#if !HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
-    static FontDatabase& singleton()
-    {
-        static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::Yes);
-        return database;
-    }
-#endif
-
     static FontDatabase& singletonAllowingUserInstalledFonts()
     {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
         static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::Yes);
         return database;
-#else
-        return singleton();
-#endif
     }
 
     static FontDatabase& singletonDisallowingUserInstalledFonts()
     {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
         static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::No);
         return database;
-#else
-        return singleton();
-#endif
     }
 
     FontDatabase(const FontDatabase&) = delete;
@@ -1064,7 +1050,8 @@ static VariationCapabilities variationCapabilitiesForFontDescriptor(CTFontDescri
     }
 
     bool optOutFromGXNormalization = false;
-#if (PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
+// FIXME: Likely we can remove this special case for watchOS and tvOS.
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     optOutFromGXNormalization = CTFontDescriptorIsSystemUIFont(fontDescriptor);
 #endif
 
@@ -1394,19 +1381,15 @@ static inline bool isArabicCharacter(UChar character)
 #endif
 
 #if ASSERT_ENABLED
-static inline bool isUserInstalledFont(CTFontRef font)
+static bool isUserInstalledFont(CTFontRef font)
 {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
-    auto isUserInstalledFont = adoptCF(static_cast<CFBooleanRef>(CTFontCopyAttribute(font, kCTFontUserInstalledAttribute)));
-    return isUserInstalledFont && CFBooleanGetValue(isUserInstalledFont.get());
-#else
-    UNUSED_PARAM(font);
-    return false;
-#endif
+    auto attribute = adoptCF(static_cast<CFBooleanRef>(CTFontCopyAttribute(font, kCTFontUserInstalledAttribute)));
+    return attribute && CFBooleanGetValue(attribute.get());
 }
-#endif // ASSERT_ENABLED
+#endif
 
-#if !USE(PLATFORM_SYSTEM_FALLBACK_LIST) && (PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS))
+// FIXME: Why not do this on watchOS and tvOS?
+#if !USE(PLATFORM_SYSTEM_FALLBACK_LIST) && (PLATFORM(MAC) || PLATFORM(IOS))
 static RetainPtr<CTFontRef> createFontForCharacters(CTFontRef font, CFStringRef localeString, AllowUserInstalledFonts, const UChar* characters, unsigned length)
 {
     CFIndex coveredLength = 0;
@@ -1417,13 +1400,13 @@ static RetainPtr<CTFontRef> createFontForCharacters(CTFontRef font, CFStringRef 
 {
     CFIndex coveredLength = 0;
     auto fallbackOption = allowUserInstalledFonts == AllowUserInstalledFonts::No ? kCTFontFallbackOptionSystem : kCTFontFallbackOptionDefault;
-    return adoptCF(CTFontCreateForCharactersWithLanguageAndOption(font, characters, length, localeString, fallbackOption, &coveredLength));
+    return adoptCF(CTFontCreateForCharactersWithLanguageAndOption(font, reinterpret_cast<const UniChar*>(characters), length, localeString, fallbackOption, &coveredLength));
 }
 #else
 static RetainPtr<CTFontRef> createFontForCharacters(CTFontRef font, CFStringRef localeString, AllowUserInstalledFonts, const UChar* characters, unsigned length)
 {
     CFIndex coveredLength = 0;
-    return adoptCF(CTFontCreateForCharactersWithLanguage(font, characters, length, localeString, &coveredLength));
+    return adoptCF(CTFontCreateForCharactersWithLanguage(font, reinterpret_cast<const UniChar*>(characters), length, localeString, &coveredLength));
 }
 #endif
 
@@ -1432,7 +1415,8 @@ static RetainPtr<CTFontRef> lookupFallbackFont(CTFontRef font, FontSelectionValu
     ASSERT(length > 0);
 
     RetainPtr<CFStringRef> localeString;
-#if (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS) || PLATFORM(MAC)
+// FIXME: Why not do this on watchOS and tvOS?
+#if PLATFORM(IOS) || PLATFORM(MAC)
     if (!locale.isNull())
         localeString = locale.string().createCFString();
 #else
@@ -1507,10 +1491,10 @@ const AtomString& FontCache::platformAlternateFamilyName(const AtomString& famil
     static const UChar weiruanYaHeiString[] = { 0x5fae, 0x8f6f, 0x96c5, 0x9ed1 };
     static const UChar weiruanZhengHeitiString[] = { 0x5fae, 0x8edf, 0x6b63, 0x9ed1, 0x9ad4 };
 
-    static NeverDestroyed<AtomString> songtiSC("Songti SC", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<AtomString> songtiTC("Songti TC", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<AtomString> heitiSCReplacement("PingFang SC", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<AtomString> heitiTCReplacement("PingFang TC", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> songtiSC("Songti SC", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> songtiTC("Songti TC", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> heitiSCReplacement("PingFang SC", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> heitiTCReplacement("PingFang TC", AtomString::ConstructFromLiteral);
 
     switch (familyName.length()) {
     case 2:
@@ -1550,17 +1534,12 @@ const AtomString& FontCache::platformAlternateFamilyName(const AtomString& famil
 
 void addAttributesForInstalledFonts(CFMutableDictionaryRef attributes, AllowUserInstalledFonts allowUserInstalledFonts)
 {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
     if (allowUserInstalledFonts == AllowUserInstalledFonts::No) {
         CFDictionaryAddValue(attributes, kCTFontUserInstalledAttribute, kCFBooleanFalse);
         CTFontFallbackOption fallbackOption = kCTFontFallbackOptionSystem;
         auto fallbackOptionNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &fallbackOption));
         CFDictionaryAddValue(attributes, kCTFontFallbackOptionAttribute, fallbackOptionNumber.get());
     }
-#else
-    UNUSED_PARAM(attributes);
-    UNUSED_PARAM(allowUserInstalledFonts);
-#endif
 }
 
 RetainPtr<CTFontRef> createFontForInstalledFonts(CTFontDescriptorRef fontDescriptor, CGFloat size, AllowUserInstalledFonts allowUserInstalledFonts)
@@ -1576,7 +1555,6 @@ RetainPtr<CTFontRef> createFontForInstalledFonts(CTFontDescriptorRef fontDescrip
 
 static inline bool isFontMatchingUserInstalledFontFallback(CTFontRef font, AllowUserInstalledFonts allowUserInstalledFonts)
 {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
     bool willFallbackToSystemOnly = false;
     if (auto fontFallbackOptionAttributeRef = adoptCF(static_cast<CFNumberRef>(CTFontCopyAttribute(font, kCTFontFallbackOptionAttribute)))) {
         int64_t fontFallbackOptionAttribute;
@@ -1586,11 +1564,6 @@ static inline bool isFontMatchingUserInstalledFontFallback(CTFontRef font, Allow
 
     bool shouldFallbackToSystemOnly = allowUserInstalledFonts == AllowUserInstalledFonts::No;
     return willFallbackToSystemOnly == shouldFallbackToSystemOnly;
-#else
-    UNUSED_PARAM(font);
-    UNUSED_PARAM(allowUserInstalledFonts);
-    return true;
-#endif
 }
 
 RetainPtr<CTFontRef> createFontForInstalledFonts(CTFontRef font, AllowUserInstalledFonts allowUserInstalledFonts)
@@ -1609,28 +1582,19 @@ RetainPtr<CTFontRef> createFontForInstalledFonts(CTFontRef font, AllowUserInstal
 
 void addAttributesForWebFonts(CFMutableDictionaryRef attributes, AllowUserInstalledFonts allowUserInstalledFonts)
 {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
     if (allowUserInstalledFonts == AllowUserInstalledFonts::No) {
         CTFontFallbackOption fallbackOption = kCTFontFallbackOptionSystem;
         auto fallbackOptionNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &fallbackOption));
         CFDictionaryAddValue(attributes, kCTFontFallbackOptionAttribute, fallbackOptionNumber.get());
     }
-#else
-    UNUSED_PARAM(attributes);
-    UNUSED_PARAM(allowUserInstalledFonts);
-#endif
 }
 
 RetainPtr<CFSetRef> installedFontMandatoryAttributes(AllowUserInstalledFonts allowUserInstalledFonts)
 {
-#if HAVE(DISALLOWABLE_USER_INSTALLED_FONTS)
     if (allowUserInstalledFonts == AllowUserInstalledFonts::No) {
         CFTypeRef mandatoryAttributesValues[] = { kCTFontFamilyNameAttribute, kCTFontPostScriptNameAttribute, kCTFontEnabledAttribute, kCTFontUserInstalledAttribute, kCTFontFallbackOptionAttribute };
         return adoptCF(CFSetCreate(kCFAllocatorDefault, mandatoryAttributesValues, WTF_ARRAY_LENGTH(mandatoryAttributesValues), &kCFTypeSetCallBacks));
     }
-#else
-    UNUSED_PARAM(allowUserInstalledFonts);
-#endif
     return nullptr;
 }
 
@@ -1642,7 +1606,8 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
         return *result;
 
     // LastResort is guaranteed to be non-null.
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || PLATFORM(MAC)
+// FIXME: Likely we can remove this special case for watchOS and tvOS.
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     auto fontDescriptor = adoptCF(CTFontDescriptorCreateLastResort());
     auto font = adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), fontDescription.computedPixelSize(), nullptr));
 #else
@@ -1679,7 +1644,7 @@ void FontCache::prewarm(const PrewarmInformation& prewarmInformation)
             if (auto warmingFont = adoptCF(CTFontCreateWithName(cfFontName.get(), 0, nullptr))) {
                 // This is sufficient to warm CoreText caches for language and character specific fallbacks.
                 CFIndex coveredLength = 0;
-                UChar character = ' ';
+                UniChar character = ' ';
 
 #if HAVE(CTFONTCREATEFORCHARACTERSWITHLANGUAGEANDOPTION)
                 auto fallbackWarmingFont = adoptCF(CTFontCreateForCharactersWithLanguageAndOption(warmingFont.get(), &character, 1, nullptr, kCTFontFallbackOptionSystem, &coveredLength));

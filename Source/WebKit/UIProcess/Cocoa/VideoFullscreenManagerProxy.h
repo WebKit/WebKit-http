@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 #include "MessageReceiver.h"
 #include <WebCore/AudioSession.h>
@@ -130,11 +130,11 @@ public:
     void applicationDidBecomeActive();
     bool isVisible() const;
 
+    void setMockVideoPresentationModeEnabled(bool enabled) { m_mockVideoPresentationModeEnabled = enabled; }
+
     void requestRouteSharingPolicyAndContextUID(uint64_t contextId, CompletionHandler<void(WebCore::RouteSharingPolicy, String)>&&);
 
-#if ENABLE(VIDEO_PRESENTATION_MODE)
     bool isPlayingVideoInEnhancedFullscreen() const;
-#endif
 
     PlatformVideoFullscreenInterface* controlsManagerInterface();
 
@@ -151,8 +151,11 @@ private:
     ModelInterfaceTuple& ensureModelAndInterface(uint64_t contextId);
     VideoFullscreenModelContext& ensureModel(uint64_t contextId);
     PlatformVideoFullscreenInterface& ensureInterface(uint64_t contextId);
+    PlatformVideoFullscreenInterface* findInterface(uint64_t contextId);
     void addClientForContext(uint64_t contextId);
     void removeClientForContext(uint64_t contextId);
+
+    void hasVideoInPictureInPictureDidChange(bool);
 
     // Messages from VideoFullscreenManager
     void setupFullscreenWithID(uint64_t contextId, uint32_t videoLayerID, const WebCore::IntRect& initialRect, float hostingScaleFactor, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicture, bool standby);
@@ -165,9 +168,7 @@ private:
     void cleanupFullscreen(uint64_t contextId);
     void preparedToReturnToInline(uint64_t contextId, bool visible, WebCore::IntRect inlineRect);
     void preparedToExitFullscreen(uint64_t contextId);
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
     void exitFullscreenWithoutAnimationToMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
-#endif
 
     // Messages to VideoFullscreenManager
     void requestFullscreenMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false);
@@ -184,6 +185,8 @@ private:
     void fullscreenModeChanged(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
     void fullscreenMayReturnToInline(uint64_t contextId);
 
+    bool m_mockVideoPresentationModeEnabled { false };
+
     WebPageProxy* m_page;
     Ref<PlaybackSessionManagerProxy> m_playbackSessionManagerProxy;
     HashMap<uint64_t, ModelInterfaceTuple> m_contextMap;
@@ -193,5 +196,4 @@ private:
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-
+#endif // ENABLE(VIDEO_PRESENTATION_MODE)

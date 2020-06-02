@@ -23,8 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #import <Foundation/Foundation.h>
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -86,6 +84,11 @@ enum LSSessionID {
 #endif
 
 #endif // !USE(APPLE_INTERNAL_SDK)
+
+@interface _LSDService : NSObject <NSXPCListenerDelegate>
++ (NSArray<Class> *)allServiceClasses;
++ (NSXPCConnection *)XPCConnectionToService;
+@end
 
 #if PLATFORM(MAC)
 

@@ -41,6 +41,7 @@
 
 #if PLATFORM(GTK)
 #include <WebCore/GtkUtilities.h>
+#include <WebCore/GtkVersioning.h>
 #endif
 
 using namespace WebKit;
@@ -139,7 +140,7 @@ private:
         webkitWindowPropertiesSetResizable(webkit_web_view_get_window_properties(m_webView), resizable);
     }
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) && !USE(GTK4)
     static gboolean windowConfigureEventCallback(GtkWindow* window, GdkEventConfigure*, GdkRectangle* targetGeometry)
     {
         GdkRectangle geometry = { 0, 0, 0, 0 };
@@ -160,12 +161,12 @@ private:
         RunLoop::current().stop();
         return FALSE;
     }
+#endif // PLATFORM(GTK) && !USE(GTK4)
 
     void setWindowFrameTimerFired()
     {
         RunLoop::current().stop();
     }
-#endif
 
     void setWindowFrame(WebPageProxy&, const WebCore::FloatRect& frame) final
     {
@@ -174,10 +175,12 @@ private:
         GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
         if (webkit_web_view_is_controlled_by_automation(m_webView) && WebCore::widgetIsOnscreenToplevelWindow(window) && gtk_widget_get_visible(window)) {
             bool needsMove = false;
+            // Querying and setting window positions is not supported in GTK4.
+#if !USE(GTK4)
             // Position a toplevel window is not supported under wayland.
 #if PLATFORM(WAYLAND)
             if (WebCore::PlatformDisplay::sharedDisplay().type() != WebCore::PlatformDisplay::Type::Wayland)
-#endif
+#endif // PLATFORM(WAYLAND)
             {
                 if (geometry.x >= 0 && geometry.y >= 0) {
                     int x, y;
@@ -185,6 +188,7 @@ private:
                     needsMove = x != geometry.x || y != geometry.y;
                 }
             }
+#endif // !USE(GTK4)
 
             bool needsResize = false;
             if (geometry.width > 0 && geometry.height > 0) {
@@ -196,9 +200,12 @@ private:
             if (!needsMove && !needsResize)
                 return;
 
+            // There is no GtkWidget::configure-event in GTK4, move is not supported.
+#if !USE(GTK4)
             auto signalID = g_signal_connect(window, "configure-event", G_CALLBACK(windowConfigureEventCallback), &geometry);
             if (needsMove)
                 gtk_window_move(GTK_WINDOW(window), geometry.x, geometry.y);
+#endif // !USE(GTK4)
             if (needsResize)
                 gtk_window_resize(GTK_WINDOW(window), geometry.width, geometry.height);
 
@@ -209,10 +216,12 @@ private:
             timer->startOneShot(200_ms);
             RunLoop::run();
             timer = nullptr;
+#if !USE(GTK4)
             g_signal_handler_disconnect(window, signalID);
+#endif
         } else
             webkitWindowPropertiesSetGeometry(webkit_web_view_get_window_properties(m_webView), &geometry);
-#endif
+#endif // PLATFORM(GTK)
     }
 
     void windowFrame(WebPageProxy&, Function<void(WebCore::FloatRect)>&& completionHandler) final
@@ -223,6 +232,17 @@ private:
         if (WebCore::widgetIsOnscreenToplevelWindow(window) && gtk_widget_get_visible(window)) {
             gtk_window_get_position(GTK_WINDOW(window), &geometry.x, &geometry.y);
             gtk_window_get_size(GTK_WINDOW(window), &geometry.width, &geometry.height);
+        } else {
+            GdkRectangle defaultGeometry;
+            webkit_window_properties_get_geometry(webkit_web_view_get_window_properties(m_webView), &defaultGeometry);
+            if ((!defaultGeometry.width || !defaultGeometry.height) && WebCore::widgetIsOnscreenToplevelWindow(window)) {
+                int defaultWidth, defaultHeight;
+                gtk_window_get_default_size(GTK_WINDOW(window), &defaultWidth, &defaultHeight);
+                if (!defaultGeometry.width && defaultWidth != -1)
+                    geometry.width = defaultWidth;
+                if (!defaultGeometry.height && defaultHeight != -1)
+                    geometry.height = defaultHeight;
+            }
         }
         completionHandler(WebCore::FloatRect(geometry));
 #elif PLATFORM(WPE)
@@ -274,6 +294,20 @@ private:
     }
 
 #if PLATFORM(GTK)
+    bool takeFocus(WebPageProxy* page, WKFocusDirection direction) final
+    {
+        if (!gtk_widget_has_focus(GTK_WIDGET(m_webView))) {
+            focus(page);
+            return true;
+        }
+        return gtk_widget_child_focus(gtk_widget_get_toplevel(GTK_WIDGET(m_webView)), direction == kWKFocusDirectionBackward ? GTK_DIR_TAB_BACKWARD : GTK_DIR_TAB_FORWARD);
+    }
+
+    void focus(WebPageProxy*) final
+    {
+        gtk_widget_grab_focus(GTK_WIDGET(m_webView));
+    }
+
     void printFrame(WebPageProxy&, WebFrameProxy& frame, CompletionHandler<void()>&& completionHandler) final
     {
         webkitWebViewPrintFrame(m_webView, &frame);

@@ -27,6 +27,7 @@
 #import "WKWebViewConfigurationInternal.h"
 
 #import "APIPageConfiguration.h"
+#import "UserInterfaceIdiom.h"
 #import "VersionChecks.h"
 #import "WKPreferences.h"
 #import "WKProcessPool.h"
@@ -46,6 +47,7 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/URLParser.h>
 #import <wtf/WeakObjCPtr.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
@@ -191,7 +193,7 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
 #if !PLATFORM(WATCHOS)
     _allowsPictureInPictureMediaPlayback = YES;
 #endif
-    _allowsInlineMediaPlayback = WebCore::deviceClass() == MGDeviceClassiPad;
+    _allowsInlineMediaPlayback = WebKit::currentUserInterfaceIdiomIsPad();
     _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
     _allowsInlineMediaPlaybackAfterFullscreen = !_allowsInlineMediaPlayback;
     _mediaDataLoadsAutomatically = NO;
@@ -590,6 +592,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     return _pageConfiguration->copy();
 }
 
+- (BOOL)limitsNavigationsToAppBoundDomains
+{
+    return _pageConfiguration->limitsNavigationsToAppBoundDomains();
+}
+
+- (void)setLimitsNavigationsToAppBoundDomains:(BOOL)limitsToAppBoundDomains
+{
+    _pageConfiguration->setLimitsNavigationsToAppBoundDomains(limitsToAppBoundDomains);
+}
+
 @end
 
 @implementation WKWebViewConfiguration (WKPrivate)
@@ -717,12 +729,12 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (BOOL)_alwaysRunsAtForegroundPriority
 {
-    return _pageConfiguration->alwaysRunsAtForegroundPriority();
+    return _pageConfiguration->clientNavigationsRunAtForegroundPriority();
 }
 
 - (void)_setAlwaysRunsAtForegroundPriority:(BOOL)alwaysRunsAtForegroundPriority
 {
-    _pageConfiguration->setAlwaysRunsAtForegroundPriority(alwaysRunsAtForegroundPriority);
+    _pageConfiguration->setClientNavigationsRunAtForegroundPriority(alwaysRunsAtForegroundPriority);
 }
 
 - (BOOL)_inlineMediaPlaybackRequiresPlaysInlineAttribute
@@ -854,7 +866,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (void)_setAttachmentFileWrapperClass:(Class)attachmentFileWrapperClass
 {
-    if (attachmentFileWrapperClass && ![attachmentFileWrapperClass isSubclassOfClass:[NSFileWrapper self]])
+    if (attachmentFileWrapperClass && ![attachmentFileWrapperClass isSubclassOfClass:[NSFileWrapper class]])
         [NSException raise:NSInvalidArgumentException format:@"Class %@ does not inherit from NSFileWrapper", attachmentFileWrapperClass];
 
     _attachmentFileWrapperClass = attachmentFileWrapperClass;
@@ -897,20 +909,12 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (NSArray<NSString *> *)_corsDisablingPatterns
 {
-    auto& vector = _pageConfiguration->corsDisablingPatterns();
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:vector.size()];
-    for (auto& pattern : vector)
-        [array addObject:pattern];
-    return array;
+    return createNSArray(_pageConfiguration->corsDisablingPatterns()).autorelease();
 }
 
 - (void)_setCORSDisablingPatterns:(NSArray<NSString *> *)patterns
 {
-    Vector<String> vector;
-    vector.reserveInitialCapacity(patterns.count);
-    for (NSString *pattern in patterns)
-        vector.uncheckedAppend(pattern);
-    _pageConfiguration->setCORSDisablingPatterns(WTFMove(vector));
+    _pageConfiguration->setCORSDisablingPatterns(makeVector<String>(patterns));
 }
 
 - (void)_setLoadsFromNetwork:(BOOL)loads
@@ -931,6 +935,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 - (BOOL)_loadsSubresources
 {
     return _pageConfiguration->loadsSubresources();
+}
+
+- (BOOL)_deferrableUserScriptsShouldWaitUntilNotification
+{
+    return _pageConfiguration->userScriptsShouldWaitUntilNotification();
+}
+
+- (void)_setDeferrableUserScriptsShouldWaitUntilNotification:(BOOL)value
+{
+    _pageConfiguration->setUserScriptsShouldWaitUntilNotification(value);
 }
 
 - (void)_setCrossOriginAccessControlCheckEnabled:(BOOL)enabled
@@ -1238,6 +1252,23 @@ static _WKWebViewCategory toWKWebViewCategory(WebKit::WebViewCategory category)
 - (void)_setIgnoresAppBoundDomains:(BOOL)ignoresAppBoundDomains
 {
     _pageConfiguration->setIgnoresAppBoundDomains(ignoresAppBoundDomains);
+}
+
+- (BOOL)_shouldRelaxThirdPartyCookieBlocking
+{
+    return _pageConfiguration->shouldRelaxThirdPartyCookieBlocking() == WebCore::ShouldRelaxThirdPartyCookieBlocking::Yes;
+}
+
+- (void)_setShouldRelaxThirdPartyCookieBlocking:(BOOL)relax
+{
+    bool allowed = WebCore::applicationBundleIdentifier() == "com.apple.WebKit.TestWebKitAPI"_s;
+#if PLATFORM(MAC)
+    allowed = allowed || WebCore::MacApplication::isSafari();
+#endif
+    if (!allowed)
+        [NSException raise:NSObjectNotAvailableException format:@"_shouldRelaxThirdPartyCookieBlocking may only be used by Mac Safari."];
+
+    _pageConfiguration->setShouldRelaxThirdPartyCookieBlocking(relax ? WebCore::ShouldRelaxThirdPartyCookieBlocking::Yes : WebCore::ShouldRelaxThirdPartyCookieBlocking::No);
 }
 
 - (NSString *)_processDisplayName

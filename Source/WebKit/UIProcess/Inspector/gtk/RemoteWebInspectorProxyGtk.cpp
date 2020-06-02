@@ -34,6 +34,7 @@
 #include "WebKitWebViewBasePrivate.h"
 #include "WebPageGroup.h"
 #include <WebCore/CertificateInfo.h>
+#include <WebCore/GtkVersioning.h>
 #include <wtf/text/Base64.h>
 
 namespace WebKit {
@@ -72,8 +73,12 @@ WebPageProxy* RemoteWebInspectorProxy::platformCreateFrontendPageAndWindow()
     g_object_add_weak_pointer(G_OBJECT(m_webView), reinterpret_cast<void**>(&m_webView));
 
     m_window = webkitInspectorWindowNew();
+#if USE(GTK4)
+    gtk_window_set_child(GTK_WINDOW(m_window), m_webView);
+#else
     gtk_container_add(GTK_CONTAINER(m_window), m_webView);
     gtk_widget_show(m_webView);
+#endif
 
     g_object_add_weak_pointer(G_OBJECT(m_window), reinterpret_cast<void**>(&m_window));
     gtk_window_present(GTK_WINDOW(m_window));
@@ -109,7 +114,7 @@ static void remoteFileReplaceContentsCallback(GObject* sourceObject, GAsyncResul
 
     auto* page = static_cast<WebPageProxy*>(userData);
     GUniquePtr<char> path(g_file_get_path(file));
-    page->process().send(Messages::RemoteWebInspectorUI::DidSave(path.get()), page->webPageID());
+    page->send(Messages::RemoteWebInspectorUI::DidSave(path.get()));
 }
 
 void RemoteWebInspectorProxy::platformSave(const String& suggestedURL, const String& content, bool base64Encoded, bool forceSaveDialog)
@@ -120,7 +125,9 @@ void RemoteWebInspectorProxy::platformSave(const String& suggestedURL, const Str
         GTK_WINDOW(m_window), GTK_FILE_CHOOSER_ACTION_SAVE, "Save", "Cancel"));
 
     GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog.get());
+#if !USE(GTK4)
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+#endif
 
     // Some inspector views (Audits for instance) use a custom URI scheme, such
     // as web-inspector. So we can't rely on the URL being a valid file:/// URL

@@ -23,8 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#pragma once
-
 #import "SecurityOrigin.h"
 #import <Foundation/NSURLSession.h>
 #import <wtf/HashSet.h>
@@ -62,7 +60,7 @@ WEBCORE_EXPORT @interface WebCoreNSURLSession : NSObject {
     WeakObjCPtr<id<NSURLSessionDelegate>> _delegate;
     RetainPtr<NSOperationQueue> _queue;
     RetainPtr<NSString> _sessionDescription;
-    HashSet<RetainPtr<CFTypeRef>> _dataTasks;
+    HashSet<RetainPtr<WebCoreNSURLSessionDataTask>> _dataTasks;
     HashSet<RefPtr<WebCore::SecurityOrigin>> _origins;
     Lock _dataTasksLock;
     BOOL _invalidated;

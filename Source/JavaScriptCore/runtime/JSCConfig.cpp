@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,55 +26,18 @@
 #include "config.h"
 #include "JSCConfig.h"
 
-#include <wtf/ResourceUsage.h>
-#include <wtf/StdLibExtras.h>
-
-#if OS(DARWIN)
-#include <mach/mach.h>
-#elif OS(LINUX)
-#include <sys/mman.h>
-#endif
-
 namespace JSC {
-
-alignas(ConfigSizeToProtect) JS_EXPORT_PRIVATE Config g_jscConfig;
 
 void Config::disableFreezingForTesting()
 {
-    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen);
+    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen());
     g_jscConfig.disabledFreezingForTesting = true;
 }
 
 void Config::enableRestrictedOptions()
 {
-    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen);
+    RELEASE_ASSERT(!g_jscConfig.isPermanentlyFrozen());
     g_jscConfig.restrictedOptionsEnabled = true;
-}
-    
-void Config::permanentlyFreeze()
-{
-    RELEASE_ASSERT(roundUpToMultipleOf(pageSize(), ConfigSizeToProtect) == ConfigSizeToProtect);
-
-    if (!g_jscConfig.isPermanentlyFrozen)
-        g_jscConfig.isPermanentlyFrozen = true;
-
-    int result = 0;
-#if OS(DARWIN)
-    enum {
-        AllowPermissionChangesAfterThis = false,
-        DisallowPermissionChangesAfterThis = true
-    };
-
-    // There's no going back now!
-    result = vm_protect(mach_task_self(), reinterpret_cast<vm_address_t>(&g_jscConfig), ConfigSizeToProtect, DisallowPermissionChangesAfterThis, VM_PROT_READ);
-#elif OS(LINUX)
-    result = mprotect(&g_jscConfig, ConfigSizeToProtect, PROT_READ);
-#elif OS(WINDOWS)
-    // FIXME: Implement equivalent, maybe with VirtualProtect.
-    // Also need to fix WebKitTestRunner.
-#endif
-    RELEASE_ASSERT(!result);
-    RELEASE_ASSERT(g_jscConfig.isPermanentlyFrozen);
 }
 
 } // namespace JSC

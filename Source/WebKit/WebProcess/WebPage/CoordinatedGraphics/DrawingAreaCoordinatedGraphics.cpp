@@ -95,6 +95,9 @@ void DrawingAreaCoordinatedGraphics::setNeedsDisplayInRect(const IntRect& rect)
 {
     if (m_layerTreeHost) {
         ASSERT(m_dirtyRegion.isEmpty());
+#if USE(GRAPHICS_LAYER_TEXTURE_MAPPER)
+        m_layerTreeHost->setNonCompositedContentsNeedDisplay(rect);
+#endif
         return;
     }
 
@@ -370,14 +373,12 @@ void DrawingAreaCoordinatedGraphics::layerHostDidFlushLayers()
 }
 #endif
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<DisplayRefreshMonitor> DrawingAreaCoordinatedGraphics::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
     if (!m_layerTreeHost || m_wantsToExitAcceleratedCompositingMode || exitAcceleratedCompositingModePending())
         return nullptr;
     return m_layerTreeHost->createDisplayRefreshMonitor(displayID);
 }
-#endif
 
 void DrawingAreaCoordinatedGraphics::activityStateDidChange(OptionSet<ActivityState::Flag> changed, ActivityStateChangeID, const Vector<CallbackID>&)
 {
@@ -578,7 +579,7 @@ void DrawingAreaCoordinatedGraphics::enterAcceleratedCompositingMode(GraphicsLay
     auto changeWindowScreen = [&] {
         // In order to ensure that we get a unique DisplayRefreshMonitor per-DrawingArea (necessary because ThreadedDisplayRefreshMonitor
         // is driven by the ThreadedCompositor of the drawing area), give each page a unique DisplayID derived from WebPage's unique ID.
-        m_webPage.windowScreenDidChange(m_layerTreeHost->displayID());
+        m_webPage.windowScreenDidChange(m_layerTreeHost->displayID(), WTF::nullopt);
     };
 
     ASSERT(!m_layerTreeHost);
@@ -590,7 +591,7 @@ void DrawingAreaCoordinatedGraphics::enterAcceleratedCompositingMode(GraphicsLay
         if (!m_layerTreeStateIsFrozen)
             m_layerTreeHost->setLayerFlushSchedulingEnabled(true);
     } else {
-#if USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS) || USE(GRAPHICS_LAYER_TEXTURE_MAPPER)
         m_layerTreeHost = makeUnique<LayerTreeHost>(m_webPage);
         changeWindowScreen();
 #else
@@ -634,7 +635,7 @@ void DrawingAreaCoordinatedGraphics::exitAcceleratedCompositingMode()
     m_discardPreviousLayerTreeHostTimer.startOneShot(5_s);
 
     // Always use the primary display ID (0) when not in accelerated compositing mode.
-    m_webPage.windowScreenDidChange(0);
+    m_webPage.windowScreenDidChange(0, WTF::nullopt);
 
     m_dirtyRegion = m_webPage.bounds();
 

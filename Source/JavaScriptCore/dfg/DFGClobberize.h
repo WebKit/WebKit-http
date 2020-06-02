@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,12 @@ namespace JSC { namespace DFG {
 
 template<typename ReadFunctor, typename WriteFunctor, typename DefFunctor>
 void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFunctor& write, const DefFunctor& def)
+{
+    clobberize(graph, node, read, write, def, [] { });
+}
+
+template<typename ReadFunctor, typename WriteFunctor, typename DefFunctor, typename ClobberTopFunctor>
+void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFunctor& write, const DefFunctor& def, const ClobberTopFunctor& clobberTopFunctor)
 {
     // Some notes:
     //
@@ -125,6 +131,53 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         ASSERT(!node->origin.semantic.inlineCallFrame());
         read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
     }
+
+    auto clobberTop = [&] {
+        if (Options::validateDFGClobberize())
+            clobberTopFunctor();
+        read(World);
+        write(Heap);
+    };
+
+    // Since Fixup can widen our ArrayModes based on profiling from other nodes we pessimistically assume
+    // all nodes with an ArrayMode can clobber top. We allow some nodes like CheckArray because they can
+    // only exit.
+    if (graph.m_planStage < PlanStage::AfterFixup && node->hasArrayMode()) {
+        switch (node->op()) {
+        case CheckArray:
+        case CheckArrayOrEmpty:
+            break;
+        case GetIndexedPropertyStorage:
+        case GetArrayLength:
+        case GetVectorLength:
+        case InByVal:
+        case PutByValDirect:
+        case PutByVal:
+        case PutByValAlias:
+        case GetByVal:
+        case StringCharAt:
+        case StringCharCodeAt:
+        case StringCodePointAt:
+        case Arrayify:
+        case ArrayifyToStructure:
+        case ArrayPush:
+        case ArrayPop:
+        case ArrayIndexOf:
+        case HasIndexedProperty:
+        case AtomicsAdd:
+        case AtomicsAnd:
+        case AtomicsCompareExchange:
+        case AtomicsExchange:
+        case AtomicsLoad:
+        case AtomicsOr:
+        case AtomicsStore:
+        case AtomicsSub:
+        case AtomicsXor:
+            return clobberTop();
+        default:
+            DFG_CRASH(graph, node, "Unhandled ArrayMode opcode.");
+        }
+    }
     
     switch (node->op()) {
     case JSConstant:
@@ -175,6 +228,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case IsUndefinedOrNull:
     case IsBoolean:
     case IsNumber:
+    case IsBigInt:
     case NumberIsInteger:
     case IsObject:
     case IsTypedArrayView:
@@ -201,47 +255,37 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case AtomicsIsLockFree:
         if (node->child1().useKind() == Int32Use)
             def(PureValue(node));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
         
     case ArithUnary:
         if (node->child1().useKind() == DoubleRepUse)
             def(PureValue(node, static_cast<std::underlying_type<Arith::UnaryType>::type>(node->arithUnaryType())));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
     case ArithFRound:
     case ArithSqrt:
         if (node->child1().useKind() == DoubleRepUse)
             def(PureValue(node));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
     case ArithAbs:
         if (node->child1().useKind() == Int32Use || node->child1().useKind() == DoubleRepUse)
             def(PureValue(node, node->arithMode()));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
     case ArithClz32:
         if (node->child1().useKind() == Int32Use || node->child1().useKind() == KnownInt32Use)
             def(PureValue(node));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
     case ArithNegate:
@@ -249,10 +293,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             || node->child1().useKind() == DoubleRepUse
             || node->child1().useKind() == Int52RepUse)
             def(PureValue(node, node->arithMode()));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
     case IsCellWithType:
@@ -260,18 +302,16 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case ValueBitNot:
-        if (node->child1().useKind() == BigIntUse) {
+        if (node->child1().useKind() == AnyBigIntUse || node->child1().useKind() == BigInt32Use || node->child1().useKind() == HeapBigIntUse) {
             def(PureValue(node));
             return;
         }
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case ArithBitNot:
         if (node->child1().useKind() == UntypedUse) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         def(PureValue(node));
@@ -284,8 +324,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithBitRShift:
     case BitURShift:
         if (node->child1().useKind() == UntypedUse || node->child2().useKind() == UntypedUse) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         def(PureValue(node));
@@ -356,11 +395,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             break;
         }
 
-        default: 
+        default:
             break;
         }
-        read(World);
-        write(Heap);
+
+        clobberTop();
         return;
     }
 
@@ -370,8 +409,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             def(PureValue(node));
             return;
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         default:
             DFG_CRASH(graph, node, "Bad use kind");
@@ -395,8 +433,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             def(PureValue(node, node->arithMode()));
             return;
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         default:
             DFG_CRASH(graph, node, "Bad use kind");
@@ -408,14 +445,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithTrunc:
         if (node->child1().useKind() == DoubleRepUse)
             def(PureValue(node, static_cast<uintptr_t>(node->arithRoundingMode())));
-        else {
-            read(World);
-            write(Heap);
-        }
+        else
+            clobberTop();
         return;
 
-    case CheckCell:
-        def(PureValue(CheckCell, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->cellOperand()));
+    case CheckIsConstant:
+        def(PureValue(CheckIsConstant, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->constant()));
         return;
 
     case CheckNotEmpty:
@@ -467,6 +502,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case FilterGetByStatus:
     case FilterPutByIdStatus:
     case FilterInByIdStatus:
+    case FilterDeleteByStatus:
         write(SideState);
         return;
         
@@ -565,6 +601,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MiscFields);
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), LazyNode(node));
         return;
+
+    case IsConstructor:
+        read(MiscFields);
+        def(HeapLocation(IsConstructorLoc, MiscFields, node->child1()), LazyNode(node));
+        return;
         
     case MatchStructure:
         read(JSCell_structureID);
@@ -656,6 +697,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ToObject:
     case HasGenericProperty:
     case HasStructureProperty:
+    case HasOwnStructureProperty:
+    case InStructureProperty:
     case GetPropertyEnumerator:
     case GetDirectPname:
     case InstanceOfCustom:
@@ -669,9 +712,21 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case InstanceOf:
     case StringValueOf:
     case ObjectKeys:
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
+
+    case CallNumberConstructor:
+        switch (node->child1().useKind()) {
+        case BigInt32Use:
+            def(PureValue(node));
+            return;
+        case UntypedUse:
+            read(World);
+            write(Heap);
+            return;
+        default:
+            DFG_CRASH(graph, node, "Bad use kind");
+        }
 
     case Inc:
     case Dec:
@@ -679,12 +734,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         case Int32Use:
         case Int52RepUse:
         case DoubleRepUse:
-        case BigIntUse:
+        case BigInt32Use:
+        case HeapBigIntUse:
+        case AnyBigIntUse:
             def(PureValue(node));
             return;
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         default:
             DFG_CRASH(graph, node, "Bad use kind");
@@ -701,12 +757,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValuePow:
     case ValueBitLShift:
     case ValueBitRShift:
-        if (node->isBinaryUseKind(BigIntUse)) {
+        // FIXME: this use of single-argument isBinaryUseKind would prevent us from specializing (for example) for a HeapBigInt left-operand and a BigInt32 right-operand.
+        if (node->isBinaryUseKind(AnyBigIntUse) || node->isBinaryUseKind(BigInt32Use) || node->isBinaryUseKind(HeapBigIntUse)) {
             def(PureValue(node));
             return;
         }
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case AtomicsAdd:
@@ -721,8 +777,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         unsigned numExtraArgs = numExtraAtomicsArgs(node->op());
         Edge storageEdge = graph.child(node, 2 + numExtraArgs);
         if (!storageEdge) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         read(TypedArrayProperties);
@@ -735,8 +790,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         ASSERT(!node->origin.semantic.inlineCallFrame());
         read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
         read(AbstractHeap(Stack, virtualRegisterForArgumentIncludingThis(0)));
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case Throw:
@@ -808,14 +862,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
         
     case VarargsLength: {
-        read(World);
-        write(Heap);
+        clobberTop();
         return;  
     }
 
     case LoadVarargs: {
-        read(World);
-        write(Heap);
+        clobberTop();
         LoadVarargsData* data = node->loadVarargsData();
         write(AbstractHeap(Stack, data->count));
         for (unsigned i = data->limit; i--;)
@@ -842,8 +894,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         case Array::Unprofiled:
         case Array::SelectUsingArguments:
             // Assume the worst since we don't have profiling yet.
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::ForceExit:
@@ -851,14 +902,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
             
         case Array::Generic:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::String:
             if (mode.isOutOfBounds()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             // This appears to read nothing because it's only reading immutable data.
@@ -871,8 +920,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                 def(HeapLocation(indexedPropertyLoc, DirectArgumentsProperties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::ScopedArguments:
@@ -887,8 +935,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                 def(HeapLocation(indexedPropertyLoc, IndexedInt32Properties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::Double:
@@ -899,8 +946,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                 def(HeapLocation(kind, IndexedDoubleProperties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::Contiguous:
@@ -910,8 +956,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                 def(HeapLocation(indexedPropertyLoc, IndexedContiguousProperties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
 
         case Array::Undecided:
@@ -925,8 +970,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
                 read(IndexedArrayStorageProperties);
                 return;
             }
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::Int8Array:
@@ -975,8 +1019,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         case Array::Unprofiled:
         case Array::Undecided:
             // Assume the worst since we don't have profiling yet.
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::ForceExit:
@@ -984,14 +1027,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
             
         case Array::Generic:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
             
         case Array::Int32:
             if (node->arrayMode().isOutOfBounds()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             read(Butterfly_publicLength);
@@ -1005,8 +1046,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             
         case Array::Double:
             if (node->arrayMode().isOutOfBounds()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             read(Butterfly_publicLength);
@@ -1021,8 +1061,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             
         case Array::Contiguous:
             if (node->arrayMode().isOutOfBounds()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             read(Butterfly_publicLength);
@@ -1036,8 +1075,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             
         case Array::ArrayStorage:
             if (node->arrayMode().isOutOfBounds()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             read(Butterfly_publicLength);
@@ -1050,8 +1088,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
         case Array::SlowPutArrayStorage:
             if (node->arrayMode().mayStoreToHole()) {
-                read(World);
-                write(Heap);
+                clobberTop();
                 return;
             }
             read(Butterfly_publicLength);
@@ -1112,8 +1149,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
         }
 
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case OverridesHasInstance:
@@ -1126,6 +1162,20 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(JSCell_structureID);
         write(JSCell_typeInfoFlags);
         write(JSCell_indexingType);
+
+        if (node->transition()->next->isPropertyDeletionTransition()) {
+            // We use this "delete fence" to model the proper aliasing of future stores.
+            // Both in DFG and when we lower to B3, we model aliasing of properties by
+            // property  name. In a world without delete, that also models {base, propertyOffset}.
+            // However, with delete, we may reuse property offsets for different names.
+            // Those potential stores that come after this delete won't properly model
+            // that they are dependent on the prior name stores. For example, if we didn't model this,
+            // it could give when doing things like store elimination, since we don't see
+            // writes to the new field name as having dependencies on the old field name.
+            // This node makes it so we properly model those dependencies.
+            write(NamedProperties);
+        }
+            
         return;
         
     case AllocatePropertyStorage:
@@ -1145,15 +1195,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
         return;
 
-    case CheckSubClass:
+    case CheckJSCast:
         def(PureValue(node, node->classInfo()));
         return;
 
     case CallDOMGetter: {
         DOMJIT::CallDOMGetterSnippet* snippet = node->callDOMGetterData()->snippet;
         if (!snippet) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         DOMJIT::Effect effect = snippet->effect;
@@ -1237,8 +1286,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             def(HeapLocation(PrototypeLoc, NamedProperties, node->child1()), LazyNode(node));
             return;
         default:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
     }
@@ -1278,6 +1326,21 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(NamedPropertyLoc, heap, node->child1()), LazyNode(node->child2().node()));
         return;
     }
+
+    case MultiDeleteByOffset: {
+        read(JSCell_structureID);
+        read(JSObject_butterfly);
+        AbstractHeap heap(NamedProperties, node->multiDeleteByOffsetData().identifierNumber);
+        write(heap);
+        if (node->multiDeleteByOffsetData().writesStructures()) {
+            write(JSCell_structureID);
+            // See comment in PutStructure about why this is needed for proper
+            // alias analysis.
+            write(NamedProperties);
+        }
+        def(HeapLocation(NamedPropertyLoc, heap, node->child1()), LazyNode(graph.freezeStrong(JSValue())));
+        return;
+    }
         
     case PutByOffset: {
         unsigned identifierNumber = node->storageAccessData().identifierNumber;
@@ -1309,6 +1372,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             read(MiscFields);
             def(HeapLocation(ArrayLengthLoc, MiscFields, node->child1()), LazyNode(node));
             return;
+
+        case Array::ForceExit: {
+            write(SideState);
+            return;
+        }
 
         default:
             ASSERT(mode.isSomeTypedArrayView());
@@ -1415,8 +1483,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             write(HeapObjectCount);
             return;
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         default:
             DFG_CRASH(graph, node, "Bad use kind");
@@ -1449,8 +1516,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
         }
 
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
     }
 
@@ -1563,8 +1629,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CreateRest: {
         if (!graph.isWatchingHavingABadTimeWatchpoint(node)) {
             // This means we're already having a bad time.
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         read(Stack);
@@ -1580,8 +1645,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             write(HeapObjectCount);
             return;
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -1590,10 +1654,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
 
     case NewObject:
-    case NewPromise:
     case NewGenerator:
     case NewAsyncGenerator:
-    case NewArrayIterator:
+    case NewInternalFieldObject:
     case NewRegexp:
     case NewSymbol:
     case NewStringObject:
@@ -1603,7 +1666,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomNewAsyncGeneratorFunction:
-    case PhantomNewArrayIterator:
+    case PhantomNewInternalFieldObject:
     case MaterializeNewInternalFieldObject:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
@@ -1626,8 +1689,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case RegExpTest:
         // Even if we've proven known input types as RegExpObject and String,
         // accessing lastIndex is effectful if it's a global regexp.
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case RegExpMatchFast:
@@ -1654,14 +1716,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             write(RegExpObject_lastIndex);
             return;
         }
-        read(World);
-        write(Heap);
+        clobberTop();
         return;
 
     case StringCharAt:
         if (node->arrayMode().isOutOfBounds()) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
         def(PureValue(node));
@@ -1684,8 +1744,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         }
 
         if (node->isBinaryUseKind(UntypedUse)) {
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
         }
 
@@ -1697,8 +1756,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         switch (node->child1().useKind()) {
         case CellUse:
         case UntypedUse:
-            read(World);
-            write(Heap);
+            clobberTop();
             return;
 
         case StringObjectUse:

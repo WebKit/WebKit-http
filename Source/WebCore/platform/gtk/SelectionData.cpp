@@ -53,7 +53,7 @@ void SelectionData::setURIList(const String& uriListString)
     // will get an empty string. This is in line with the HTML5 spec (see
     // "The DragEvent and DataTransfer interfaces"). Also extract all filenames
     // from the URI list.
-    bool setURL = false;
+    bool setURL = hasURL();
     for (auto& line : uriListString.split('\n')) {
         line = line.stripWhiteSpace();
         if (line.isEmpty())
@@ -79,12 +79,18 @@ void SelectionData::setURIList(const String& uriListString)
 void SelectionData::setURL(const URL& url, const String& label)
 {
     m_url = url;
-    m_uriList = url;
-    setText(url.string());
+    if (m_uriList.isEmpty())
+        m_uriList = url.string();
+
+    if (!hasText())
+        setText(url.string());
+
+    if (hasMarkup())
+        return;
 
     String actualLabel(label);
     if (actualLabel.isEmpty())
-        actualLabel = url;
+        actualLabel = url.string();
 
     StringBuilder markup;
     markup.append("<a href=\"");
@@ -102,7 +108,7 @@ const String& SelectionData::urlLabel() const
         return text();
 
     if (hasURL())
-        return url();
+        return url().string();
 
     return emptyString();
 }
@@ -114,8 +120,8 @@ void SelectionData::clearAllExceptFilenames()
     clearURIList();
     clearURL();
     clearImage();
+    clearCustomData();
 
-    m_unknownTypeData.clear();
     m_canSmartReplace = false;
 }
 

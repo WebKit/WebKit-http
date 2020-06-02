@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,6 +68,20 @@ WebDragClient::WebDragClient(WebView* webView)
 
 #if PLATFORM(MAC)
 
+static WebDragDestinationAction kit(WebCore::DragDestinationAction action)
+{
+    switch (action) {
+    case WebCore::DragDestinationAction::DHTML:
+        return WebDragDestinationActionDHTML;
+    case WebCore::DragDestinationAction::Edit:
+        return WebDragDestinationActionEdit;
+    case WebCore::DragDestinationAction::Load:
+        return WebDragDestinationActionLoad;
+    }
+    ASSERT_NOT_REACHED();
+    return WebDragDestinationActionNone;
+}
+
 bool WebDragClient::useLegacyDragClient()
 {
     return false;
@@ -86,7 +100,7 @@ static WebHTMLView *getTopHTMLView(Frame* frame)
 
 void WebDragClient::willPerformDragDestinationAction(WebCore::DragDestinationAction action, const WebCore::DragData& dragData)
 {
-    [[m_webView _UIDelegateForwarder] webView:m_webView willPerformDragDestinationAction:(WebDragDestinationAction)action forDraggingInfo:dragData.platformData()];
+    [[m_webView _UIDelegateForwarder] webView:m_webView willPerformDragDestinationAction:kit(action) forDraggingInfo:dragData.platformData()];
 }
 
 
@@ -214,7 +228,7 @@ bool WebDragClient::useLegacyDragClient()
     return true;
 }
 
-void WebDragClient::willPerformDragDestinationAction(DragDestinationAction, const DragData&)
+void WebDragClient::willPerformDragDestinationAction(WebCore::DragDestinationAction, const DragData&)
 {
 }
 

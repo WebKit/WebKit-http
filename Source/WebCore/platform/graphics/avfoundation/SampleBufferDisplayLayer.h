@@ -44,7 +44,6 @@ public:
     public:
         virtual ~Client() = default;
         virtual void sampleBufferDisplayLayerStatusDidChange(SampleBufferDisplayLayer&) = 0;
-        virtual WTF::MediaTime streamTime() const = 0;
     };
 
     WEBCORE_EXPORT static std::unique_ptr<SampleBufferDisplayLayer> create(Client&);
@@ -68,6 +67,9 @@ public:
     virtual void clearEnqueuedSamples() = 0;
 
     virtual PlatformLayer* rootLayer() = 0;
+
+    enum class RenderPolicy { TimingInfo, Immediately };
+    virtual void setRenderPolicy(RenderPolicy) { };
 
 protected:
     explicit SampleBufferDisplayLayer(Client&);

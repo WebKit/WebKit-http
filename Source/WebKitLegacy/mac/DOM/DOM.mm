@@ -58,10 +58,12 @@
 #import <WebCore/RenderImage.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/ScriptController.h>
+#import <WebCore/SimpleRange.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/Touch.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <wtf/HashMap.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if PLATFORM(IOS_FAMILY)
 #import <WebCore/WAKAppKitStubs.h>
@@ -71,9 +73,6 @@
 
 using namespace JSC;
 using namespace WebCore;
-
-// FIXME: These methods should move into the implementation files of the DOM classes
-// and this file should be eliminated.
 
 //------------------------------------------------------------------------------------------
 // DOMNode
@@ -179,15 +178,6 @@ static Class elementClass(const QualifiedName& tag, Class defaultClass)
     return objcClass;
 }
 
-static NSArray *kit(const Vector<IntRect>& rects)
-{
-    size_t size = rects.size();
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:size];
-    for (size_t i = 0; i < size; ++i)
-        [array addObject:[NSValue valueWithRect:rects[i]]];
-    return array;
-}
-
 #if PLATFORM(IOS_FAMILY)
 
 static WKQuad wkQuadFromFloatQuad(const FloatQuad& inQuad)
@@ -197,13 +187,9 @@ static WKQuad wkQuadFromFloatQuad(const FloatQuad& inQuad)
 
 static NSArray *kit(const Vector<FloatQuad>& quads)
 {
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:quads.size()];
-    for (auto& quad : quads) {
-        WKQuadObject *quadObject = [[WKQuadObject alloc] initWithQuad:wkQuadFromFloatQuad(quad)];
-        [array addObject:quadObject];
-        [quadObject release];
-    }
-    return array;
+    return createNSArray(quads, [] (auto& quad) {
+        return adoptNS([[WKQuadObject alloc] initWithQuad:wkQuadFromFloatQuad(quad)]);
+    }).autorelease();
 }
 
 static inline WKQuad zeroQuad()
@@ -358,14 +344,9 @@ id <DOMEventTarget> kit(EventTarget* target)
 
     if (quads.size() == 0)
         return zeroQuad();
-
     if (quads.size() == 1)
         return wkQuadFromFloatQuad(quads[0]);
-
-    auto boundingRect = quads[0].boundingBox();
-    for (size_t i = 1; i < quads.size(); ++i)
-        boundingRect.unite(quads[i].boundingBox());
-    return wkQuadFromFloatQuad(boundingRect);
+    return wkQuadFromFloatQuad(unitedBoundingBoxes(quads));
 }
 
 // this method is like - (CGRect)boundingBox, but it accounts for for transforms
@@ -517,9 +498,7 @@ id <DOMEventTarget> kit(EventTarget* target)
     node.document().updateLayoutIgnorePendingStylesheets();
     if (!node.renderer())
         return nil;
-    Vector<WebCore::IntRect> rects;
-    node.textRects(rects);
-    return kit(rects);
+    return createNSArray(RenderObject::absoluteTextRects(makeRangeSelectingNodeContents(node))).autorelease();
 }
 
 @end
@@ -544,22 +523,20 @@ id <DOMEventTarget> kit(EventTarget* target)
 
     auto& node = *core(self);
 
-    auto range = rangeOfContents(node);
-
+    constexpr OptionSet<TextIndicatorOption> options {
+        TextIndicatorOption::TightlyFitContent,
+        TextIndicatorOption::RespectTextColor,
+        TextIndicatorOption::PaintBackgrounds,
+        TextIndicatorOption::UseBoundingRectAndPaintAllContentForComplexRanges,
+        TextIndicatorOption::IncludeMarginIfRangeMatchesSelection
+    };
     const float margin = 4 / node.document().page()->pageScaleFactor();
-    auto textIndicator = TextIndicator::createWithRange(range, TextIndicatorOptionTightlyFitContent |
-        TextIndicatorOptionRespectTextColor |
-        TextIndicatorOptionPaintBackgrounds |
-        TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges |
-        TextIndicatorOptionIncludeMarginIfRangeMatchesSelection,
-        TextIndicatorPresentationTransition::None, FloatSize(margin, margin));
+    auto textIndicator = TextIndicator::createWithRange(makeRangeSelectingNodeContents(node), options, TextIndicatorPresentationTransition::None, FloatSize(margin, margin));
 
     if (textIndicator) {
         if (Image* image = textIndicator->contentImage())
             *cgImage = image->nativeImage().autorelease();
     }
-
-    RetainPtr<NSMutableArray> rectArray = adoptNS([[NSMutableArray alloc] init]);
 
     if (!*cgImage) {
         if (auto* renderer = node.renderer()) {
@@ -568,27 +545,18 @@ id <DOMEventTarget> kit(EventTarget* target)
                 boundingBox = downcast<RenderImage>(*renderer).absoluteContentQuad().enclosingBoundingBox();
             else
                 boundingBox = renderer->absoluteBoundingBoxRect();
-
             boundingBox.inflate(margin);
-
-            CGRect cgRect = node.document().frame()->view()->contentsToWindow(enclosingIntRect(boundingBox));
-            [rectArray addObject:[NSValue value:&cgRect withObjCType:@encode(CGRect)]];
-
-            *rects = rectArray.autorelease();
+            *rects = @[makeNSArrayElement(node.document().frame()->view()->contentsToWindow(enclosingIntRect(boundingBox)))];
         }
         return;
     }
 
     FloatPoint origin = textIndicator->textBoundingRectInRootViewCoordinates().location();
-    for (const FloatRect& rect : textIndicator->textRectsInBoundingRectCoordinates()) {
-        CGRect cgRect = rect;
-        cgRect.origin.x += origin.x();
-        cgRect.origin.y += origin.y();
-        cgRect = node.document().frame()->view()->contentsToWindow(enclosingIntRect(cgRect));
-        [rectArray addObject:[NSValue value:&cgRect withObjCType:@encode(CGRect)]];
-    }
-
-    *rects = rectArray.autorelease();
+    *rects = createNSArray(textIndicator->textRectsInBoundingRectCoordinates(), [&] (CGRect rect) {
+        rect.origin.x += origin.x();
+        rect.origin.y += origin.y();
+        return makeNSArrayElement(node.document().frame()->view()->contentsToWindow(enclosingIntRect(rect)));
+    }).autorelease();
 }
 
 @end
@@ -636,12 +604,9 @@ id <DOMEventTarget> kit(EventTarget* target)
 
 - (NSArray *)textRects
 {
-    // FIXME: The call to updateLayoutIgnorePendingStylesheets should be moved into WebCore::Range.
     auto& range = *core(self);
-    Vector<WebCore::IntRect> rects;
     range.ownerDocument().updateLayoutIgnorePendingStylesheets();
-    range.absoluteTextRects(rects);
-    return kit(rects);
+    return createNSArray(RenderObject::absoluteTextRects(range)).autorelease();
 }
 
 - (NSArray *)lineBoxRects

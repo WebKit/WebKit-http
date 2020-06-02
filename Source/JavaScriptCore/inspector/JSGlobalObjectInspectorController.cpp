@@ -36,17 +36,14 @@
 #include "InspectorAgent.h"
 #include "InspectorBackendDispatcher.h"
 #include "InspectorConsoleAgent.h"
-#include "InspectorFrontendChannel.h"
 #include "InspectorFrontendRouter.h"
 #include "InspectorHeapAgent.h"
 #include "InspectorScriptProfilerAgent.h"
-#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSGlobalObjectAuditAgent.h"
 #include "JSGlobalObjectConsoleClient.h"
 #include "JSGlobalObjectDebuggerAgent.h"
 #include "JSGlobalObjectRuntimeAgent.h"
-#include "ScriptArguments.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include <wtf/StackTrace.h>
@@ -118,7 +115,8 @@ void JSGlobalObjectInspectorController::connectFrontend(FrontendChannel& fronten
     m_agents.didCreateFrontendAndBackend(nullptr, nullptr);
 
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
-    ensureInspectorAgent().activateExtraDomains(m_agents.extraDomains());
+    if (m_globalObject.inspectorDebuggable().type() == Inspector::RemoteControllableTarget::Type::JavaScript)
+        ensureInspectorAgent().activateExtraDomains(m_agents.extraDomains());
 
     if (m_augmentingClient)
         m_augmentingClient->inspectorConnected();
@@ -247,9 +245,9 @@ void JSGlobalObjectInspectorController::frontendInitialized()
 #endif
 }
 
-Ref<Stopwatch> JSGlobalObjectInspectorController::executionStopwatch()
+Stopwatch& JSGlobalObjectInspectorController::executionStopwatch() const
 {
-    return m_executionStopwatch.copyRef();
+    return m_executionStopwatch;
 }
 
 JSGlobalObjectScriptDebugServer& JSGlobalObjectInspectorController::scriptDebugServer()
@@ -272,7 +270,8 @@ void JSGlobalObjectInspectorController::appendExtraAgent(std::unique_ptr<Inspect
 
     m_agents.appendExtraAgent(WTFMove(agent));
 
-    ensureInspectorAgent().activateExtraDomain(domainName);
+    if (m_globalObject.inspectorDebuggable().type() == Inspector::RemoteControllableTarget::Type::JavaScript)
+        ensureInspectorAgent().activateExtraDomain(domainName);
 }
 #endif
 

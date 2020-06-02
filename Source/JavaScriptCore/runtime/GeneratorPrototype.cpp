@@ -27,9 +27,8 @@
 #include "config.h"
 #include "GeneratorPrototype.h"
 
-#include "JSCBuiltins.h"
+#include "FunctionExecutable.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
 
 #include "GeneratorPrototype.lut.h"
 
@@ -49,7 +48,7 @@ void GeneratorPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "Generator"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 } // namespace JSC

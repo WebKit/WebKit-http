@@ -27,7 +27,6 @@
 #include "config.h"
 #include <wtf/RandomDevice.h>
 
-#include <stdint.h>
 #include <stdlib.h>
 
 #if !OS(DARWIN) && !OS(FUCHSIA) && OS(UNIX)
@@ -42,7 +41,6 @@
 #endif
 
 #if OS(DARWIN)
-#include <CommonCrypto/CommonCryptoError.h>
 #include <CommonCrypto/CommonRandom.h>
 #endif
 
@@ -108,7 +106,7 @@ void RandomDevice::cryptographicallyRandomValues(unsigned char* buffer, size_t l
     // FIXME: We cannot ensure that Cryptographic Service Provider context and CryptGenRandom are safe across threads.
     // If it is safe, we can acquire context per RandomDevice.
     HCRYPTPROV hCryptProv = 0;
-    if (!CryptAcquireContext(&hCryptProv, 0, MS_DEF_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+    if (!CryptAcquireContext(&hCryptProv, nullptr, MS_DEF_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
         CRASH();
     if (!CryptGenRandom(hCryptProv, length, buffer))
         CRASH();

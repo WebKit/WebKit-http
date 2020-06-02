@@ -33,7 +33,7 @@
 #include "DFGInsertionSet.h"
 #include "DFGMayExit.h"
 #include "DFGPhase.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include <wtf/FastBitVector.h>
 
 namespace JSC { namespace DFG {

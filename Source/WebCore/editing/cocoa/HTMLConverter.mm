@@ -58,7 +58,6 @@
 #import "HTMLTableCellElement.h"
 #import "HTMLTextAreaElement.h"
 #import "LoaderNSURLExtras.h"
-#import "Range.h"
 #import "RenderImage.h"
 #import "RenderText.h"
 #import "StyleProperties.h"
@@ -277,15 +276,15 @@ private:
 
 class HTMLConverter {
 public:
-    HTMLConverter(const Position&, const Position&);
+    explicit HTMLConverter(const SimpleRange&);
     ~HTMLConverter();
 
-    NSAttributedString* convert(NSDictionary** documentAttributes = nullptr);
+    AttributedString convert();
 
 private:
     Position m_start;
     Position m_end;
-    DocumentLoader* m_dataSource;
+    DocumentLoader* m_dataSource { nullptr };
     
     HashMap<RefPtr<Element>, RetainPtr<NSDictionary>> m_attributesForElements;
     HashMap<RetainPtr<CFTypeRef>, RefPtr<Element>> m_textTableFooters;
@@ -353,10 +352,9 @@ private:
     void _adjustTrailingNewline();
 };
 
-HTMLConverter::HTMLConverter(const Position& start, const Position& end)
-    : m_start(start)
-    , m_end(end)
-    , m_dataSource(nullptr)
+HTMLConverter::HTMLConverter(const SimpleRange& range)
+    : m_start(createLegacyEditingPosition(range.start))
+    , m_end(createLegacyEditingPosition(range.end))
 {
     _attrStr = [[NSMutableAttributedString alloc] init];
     _documentAttrs = [[NSMutableDictionary alloc] init];
@@ -399,10 +397,10 @@ HTMLConverter::~HTMLConverter()
     [_writingDirectionArray release];
 }
 
-NSAttributedString *HTMLConverter::convert(NSDictionary** documentAttributes)
+AttributedString HTMLConverter::convert()
 {
     if (comparePositions(m_start, m_end) > 0)
-        return nil;
+        return { };
 
     Node* commonAncestorContainer = _caches->cacheAncestorsOfStartToBeConverted(m_start, m_end);
     ASSERT(commonAncestorContainer);
@@ -420,10 +418,7 @@ NSAttributedString *HTMLConverter::convert(NSDictionary** documentAttributes)
     if (_domRangeStartIndex > 0 && _domRangeStartIndex <= [_attrStr length])
         [_attrStr deleteCharactersInRange:NSMakeRange(0, _domRangeStartIndex)];
 
-    if (documentAttributes)
-        *documentAttributes = [[_documentAttrs retain] autorelease];
-
-    return [[_attrStr retain] autorelease];
+    return { WTFMove(_attrStr), WTFMove(_documentAttrs) };
 }
 
 #if !PLATFORM(IOS_FAMILY)
@@ -539,7 +534,7 @@ static NSParagraphStyle *defaultParagraphStyle()
     if (!defaultParagraphStyle) {
         defaultParagraphStyle = [[PlatformNSParagraphStyle defaultParagraphStyle] mutableCopy];
         [defaultParagraphStyle setDefaultTabInterval:36];
-        [defaultParagraphStyle setTabStops:[NSArray array]];
+        [defaultParagraphStyle setTabStops:@[]];
     }
     return defaultParagraphStyle;
 }
@@ -887,13 +882,13 @@ Color HTMLConverterCaches::colorPropertyValueForNode(Node& node, CSSPropertyID p
     Element& element = downcast<Element>(node);
     if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), ignoreDefaultColor, element);
+            return normalizedColor(downcast<CSSPrimitiveValue>(*value).color(), ignoreDefaultColor, element);
     }
 
     bool inherit = false;
     if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), ignoreDefaultColor, element);
+            return normalizedColor(downcast<CSSPrimitiveValue>(*value).color(), ignoreDefaultColor, element);
         if (value->isInheritedValue())
             inherit = true;
     }
@@ -1027,7 +1022,7 @@ NSDictionary *HTMLConverter::computedAttributesForElement(Element& element)
     float strokeWidth = 0.0;
     if (_caches->floatPropertyValueForNode(element, CSSPropertyWebkitTextStrokeWidth, strokeWidth)) {
         float textStrokeWidth = strokeWidth / ([font pointSize] * 0.01);
-        [attrs setObject:[NSNumber numberWithDouble:textStrokeWidth] forKey:NSStrokeWidthAttributeName];
+        [attrs setObject:@(textStrokeWidth) forKey:NSStrokeWidthAttributeName];
     }
     if (strokeColor)
         [attrs setObject:strokeColor forKey:NSStrokeColorAttributeName];
@@ -1042,7 +1037,7 @@ NSDictionary *HTMLConverter::computedAttributesForElement(Element& element)
             if (UIFloatIsZero(kernVal))
                 [attrs setObject:@0.0 forKey:NSKernAttributeName]; // auto and normal, the other possible values, are both "kerning enabled"
             else
-                [attrs setObject:[NSNumber numberWithDouble:kernVal] forKey:NSKernAttributeName];
+                [attrs setObject:@(kernVal) forKey:NSKernAttributeName];
         }
     }
 
@@ -1074,7 +1069,7 @@ NSDictionary *HTMLConverter::computedAttributesForElement(Element& element)
 
     float baselineOffset = 0.0;
     if (_caches->floatPropertyValueForNode(element, CSSPropertyVerticalAlign, baselineOffset))
-        [attrs setObject:[NSNumber numberWithDouble:baselineOffset] forKey:NSBaselineOffsetAttributeName];
+        [attrs setObject:@(baselineOffset) forKey:NSBaselineOffsetAttributeName];
 
     String textShadow = _caches->propertyValueForNode(element, CSSPropertyTextShadow);
     if (textShadow.length() > 4) {
@@ -1262,7 +1257,7 @@ static Class _WebMessageDocumentClass()
     static BOOL lookedUpClass = NO;
     if (!lookedUpClass) {
         // If the class is not there, we don't want to try again
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
         _WebMessageDocumentClass = objc_lookUpClass("EditableWebMessageDocument");
 #endif
         if (!_WebMessageDocumentClass)
@@ -1556,7 +1551,7 @@ void HTMLConverter::_processMetaElementWithName(NSString *name, NSString *conten
         if (versionNumber > 0.0) {
             // ??? this should be keyed off of version number in future
             [_documentAttrs removeObjectForKey:NSConvertedDocumentAttribute];
-            [_documentAttrs setObject:[NSNumber numberWithDouble:versionNumber] forKey:NSCocoaVersionDocumentAttribute];
+            [_documentAttrs setObject:@(versionNumber) forKey:NSCocoaVersionDocumentAttribute];
         }
 #if PLATFORM(IOS_FAMILY)
     } else if (NSOrderedSame == [@"Generator" compare:name options:NSCaseInsensitiveSearch]) {
@@ -1672,8 +1667,8 @@ void HTMLConverter::_addTableForElement(Element *tableElement)
     }
     
     [_textTables addObject:table.get()];
-    [_textTableSpacings addObject:[NSNumber numberWithDouble:cellSpacingVal]];
-    [_textTablePaddings addObject:[NSNumber numberWithDouble:cellPaddingVal]];
+    [_textTableSpacings addObject:@(cellSpacingVal)];
+    [_textTablePaddings addObject:@(cellPaddingVal)];
     [_textTableRows addObject:[NSNumber numberWithInteger:0]];
     [_textTableRowArrays addObject:[NSMutableArray array]];
 }
@@ -2370,79 +2365,62 @@ static RetainPtr<NSFileWrapper> fileWrapperForElement(HTMLImageElement& element)
 namespace WebCore {
 
 // This function supports more HTML features than the editing variant below, such as tables.
-NSAttributedString *attributedStringFromRange(Range& range, NSDictionary** documentAttributes)
+AttributedString attributedString(const SimpleRange& range)
 {
-    return HTMLConverter { range.startPosition(), range.endPosition() }.convert(documentAttributes);
+    return HTMLConverter { range }.convert();
 }
 
-NSAttributedString *attributedStringFromSelection(const VisibleSelection& selection, NSDictionary** documentAttributes)
-{
-    return attributedStringBetweenStartAndEnd(selection.start(), selection.end(), documentAttributes);
-}
-
-NSAttributedString *attributedStringBetweenStartAndEnd(const Position& start, const Position& end, NSDictionary** documentAttributes)
-{
-    return HTMLConverter { start, end }.convert(documentAttributes);
-}
-
-#if !PLATFORM(IOS_FAMILY)
+#if PLATFORM(MAC)
 
 // This function uses TextIterator, which makes offsets in its result compatible with HTML editing.
-NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImagesInAttributedString includeOrSkipImages)
+AttributedString editingAttributedString(const SimpleRange& range, IncludeImages includeImages)
 {
-    NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    NSMutableAttributedString *string = [[NSMutableAttributedString alloc] init];
+    auto fontManager = [NSFontManager sharedFontManager];
+    auto string = adoptNS([[NSMutableAttributedString alloc] init]);
+    auto attrs = adoptNS([[NSMutableDictionary alloc] init]);
     NSUInteger stringLength = 0;
-    RetainPtr<NSMutableDictionary> attrs = adoptNS([[NSMutableDictionary alloc] init]);
-
     for (TextIterator it(range); !it.atEnd(); it.advance()) {
-        SimpleRange currentTextRange = it.range();
-        Node& startContainer = currentTextRange.start.container;
-        Node& endContainer = currentTextRange.end.container;
-        int startOffset = currentTextRange.start.offset;
-        int endOffset = currentTextRange.end.offset;
+        auto node = it.node();
 
-        if (includeOrSkipImages == IncludeImagesInAttributedString::Yes) {
-            if (&startContainer == &endContainer && (startOffset == endOffset - 1)) {
-                Node* node = startContainer.traverseToChildAt(startOffset);
-                if (is<HTMLImageElement>(node)) {
-                    RetainPtr<NSFileWrapper> fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(*node));
-                    NSTextAttachment *attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper.get()];
-                    [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
-                    [attachment release];
-                }
-            }
+        if (includeImages == IncludeImages::Yes && is<HTMLImageElement>(node)) {
+            auto fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(*node));
+            auto attachment = adoptNS([[NSTextAttachment alloc] initWithFileWrapper:fileWrapper.get()]);
+            [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment.get()]];
         }
 
-        int currentTextLength = it.text().length();
+        auto currentTextLength = it.text().length();
         if (!currentTextLength)
             continue;
 
-        RenderObject* renderer = startContainer.renderer();
+        // In some cases the text iterator emits text that is not associated with a node.
+        // In those cases, base the style on the container.
+        if (!node)
+            node = it.range().start.container.ptr();
+        auto renderer = node->renderer();
         ASSERT(renderer);
         if (!renderer)
             continue;
-        const RenderStyle& style = renderer->style();
+        auto& style = renderer->style();
         if (style.textDecorationsInEffect() & TextDecoration::Underline)
-            [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
+            [attrs setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
         if (style.textDecorationsInEffect() & TextDecoration::LineThrough)
-            [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSStrikethroughStyleAttributeName];
+            [attrs setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSStrikethroughStyleAttributeName];
         if (auto font = style.fontCascade().primaryFont().getCTFont())
-            [attrs.get() setObject:toNSFont(font) forKey:NSFontAttributeName];
+            [attrs setObject:toNSFont(font) forKey:NSFontAttributeName];
         else
-            [attrs.get() setObject:[fontManager convertFont:WebDefaultFont() toSize:style.fontCascade().primaryFont().platformData().size()] forKey:NSFontAttributeName];
+            [attrs setObject:[fontManager convertFont:WebDefaultFont() toSize:style.fontCascade().primaryFont().platformData().size()] forKey:NSFontAttributeName];
 
         Color foregroundColor = style.visitedDependentColorWithColorFilter(CSSPropertyColor);
         if (foregroundColor.isVisible())
-            [attrs.get() setObject:nsColor(foregroundColor) forKey:NSForegroundColorAttributeName];
+            [attrs setObject:nsColor(foregroundColor) forKey:NSForegroundColorAttributeName];
         else
-            [attrs.get() removeObjectForKey:NSForegroundColorAttributeName];
+            [attrs removeObjectForKey:NSForegroundColorAttributeName];
 
         Color backgroundColor = style.visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor);
         if (backgroundColor.isVisible())
-            [attrs.get() setObject:nsColor(backgroundColor) forKey:NSBackgroundColorAttributeName];
+            [attrs setObject:nsColor(backgroundColor) forKey:NSBackgroundColorAttributeName];
         else
-            [attrs.get() removeObjectForKey:NSBackgroundColorAttributeName];
+            [attrs removeObjectForKey:NSBackgroundColorAttributeName];
 
         RetainPtr<NSString> text;
         if (style.nbspMode() == NBSPMode::Normal)
@@ -2455,7 +2433,7 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
         stringLength += currentTextLength;
     }
 
-    return [string autorelease];
+    return { WTFMove(string), nil };
 }
 
 #endif

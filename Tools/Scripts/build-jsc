@@ -61,6 +61,7 @@ my @cmakeArgs;
 my $buildDir = "";
 my $copyLibraries = 1;
 my $startTime = time();
+my $useCCache = -1;
 
 my @features = getFeatureOptionList();
 
@@ -92,6 +93,8 @@ Usage: $programName [options] [options to pass to build system]
   --makeargs=<arguments>        Optional Makefile flags
   --cmakeargs=<arguments>       One or more optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
   --build-dir=<path>            Build out of tree in directory at <path>
+
+  --[no-]use-ccache             Enable (or disable) CCache, if available
 EOF
 
 my %options = (
@@ -104,7 +107,8 @@ my %options = (
     'copy-libraries!' => \$copyLibraries,
     'makeargs=s' => \$makeArgs,
     'cmakeargs=s' => \@cmakeArgs,
-    'build-dir=s' => \$buildDir
+    'build-dir=s' => \$buildDir,
+    'use-ccache!' => \$useCCache
 );
 
 foreach (@features) {
@@ -133,6 +137,12 @@ if ($buildDir && !isCMakeBuild()) {
 
 if (isWinCairo() || (isJSCOnly() && isWindows())) {
     (system("python Tools/Scripts/update-webkit-wincairo-libs.py") == 0) or die;
+}
+
+if ($useCCache == 1) {
+    $ENV{'WK_USE_CCACHE'} = "YES";
+} elsif ($useCCache == 0) {
+    $ENV{'WK_USE_CCACHE'} = "NO";
 }
 
 checkRequiredSystemConfig();
@@ -214,7 +224,19 @@ sub buildMyProject
         }
         $compilerFlags .= '"';
 
-        my $command = "make " . (lc configuration()) . " " . $compilerFlags . " " . join(" ", @ARGV);
+        my $extraCommands = "";
+        foreach (@ARGV) {
+            # Ensure that if somebody passes in a flag like `ARCHS="i386 x86_64"` we
+            # maintain the quotes around "i386 x86_64".
+            my $arg = $_;
+            if ($arg =~ m/=/) {
+                $arg =~ s/=/="/;
+                $arg = $arg . "\"";
+            }
+            $extraCommands .= " " . $arg;
+        }
+
+        my $command = "make " . (lc configuration()) . " " . $compilerFlags . " " . $extraCommands;
 
         print "\n";
         print "building ", $projectName, "\n";

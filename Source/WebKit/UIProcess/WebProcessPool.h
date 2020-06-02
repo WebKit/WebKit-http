@@ -148,21 +148,21 @@ public:
         m_supplements.add(T::supplementName(), T::create(this));
     }
 
-    void addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver&);
-    void addMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID, IPC::MessageReceiver&);
-    void removeMessageReceiver(IPC::StringReference messageReceiverName);
-    void removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID);
+    void addMessageReceiver(IPC::ReceiverName, IPC::MessageReceiver&);
+    void addMessageReceiver(IPC::ReceiverName, uint64_t destinationID, IPC::MessageReceiver&);
+    void removeMessageReceiver(IPC::ReceiverName);
+    void removeMessageReceiver(IPC::ReceiverName, uint64_t destinationID);
 
     WebBackForwardCache& backForwardCache() { return m_backForwardCache.get(); }
     
     template <typename T>
-    void addMessageReceiver(IPC::StringReference messageReceiverName, ObjectIdentifier<T> destinationID, IPC::MessageReceiver& receiver)
+    void addMessageReceiver(IPC::ReceiverName messageReceiverName, ObjectIdentifier<T> destinationID, IPC::MessageReceiver& receiver)
     {
         addMessageReceiver(messageReceiverName, destinationID.toUInt64(), receiver);
     }
     
     template <typename T>
-    void removeMessageReceiver(IPC::StringReference messageReceiverName, ObjectIdentifier<T> destinationID)
+    void removeMessageReceiver(IPC::ReceiverName messageReceiverName, ObjectIdentifier<T> destinationID)
     {
         removeMessageReceiver(messageReceiverName, destinationID.toUInt64());
     }
@@ -192,8 +192,6 @@ public:
 
     template<typename T> void sendToAllProcesses(const T& message);
     template<typename T> void sendToAllProcessesForSession(const T& message, PAL::SessionID);
-    template<typename T> void sendToAllProcessesRelaunchingThemIfNecessary(const T& message);
-    template<typename T> void sendToOneProcess(T&& message);
 
     // Sends the message to WebProcess or NetworkProcess as approporiate for current process model.
     template<typename T> void sendToNetworkingProcess(T&& message);
@@ -251,8 +249,9 @@ public:
 #endif
 
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    void startDisplayLink(IPC::Connection&, unsigned observerID, uint32_t displayID);
-    void stopDisplayLink(IPC::Connection&, unsigned observerID, uint32_t displayID);
+    Optional<unsigned> nominalFramesPerSecondForDisplay(WebCore::PlatformDisplayID);
+    void startDisplayLink(IPC::Connection&, DisplayLinkObserverID, WebCore::PlatformDisplayID);
+    void stopDisplayLink(IPC::Connection&, DisplayLinkObserverID, WebCore::PlatformDisplayID);
     void stopDisplayLinks(IPC::Connection&);
 #endif
 
@@ -323,6 +322,7 @@ public:
     void clearCachedCredentials();
     void terminateNetworkProcess();
     void terminateAllWebContentProcesses();
+    void sendNetworkProcessPrepareToSuspendForTesting(CompletionHandler<void()>&&);
     void sendNetworkProcessWillSuspendImminentlyForTesting();
     void sendNetworkProcessDidResume();
     void terminateServiceWorkers();
@@ -389,7 +389,7 @@ public:
     // Network Process Management
     NetworkProcessProxy& ensureNetworkProcess(WebsiteDataStore* withWebsiteDataStore = nullptr);
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
-    void networkProcessCrashed(NetworkProcessProxy&, Vector<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply>>&&);
+    void networkProcessCrashed(NetworkProcessProxy&);
 
     void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
 
@@ -419,7 +419,7 @@ public:
 #endif
 
     static void setInvalidMessageCallback(void (*)(WKStringRef));
-    static void didReceiveInvalidMessage(const IPC::StringReference& messageReceiverName, const IPC::StringReference& messageName);
+    static void didReceiveInvalidMessage(IPC::MessageName);
 
     bool isURLKnownHSTSHost(const String& urlString) const;
     void resetHSTSHosts();
@@ -456,8 +456,6 @@ public:
     {
         return m_hiddenPageThrottlingAutoIncreasesCounter.count();
     }
-
-    void clearResourceLoadStatistics();
 
     bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
     bool shouldTakeUIBackgroundAssertion() const { return m_shouldTakeUIBackgroundAssertion; }
@@ -518,12 +516,8 @@ public:
     void setUserMessageHandler(Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)>&& handler) { m_userMessageHandler = WTFMove(handler); }
     const Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)>& userMessageHandler() const { return m_userMessageHandler; }
 #endif
-    
-    void setWebProcessHasUploads(WebCore::ProcessIdentifier);
-    void clearWebProcessHasUploads(WebCore::ProcessIdentifier);
 
-    void setWebProcessIsPlayingAudibleMedia(WebCore::ProcessIdentifier);
-    void clearWebProcessIsPlayingAudibleMedia(WebCore::ProcessIdentifier);
+    WebProcessWithAudibleMediaToken webProcessWithAudibleMediaToken() const;
 
     void disableDelayedWebProcessLaunch() { m_isDelayedWebProcessLaunchDisabled = true; }
 
@@ -539,6 +533,12 @@ public:
 
 #if ENABLE(CFPREFS_DIRECT_MODE)
     void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
+#endif
+
+#if PLATFORM(PLAYSTATION)
+    const String& webProcessPath() const { return m_resolvedPaths.webProcessPath; }
+    const String& networkProcessPath() const { return m_resolvedPaths.networkProcessPath; }
+    int32_t userId() const { return m_userId; }
 #endif
 
 private:
@@ -567,6 +567,7 @@ private:
 #endif
 
     void updateProcessAssertions();
+    void updateAudibleMediaAssertions();
 
     // IPC::MessageReceiver.
     // Implemented in generated WebProcessPoolMessageReceiver.cpp
@@ -614,6 +615,8 @@ private:
 #if ENABLE(CFPREFS_DIRECT_MODE)
     void startObservingPreferenceChanges();
 #endif
+
+    static void registerHighDynamicRangeChangeCallback();
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
 
@@ -765,6 +768,11 @@ private:
         String containerTemporaryDirectory;
 #endif
 
+#if PLATFORM(PLAYSTATION)
+        String webProcessPath;
+        String networkProcessPath;
+#endif
+
         Vector<String> additionalWebProcessSandboxExtensionPaths;
     };
     Paths m_resolvedPaths;
@@ -792,12 +800,19 @@ private:
     Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)> m_userMessageHandler;
 #endif
 
-    HashMap<WebCore::ProcessIdentifier, std::unique_ptr<ProcessAssertion>> m_processesWithUploads;
-    std::unique_ptr<ProcessAssertion> m_uiProcessUploadAssertion;
+    WebProcessWithAudibleMediaCounter m_webProcessWithAudibleMediaCounter;
 
-    HashMap<WebCore::ProcessIdentifier, std::unique_ptr<ProcessAssertion>> m_processesPlayingAudibleMedia;
-    std::unique_ptr<ProcessAssertion> m_uiProcessMediaPlaybackAssertion;
-    std::unique_ptr<ProcessAssertion> m_gpuProcessMediaPlaybackAssertion;
+    struct AudibleMediaActivity {
+        UniqueRef<ProcessAssertion> uiProcessMediaPlaybackAssertion;
+#if ENABLE(GPU_PROCESS)
+        std::unique_ptr<ProcessAssertion> gpuProcessMediaPlaybackAssertion;
+#endif
+    };
+    Optional<AudibleMediaActivity> m_audibleMediaActivity;
+
+#if PLATFORM(PLAYSTATION)
+    int32_t m_userId { -1 };
+#endif
 
 #if PLATFORM(IOS)
     // FIXME: Delayed process launch is currently disabled on iOS for performance reasons (rdar://problem/49074131).
@@ -841,35 +856,6 @@ void WebProcessPool::sendToAllProcessesForSession(const T& message, PAL::Session
         WebProcessProxy* process = m_processes[i].get();
         if (process->canSendMessage() && !process->isPrewarmed() && process->sessionID() == sessionID)
             process->send(T(message), 0);
-    }
-}
-
-template<typename T>
-void WebProcessPool::sendToAllProcessesRelaunchingThemIfNecessary(const T& message)
-{
-    // FIXME (Multi-WebProcess): WebProcessPool doesn't track processes that have exited, so it cannot relaunch these. Perhaps this functionality won't be needed in this mode.
-    sendToAllProcesses(message);
-}
-
-template<typename T>
-void WebProcessPool::sendToOneProcess(T&& message)
-{
-    bool messageSent = false;
-    size_t processCount = m_processes.size();
-    for (size_t i = 0; i < processCount; ++i) {
-        WebProcessProxy* process = m_processes[i].get();
-        if (process->canSendMessage()) {
-            process->send(std::forward<T>(message), 0);
-            messageSent = true;
-            break;
-        }
-    }
-
-    if (!messageSent) {
-        prewarmProcess();
-        RefPtr<WebProcessProxy> process = m_processes.last();
-        if (process->canSendMessage())
-            process->send(std::forward<T>(message), 0);
     }
 }
 

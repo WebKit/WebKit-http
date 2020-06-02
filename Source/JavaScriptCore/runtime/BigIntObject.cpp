@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017 Caio Lima <ticaiolima@gmail.com>.
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 #include "BigIntObject.h"
 
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
 
 namespace JSC {
 
@@ -37,8 +36,9 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(BigIntObject);
 const ClassInfo BigIntObject::s_info = { "BigInt", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(BigIntObject) };
 
 
-BigIntObject* BigIntObject::create(VM& vm, JSGlobalObject* globalObject, JSBigInt* bigInt)
+BigIntObject* BigIntObject::create(VM& vm, JSGlobalObject* globalObject, JSValue bigInt)
 {
+    ASSERT(bigInt.isBigInt());
     BigIntObject* object = new (NotNull, allocateCell<BigIntObject>(vm.heap)) BigIntObject(vm, globalObject->bigIntObjectStructure());
     object->finishCreation(vm, bigInt);
     return object;
@@ -49,16 +49,11 @@ BigIntObject::BigIntObject(VM& vm, Structure* structure)
 {
 }
 
-void BigIntObject::finishCreation(VM& vm, JSBigInt* bigInt)
+void BigIntObject::finishCreation(VM& vm, JSValue bigInt)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
     setInternalValue(vm, bigInt);
-}
-
-String BigIntObject::toStringName(const JSObject*, JSGlobalObject*)
-{
-    return "Object"_s;
 }
 
 JSValue BigIntObject::defaultValue(const JSObject* object, JSGlobalObject*, PreferredPrimitiveType)

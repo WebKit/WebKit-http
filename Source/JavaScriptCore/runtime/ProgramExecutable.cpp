@@ -26,18 +26,8 @@
 #include "config.h"
 
 #include "BatchedTransitionOptimizer.h"
-#include "CodeBlock.h"
 #include "CodeCache.h"
 #include "Debugger.h"
-#include "Exception.h"
-#include "JIT.h"
-#include "JSCInlines.h"
-#include "LLIntEntrypoint.h"
-#include "Parser.h"
-#include "ProgramCodeBlock.h"
-#include "TypeProfiler.h"
-#include "VMInlines.h"
-#include <wtf/CommaPrinter.h>
 
 namespace JSC {
 
@@ -82,7 +72,7 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, JSGlobalObject* 
     ASSERT(&globalObject->vm() == &vm);
 
     ParserError error;
-    JSParserStrictMode strictMode = isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
+    JSParserStrictMode strictMode = isInStrictContext() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
     OptionSet<CodeGenerationMode> codeGenerationMode = globalObject->defaultCodeGenerationMode();
     UnlinkedProgramCodeBlock* unlinkedCodeBlock = vm.codeCache()->getUnlinkedProgramCodeBlock(
         vm, this, source(), strictMode, codeGenerationMode, error);
@@ -136,7 +126,7 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, JSGlobalObject* 
             bool hasProperty = globalLexicalEnvironment->hasProperty(globalObject, entry.key.get());
             RETURN_IF_EXCEPTION(throwScope, nullptr);
             if (hasProperty) {
-                if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+                if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isInStrictContext())) {
                     // We only allow "const" duplicate declarations under this setting.
                     // For example, we don't "let" variables to be overridden by "const" variables.
                     if (globalLexicalEnvironment->isConstVariable(entry.key.get()))
@@ -185,7 +175,7 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, JSGlobalObject* 
         SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
         ConcurrentJSLocker locker(symbolTable->m_lock);
         for (auto& entry : lexicalDeclarations) {
-            if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+            if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isInStrictContext())) {
                 if (symbolTable->contains(locker, entry.key.get()))
                     continue;
             }

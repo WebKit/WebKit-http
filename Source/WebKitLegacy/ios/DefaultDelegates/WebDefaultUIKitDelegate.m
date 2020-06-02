@@ -268,6 +268,11 @@ static WebDefaultUIKitDelegate *sharedDelegate = nil;
 }
 #endif
 
+- (BOOL)shouldSuppressPasswordEcho
+{
+    return NO;
+}
+
 - (BOOL)hasRichlyEditableSelection
 {
     return NO;
@@ -286,11 +291,6 @@ static WebDefaultUIKitDelegate *sharedDelegate = nil;
 - (NSInteger)getPasteboardChangeCount
 {
     return 0;
-}
-
-- (BOOL)isUnperturbedDictationResultMarker:(id)metadataForMarker
-{
-    return NO;
 }
 
 - (void)webView:(WebView *)webView willAddPlugInView:(id)plugInView

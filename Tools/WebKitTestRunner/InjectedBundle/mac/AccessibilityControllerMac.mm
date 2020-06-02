@@ -97,19 +97,15 @@ static id findAccessibleObjectById(id obj, NSString *idAttribute)
 RefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementById(JSStringRef idAttribute)
 {
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
-    PlatformUIElement root = nullptr;
+    PlatformUIElement root = static_cast<PlatformUIElement>(WKAccessibilityRootObject(page));
 
-    executeOnAXThreadIfPossible([&page, &root] {
-        root = static_cast<PlatformUIElement>(WKAccessibilityRootObject(page));
-    });
-
-    id result;
-    executeOnAXThreadIfPossible([&root, &idAttribute, &result] {
+    RetainPtr<id> result;
+    executeOnAXThreadAndWait([&root, &idAttribute, &result] {
         result = findAccessibleObjectById(root, [NSString stringWithJSStringRef:idAttribute]);
     });
 
     if (result)
-        return AccessibilityUIElement::create(result);
+        return AccessibilityUIElement::create(result.get());
     return nullptr;
 }
 

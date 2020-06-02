@@ -177,22 +177,17 @@ String HTMLAttachmentElement::attachmentTitle() const
 String HTMLAttachmentElement::attachmentTitleForDisplay() const
 {
     auto title = attachmentTitle();
-
     auto indexOfLastDot = title.reverseFind('.');
     if (indexOfLastDot == notFound)
         return title;
 
-    String name = title.left(indexOfLastDot);
-    String extension = title.substring(indexOfLastDot);
-
-    StringBuilder builder;
-    builder.append(leftToRightMark);
-    builder.append(firstStrongIsolate);
-    builder.append(name);
-    builder.append(popDirectionalIsolate);
-    builder.append(extension);
-
-    return builder.toString();
+    return makeString(
+        leftToRightMark,
+        firstStrongIsolate,
+        StringView(title).left(indexOfLastDot),
+        popDirectionalIsolate,
+        StringView(title).substring(indexOfLastDot)
+    );
 }
 
 String HTMLAttachmentElement::attachmentType() const
@@ -247,6 +242,14 @@ void HTMLAttachmentElement::updateEnclosingImageWithData(const String& contentTy
         return;
 
     hostElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document(), Blob::create(WTFMove(data), mimeType)));
+}
+
+void HTMLAttachmentElement::updateThumbnail(const RefPtr<Image>& thumbnail)
+{
+    m_thumbnail = thumbnail;
+    
+    if (auto* renderer = this->renderer())
+        renderer->invalidate();
 }
 
 } // namespace WebCore

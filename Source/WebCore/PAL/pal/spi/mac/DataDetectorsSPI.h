@@ -23,8 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #import <wtf/Platform.h>
 
 #if ENABLE(DATA_DETECTION)
@@ -89,7 +87,7 @@ enum {
 
 #endif // !USE(APPLE_INTERNAL_SDK)
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
 
 WTF_EXTERN_C_BEGIN
 CFTypeID DDResultGetCFTypeID(void);

@@ -51,7 +51,7 @@ protected:
     void commitStateBeforeChildren(const ScrollingStateNode&) override;
     void commitStateAfterChildren(const ScrollingStateNode&) override;
 
-    ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) override;
+    WheelEventHandlingResult handleWheelEvent(const PlatformWheelEvent&) override;
 
     WEBCORE_EXPORT void repositionRelatedLayers() override;
 
@@ -63,10 +63,12 @@ protected:
     unsigned exposedUnfilledArea() const;
 
 private:
+    void willBeDestroyed() final;
+
     FloatPoint adjustedScrollPosition(const FloatPoint&, ScrollClamping) const override;
 
-    void currentScrollPositionChanged() override;
-    void repositionScrollingLayers() override;
+    void currentScrollPositionChanged(ScrollingLayerPositionAction) final;
+    void repositionScrollingLayers() final;
 
     ScrollingTreeScrollingNodeDelegateMac m_delegate;
 

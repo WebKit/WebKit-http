@@ -5,14 +5,24 @@
     <key>async_frame_and_overflow_scrolling</key>
     <dict>
         <key>Enabled</key>
-        <false/>
+        <true/>
     </dict>
     <key>canvas_and_media_in_gpu_process</key>
     <dict>
         <key>Enabled</key>
         <false/>
     </dict>
+    <key>InAppBrowserPrivacy</key>
+    <dict>
+        <key>Enabled</key>
+        <false/>
+    </dict>
     <key>incremental_pdf</key>
+    <dict>
+        <key>Enabled</key>
+        <true/>
+    </dict>
+    <key>ScriptOptimizations</key>
     <dict>
         <key>Enabled</key>
         <false/>
@@ -28,16 +38,6 @@
         <false/>
     </dict>
     <key>webrtc_in_gpu_process</key>
-    <dict>
-        <key>Enabled</key>
-        <false/>
-    </dict>
-    <key>InAppBrowserPrivacy</key>
-    <dict>
-        <key>Enabled</key>
-        <false/>
-    </dict>
-    <key>ScriptOptimizations</key>
     <dict>
         <key>Enabled</key>
         <false/>

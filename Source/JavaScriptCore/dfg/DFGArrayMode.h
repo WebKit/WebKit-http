@@ -237,6 +237,7 @@ public:
         return ArrayMode(type, arrayClass(), speculation(), conversion, action());
     }
     
+    static constexpr SpeculatedType unusedIndexSpeculatedType = SpecInt32Only;
     ArrayMode refine(Graph&, Node*, SpeculatedType base, SpeculatedType index, SpeculatedType value = SpecNone) const;
     
     bool alreadyChecked(Graph&, Node*, const AbstractValue&) const;
@@ -429,6 +430,8 @@ public:
         switch (type()) {
         case Array::Generic:
             return ALL_ARRAY_MODES;
+        case Array::Undecided:
+            return arrayModesWithIndexingShapes(UndecidedShape);
         case Array::Int32:
             result = arrayModesWithIndexingShapes(Int32Shape);
             break;

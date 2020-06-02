@@ -30,7 +30,11 @@
 
 int main(int argc, char** argv)
 {
+#if USE(GTK4)
+    gtk_init();
+#else
     gtk_init(&argc, &argv);
+#endif
 
     return TestWebKitAPI::TestsController::singleton().run(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

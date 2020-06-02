@@ -29,19 +29,14 @@
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
 #import "WKWebViewPrivateForTesting.h"
-#import <wtf/Vector.h>
-
-#if USE(DICTATION_ALTERNATIVES)
 #import <WebCore/AlternativeTextUIController.h>
-#endif
+#import <wtf/Vector.h>
 
 namespace WebKit {
 
 PageClientImplCocoa::PageClientImplCocoa(WKWebView *webView)
     : m_webView { webView }
-#if USE(DICTATION_ALTERNATIVES)
     , m_alternativeTextUIController { makeUnique<AlternativeTextUIController>() }
-#endif
 {
 }
 
@@ -81,13 +76,13 @@ void PageClientImplCocoa::didInvalidateDataForAttachment(API::Attachment& attach
 
 NSFileWrapper *PageClientImplCocoa::allocFileWrapperInstance() const
 {
-    Class cls = [m_webView configuration]._attachmentFileWrapperClass ?: [NSFileWrapper self];
+    Class cls = [m_webView configuration]._attachmentFileWrapperClass ?: [NSFileWrapper class];
     return [cls alloc];
 }
 
 NSSet *PageClientImplCocoa::serializableFileWrapperClasses() const
 {
-    Class defaultFileWrapperClass = NSFileWrapper.self;
+    Class defaultFileWrapperClass = NSFileWrapper.class;
     Class configuredFileWrapperClass = [m_webView configuration]._attachmentFileWrapperClass;
     if (configuredFileWrapperClass && configuredFileWrapperClass != defaultFileWrapperClass)
         return [NSSet setWithObjects:configuredFileWrapperClass, defaultFileWrapperClass, nil];
@@ -98,29 +93,22 @@ NSSet *PageClientImplCocoa::serializableFileWrapperClasses() const
 
 void PageClientImplCocoa::pageClosed()
 {
-#if USE(DICTATION_ALTERNATIVES)
     m_alternativeTextUIController->clear();
-#endif
 }
 
-#if USE(DICTATION_ALTERNATIVES)
-
-uint64_t PageClientImplCocoa::addDictationAlternatives(const RetainPtr<NSTextAlternatives>& alternatives)
+WebCore::DictationContext PageClientImplCocoa::addDictationAlternatives(NSTextAlternatives *alternatives)
 {
     return m_alternativeTextUIController->addAlternatives(alternatives);
 }
 
-void PageClientImplCocoa::removeDictationAlternatives(uint64_t dictationContext)
+void PageClientImplCocoa::removeDictationAlternatives(WebCore::DictationContext dictationContext)
 {
     m_alternativeTextUIController->removeAlternatives(dictationContext);
 }
 
-Vector<String> PageClientImplCocoa::dictationAlternatives(uint64_t dictationContext)
+Vector<String> PageClientImplCocoa::dictationAlternatives(WebCore::DictationContext dictationContext)
 {
     return m_alternativeTextUIController->alternativesForContext(dictationContext);
 }
-
-#endif
-
     
 }

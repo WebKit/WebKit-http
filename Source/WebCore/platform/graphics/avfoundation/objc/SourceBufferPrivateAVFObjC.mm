@@ -403,7 +403,7 @@ public:
     bool isAudio() const override { return m_isAudio; }
     bool isText() const override { return m_isText; }
     
-protected:
+private:
     MediaDescriptionAVFObjC(AVAssetTrack* track)
         : m_isVideo([track hasMediaCharacteristic:AVMediaCharacteristicVisual])
         , m_isAudio([track hasMediaCharacteristic:AVMediaCharacteristicAudible])
@@ -413,6 +413,10 @@ protected:
         CMFormatDescriptionRef description = [formatDescriptions count] ? (__bridge CMFormatDescriptionRef)[formatDescriptions objectAtIndex:0] : 0;
         if (description) {
             FourCharCode codec = CMFormatDescriptionGetMediaSubType(description);
+            CFStringRef originalFormatKey = PAL::canLoad_CoreMedia_kCMFormatDescriptionExtension_ProtectedContentOriginalFormat() ? PAL::get_CoreMedia_kCMFormatDescriptionExtension_ProtectedContentOriginalFormat() : CFSTR("CommonEncryptionOriginalFormat");
+            CFTypeRef originalFormat = CMFormatDescriptionGetExtension(description, originalFormatKey);
+            if (originalFormat && CFGetTypeID(originalFormat) == CFNumberGetTypeID())
+                CFNumberGetValue((CFNumberRef)originalFormat, kCFNumberLongType, &codec);
             m_codec = AtomString(reinterpret_cast<LChar*>(&codec), 4);
         }
     }

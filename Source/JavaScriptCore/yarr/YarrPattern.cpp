@@ -34,7 +34,6 @@
 #include <wtf/DataLog.h>
 #include <wtf/Optional.h>
 #include <wtf/StackCheck.h>
-#include <wtf/Threading.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace Yarr {
@@ -686,7 +685,7 @@ public:
     {
         if (UNLIKELY(!isSafeToRecurse())) {
             m_error = ErrorCode::PatternTooLarge;
-            return 0;
+            return nullptr;
         }
 
         std::unique_ptr<PatternDisjunction> newDisjunction;
@@ -705,12 +704,12 @@ public:
         }
         
         if (hasError(error())) {
-            newDisjunction = 0;
-            return 0;
+            newDisjunction = nullptr;
+            return nullptr;
         }
 
         if (!newDisjunction)
-            return 0;
+            return nullptr;
 
         PatternDisjunction* copiedDisjunction = newDisjunction.get();
         m_pattern.m_disjunctions.append(WTFMove(newDisjunction));

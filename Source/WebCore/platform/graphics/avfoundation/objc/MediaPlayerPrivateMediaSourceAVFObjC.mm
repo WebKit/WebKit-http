@@ -332,6 +332,9 @@ void MediaPlayerPrivateMediaSourceAVFObjC::play()
 
 void MediaPlayerPrivateMediaSourceAVFObjC::playInternal()
 {
+    if (!m_mediaSourcePrivate)
+        return;
+
     if (currentMediaTime() >= m_mediaSourcePrivate->duration()) {
         ALWAYS_LOG(LOGIDENTIFIER, "bailing, current time: ", currentMediaTime(), " greater than duration ", m_mediaSourcePrivate->duration());
         return;
@@ -1055,6 +1058,9 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(LegacyCDMSession* sessi
         cdmStreamSession->setStreamSession(streamSession());
 #endif
 
+    if (!m_mediaSourcePrivate)
+        return;
+
     for (auto& sourceBuffer : m_mediaSourcePrivate->sourceBuffers())
         sourceBuffer->setCDMSession(m_session.get());
 }
@@ -1184,7 +1190,8 @@ ALLOW_NEW_API_WITHOUT_GUARDS_END
         setNetworkState(MediaPlayer::NetworkState::DecodeError);
         return;
     }
-    m_player->renderingModeChanged();
+
+    m_player->characteristicChanged();
 }
 
 ALLOW_NEW_API_WITHOUT_GUARDS_BEGIN

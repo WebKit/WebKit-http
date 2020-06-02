@@ -26,14 +26,11 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "InternalFunction.h"
 #include "IntlObject.h"
 
 namespace JSC {
 
-class IntlDateTimeFormat;
 class IntlDateTimeFormatPrototype;
 
 class IntlDateTimeFormatConstructor final : public InternalFunction {
@@ -46,16 +43,10 @@ public:
 
     DECLARE_INFO;
 
-    Structure* dateTimeFormatStructure(VM&) const { return globalObject()->dateTimeFormatStructure(); }
-
-protected:
-    void finishCreation(VM&, IntlDateTimeFormatPrototype*);
-
 private:
     IntlDateTimeFormatConstructor(VM&, Structure*);
+    void finishCreation(VM&, IntlDateTimeFormatPrototype*);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(IntlDateTimeFormatConstructor, InternalFunction);
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

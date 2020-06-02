@@ -131,13 +131,13 @@ WI.DOMStorageManager = class DOMStorageManager extends WI.Object
             domStorage.itemAdded(key, value);
     }
 
-    itemUpdated(storageId, key, oldValue, value)
+    itemUpdated(storageId, key, oldValue, newValue)
     {
         console.assert(this._enabled);
 
         let domStorage = this._domStorageForIdentifier(storageId);
         if (domStorage)
-            domStorage.itemUpdated(key, oldValue, value);
+            domStorage.itemUpdated(key, oldValue, newValue);
     }
 
     // InspectorObserver
@@ -212,7 +212,7 @@ WI.DOMStorageManager = class DOMStorageManager extends WI.Object
         if (!this._enabled)
             return;
 
-        if (!InspectorBackend.hasDomain("DOMStorage"))
+        if (!InspectorBackend.hasCommand("Page.getCookies"))
             return;
 
         // Add the host of the frame that changed the main resource to the list of hosts there could be cookies for.

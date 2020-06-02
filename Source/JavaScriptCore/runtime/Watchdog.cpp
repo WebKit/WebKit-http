@@ -26,9 +26,8 @@
 #include "config.h"
 #include "Watchdog.h"
 
-#include "CallFrame.h"
+#include "VM.h"
 #include <wtf/CPUTime.h>
-#include <wtf/MathExtras.h>
 
 namespace JSC {
 
@@ -37,9 +36,9 @@ Watchdog::Watchdog(VM* vm)
     , m_timeLimit(noTimeLimit)
     , m_cpuDeadline(noTimeLimit)
     , m_deadline(MonotonicTime::infinity())
-    , m_callback(0)
-    , m_callbackData1(0)
-    , m_callbackData2(0)
+    , m_callback(nullptr)
+    , m_callbackData1(nullptr)
+    , m_callbackData2(nullptr)
     , m_timerQueue(WorkQueue::create("jsc.watchdog.queue", WorkQueue::Type::Serial, WorkQueue::QOS::Utility))
 {
 }

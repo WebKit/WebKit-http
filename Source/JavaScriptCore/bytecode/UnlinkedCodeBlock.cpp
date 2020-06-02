@@ -27,27 +27,13 @@
 
 #include "UnlinkedCodeBlock.h"
 
-#include "BytecodeGenerator.h"
 #include "BytecodeLivenessAnalysis.h"
-#include "BytecodeRewriter.h"
+#include "BytecodeStructs.h"
 #include "ClassInfo.h"
-#include "CodeCache.h"
 #include "ExecutableInfo.h"
-#include "FunctionOverrides.h"
 #include "InstructionStream.h"
-#include "JSCInlines.h"
-#include "JSString.h"
-#include "Opcode.h"
-#include "Parser.h"
-#include "PreciseJumpTargetsInlines.h"
-#include "SourceProvider.h"
-#include "Structure.h"
-#include "SymbolTable.h"
-#include "UnlinkedEvalCodeBlock.h"
-#include "UnlinkedFunctionCodeBlock.h"
+#include "JSCJSValueInlines.h"
 #include "UnlinkedMetadataTableInlines.h"
-#include "UnlinkedModuleProgramCodeBlock.h"
-#include "UnlinkedProgramCodeBlock.h"
 #include <wtf/DataLog.h>
 
 namespace JSC {
@@ -57,7 +43,6 @@ const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", nullptr, null
 UnlinkedCodeBlock::UnlinkedCodeBlock(VM& vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
     : Base(vm, structure)
     , m_usesEval(info.usesEval())
-    , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(info.isBuiltinFunction())
@@ -70,7 +55,7 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM& vm, Structure* structure, CodeType code
     , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
     , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
     , m_codeType(static_cast<unsigned>(codeType))
-    , m_didOptimize(static_cast<unsigned>(MixedTriState))
+    , m_didOptimize(static_cast<unsigned>(TriState::Indeterminate))
     , m_age(0)
     , m_hasCheckpoints(false)
     , m_parseMode(info.parseMode())
@@ -79,7 +64,7 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM& vm, Structure* structure, CodeType code
 {
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
     ASSERT(m_codeType == static_cast<unsigned>(codeType));
-    ASSERT(m_didOptimize == static_cast<unsigned>(MixedTriState));
+    ASSERT(m_didOptimize == static_cast<unsigned>(TriState::Indeterminate));
     if (info.needsClassFieldInitializer() == NeedsClassFieldInitializer::Yes) {
         createRareDataIfNecessary(holdLock(cellLock()));
         m_rareData->m_needsClassFieldInitializer = static_cast<unsigned>(NeedsClassFieldInitializer::Yes);

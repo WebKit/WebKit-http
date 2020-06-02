@@ -30,9 +30,7 @@
 
 #include "DFGGraph.h"
 #include "DFGScoreBoard.h"
-#include "JSCInlines.h"
-#include "StackAlignment.h"
-#include <wtf/StdLibExtras.h>
+#include "JSCJSValueInlines.h"
 
 namespace JSC { namespace DFG {
 

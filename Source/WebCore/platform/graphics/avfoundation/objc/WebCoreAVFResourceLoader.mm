@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebCoreAVFResourceLoader.h"
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_LOADER_DELEGATE)
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
 
 #import "CachedRawResource.h"
 #import "CachedResourceLoader.h"
@@ -56,7 +56,7 @@ private:
     // CachedRawResourceClient
     void responseReceived(CachedResource&, const ResourceResponse&, CompletionHandler<void()>&&) final;
     void dataReceived(CachedResource&, const char*, int) final;
-    void notifyFinished(CachedResource&) final;
+    void notifyFinished(CachedResource&, const NetworkLoadMetrics&) final;
 
     void fulfillRequestWithResource(CachedResource&);
 
@@ -112,7 +112,7 @@ void CachedResourceMediaLoader::responseReceived(CachedResource& resource, const
     m_parent.responseReceived(response);
 }
 
-void CachedResourceMediaLoader::notifyFinished(CachedResource& resource)
+void CachedResourceMediaLoader::notifyFinished(CachedResource& resource, const NetworkLoadMetrics&)
 {
     if (resource.loadFailedOrCanceled()) {
         m_parent.loadFailed(resource.resourceError());
@@ -143,14 +143,14 @@ private:
     void loadFinished();
 
     // PlatformMediaResourceClient
-    void responseReceived(PlatformMediaResource&, const ResourceResponse&, CompletionHandler<void(PolicyChecker::ShouldContinue)>&&) final;
+    void responseReceived(PlatformMediaResource&, const ResourceResponse&, CompletionHandler<void(ShouldContinuePolicyCheck)>&&) final;
     void redirectReceived(PlatformMediaResource&, ResourceRequest&& request, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&& completionHandler) final { completionHandler(WTFMove(request)); }
     bool shouldCacheResponse(PlatformMediaResource&, const ResourceResponse&) final { return false; }
     void dataSent(PlatformMediaResource&, unsigned long long, unsigned long long) final { }
     void dataReceived(PlatformMediaResource&, const char*, int) final;
     void accessControlCheckFailed(PlatformMediaResource&, const ResourceError& error) final { loadFailed(error); }
     void loadFailed(PlatformMediaResource&, const ResourceError& error) final { loadFailed(error); }
-    void loadFinished(PlatformMediaResource&) final { loadFinished(); }
+    void loadFinished(PlatformMediaResource&, const NetworkLoadMetrics&) final { loadFinished(); }
 
     WebCoreAVFResourceLoader& m_parent;
     RefPtr<PlatformMediaResource> m_resource;
@@ -186,10 +186,10 @@ void PlatformResourceMediaLoader::stop()
     resource->setClient(nullptr);
 }
 
-void PlatformResourceMediaLoader::responseReceived(PlatformMediaResource&, const ResourceResponse& response, CompletionHandler<void(PolicyChecker::ShouldContinue)>&& completionHandler)
+void PlatformResourceMediaLoader::responseReceived(PlatformMediaResource&, const ResourceResponse& response, CompletionHandler<void(ShouldContinuePolicyCheck)>&& completionHandler)
 {
     m_parent.responseReceived(response);
-    completionHandler(PolicyChecker::ShouldContinue::Yes);
+    completionHandler(ShouldContinuePolicyCheck::Yes);
 }
 
 void PlatformResourceMediaLoader::loadFailed(const ResourceError& error)

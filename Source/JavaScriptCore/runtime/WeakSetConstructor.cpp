@@ -26,11 +26,8 @@
 #include "config.h"
 #include "WeakSetConstructor.h"
 
-#include "Error.h"
 #include "IteratorOperations.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
-#include "JSObjectInlines.h"
 #include "JSWeakSet.h"
 #include "WeakSetPrototype.h"
 
@@ -65,8 +62,12 @@ static EncodedJSValue JSC_HOST_CALL constructWeakSet(JSGlobalObject* globalObjec
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    Structure* weakSetStructure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), globalObject->weakSetStructure());
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* weakSetStructure = newTarget == callFrame->jsCallee()
+        ? globalObject->weakSetStructure()
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->weakSetStructure());
+    RETURN_IF_EXCEPTION(scope, { });
+
     JSWeakSet* weakSet = JSWeakSet::create(vm, weakSetStructure);
     JSValue iterable = callFrame->argument(0);
     if (iterable.isUndefinedOrNull())
@@ -75,9 +76,8 @@ static EncodedJSValue JSC_HOST_CALL constructWeakSet(JSGlobalObject* globalObjec
     JSValue adderFunction = weakSet->JSObject::get(globalObject, vm.propertyNames->add);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    CallData adderFunctionCallData;
-    CallType adderFunctionCallType = getCallData(vm, adderFunction, adderFunctionCallData);
-    if (adderFunctionCallType == CallType::None)
+    auto adderFunctionCallData = getCallData(vm, adderFunction);
+    if (adderFunctionCallData.type == CallData::Type::None)
         return JSValue::encode(throwTypeError(globalObject, scope));
 
     scope.release();
@@ -85,7 +85,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakSet(JSGlobalObject* globalObjec
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);
         ASSERT(!arguments.hasOverflowed());
-        call(globalObject, adderFunction, adderFunctionCallType, adderFunctionCallData, weakSet, arguments);
+        call(globalObject, adderFunction, adderFunctionCallData, weakSet, arguments);
     });
 
     return JSValue::encode(weakSet);

@@ -25,7 +25,7 @@
 #import "config.h"
 #import "VideoFullscreenManager.h"
 
-#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 #import "Attachment.h"
 #import "LayerHostingContext.h"
@@ -223,7 +223,7 @@ bool VideoFullscreenManager::supportsVideoFullscreen(WebCore::HTMLMediaElementEn
     UNUSED_PARAM(mode);
     return DeprecatedGlobalSettings::avKitEnabled();
 #else
-    return mode == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture && supportsPictureInPicture();
+    return mode == HTMLMediaElementEnums::VideoFullscreenModeStandard || (mode == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture && supportsPictureInPicture());
 #endif
 }
 
@@ -308,7 +308,6 @@ void VideoFullscreenManager::exitVideoFullscreenToModeWithoutAnimation(WebCore::
 {
     LOG(Fullscreen, "VideoFullscreenManager::exitVideoFullscreenToModeWithoutAnimation(%p)", this);
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
     ASSERT(m_page);
     ASSERT(m_videoElements.contains(&videoElement));
 
@@ -318,10 +317,6 @@ void VideoFullscreenManager::exitVideoFullscreenToModeWithoutAnimation(WebCore::
     interface.setTargetIsFullscreen(false);
 
     m_page->send(Messages::VideoFullscreenManagerProxy::ExitFullscreenWithoutAnimationToMode(contextId, targetMode));
-#else
-    UNUSED_PARAM(videoElement);
-    UNUSED_PARAM(targetMode);
-#endif
 }
 
 #pragma mark Interface to VideoFullscreenInterfaceContext:
@@ -446,6 +441,8 @@ void VideoFullscreenManager::didEnterFullscreen(uint64_t contextId)
     if (!videoElement)
         return;
 
+    videoElement->didEnterFullscreen();
+
     dispatch_async(dispatch_get_main_queue(), [protectedThis = makeRefPtr(this), videoElement] {
         videoElement->didBecomeFullscreenElement();
     });
@@ -510,6 +507,8 @@ void VideoFullscreenManager::didCleanupFullscreen(uint64_t contextId)
 
     model->setVideoFullscreenLayer(nil);
     RefPtr<HTMLVideoElement> videoElement = model->videoElement();
+    if (videoElement)
+        videoElement->didExitFullscreen();
 
     interface->setFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);
     interface->setFullscreenStandby(false);
@@ -570,4 +569,4 @@ void VideoFullscreenManager::setVideoLayerFrameFenced(uint64_t contextId, WebCor
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#endif // ENABLE(VIDEO_PRESENTATION_MODE)

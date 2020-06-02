@@ -14,7 +14,6 @@
 #include "libANGLE/AttributeMap.h"
 #include "libANGLE/Context.h"
 #include "libANGLE/Display.h"
-#include "libANGLE/Path.h"
 #include "libANGLE/State.h"
 #include "libANGLE/Surface.h"
 #include "libANGLE/renderer/gl/BlitGL.h"
@@ -26,7 +25,6 @@
 #include "libANGLE/renderer/gl/FenceNVGL.h"
 #include "libANGLE/renderer/gl/FramebufferGL.h"
 #include "libANGLE/renderer/gl/FunctionsGL.h"
-#include "libANGLE/renderer/gl/PathGL.h"
 #include "libANGLE/renderer/gl/ProgramGL.h"
 #include "libANGLE/renderer/gl/QueryGL.h"
 #include "libANGLE/renderer/gl/RenderbufferGL.h"
@@ -43,19 +41,6 @@
 
 namespace
 {
-
-std::vector<GLuint> GatherPaths(const std::vector<gl::Path *> &paths)
-{
-    std::vector<GLuint> ret;
-    ret.reserve(paths.size());
-
-    for (const auto *p : paths)
-    {
-        const auto *pathObj = rx::GetImplAs<rx::PathGL>(p);
-        ret.push_back(pathObj->getPathID());
-    }
-    return ret;
-}
 
 void SetMaxShaderCompilerThreads(const rx::FunctionsGL *functions, GLuint count)
 {
@@ -78,6 +63,15 @@ const char *kIgnoredErrors[] = {
     "share_context to eglCreateContext. Results are undefined.",
 };
 #endif  // defined(ANGLE_PLATFORM_ANDROID)
+
+const char *kIgnoredWarnings[] = {
+    // We always request GL_ARB_gpu_shader5 and GL_EXT_gpu_shader5 when compiling shaders but some
+    // drivers warn when it is not present. This ends up spamming the console on every shader
+    // compile.
+    "extension `GL_ARB_gpu_shader5' unsupported in",
+    "extension `GL_EXT_gpu_shader5' unsupported in",
+};
+
 }  // namespace
 
 static void INTERNAL_GL_APIENTRY LogGLDebugMessage(GLenum source,
@@ -88,80 +82,9 @@ static void INTERNAL_GL_APIENTRY LogGLDebugMessage(GLenum source,
                                                    const GLchar *message,
                                                    const void *userParam)
 {
-    std::string sourceText;
-    switch (source)
-    {
-        case GL_DEBUG_SOURCE_API:
-            sourceText = "OpenGL";
-            break;
-        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
-            sourceText = "Windows";
-            break;
-        case GL_DEBUG_SOURCE_SHADER_COMPILER:
-            sourceText = "Shader Compiler";
-            break;
-        case GL_DEBUG_SOURCE_THIRD_PARTY:
-            sourceText = "Third Party";
-            break;
-        case GL_DEBUG_SOURCE_APPLICATION:
-            sourceText = "Application";
-            break;
-        case GL_DEBUG_SOURCE_OTHER:
-            sourceText = "Other";
-            break;
-        default:
-            sourceText = "UNKNOWN";
-            break;
-    }
-
-    std::string typeText;
-    switch (type)
-    {
-        case GL_DEBUG_TYPE_ERROR:
-            typeText = "Error";
-            break;
-        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-            typeText = "Deprecated behavior";
-            break;
-        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-            typeText = "Undefined behavior";
-            break;
-        case GL_DEBUG_TYPE_PORTABILITY:
-            typeText = "Portability";
-            break;
-        case GL_DEBUG_TYPE_PERFORMANCE:
-            typeText = "Performance";
-            break;
-        case GL_DEBUG_TYPE_OTHER:
-            typeText = "Other";
-            break;
-        case GL_DEBUG_TYPE_MARKER:
-            typeText = "Marker";
-            break;
-        default:
-            typeText = "UNKNOWN";
-            break;
-    }
-
-    std::string severityText;
-    switch (severity)
-    {
-        case GL_DEBUG_SEVERITY_HIGH:
-            severityText = "High";
-            break;
-        case GL_DEBUG_SEVERITY_MEDIUM:
-            severityText = "Medium";
-            break;
-        case GL_DEBUG_SEVERITY_LOW:
-            severityText = "Low";
-            break;
-        case GL_DEBUG_SEVERITY_NOTIFICATION:
-            severityText = "Notification";
-            break;
-        default:
-            severityText = "UNKNOWN";
-            break;
-    }
+    std::string sourceText   = gl::GetDebugMessageSourceString(source);
+    std::string typeText     = gl::GetDebugMessageTypeString(type);
+    std::string severityText = gl::GetDebugMessageSeverityString(severity);
 
 #if defined(ANGLE_PLATFORM_ANDROID)
     if (type == GL_DEBUG_TYPE_ERROR)
@@ -191,6 +114,14 @@ static void INTERNAL_GL_APIENTRY LogGLDebugMessage(GLenum source,
     {
         // Don't print performance warnings. They tend to be very spammy in the dEQP test suite and
         // there is very little we can do about them.
+
+        for (const char *&warn : kIgnoredWarnings)
+        {
+            if (strstr(message, warn) != nullptr)
+            {
+                return;
+            }
+        }
 
         // TODO(ynovikov): filter into WARN and INFO if INFO is ever implemented
         WARN() << std::endl
@@ -224,7 +155,7 @@ RendererGL::RendererGL(std::unique_ptr<FunctionsGL> functions,
     {
         nativegl_gl::InitializeFeatures(mFunctions.get(), &mFeatures);
     }
-    OverrideFeaturesWithDisplayState(&mFeatures, display->getState());
+    ApplyFeatureOverrides(&mFeatures, display->getState());
     mStateManager =
         new StateManagerGL(mFunctions.get(), getNativeCaps(), getNativeExtensions(), mFeatures);
     mBlitter          = new BlitGL(mFunctions.get(), mFeatures, mStateManager);
@@ -305,165 +236,6 @@ angle::Result RendererGL::finish()
     }
 
     return angle::Result::Continue;
-}
-
-void RendererGL::stencilFillPath(const gl::State &state,
-                                 const gl::Path *path,
-                                 GLenum fillMode,
-                                 GLuint mask)
-{
-    const auto *pathObj = GetImplAs<PathGL>(path);
-
-    mFunctions->stencilFillPathNV(pathObj->getPathID(), fillMode, mask);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::stencilStrokePath(const gl::State &state,
-                                   const gl::Path *path,
-                                   GLint reference,
-                                   GLuint mask)
-{
-    const auto *pathObj = GetImplAs<PathGL>(path);
-
-    mFunctions->stencilStrokePathNV(pathObj->getPathID(), reference, mask);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::coverFillPath(const gl::State &state, const gl::Path *path, GLenum coverMode)
-{
-
-    const auto *pathObj = GetImplAs<PathGL>(path);
-    mFunctions->coverFillPathNV(pathObj->getPathID(), coverMode);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::coverStrokePath(const gl::State &state, const gl::Path *path, GLenum coverMode)
-{
-    const auto *pathObj = GetImplAs<PathGL>(path);
-    mFunctions->coverStrokePathNV(pathObj->getPathID(), coverMode);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::stencilThenCoverFillPath(const gl::State &state,
-                                          const gl::Path *path,
-                                          GLenum fillMode,
-                                          GLuint mask,
-                                          GLenum coverMode)
-{
-
-    const auto *pathObj = GetImplAs<PathGL>(path);
-    mFunctions->stencilThenCoverFillPathNV(pathObj->getPathID(), fillMode, mask, coverMode);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::stencilThenCoverStrokePath(const gl::State &state,
-                                            const gl::Path *path,
-                                            GLint reference,
-                                            GLuint mask,
-                                            GLenum coverMode)
-{
-
-    const auto *pathObj = GetImplAs<PathGL>(path);
-    mFunctions->stencilThenCoverStrokePathNV(pathObj->getPathID(), reference, mask, coverMode);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::coverFillPathInstanced(const gl::State &state,
-                                        const std::vector<gl::Path *> &paths,
-                                        GLenum coverMode,
-                                        GLenum transformType,
-                                        const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->coverFillPathInstancedNV(static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT,
-                                         &pathObjs[0], 0, coverMode, transformType,
-                                         transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-void RendererGL::coverStrokePathInstanced(const gl::State &state,
-                                          const std::vector<gl::Path *> &paths,
-                                          GLenum coverMode,
-                                          GLenum transformType,
-                                          const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->coverStrokePathInstancedNV(static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT,
-                                           &pathObjs[0], 0, coverMode, transformType,
-                                           transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-void RendererGL::stencilFillPathInstanced(const gl::State &state,
-                                          const std::vector<gl::Path *> &paths,
-                                          GLenum fillMode,
-                                          GLuint mask,
-                                          GLenum transformType,
-                                          const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->stencilFillPathInstancedNV(static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT,
-                                           &pathObjs[0], 0, fillMode, mask, transformType,
-                                           transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-void RendererGL::stencilStrokePathInstanced(const gl::State &state,
-                                            const std::vector<gl::Path *> &paths,
-                                            GLint reference,
-                                            GLuint mask,
-                                            GLenum transformType,
-                                            const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->stencilStrokePathInstancedNV(static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT,
-                                             &pathObjs[0], 0, reference, mask, transformType,
-                                             transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-
-void RendererGL::stencilThenCoverFillPathInstanced(const gl::State &state,
-                                                   const std::vector<gl::Path *> &paths,
-                                                   GLenum coverMode,
-                                                   GLenum fillMode,
-                                                   GLuint mask,
-                                                   GLenum transformType,
-                                                   const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->stencilThenCoverFillPathInstancedNV(
-        static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT, &pathObjs[0], 0, fillMode, mask,
-        coverMode, transformType, transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
-}
-void RendererGL::stencilThenCoverStrokePathInstanced(const gl::State &state,
-                                                     const std::vector<gl::Path *> &paths,
-                                                     GLenum coverMode,
-                                                     GLint reference,
-                                                     GLuint mask,
-                                                     GLenum transformType,
-                                                     const GLfloat *transformValues)
-{
-    const auto &pathObjs = GatherPaths(paths);
-
-    mFunctions->stencilThenCoverStrokePathInstancedNV(
-        static_cast<GLsizei>(pathObjs.size()), GL_UNSIGNED_INT, &pathObjs[0], 0, reference, mask,
-        coverMode, transformType, transformValues);
-
-    ASSERT(mFunctions->getError() == GL_NO_ERROR);
 }
 
 gl::GraphicsResetStatus RendererGL::getResetStatus()

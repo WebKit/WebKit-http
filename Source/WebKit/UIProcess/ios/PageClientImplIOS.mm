@@ -38,6 +38,7 @@
 #import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NavigationState.h"
+#import "RunningBoardServicesSPI.h"
 #import "StringUtilities.h"
 #import "UIKitSPI.h"
 #import "UndoOrRedo.h"
@@ -118,10 +119,7 @@ WebCore::FloatPoint PageClientImpl::viewScrollPosition()
 
 IntSize PageClientImpl::viewSize()
 {
-    if (UIScrollView *scroller = [m_contentView _scroller])
-        return IntSize(scroller.bounds.size);
-
-    return IntSize([m_contentView bounds].size);
+    return IntSize([m_webView bounds].size);
 }
 
 bool PageClientImpl::isViewWindowActive()
@@ -168,10 +166,7 @@ bool PageClientImpl::isApplicationVisible()
     pid_t applicationPID = serviceViewController._hostProcessIdentifier;
     ASSERT(applicationPID);
 
-    auto applicationStateMonitor = adoptNS([[BKSApplicationStateMonitor alloc] init]);
-    auto applicationState = [applicationStateMonitor mostElevatedApplicationStateForPID:applicationPID];
-    [applicationStateMonitor invalidate];
-    return applicationState != BKSApplicationStateBackgroundRunning && applicationState != BKSApplicationStateBackgroundTaskSuspended;
+    return isApplicationForeground(applicationPID);
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -337,13 +332,6 @@ void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, Und
     if (!actionName.isEmpty())
         [undoManager setActionName:(NSString *)actionName];
 }
-
-#if USE(INSERTION_UNDO_GROUPING)
-void PageClientImpl::registerInsertionUndoGrouping()
-{
-    notImplemented();
-}
-#endif
 
 void PageClientImpl::clearAllEditCommands()
 {
@@ -608,10 +596,8 @@ void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInform
         auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingFromData:nsData.get() error:nullptr]);
         unarchiver.get().decodingFailurePolicy = NSDecodingFailurePolicyRaiseException;
         @try {
-            if (auto* allowedClasses = m_webView.get()->_page->process().processPool().allowedClassesForParameterCoding())
-                userObject = [unarchiver decodeObjectOfClasses:allowedClasses forKey:@"userObject"];
-            else
-                userObject = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"userObject"];
+            auto* allowedClasses = m_webView.get()->_page->process().processPool().allowedClassesForParameterCoding();
+            userObject = [unarchiver decodeObjectOfClasses:allowedClasses forKey:@"userObject"];
         } @catch (NSException *exception) {
             LOG_ERROR("Failed to decode user data: %@", exception);
         }
@@ -953,14 +939,31 @@ void PageClientImpl::handleAutocorrectionContext(const WebAutocorrectionContext&
     [m_contentView _handleAutocorrectionContext:context];
 }
 
-#if USE(DICTATION_ALTERNATIVES)
-
-void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect&, uint64_t)
+void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect&, WebCore::DictationContext)
 {
     notImplemented();
 }
 
+void PageClientImpl::showDataDetectorsUIForPositionInformation(const InteractionInformationAtPosition& positionInformation)
+{
+    [m_contentView _showDataDetectorsUIForPositionInformation:positionInformation];
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void PageClientImpl::writePromisedAttachmentToPasteboard(WebCore::PromisedAttachmentInfo&& info)
+{
+    [m_contentView _writePromisedAttachmentToPasteboard:WTFMove(info)];
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
+
+void PageClientImpl::setMouseEventPolicy(WebCore::MouseEventPolicy policy)
+{
+#if HAVE(UIKIT_WITH_MOUSE_SUPPORT)
+    [m_contentView _setMouseEventPolicy:policy];
 #endif
+}
 
 } // namespace WebKit
 

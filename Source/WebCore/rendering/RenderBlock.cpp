@@ -35,6 +35,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLNames.h"
+#include "HTMLTextFormControlElement.h"
 #include "HitTestLocation.h"
 #include "HitTestResult.h"
 #include "ImageBuffer.h"
@@ -63,6 +64,7 @@
 #include "RenderSVGResourceClipper.h"
 #include "RenderSVGRoot.h"
 #include "RenderTableCell.h"
+#include "RenderTextControl.h"
 #include "RenderTextFragment.h"
 #include "RenderTheme.h"
 #include "RenderTreeBuilder.h"
@@ -1092,16 +1094,11 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     // Check if we need to do anything at all.
     // FIXME: Could eliminate the isDocumentElementRenderer() check if we fix background painting so that the RenderView
     // paints the root's background.
-    if (!isDocumentElementRenderer()) {
-        LayoutRect overflowBox = overflowRectForPaintRejection();
+    if (!isDocumentElementRenderer() && !paintInfo.paintBehavior.contains(PaintBehavior::CompositedOverflowScrollContent)) {
+        LayoutRect overflowBox = visualOverflowRect();
         flipForWritingMode(overflowBox);
         overflowBox.moveBy(adjustedPaintOffset);
-        if (!overflowBox.intersects(paintInfo.rect)
-#if PLATFORM(IOS_FAMILY)
-            // FIXME: This may be applicable to non-iOS ports.
-            && (!hasLayer() || !layer()->isComposited())
-#endif
-        )
+        if (!overflowBox.intersects(paintInfo.rect))
             return;
     }
 
@@ -1252,13 +1249,22 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
         if (visibleToHitTesting()) {
             auto borderRegion = approximateAsRegion(style().getRoundedBorderFor(borderRect));
-            paintInfo.eventRegionContext->unite(borderRegion, style());
+            paintInfo.eventRegionContext->unite(borderRegion, style(), isTextControl() && downcast<RenderTextControl>(*this).textFormControlElement().isInnerTextElementEditable());
         }
 
-        // No need to check descendants if we don't have overflow and don't contain floats and the area is already covered.
-        bool needsTraverseDescendants = hasVisualOverflow() || containsFloats() || !paintInfo.eventRegionContext->contains(enclosingIntRect(borderRect));
-#if PLATFORM(IOS_FAMILY)
-        needsTraverseDescendants = needsTraverseDescendants || document().mayHaveElementsWithNonAutoTouchAction();
+        bool needsTraverseDescendants = hasVisualOverflow() || containsFloats() || !paintInfo.eventRegionContext->contains(enclosingIntRect(borderRect)) || view().needsEventRegionUpdateForNonCompositedFrame();
+#if ENABLE(TOUCH_ACTION_REGIONS)
+        needsTraverseDescendants |= document().mayHaveElementsWithNonAutoTouchAction();
+#endif
+#if !PLATFORM(IOS_FAMILY)
+        needsTraverseDescendants |= document().hasWheelEventHandlers();
+#endif
+#if ENABLE(EDITABLE_REGION)
+        // We treat the entire text control as editable to match users' expectation even
+        // though it's actually the inner text element of the control that is editable.
+        // So, no need to traverse to find the inner text element in this case.
+        if (!isTextControl())
+            needsTraverseDescendants |= document().mayHaveEditableElements();
 #endif
         if (!needsTraverseDescendants)
             return;
@@ -2019,25 +2025,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
         switch (style().clipPath()->type()) {
         case ClipPathOperation::Shape: {
             auto& clipPath = downcast<ShapeClipPathOperation>(*style().clipPath());
-
-            LayoutRect referenceBoxRect;
-            switch (clipPath.referenceBox()) {
-            case CSSBoxType::MarginBox:
-                referenceBoxRect = marginBoxRect();
-                break;
-            case CSSBoxType::PaddingBox:
-                referenceBoxRect = paddingBoxRect();
-                break;
-            case CSSBoxType::FillBox:
-            case CSSBoxType::ContentBox:
-                referenceBoxRect = contentBoxRect();
-                break;
-            case CSSBoxType::StrokeBox:
-            case CSSBoxType::ViewBox:
-            case CSSBoxType::BorderBox:
-            case CSSBoxType::BoxMissing:
-                referenceBoxRect = borderBoxRect();
-            }
+            auto referenceBoxRect = referenceBox(clipPath.referenceBox());
             if (!clipPath.pathForReferenceRect(referenceBoxRect).contains(locationInContainer.point() - localOffset, clipPath.windRule()))
                 return false;
             break;
@@ -3127,7 +3115,13 @@ TextRun RenderBlock::constructTextRun(StringView stringView, const RenderStyle& 
         if (flags & RespectDirectionOverride)
             directionalOverride |= isOverride(style.unicodeBidi());
     }
-    return TextRun(stringView, 0, 0, expansion, textDirection, directionalOverride);
+
+    // This works because:
+    // 1. TextRun owns its text string. Its member is a String, not a StringView
+    // 2. This replacement doesn't affect string indices. We're replacing a single Unicode code unit with another Unicode code unit.
+    // How convenient.
+    auto updatedString = RenderBlock::updateSecurityDiscCharacters(style, stringView.toStringWithoutCopying());
+    return TextRun(WTFMove(updatedString), 0, 0, expansion, textDirection, directionalOverride);
 }
 
 TextRun RenderBlock::constructTextRun(const String& string, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
@@ -3504,6 +3498,31 @@ bool RenderBlock::hitTestExcludedChildrenInBorder(const HitTestRequest& request,
         childHitTest = HitTestChildBlockBackground;
     LayoutPoint childPoint = flipForWritingModeForChild(legend, accumulatedOffset);
     return legend->nodeAtPoint(request, result, locationInContainer, childPoint, childHitTest);
+}
+
+String RenderBlock::updateSecurityDiscCharacters(const RenderStyle& style, String&& string)
+{
+#if !PLATFORM(COCOA)
+    UNUSED_PARAM(style);
+    return WTFMove(string);
+#else
+    if (style.textSecurity() == TextSecurity::None)
+        return WTFMove(string);
+    // This PUA character in the system font is used to render password field dots on Cocoa platforms.
+    constexpr UChar textSecurityDiscPUACodePoint = 0xF79A;
+    auto& font = style.fontCascade().primaryFont();
+    if (!(font.platformData().isSystemFont() && font.glyphForCharacter(textSecurityDiscPUACodePoint)))
+        return WTFMove(string);
+
+    // See RenderText::setRenderedText()
+#if PLATFORM(IOS_FAMILY)
+    constexpr UChar discCharacterToReplace = blackCircle;
+#else
+    constexpr UChar discCharacterToReplace = bullet;
+#endif
+
+    return string.replace(discCharacterToReplace, textSecurityDiscPUACodePoint);
+#endif
 }
     
 } // namespace WebCore

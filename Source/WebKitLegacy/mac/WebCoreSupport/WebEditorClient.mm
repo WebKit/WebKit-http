@@ -79,10 +79,12 @@
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WebContentReader.h>
 #import <WebCore/WebCoreObjCExtras.h>
+#import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <pal/spi/mac/NSSpellCheckerSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS_FAMILY)
@@ -102,7 +104,8 @@ using namespace HTMLNames;
 @end
 #endif
 
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
+// FIXME: Seems likely we can get rid of this legacy code for watchOS and tvOS.
+#if PLATFORM(WATCHOS) || PLATFORM(APPLETV)
 @interface NSAttributedString (WebNSAttributedStringDetails)
 - (DOMDocumentFragment *)_documentFromRange:(NSRange)range document:(DOMDocument *)document documentAttributes:(NSDictionary *)attributes subresources:(NSArray **)subresources;
 @end
@@ -418,7 +421,8 @@ void WebEditorClient::getClientPasteboardDataForRange(WebCore::Range*, Vector<St
     // Not implemented WebKit, only WebKit2.
 }
 
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || PLATFORM(MAC)
+// FIXME: Seems likely we can get rid of this legacy code for watchOS and tvOS.
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 
 // FIXME: Remove both this stub and the real version of this function below once we don't need the real version on any supported platform.
 // This stub is not used outside WebKit, but it's here so we won't get a linker error.
@@ -453,11 +457,7 @@ static NSDictionary *attributesForAttributedStringConversion()
         [excludedElements addObject:@"object"];
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-    static NSString * const NSExcludedElementsDocumentAttribute = @"ExcludedElements";
-#endif
-
-    NSDictionary *dictionary = [NSDictionary dictionaryWithObject:excludedElements forKey:NSExcludedElementsDocumentAttribute];
+    NSDictionary *dictionary = @{ NSExcludedElementsDocumentAttribute: excludedElements };
 
     [excludedElements release];
 
@@ -830,6 +830,13 @@ bool WebEditorClient::shouldRevealCurrentSelectionAfterInsertion() const
     return true;
 }
 
+bool WebEditorClient::shouldSuppressPasswordEcho() const
+{
+    if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(shouldSuppressPasswordEcho)])
+        return [[m_webView _UIKitDelegateForwarder] shouldSuppressPasswordEcho];
+    return false;
+}
+
 RefPtr<WebCore::DocumentFragment> WebEditorClient::documentFragmentFromDelegate(int index)
 {
     if ([[m_webView _editingDelegateForwarder] respondsToSelector:@selector(documentFragmentForPasteboardItemAtIndex:)]) {
@@ -1038,13 +1045,10 @@ Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stri
 
 void WebEditorClient::updateSpellingUIWithGrammarString(const String& badGrammarPhrase, const GrammarDetail& grammarDetail)
 {
-    NSMutableArray *corrections = [NSMutableArray array];
-    for (auto& guess : grammarDetail.guesses)
-        [corrections addObject:guess];
-    NSDictionary *dictionary = @{
-        NSGrammarRange : [NSValue valueWithRange:grammarDetail.range],
-        NSGrammarUserDescription : grammarDetail.userDescription,
-        NSGrammarCorrections : corrections,
+    auto dictionary = @{
+        NSGrammarRange: [NSValue valueWithRange:grammarDetail.range],
+        NSGrammarUserDescription: grammarDetail.userDescription,
+        NSGrammarCorrections: createNSArray(grammarDetail.guesses).get(),
     };
     [[NSSpellChecker sharedSpellChecker] updateSpellingPanelWithGrammarString:badGrammarPhrase detail:dictionary];
 }
@@ -1079,15 +1083,9 @@ void WebEditorClient::getGuessesForWord(const String& word, const String& contex
         [checker checkString:context range:NSMakeRange(0, context.length()) types:NSTextCheckingTypeOrthography options:options inSpellDocumentWithTag:spellCheckerDocumentTag() orthography:&orthography wordCount:0];
         language = [checker languageForWordRange:NSMakeRange(0, context.length()) inString:context orthography:orthography];
     }
-    NSArray* stringsArray = [checker guessesForWordRange:NSMakeRange(0, word.length()) inString:word language:language inSpellDocumentWithTag:spellCheckerDocumentTag()];
-    unsigned count = [stringsArray count];
-
-    if (count > 0) {
-        NSEnumerator *enumerator = [stringsArray objectEnumerator];
-        NSString *string;
-        while ((string = [enumerator nextObject]) != nil)
-            guesses.append(string);
-    }
+    NSArray *stringsArray = [checker guessesForWordRange:NSMakeRange(0, word.length()) inString:word language:language inSpellDocumentWithTag:spellCheckerDocumentTag()];
+    if (stringsArray.count)
+        guesses = makeVector<String>(stringsArray);
 }
 
 #endif // !PLATFORM(IOS_FAMILY)
@@ -1152,17 +1150,16 @@ void WebEditorClient::handleRequestedCandidates(NSInteger sequenceNumber, NSArra
     if (selection != m_lastSelectionForRequestedCandidates)
         return;
 
-    RefPtr<Range> selectedRange = selection.toNormalizedRange();
+    auto selectedRange = selection.toNormalizedRange();
     if (!selectedRange)
         return;
 
     IntRect rectForSelectionCandidates;
-    Vector<FloatQuad> quads;
-    selectedRange->absoluteTextQuads(quads);
+    auto quads = RenderObject::absoluteTextQuads(*selectedRange);
     if (!quads.isEmpty())
         rectForSelectionCandidates = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
     else {
-        // Range::absoluteTextQuads() will be empty at the start of a paragraph.
+        // Quads will be empty at the start of a paragraph.
         if (selection.isCaret())
             rectForSelectionCandidates = frame->view()->contentsToWindow(frame->selection().absoluteCaretBounds());
     }

@@ -23,24 +23,24 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "AudioSampleDataSource.h"
+#import "config.h"
+#import "AudioSampleDataSource.h"
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "CAAudioStreamDescription.h"
-#include "CARingBuffer.h"
-#include "Logging.h"
-#include "MediaStreamTrackPrivate.h"
-#include <AudioToolbox/AudioConverter.h>
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#include <mutex>
-#include <pal/avfoundation/MediaTimeAVFoundation.h>
-#include <syslog.h>
-#include <wtf/StringPrintStream.h>
+#import "CAAudioStreamDescription.h"
+#import "CARingBuffer.h"
+#import "Logging.h"
+#import "MediaStreamTrackPrivate.h"
+#import <AudioToolbox/AudioConverter.h>
+#import <mach/mach.h>
+#import <mach/mach_time.h>
+#import <mutex>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
+#import <syslog.h>
+#import <wtf/StringPrintStream.h>
 
-#include <pal/cf/CoreMediaSoftLink.h>
+#import <pal/cf/CoreMediaSoftLink.h>
 
 namespace WebCore {
 using namespace PAL;
@@ -267,7 +267,7 @@ bool AudioSampleDataSource::pullSamplesInternal(AudioBufferList& buffer, size_t&
 
     uint64_t framesAvailable = sampleCount;
     if (timeStamp < startFrame || timeStamp + sampleCount > endFrame) {
-        if (timeStamp + sampleCount < startFrame || timeStamp > endFrame)
+        if (timeStamp + sampleCount < startFrame || timeStamp >= endFrame)
             framesAvailable = 0;
         else if (timeStamp < startFrame)
             framesAvailable = timeStamp + sampleCount - startFrame;

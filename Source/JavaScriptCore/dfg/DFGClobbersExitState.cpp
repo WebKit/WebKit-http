@@ -28,10 +28,9 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ButterflyInlines.h"
 #include "DFGClobberize.h"
-#include "DFGGraph.h"
 #include "DFGNode.h"
-#include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -57,10 +56,9 @@ bool clobbersExitState(Graph& graph, Node* node)
     case ArrayifyToStructure:
     case Arrayify:
     case NewObject:
-    case NewPromise:
     case NewGenerator:
     case NewAsyncGenerator:
-    case NewArrayIterator:
+    case NewInternalFieldObject:
     case NewRegexp:
     case NewSymbol:
     case NewStringObject:
@@ -70,7 +68,7 @@ bool clobbersExitState(Graph& graph, Node* node)
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
-    case PhantomNewArrayIterator:
+    case PhantomNewInternalFieldObject:
     case MaterializeNewInternalFieldObject:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
@@ -86,6 +84,7 @@ bool clobbersExitState(Graph& graph, Node* node)
     case FilterGetByStatus:
     case FilterPutByIdStatus:
     case FilterInByIdStatus:
+    case FilterDeleteByStatus:
         // These do clobber memory, but nothing that is observable. It may be nice to separate the
         // heaps into those that are observable and those that aren't, but we don't do that right now.
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=148440

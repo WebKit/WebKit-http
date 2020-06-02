@@ -87,6 +87,11 @@ void ExtensionsGLANGLE::ensureEnabled(const String& name)
         m_context->makeContextCurrent();
         gl::RequestExtensionANGLE(name.ascii().data());
         m_enabledExtensions.add(name);
+
+        if (name == "GL_CHROMIUM_color_buffer_float_rgba"_s)
+            m_webglColorBufferFloatRGBA = true;
+        else if (name == "GL_CHROMIUM_color_buffer_float_rgb"_s)
+            m_webglColorBufferFloatRGB = true;
     }
 }
 
@@ -246,6 +251,19 @@ String ExtensionsGLANGLE::getExtensions()
     return String(reinterpret_cast<const char*>(gl::GetString(GL_EXTENSIONS)));
 }
 
+GCGLenum ExtensionsGLANGLE::adjustWebGL1TextureInternalFormat(GCGLenum internalformat, GCGLenum format, GCGLenum type)
+{
+    // The implementation of WEBGL_color_buffer_float for WebGL 1.0 / ES 2.0 requires a sized
+    // internal format. Adjust it if necessary at this lowest level.
+    if (type == GL_FLOAT) {
+        if (m_webglColorBufferFloatRGBA && format == GL_RGBA && internalformat == GL_RGBA)
+            return GL_RGBA32F;
+        if (m_webglColorBufferFloatRGB && format == GL_RGB && internalformat == GL_RGB)
+            return GL_RGB32F;
+    }
+    return internalformat;
+}
+
 // GL_ANGLE_robust_client_memory
 void ExtensionsGLANGLE::getBooleanvRobustANGLE(GCGLenum pname, GCGLsizei bufSize, GCGLsizei *length, GCGLboolean *data)
 {
@@ -329,6 +347,8 @@ void ExtensionsGLANGLE::readPixelsRobustANGLE(int x, int y, GCGLsizei width, GCG
 
 void ExtensionsGLANGLE::texImage2DRobustANGLE(GCGLenum target, int level, int internalformat, GCGLsizei width, GCGLsizei height, int border, GCGLenum format, GCGLenum type, GCGLsizei bufSize, const void *pixels)
 {
+    if (!m_context->m_isForWebGL2)
+        internalformat = adjustWebGL1TextureInternalFormat(internalformat, format, type);
     gl::TexImage2DRobustANGLE(target, level, internalformat, width, height, border, format, type, bufSize, pixels);
 }
 
@@ -425,17 +445,17 @@ void ExtensionsGLANGLE::getActiveUniformBlockivRobustANGLE(GCGLuint program, GCG
 
 void ExtensionsGLANGLE::getInteger64vRobustANGLE(GCGLenum pname, GCGLsizei bufSize, GCGLsizei *length, GCGLint64 *data)
 {
-    gl::GetInteger64vRobustANGLE(pname, bufSize, length, data);
+    gl::GetInteger64vRobustANGLE(pname, bufSize, length, reinterpret_cast<GLint64*>(data));
 }
 
 void ExtensionsGLANGLE::getInteger64i_vRobustANGLE(GCGLenum target, GCGLuint index, GCGLsizei bufSize, GCGLsizei *length, GCGLint64 *data)
 {
-    gl::GetInteger64i_vRobustANGLE(target, index, bufSize, length, data);
+    gl::GetInteger64i_vRobustANGLE(target, index, bufSize, length, reinterpret_cast<GLint64*>(data));
 }
 
 void ExtensionsGLANGLE::getBufferParameteri64vRobustANGLE(GCGLenum target, GCGLenum pname, GCGLsizei bufSize, GCGLsizei *length, GCGLint64 *params)
 {
-    gl::GetBufferParameteri64vRobustANGLE(target, pname, bufSize, length, params);
+    gl::GetBufferParameteri64vRobustANGLE(target, pname, bufSize, length, reinterpret_cast<GLint64*>(params));
 }
 
 void ExtensionsGLANGLE::samplerParameterivRobustANGLE(GCGLuint sampler, GCGLenum pname, GCGLsizei bufSize, const GCGLint *param)
@@ -601,12 +621,12 @@ void ExtensionsGLANGLE::getQueryObjectivRobustANGLE(GCGLuint id, GCGLenum pname,
 
 void ExtensionsGLANGLE::getQueryObjecti64vRobustANGLE(GCGLuint id, GCGLenum pname, GCGLsizei bufSize, GCGLsizei *length, GCGLint64 *params)
 {
-    gl::GetQueryObjecti64vRobustANGLE(id, pname, bufSize, length, params);
+    gl::GetQueryObjecti64vRobustANGLE(id, pname, bufSize, length, reinterpret_cast<GLint64*>(params));
 }
 
 void ExtensionsGLANGLE::getQueryObjectui64vRobustANGLE(GCGLuint id, GCGLenum pname, GCGLsizei bufSize, GCGLsizei *length, GCGLuint64 *params)
 {
-    gl::GetQueryObjectui64vRobustANGLE(id, pname, bufSize, length, params);
+    gl::GetQueryObjectui64vRobustANGLE(id, pname, bufSize, length, reinterpret_cast<GLuint64*>(params));
 }
 
 

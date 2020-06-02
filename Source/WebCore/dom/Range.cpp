@@ -143,17 +143,6 @@ void Range::setDocument(Document& document)
     m_ownerDocument->attachRange(*this);
 }
 
-Node* Range::commonAncestorContainer(Node* containerA, Node* containerB)
-{
-    for (Node* parentA = containerA; parentA; parentA = parentA->parentNode()) {
-        for (Node* parentB = containerB; parentB; parentB = parentB->parentNode()) {
-            if (parentA == parentB)
-                return parentA;
-        }
-    }
-    return nullptr;
-}
-
 static inline bool checkForDifferentRootContainer(const RangeBoundaryPoint& start, const RangeBoundaryPoint& end)
 {
     Node* endRootContainer = end.container();
@@ -239,7 +228,7 @@ ExceptionOr<bool> Range::isPointInRange(Node& refNode, unsigned offset)
     if (checkNodeResult.hasException()) {
         // DOM4 spec requires us to check whether refNode and start container have the same root first
         // but we do it in the reverse order to avoid O(n) operation here in common case.
-        if (!commonAncestorContainer(&refNode, &startContainer()))
+        if (!commonInclusiveAncestor(refNode, startContainer()))
             return false;
         return checkNodeResult.releaseException();
     }
@@ -263,7 +252,7 @@ ExceptionOr<short> Range::comparePoint(Node& refNode, unsigned offset) const
     if (checkNodeResult.hasException()) {
         // DOM4 spec requires us to check whether refNode and start container have the same root first
         // but we do it in the reverse order to avoid O(n) operation here in common case.
-        if (!refNode.isConnected() && !commonAncestorContainer(&refNode, &startContainer()))
+        if (!refNode.isConnected() && !commonInclusiveAncestor(refNode, startContainer()))
             return Exception { WrongDocumentError };
         return checkNodeResult.releaseException();
     }
@@ -421,19 +410,19 @@ ExceptionOr<short> Range::compareBoundaryPoints(Node* containerA, unsigned offse
 
     // case 4: containers A & B are siblings, or children of siblings
     // ### we need to do a traversal here instead
-    auto* commonAncestor = commonAncestorContainer(containerA, containerB);
+    auto commonAncestor = commonInclusiveAncestor(*containerA, *containerB);
     if (!commonAncestor)
         return Exception { WrongDocumentError };
     Node* childA = containerA;
     while (childA && childA->parentNode() != commonAncestor)
         childA = childA->parentNode();
     if (!childA)
-        childA = commonAncestor;
+        childA = commonAncestor.get();
     Node* childB = containerB;
     while (childB && childB->parentNode() != commonAncestor)
         childB = childB->parentNode();
     if (!childB)
-        childB = commonAncestor;
+        childB = commonAncestor.get();
 
     if (childA == childB)
         return 0; // A is equal to B
@@ -1145,11 +1134,9 @@ Node* Range::pastLastNode() const
 
 IntRect Range::absoluteBoundingBox(OptionSet<BoundingRectBehavior> rectOptions) const
 {
-    IntRect result;
     Vector<IntRect> rects;
-    bool useSelectionHeight = false;
-    RangeInFixedPosition* inFixed = nullptr;
-    absoluteTextRects(rects, useSelectionHeight, inFixed, rectOptions);
+    absoluteTextRects(rects, false, rectOptions);
+    IntRect result;
     for (auto& rect : rects)
         result.unite(rect);
     return result;
@@ -1177,14 +1164,10 @@ Vector<FloatRect> Range::absoluteRectsForRangeInText(Node* node, RenderText& ren
         return clippedRects;
     }
 
-    Vector<FloatRect> floatRects;
-    floatRects.reserveInitialCapacity(textQuads.size());
-    for (auto& quad : textQuads)
-        floatRects.uncheckedAppend(quad.boundingBox());
-    return floatRects;
+    return boundingBoxes(textQuads);
 }
 
-void Range::absoluteTextRects(Vector<IntRect>& rects, bool useSelectionHeight, RangeInFixedPosition* inFixed, OptionSet<BoundingRectBehavior> rectOptions) const
+void Range::absoluteTextRects(Vector<IntRect>& rects, bool useSelectionHeight, OptionSet<BoundingRectBehavior> rectOptions) const
 {
     // FIXME: This function should probably return FloatRects.
 
@@ -1208,36 +1191,6 @@ void Range::absoluteTextRects(Vector<IntRect>& rects, bool useSelectionHeight, R
         allFixed &= isFixed;
         someFixed |= isFixed;
     }
-
-    if (inFixed)
-        *inFixed = allFixed ? EntirelyFixedPosition : (someFixed ? PartiallyFixedPosition : NotFixedPosition);
-}
-
-void Range::absoluteTextQuads(Vector<FloatQuad>& quads, bool useSelectionHeight, RangeInFixedPosition* inFixed) const
-{
-    bool allFixed = true;
-    bool someFixed = false;
-
-    Node* stopNode = pastLastNode();
-    for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(*node)) {
-        RenderObject* renderer = node->renderer();
-        if (!renderer)
-            continue;
-        bool isFixed = false;
-        if (renderer->isBR())
-            renderer->absoluteQuads(quads, &isFixed);
-        else if (is<RenderText>(*renderer)) {
-            unsigned startOffset = node == &startContainer() ? m_start.offset() : 0;
-            unsigned endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<unsigned>::max();
-            quads.appendVector(downcast<RenderText>(*renderer).absoluteQuadsForRange(startOffset, endOffset, useSelectionHeight, false /* ignoreEmptyTextSelections */, &isFixed));
-        } else
-            continue;
-        allFixed &= isFixed;
-        someFixed |= isFixed;
-    }
-
-    if (inFixed)
-        *inFixed = allFixed ? EntirelyFixedPosition : (someFixed ? PartiallyFixedPosition : NotFixedPosition);
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -1326,10 +1279,10 @@ int Range::collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&
         }
     }
 
-    // The range could span over nodes with different writing modes.
+    // The range could span nodes with different writing modes.
     // If this is the case, we use the writing mode of the common ancestor.
     if (containsDifferentWritingModes) {
-        if (Node* ancestor = commonAncestorContainer(&startContainer, &endContainer))
+        if (auto ancestor = commonInclusiveAncestor(startContainer, endContainer))
             hasFlippedWritingMode = ancestor->renderer()->style().isFlippedBlocksWritingMode();
     }
 
@@ -1832,8 +1785,7 @@ Vector<FloatRect> Range::borderAndTextRects(CoordinateSpace space, OptionSet<Bou
                 if (space == CoordinateSpace::Client)
                     node->document().convertAbsoluteToClientQuads(elementQuads, renderer->style());
 
-                for (auto& quad : elementQuads)
-                    rects.append(quad.boundingBox());
+                rects.appendVector(boundingBoxes(elementQuads));
             }
         } else if (is<Text>(*node)) {
             if (auto* renderer = downcast<Text>(*node).renderer()) {

@@ -35,6 +35,7 @@
 #include "CanvasRenderingContext2D.h"
 #include "DisplayListDrawingContext.h"
 #include "Document.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "GPUBasedCanvasRenderingContext.h"
@@ -79,6 +80,13 @@
 #include "GPUCanvasContext.h"
 #endif
 
+#if ENABLE(WEBXR)
+#include "DOMWindow.h"
+#include "Navigator.h"
+#include "NavigatorWebXR.h"
+#include "WebXRSystem.h"
+#endif
+
 #if PLATFORM(COCOA)
 #include "MediaSampleAVFObjC.h"
 #include <pal/cf/CoreMediaSoftLink.h>
@@ -116,6 +124,7 @@ HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document& doc
     , ActiveDOMObject(document)
 {
     ASSERT(hasTagName(canvasTag));
+    addObserver(document);
 }
 
 Ref<HTMLCanvasElement> HTMLCanvasElement::create(Document& document)
@@ -137,6 +146,7 @@ HTMLCanvasElement::~HTMLCanvasElement()
     // FIXME: This has to be called here because CSSCanvasValue::CanvasObserverProxy::canvasDestroyed()
     // downcasts the CanvasBase object to HTMLCanvasElement. That invokes virtual methods, which should be
     // avoided in destructors, but works as long as it's done before HTMLCanvasElement destructs completely.
+    // This will also cause the document to remove itself as an observer.
     notifyObserversCanvasDestroyed();
 
     m_context = nullptr; // Ensure this goes away before the ImageBuffer.
@@ -415,10 +425,23 @@ WebGLRenderingContextBase* HTMLCanvasElement::createContextWebGL(const String& t
     if (!shouldEnableWebGL(document().settings()))
         return nullptr;
 
+#if ENABLE(WEBXR)
+    // https://immersive-web.github.io/webxr/#xr-compatible
+    if (attrs.xrCompatible) {
+        if (auto* window = document().domWindow())
+            NavigatorWebXR::xr(window->navigator()).ensureImmersiveXRDeviceIsSelected();
+    }
+#endif
+
+    // TODO(WEBXR): ensure the context is created in a compatible graphics
+    // adapter when there is an active immersive device.
     m_context = WebGLRenderingContextBase::create(*this, attrs, type);
     if (m_context) {
         // Need to make sure a RenderLayer and compositing layer get created for the Canvas.
         invalidateStyleAndLayerComposition();
+#if ENABLE(WEBXR)
+        ASSERT(!attrs.xrCompatible || downcast<WebGLRenderingContextBase>(m_context.get())->isXRCompatible());
+#endif
     }
 
     return downcast<WebGLRenderingContextBase>(m_context.get());
@@ -973,6 +996,41 @@ void HTMLCanvasElement::eventListenersDidChange()
     m_hasRelevantWebGLEventListener = hasEventListeners(eventNames().webglcontextchangedEvent)
         || hasEventListeners(eventNames().webglcontextlostEvent)
         || hasEventListeners(eventNames().webglcontextrestoredEvent);
+#endif
+}
+
+void HTMLCanvasElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
+{
+    removeObserver(oldDocument);
+    addObserver(newDocument);
+
+    HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
+}
+
+void HTMLCanvasElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
+{
+    if (removalType.disconnectedFromDocument)
+        removeObserver(oldParentOfRemovedTree.document());
+
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+}
+
+bool HTMLCanvasElement::needsPreparationForDisplay()
+{
+#if ENABLE(WEBGL)
+    return is<WebGLRenderingContextBase>(m_context.get());
+#else
+    return false;
+#endif
+}
+
+void HTMLCanvasElement::prepareForDisplay()
+{
+#if ENABLE(WEBGL)
+    ASSERT(needsPreparationForDisplay());
+
+    if (is<WebGLRenderingContextBase>(m_context.get()))
+        downcast<WebGLRenderingContextBase>(m_context.get())->prepareForDisplay();
 #endif
 }
 

@@ -1,3 +1,122 @@
+2020-05-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use WEBKIT_EXECUTABLE in MallocBench
+        https://bugs.webkit.org/show_bug.cgi?id=211665
+
+        Reviewed by Yusuke Suzuki.
+
+        Cleanup MallocBench definitions using WEBKIT_EXECUTABLE. Notify developers
+        that MallocBench is unavailable only if bmalloc is being used but the platform
+        does not have the functionality required.
+
+        * CMakeLists.txt:
+        * MallocBench/MallocBench/CMakeLists.txt:
+
+2020-05-08  Darin Adler  <darin@apple.com>
+
+        Remove no-longer-used PerformanceTests/StitchMarker
+        https://bugs.webkit.org/show_bug.cgi?id=211639
+
+        Reviewed by Ryosuke Niwa.
+
+        Having this test around can be confusing since it contains old versions
+        of many WebKit source files, which will show up when searching the source
+        tree. And since we're not using it, we don't need to keep a copy of it
+        in the tip of tree in the repository.
+
+        * StitchMarker: Removed.
+
+2020-04-24  Jon Lee  <jonlee@apple.com>
+
+        MotionMark: add link to bug in about page
+
+        Unreviewed.
+
+        * MotionMark/about.html:
+
+2020-04-24  Jon Lee  <jonlee@apple.com>
+
+        MotionMark: ensure that timestamps are valid during warm up phase of tests
+        https://bugs.webkit.org/show_bug.cgi?id=210640
+
+        Reviewed by Said Abou-Hallawa.
+
+        Ensure that Benchmark._benchmarkStartTimestamp is set during warm up phase.
+        Otherwise it is NaN, which makes the Benchmark.timestamp invalid, which is
+        used by tests like Multiply to drive the animation. When the warm up phase
+        completes, the start timestamp is reset.
+
+        Update minor version of benchmark with this bug fix, and include
+        version changelog in the about page.
+
+        For testing, add a parameter that allows for adjusting the length of the
+        warm up phase. It remains at its current default, 100 ms.
+
+        * MotionMark/about.html: Add section of version changelog. Includes links
+        to webkit.org blog posts.
+        * MotionMark/developer.html: Add parameter for setting warmup length.
+        Remove the Kalman filter parameters, since they should always be fixed.
+        * MotionMark/resources/runner/motionmark.css: Include styles to show
+        version log.
+        * MotionMark/resources/runner/motionmark.js: Factor out default options to
+        a property on window.benchmarkController. Include the default warmup length
+        of 100 ms.
+        (window.benchmarkController.startBenchmark): Refactor to use benchmarkDefaultParameters.
+        * MotionMark/resources/debug-runner/motionmark.js: Ditto.
+        * MotionMark/resources/strings.js: Update version number.
+        * MotionMark/tests/resources/main.js:
+        (_animateLoop): Set _benchmarkTimestamp during the warmup phase. Check the
+        warmup length. The _benchmarkTimestamp variable remains reset when the test
+        begins.
+
+2020-04-07  Saam Barati  <sbarati@apple.com>
+
+        RAMification should have a way of gathering vmmaps for each test at the end of each run
+        https://bugs.webkit.org/show_bug.cgi?id=210060
+
+        Reviewed by Yusuke Suzuki.
+
+        When I was debugging a memory issue, I needed to gather vmmaps for each
+        RAMification subtest. This patch is checking in the code I wrote to be able
+        to do this. It works by:
+        - Passing in an argument to RAMification saying we want vmmaps at the end of
+        each subtest run.
+        - RAMification invokes jsc with an environment variable that tells the shell
+        to wait for one character of input from stdin before exiting.
+        - The jsc shell also disables the bmalloc scavenger while waiting for input so the
+        vmmap we take from the python runner script represents the "footprint" score
+        of the benchmark. If the scavenger ran, it would end up releasing too much
+        memory for the vmmap to be useful.
+        - The python script runs a vmmap, and then communicates to the jsc process
+        when the vmmap finishes running.
+
+        * JetStream2/RAMification.py:
+        (parseArgs):
+        (BaseRunner.__init__):
+        (BaseRunner.getResults):
+        (LocalRunner.runOneTest):
+        (main):
+        (main.runTestList):
+
+2020-04-06  Saam Barati  <sbarati@apple.com>
+
+        Implement 1GB of executable memory on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=208490
+        <rdar://problem/60797127>
+
+        Reviewed by Keith Miller.
+
+        * JetStream2/JetStreamDriver.js:
+        (Driver.prototype.dumpJSONResultsIfNeeded):
+        (DefaultBenchmark.prototype.updateUIAfterRun):
+        (DefaultBenchmark):
+        (WSLBenchmark.prototype.updateUIAfterRun):
+        (WSLBenchmark):
+        (WasmBenchmark.prototype.updateUIAfterRun):
+        (WasmBenchmark):
+        (Driver.async fetchResources.statusElement.innerHTML.a.href.string_appeared_here):
+        (Driver.prototype.async fetchResources):
+
 2020-03-26  Saam Barati  <sbarati@apple.com>
 
         Make it so RAMification can be run with python 3 and 2 and that it recognizes the new JavaScriptCore.framework directory structure
@@ -720,7 +839,7 @@
 
         Reviewed by Ryosuke Niwa.
 
-        r240358 sets default IDB quota as 50 MB for single test, we need to increase that for big tests. 
+        r240358 sets default IDB quota as 50 MB for single test, we need to increase that for big tests.
 
         * IndexedDB/large-binary-keys.html:
         * IndexedDB/large-string-keys.html:
@@ -1055,7 +1174,7 @@
         - Web Tooling Benchmark
         - WasmBench
         - RexBench
-        
+
         JetStream 2 also adds some new benchmarks:
         - Two tests emphasizing web worker performance.
         - One test emphasizing Promise, async iteration, and DataView performance.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,6 +67,8 @@
 #define USE_CACHE_COMPILED_SANDBOX 0
 #endif
 
+extern const char* const SANDBOX_BUILD_ID; // Defined by the Sandbox framework
+
 namespace WebKit {
 using namespace WebCore;
 
@@ -89,12 +91,17 @@ struct SandboxParametersDeleter {
 };
 using SandboxParametersPtr = std::unique_ptr<SandboxParameters, SandboxParametersDeleter>;
 
+constexpr unsigned guidSize = 36 + 1;
+constexpr unsigned versionSize = 31 + 1;
+
 struct CachedSandboxHeader {
     uint32_t versionNumber;
     uint32_t libsandboxVersion;
     uint32_t headerSize;
     uint32_t builtinSize; // If a builtin doesn't exist, this is UINT_MAX.
     uint32_t dataSize;
+    char sandboxBuildID[guidSize];
+    char osVersion[versionSize];
 };
 // The file is layed out on disk like:
 // byte 0
@@ -129,7 +136,7 @@ struct SandboxInfo {
     const bool isProfilePath;
 };
 
-constexpr uint32_t CachedSandboxVersionNumber = 0;
+constexpr uint32_t CachedSandboxVersionNumber = 1;
 #endif // USE(CACHE_COMPILED_SANDBOX)
 
 static void initializeTimerCoalescingPolicy()
@@ -249,15 +256,18 @@ static Optional<CString> setAndSerializeSandboxParameters(const SandboxInitializ
 static String sandboxDataVaultParentDirectory()
 {
     char temp[PATH_MAX];
-    size_t length = confstr(_CS_DARWIN_USER_CACHE_DIR, temp, sizeof(temp));
+    // We save the profiles in the user tempory directory so that they get cleaned on reboot
+    // or if they are not accessed in 3 days. This avoids accumulating profiles whenever we change
+    // our sandbox rules or webkit cache directories (rdar://problem/54613619).
+    size_t length = confstr(_CS_DARWIN_USER_TEMP_DIR, temp, sizeof(temp));
     if (!length) {
-        WTFLogAlways("%s: Could not retrieve user cache directory path: %s\n", getprogname(), strerror(errno));
+        WTFLogAlways("%s: Could not retrieve user temporary directory path: %s\n", getprogname(), strerror(errno));
         exit(EX_NOPERM);
     }
     RELEASE_ASSERT(length <= sizeof(temp));
     char resolvedPath[PATH_MAX];
     if (!realpath(temp, resolvedPath)) {
-        WTFLogAlways("%s: Could not canonicalize user cache directory path: %s\n", getprogname(), strerror(errno));
+        WTFLogAlways("%s: Could not canonicalize user temporary directory path: %s\n", getprogname(), strerror(errno));
         exit(EX_NOPERM);
     }
     return resolvedPath;
@@ -402,13 +412,23 @@ static SandboxProfilePtr compileAndCacheSandboxProfile(const SandboxInfo& info)
     const bool haveBuiltin = sandboxProfile->builtin;
     int32_t libsandboxVersion = NSVersionOfRunTimeLibrary("sandbox");
     RELEASE_ASSERT(libsandboxVersion > 0);
+    String osVersion = systemMarketingVersion();
+
     CachedSandboxHeader cachedHeader {
         CachedSandboxVersionNumber,
         static_cast<uint32_t>(libsandboxVersion),
         safeCast<uint32_t>(info.header.length()),
         haveBuiltin ? safeCast<uint32_t>(strlen(sandboxProfile->builtin)) : std::numeric_limits<uint32_t>::max(),
-        safeCast<uint32_t>(sandboxProfile->size)
+        safeCast<uint32_t>(sandboxProfile->size),
+        { 0 },
+        { 0 }
     };
+
+    size_t copied = strlcpy(cachedHeader.sandboxBuildID, SANDBOX_BUILD_ID, sizeof(cachedHeader.sandboxBuildID));
+    ASSERT(copied == guidSize - 1);
+    copied = strlcpy(cachedHeader.osVersion, osVersion.utf8().data(), sizeof(cachedHeader.osVersion));
+    ASSERT(copied < versionSize - 1);
+
     const size_t expectedFileSize = sizeof(cachedHeader) + cachedHeader.headerSize + (haveBuiltin ? cachedHeader.builtinSize : 0) + cachedHeader.dataSize;
 
     Vector<char> cacheFile;
@@ -447,10 +467,17 @@ static bool tryApplyCachedSandbox(const SandboxInfo& info)
     memcpy(&cachedSandboxHeader, cachedSandboxContents.data(), sizeof(CachedSandboxHeader));
     int32_t libsandboxVersion = NSVersionOfRunTimeLibrary("sandbox");
     RELEASE_ASSERT(libsandboxVersion > 0);
-    if (static_cast<uint32_t>(libsandboxVersion) != cachedSandboxHeader.libsandboxVersion)
-        return false;
+    String osVersion = systemMarketingVersion();
+
     if (cachedSandboxHeader.versionNumber != CachedSandboxVersionNumber)
         return false;
+    if (static_cast<uint32_t>(libsandboxVersion) != cachedSandboxHeader.libsandboxVersion)
+        return false;
+    if (std::strcmp(cachedSandboxHeader.sandboxBuildID, SANDBOX_BUILD_ID))
+        return false;
+    if (cachedSandboxHeader.osVersion != osVersion)
+        return false;
+
     const bool haveBuiltin = cachedSandboxHeader.builtinSize != std::numeric_limits<uint32_t>::max();
 
     // These values are computed based on the disk layout specified below the definition of the CachedSandboxHeader struct

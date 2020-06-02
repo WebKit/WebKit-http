@@ -35,7 +35,7 @@
 #include "DFGPhase.h"
 #include "DFGSSACalculator.h"
 #include "DFGVariableAccessDataDump.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 
 #undef RELEASE_ASSERT
 #define RELEASE_ASSERT(assertion) do { \

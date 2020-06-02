@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,16 +31,11 @@
 #include "B3BasicBlockInlines.h"
 #include "B3BlockInsertionSet.h"
 #include "B3ConstPtrValue.h"
-#include "B3EnsureLoopPreHeaders.h"
 #include "B3InsertionSet.h"
 #include "B3NaturalLoops.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
 #include "B3ValueInlines.h"
-#include "B3Variable.h"
-#include "B3VariableValue.h"
-#include <wtf/GraphNodeWorklist.h>
-#include <wtf/IndexSet.h>
 #include <wtf/SmallPtrSet.h>
 #include <wtf/Vector.h>
 
@@ -444,7 +439,7 @@ public:
 
         Effects effects = Effects::forCall();
         memcpy->appendNew<CCallValue>(m_proc, B3::Void, origin, effects,
-            memcpy->appendNew<ConstPtrValue>(m_proc, origin, tagCFunctionPtr<void*>(fastForwardCopy32, B3CCallPtrTag)),
+            memcpy->appendNew<ConstPtrValue>(m_proc, origin, tagCFunction<B3CCallPtrTag>(fastForwardCopy32)),
             destination->appendAddr(m_proc, memcpy, destination->arrayBase),
             source->appendAddr(m_proc, memcpy, source->arrayBase),
             loopBound);

@@ -1,0 +1,196 @@
+# These are the layout test expectations for the glib-based ports: WebKitGTK and WPE.
+#
+# This file is used to track common expectations to both ports.
+#
+# The bots of WebKitGTK+/WPE running layout tests (GTK Release Test, GTK Debug Test,
+# GTK Release Wayland Test, WPE Release Test, and WPE Debug Test)
+# are currently running on Debian 10 (Buster) x86_64.
+#
+# See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
+#
+# Never add any tests to this file without opening a bug on bugzilla.webkit.org.
+#
+# Currently the following sections are used, but this is not a fixed list. Some sections
+# (like WebAnimation, PageOverlay, WebGL) will mirror their top-level LayoutTests/
+# folders, but others like CSS and GStreamer may have entries from multiple folders.
+#
+# * CSS
+# * GStreamer
+# * Perf
+# * WebGL
+# * WebAnimations
+# * WPT
+# * PASSING tests
+#   * Usually to override tests skipped/failing by Mac ports.
+# * UNSUPPORTED tests
+#   * Things we do not test. (i.e. Skipped)
+# * NEEDS TRIAGING
+#   * If you are not sure where an expectation should go, put it here and ask for proper
+#     triaging in the associated bug.
+#
+# Important rules when creating new sections:
+#
+# * Keep them alphabetically sorted - except for the PASSING/NEEDS TRIAGING sections.
+# * Only PASSING/UNSUPPORTED should have expectations without bug entries.
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# CSS-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/206589 fast/box-shadow/inset-box-shadow-fractional-radius.html [ ImageOnlyFailure ]
+
+webkit.org/b/212300 fast/text/font-collection-2.html [ ImageOnlyFailure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of CSS-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# GStreamer-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/211995 fast/images/animated-image-mp4.html [ Failure ]
+
+webkit.org/b/210385 fast/mediastream/stream-switch.html [ Crash Timeout ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of GStreamer-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# PageOverlay-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/152908 pageoverlay/overlay-installation.html [ Failure ]
+webkit.org/b/152908 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
+webkit.org/b/152908 pageoverlay/overlay-large-document.html [ Failure ]
+webkit.org/b/152908 pageoverlay/overlay-small-frame-paints.html [ Pass Failure ]
+webkit.org/b/168501 pageoverlay/overlay-remove-reinsert-view.html [ Failure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of PageOverlay-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# Perf-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/211837 perf/rel-list-remove.html [ Failure Pass ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of Perf-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# WebAnimations-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/211948 webanimations/accelerated-animation-playback-rate.html [ ImageOnlyFailure Timeout Pass ]
+webkit.org/b/212020 webanimations/accelerated-animation-single-keyframe.html [ Skip ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of WebAnimations-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# WebGL-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/211942 webgl/1.0.3/conformance/more/functions/copyTexImage2DBadArgs.html [ Crash ]
+
+webkit.org/b/169917 fast/canvas/webgl/unprefixed-anisotropic-extension.html [ Failure ]
+webkit.org/b/169917 webgl/1.0.3/conformance/extensions/webgl-compressed-texture-size-limit.html [ Failure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of WebGL-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# WPT-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/211692 imported/w3c/web-platform-tests/xhr/event-timeout-order.any.worker.html [ Failure Pass ]
+webkit.org/b/212217 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-escape.tentative.any.html [ Failure ]
+webkit.org/b/212217 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-escape.tentative.any.worker.html [ Failure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of WPT-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# TESTS PASSING
+#////////////////////////////////////////////////////////////////////////////////////////
+
+fast/text/emoji-gender-2-3.html [ Pass ]
+fast/text/emoji-gender-2-4.html [ Pass ]
+fast/text/emoji-gender-2-5.html [ Pass ]
+fast/text/emoji-gender-2-6.html [ Pass ]
+fast/text/emoji-gender-2-7.html [ Pass ]
+fast/text/emoji-gender-2-8.html [ Pass ]
+fast/text/emoji-gender-2-9.html [ Pass ]
+fast/text/emoji-gender-3.html [ Pass ]
+fast/text/emoji-gender-4.html [ Pass ]
+fast/text/emoji-gender-5.html [ Pass ]
+fast/text/emoji-gender-6.html [ Pass ]
+fast/text/emoji-gender-8.html [ Pass ]
+fast/text/emoji-gender-9.html [ Pass ]
+fast/text/emoji-gender-fe0f-3.html [ Pass ]
+fast/text/emoji-gender-fe0f-4.html [ Pass ]
+fast/text/emoji-gender-fe0f-5.html [ Pass ]
+fast/text/emoji-gender-fe0f-6.html [ Pass ]
+fast/text/emoji-gender-fe0f-7.html [ Pass ]
+fast/text/emoji-gender-fe0f-8.html [ Pass ]
+fast/text/emoji-gender-fe0f-9.html [ Pass ]
+fast/text/emoji-gender.html [ Pass ]
+
+# Some Apple ports don't support RTL scrollbars.
+fast/scrolling/rtl-scrollbars-elementFromPoint-static.html [ Pass ]
+fast/scrolling/rtl-scrollbars-iframe-offset.html [ Pass ]
+fast/scrolling/rtl-scrollbars-listbox-select-left.html [ Pass ]
+fast/scrolling/rtl-scrollbars-listbox-select-right.html [ Pass ]
+fast/scrolling/rtl-scrollbars-listbox-simple.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow-elementFromPoint.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow-padding.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow-position-absolute.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow-simple.html [ Pass ]
+fast/scrolling/rtl-scrollbars-overflow.html [ Pass ]
+fast/scrolling/rtl-scrollbars-positioned-intersect-scrollbars.html [ Pass ]
+fast/scrolling/rtl-scrollbars-positioning.html [ Pass ]
+fast/scrolling/rtl-scrollbars-simple.html [ Pass ]
+fast/scrolling/rtl-scrollbars.html [ Pass ]
+
+webkit.org/b/172056 fast/text/multiglyph-characters.html [ Pass ]
+
+imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ DumpJSConsoleLogInStdErr ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of PASSING tests.
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# UNSUPPORTED tests. Things we must skip.
+#////////////////////////////////////////////////////////////////////////////////////////
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of UNSUPPORTED tests.
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# NEEDS TRIAGING. If unsure, put it in this section.
+#////////////////////////////////////////////////////////////////////////////////////////
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of NEEDS TRIAGING. Don't put expectations below this section.
+#////////////////////////////////////////////////////////////////////////////////////////
+

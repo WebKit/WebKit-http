@@ -59,7 +59,7 @@ void CachedCSSStyleSheet::didAddClient(CachedResourceClient& client)
     CachedResource::didAddClient(client);
 
     if (!isLoading())
-        static_cast<CachedStyleSheetClient&>(client).setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
+        static_cast<CachedStyleSheetClient&>(client).setCSSStyleSheet(m_resourceRequest.url().string(), m_response.url(), m_decoder->encoding().name(), this);
 }
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
@@ -97,7 +97,7 @@ void CachedCSSStyleSheet::setBodyDataFrom(const CachedResource& resource)
         saveParsedStyleSheet(*sheet.m_parsedStyleSheetCache);
 }
 
-void CachedCSSStyleSheet::finishLoading(SharedBuffer* data)
+void CachedCSSStyleSheet::finishLoading(SharedBuffer* data, const NetworkLoadMetrics& metrics)
 {
     m_data = data;
     setEncodedSize(data ? data->size() : 0);
@@ -105,19 +105,19 @@ void CachedCSSStyleSheet::finishLoading(SharedBuffer* data)
     if (data)
         m_decodedSheetText = m_decoder->decodeAndFlush(data->data(), data->size());
     setLoading(false);
-    checkNotify();
+    checkNotify(metrics);
     // Clear the decoded text as it is unlikely to be needed immediately again and is cheap to regenerate.
     m_decodedSheetText = String();
 }
 
-void CachedCSSStyleSheet::checkNotify()
+void CachedCSSStyleSheet::checkNotify(const NetworkLoadMetrics&)
 {
     if (isLoading())
         return;
 
     CachedResourceClientWalker<CachedStyleSheetClient> w(m_clients);
     while (CachedStyleSheetClient* c = w.next())
-        c->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
+        c->setCSSStyleSheet(m_resourceRequest.url().string(), m_response.url(), m_decoder->encoding().name(), this);
 }
 
 String CachedCSSStyleSheet::responseMIMEType() const

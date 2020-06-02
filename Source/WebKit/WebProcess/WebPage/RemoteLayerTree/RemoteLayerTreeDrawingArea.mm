@@ -72,7 +72,10 @@ RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage& webPage, const W
     // FIXME: While using the high end of the range of DisplayIDs makes a collision with real, non-RemoteLayerTreeDrawingArea
     // DisplayIDs less likely, it is not entirely safe to have a RemoteLayerTreeDrawingArea and TiledCoreAnimationDrawingArea
     // coeexist in the same process.
-    webPage.windowScreenDidChange(std::numeric_limits<uint32_t>::max() - webPage.identifier().toUInt64());
+    webPage.windowScreenDidChange(std::numeric_limits<uint32_t>::max() - webPage.identifier().toUInt64(), WTF::nullopt);
+
+    if (auto viewExposedRect = parameters.viewExposedRect)
+        setViewExposedRect(viewExposedRect);
 }
 
 RemoteLayerTreeDrawingArea::~RemoteLayerTreeDrawingArea()
@@ -121,6 +124,11 @@ void RemoteLayerTreeDrawingArea::adoptDisplayRefreshMonitorsFromDrawingArea(Draw
         for (auto* monitor : m_displayRefreshMonitors)
             monitor->updateDrawingArea(*this);
     }
+}
+
+void RemoteLayerTreeDrawingArea::setPreferredFramesPerSecond(FramesPerSecond preferredFramesPerSecond)
+{
+    send(Messages::RemoteLayerTreeDrawingAreaProxy::SetPreferredFramesPerSecond(preferredFramesPerSecond));
 }
 
 void RemoteLayerTreeDrawingArea::updateRootLayers()
@@ -227,7 +235,9 @@ void RemoteLayerTreeDrawingArea::acceleratedAnimationDidEnd(uint64_t layerID, co
 void RemoteLayerTreeDrawingArea::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
 {
     m_viewExposedRect = viewExposedRect;
-    updateScrolledExposedRect();
+
+    if (FrameView* frameView = m_webPage.mainFrameView())
+        frameView->setViewExposedRect(m_viewExposedRect);
 }
 
 WebCore::FloatRect RemoteLayerTreeDrawingArea::exposedContentRect() const
@@ -249,22 +259,6 @@ void RemoteLayerTreeDrawingArea::setExposedContentRect(const FloatRect& exposedC
 
     frameView->setExposedContentRect(exposedContentRect);
     scheduleRenderingUpdate();
-}
-
-void RemoteLayerTreeDrawingArea::updateScrolledExposedRect()
-{
-    FrameView* frameView = m_webPage.mainFrameView();
-    if (!frameView)
-        return;
-
-    m_scrolledViewExposedRect = m_viewExposedRect;
-
-#if !PLATFORM(IOS_FAMILY)
-    if (m_viewExposedRect)
-        m_scrolledViewExposedRect.value().moveBy(frameView->scrollOffset());
-#endif
-
-    frameView->setViewExposedRect(m_scrolledViewExposedRect);
 }
 
 TiledBacking* RemoteLayerTreeDrawingArea::mainFrameTiledBacking() const
@@ -333,15 +327,16 @@ void RemoteLayerTreeDrawingArea::updateRendering()
     m_webPage.updateRendering();
 
     FloatRect visibleRect(FloatPoint(), m_viewSize);
-    if (m_scrolledViewExposedRect)
-        visibleRect.intersect(m_scrolledViewExposedRect.value());
+    if (auto exposedRect = m_webPage.mainFrameView()->viewExposedRect())
+        visibleRect.intersect(*exposedRect);
 
     addCommitHandlers();
 
+    OptionSet<FinalizeRenderingUpdateFlags> flags;
     if (m_nextRenderingUpdateRequiresSynchronousImageDecoding)
-        m_webPage.mainFrameView()->invalidateImagesWithAsyncDecodes();
+        flags.add(FinalizeRenderingUpdateFlags::InvalidateImagesWithAsyncDecodes);
 
-    m_webPage.mainFrameView()->flushCompositingStateIncludingSubframes();
+    m_webPage.finalizeRenderingUpdate(flags);
 
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
     if (m_viewOverlayRootLayer)
@@ -384,7 +379,7 @@ void RemoteLayerTreeDrawingArea::updateRendering()
     send(Messages::RemoteLayerTreeDrawingAreaProxy::WillCommitLayerTree(layerTransaction.transactionID()));
 
     Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree message(layerTransaction, scrollingTransaction);
-    auto commitEncoder = makeUnique<IPC::Encoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::receiverName(), Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_identifier.toUInt64());
+    auto commitEncoder = makeUnique<IPC::Encoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_identifier.toUInt64());
     commitEncoder->encode(message.arguments());
 
     // FIXME: Move all backing store flushing management to RemoteLayerBackingStoreCollection.

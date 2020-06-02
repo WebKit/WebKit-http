@@ -32,7 +32,7 @@
 
 /* This ensures that users #include <wtf/Platform.h> rather than one of the helper files files directly. */
 #define WTF_PLATFORM_GUARD_AGAINST_INDIRECT_INCLUSION
-
+/* IWYU pragma: begin_exports */
 
 /* ==== Platform adaptation macros: these describe properties of the target environment. ==== */
 
@@ -73,7 +73,7 @@
 #include <WebKitAdditions/AdditionalPlatform.h>
 #endif
 
-
+/* IWYU pragma: end_exports */
 #undef WTF_PLATFORM_GUARD_AGAINST_INDIRECT_INCLUSION
 
 
@@ -83,12 +83,16 @@
 
 
 #if PLATFORM(GTK)
-#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_36
-#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6
+#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_44
+#if USE(GTK4)
+#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_92
+#else
+#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_22
+#endif
 #endif
 
 #if PLATFORM(WPE)
-#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_40
+#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_44
 #endif
 
 #if USE(SOUP)
@@ -101,6 +105,17 @@
 /* Disable those macros so that we are not limited in how we name methods and functions. */
 #undef __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES
 #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+#endif
+
+/* FIXME: This does not belong in Platform.h and should instead be included in another mechanism (compiler option, prefix header, config.h, etc) */
+/* ICU configuration. Some of these match ICU defaults on some platforms, but we would like them consistently set everywhere we build WebKit. */
+#define U_HIDE_DEPRECATED_API 1
+#define U_SHOW_CPLUSPLUS_API 0
+#ifdef __cplusplus
+#define UCHAR_TYPE char16_t
+#endif
+#if PLATFORM(COCOA)
+#define U_DISABLE_RENAMING 1
 #endif
 
 #if COMPILER(MSVC)

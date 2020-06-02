@@ -120,6 +120,13 @@ void Connection::platformInvalidate()
     m_writeSocketMonitor.stop();
 #endif
 
+#if PLATFORM(PLAYSTATION)
+    if (m_socketMonitor) {
+        m_socketMonitor->detach();
+        m_socketMonitor = nullptr;
+    }
+#endif
+
     m_socketDescriptor = -1;
     m_isConnected = false;
 }
@@ -260,7 +267,7 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
     message.msg_iovlen = 1;
 
     while (true) {
-        ssize_t bytesRead = recvmsg(socketDescriptor, &message, 0);
+        ssize_t bytesRead = recvmsg(socketDescriptor, &message, MSG_NOSIGNAL);
 
         if (bytesRead < 0) {
             if (errno == EINTR)
@@ -315,6 +322,11 @@ void Connection::readyReadHandler()
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return;
 
+            if (errno == ECONNRESET) {
+                connectionDidClose();
+                return;
+            }
+
             if (m_isConnected) {
                 WTFLogAlways("Error receiving IPC message on socket %d in process %d: %s", m_socketDescriptor, getpid(), strerror(errno));
                 connectionDidClose();
@@ -359,6 +371,27 @@ bool Connection::open()
         ASSERT_NOT_REACHED();
         return G_SOURCE_REMOVE;
     });
+#endif
+
+#if PLATFORM(PLAYSTATION)
+    m_socketMonitor = Thread::create("SocketMonitor", [protectedThis] {
+        {
+            int fd;
+            while ((fd = protectedThis->m_socketDescriptor) != -1) {
+                int maxFd = fd;
+                fd_set fdSet;
+                FD_ZERO(&fdSet);
+                FD_SET(fd, &fdSet);
+
+                if (-1 != select(maxFd + 1, &fdSet, 0, 0, 0)) {
+                    if (FD_ISSET(fd, &fdSet))
+                        protectedThis->readyReadHandler();
+                }
+            }
+
+        }
+    });
+    return true;
 #endif
 
     // Schedule a call to readyReadHandler. Data may have arrived before installation of the signal handler.
@@ -483,7 +516,7 @@ bool Connection::sendOutputMessage(UnixMessage& outputMessage)
 
     message.msg_iovlen = iovLength;
 
-    while (sendmsg(m_socketDescriptor, &message, 0) == -1) {
+    while (sendmsg(m_socketDescriptor, &message, MSG_NOSIGNAL) == -1) {
         if (errno == EINTR)
             continue;
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -514,6 +547,17 @@ bool Connection::sendOutputMessage(UnixMessage& outputMessage)
             poll(&pollfd, 1, -1);
             continue;
 #endif
+        }
+
+#if OS(LINUX)
+        // Linux can return EPIPE instead of ECONNRESET
+        if (errno == EPIPE || errno == ECONNRESET)
+#else
+        if (errno == ECONNRESET)
+#endif
+        {
+            connectionDidClose();
+            return false;
         }
 
         if (m_isConnected)

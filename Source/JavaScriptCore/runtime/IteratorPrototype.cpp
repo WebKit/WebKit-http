@@ -28,8 +28,6 @@
 
 #include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
-#include "ObjectConstructor.h"
 
 namespace JSC {
 

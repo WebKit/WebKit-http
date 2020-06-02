@@ -336,13 +336,11 @@ public:
 #endif
 
 #if OS(WINDOWS)
-#if U_ICU_VERSION_MAJOR_NUM >= 59
     String(const wchar_t* characters, unsigned length)
         : String(ucharFrom(characters), length) { }
 
     String(const wchar_t* characters)
         : String(ucharFrom(characters)) { }
-#endif
 
     WTF_EXPORT_PRIVATE Vector<wchar_t> wideCharacters() const;
 #endif
@@ -464,6 +462,13 @@ template<> struct IntegerToStringConversionTrait<String> {
     using AdditionalArgumentType = void;
     static String flush(LChar* characters, unsigned length, void*) { return { characters, length }; }
 };
+
+#ifdef __OBJC__
+
+WTF_EXPORT_PRIVATE RetainPtr<id> makeNSArrayElement(const String&);
+WTF_EXPORT_PRIVATE Optional<String> makeVectorElement(const String*, id);
+
+#endif
 
 // Definitions of string operations
 

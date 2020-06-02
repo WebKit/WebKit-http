@@ -14,7 +14,6 @@
 #include "common/angleutils.h"
 #include "libANGLE/Error.h"
 #include "libANGLE/HandleAllocator.h"
-#include "libANGLE/HandleRangeAllocator.h"
 #include "libANGLE/ResourceMap.h"
 
 namespace rx
@@ -264,24 +263,6 @@ class SyncManager : public TypedResourceManager<Sync, HandleAllocator, SyncManag
     ~SyncManager() override {}
 };
 
-class PathManager : public ResourceManagerBase<HandleRangeAllocator>
-{
-  public:
-    PathManager();
-
-    angle::Result createPaths(Context *context, GLsizei range, PathID *numCreated);
-    void deletePaths(PathID first, GLsizei range);
-    Path *getPath(PathID handle) const;
-    bool hasPath(PathID handle) const;
-
-  protected:
-    ~PathManager() override;
-    void reset(const Context *context) override;
-
-  private:
-    ResourceMap<Path, PathID> mPaths;
-};
-
 class FramebufferManager
     : public TypedResourceManager<Framebuffer, HandleAllocator, FramebufferManager, FramebufferID>
 {
@@ -294,14 +275,16 @@ class FramebufferManager
 
     Framebuffer *checkFramebufferAllocation(rx::GLImplFactory *factory,
                                             const Caps &caps,
-                                            FramebufferID handle)
+                                            FramebufferID handle,
+                                            ContextID owningContextID)
     {
-        return checkObjectAllocation<const Caps &>(factory, handle, caps);
+        return checkObjectAllocation<const Caps &>(factory, handle, caps, owningContextID);
     }
 
     static Framebuffer *AllocateNewObject(rx::GLImplFactory *factory,
                                           FramebufferID handle,
-                                          const Caps &caps);
+                                          const Caps &caps,
+                                          ContextID owningContextID);
     static void DeleteObject(const Context *context, Framebuffer *framebuffer);
 
   protected:
@@ -365,7 +348,6 @@ class SemaphoreManager : public ResourceManagerBase<HandleAllocator>
 
     ResourceMap<Semaphore, SemaphoreID> mSemaphores;
 };
-
 }  // namespace gl
 
 #endif  // LIBANGLE_RESOURCEMANAGER_H_

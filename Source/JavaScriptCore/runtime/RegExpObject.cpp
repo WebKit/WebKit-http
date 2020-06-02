@@ -21,13 +21,6 @@
 #include "config.h"
 #include "RegExpObject.h"
 
-#include "Error.h"
-#include "ExceptionHelpers.h"
-#include "JSArray.h"
-#include "JSGlobalObject.h"
-#include "JSString.h"
-#include "Lookup.h"
-#include "JSCInlines.h"
 #include "RegExpObjectInlines.h"
 
 namespace JSC {
@@ -165,6 +158,11 @@ bool RegExpObject::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName 
         return result;
     }
     return Base::put(cell, globalObject, propertyName, value, slot);
+}
+
+String RegExpObject::toStringName(const JSObject*, JSGlobalObject*)
+{
+    return "RegExp"_s;
 }
 
 JSValue RegExpObject::exec(JSGlobalObject* globalObject, JSString* string)

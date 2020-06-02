@@ -26,19 +26,18 @@
 #import "config.h"
 #import "UIScriptControllerMac.h"
 
+#if PLATFORM(MAC)
+
 #import "DumpRenderTree.h"
 #import "UIScriptContext.h"
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSStringRefCF.h>
 #import <JavaScriptCore/JSValue.h>
 #import <JavaScriptCore/OpaqueJSString.h>
-#import <WebKit/WebKit.h>
+#import <WebKit/WebPreferences.h>
 #import <WebKit/WebViewPrivate.h>
+#import <pal/spi/mac/NSTextInputContextSPI.h>
 #import <wtf/BlockPtr.h>
-
-#if PLATFORM(MAC)
-
-#import "AppKitTestSPI.h"
 
 namespace WTR {
 
@@ -164,7 +163,7 @@ NSUndoManager *UIScriptControllerMac::platformUndoManager() const
 void UIScriptControllerMac::copyText(JSStringRef text)
 {
     NSPasteboard *pasteboard = NSPasteboard.generalPasteboard;
-    [pasteboard declareTypes:[NSArray arrayWithObject:NSPasteboardTypeString] owner:nil];
+    [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
     [pasteboard setString:text->string() forType:NSPasteboardTypeString];
 }
 

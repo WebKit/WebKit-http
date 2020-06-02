@@ -40,6 +40,7 @@
     macro(Infinity) \
     macro(Intl) \
     macro(Loader) \
+    macro(Locale) \
     macro(Map) \
     macro(NaN) \
     macro(Number) \
@@ -49,6 +50,7 @@
     macro(Promise) \
     macro(Reflect) \
     macro(RegExp) \
+    macro(RelativeTimeFormat) \
     macro(RemotePlayback) \
     macro(Set) \
     macro(SharedArrayBuffer) \
@@ -97,7 +99,6 @@
     macro(displayName) \
     macro(done) \
     macro(dotAll) \
-    macro(entries) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
@@ -137,7 +138,7 @@
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
-    macro(keys) \
+    macro(language) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \
@@ -167,8 +168,10 @@
     macro(propertyIsEnumerable) \
     macro(prototype) \
     macro(raw) \
+    macro(region) \
     macro(replace) \
     macro(resolve) \
+    macro(script) \
     macro(second) \
     macro(sensitivity) \
     macro(set) \
@@ -180,6 +183,7 @@
     macro(stack) \
     macro(stackTraceLimit) \
     macro(sticky) \
+    macro(style) \
     macro(subarray) \
     macro(summary) \
     macro(target) \
@@ -195,11 +199,11 @@
     macro(toLocaleString) \
     macro(toPrecision) \
     macro(toString) \
+    macro(type) \
     macro(uid) \
     macro(unicode) \
     macro(usage) \
     macro(value) \
-    macro(values) \
     macro(valueOf) \
     macro(weekday) \
     macro(writable) \

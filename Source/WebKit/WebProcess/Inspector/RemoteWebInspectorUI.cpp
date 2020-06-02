@@ -29,6 +29,7 @@
 #include "RemoteWebInspectorProxyMessages.h"
 #include "RemoteWebInspectorUIMessages.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebInspectorUI.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include <WebCore/CertificateInfo.h>
@@ -54,6 +55,7 @@ RemoteWebInspectorUI::RemoteWebInspectorUI(WebPage& page)
     : m_page(page)
     , m_frontendAPIDispatcher(page)
 {
+    WebInspectorUI::enableFrontendFeatures();
 }
 
 void RemoteWebInspectorUI::initialize(DebuggableInfoData&& debuggableInfo, const String& backendCommandsURL)
@@ -65,6 +67,13 @@ void RemoteWebInspectorUI::initialize(DebuggableInfoData&& debuggableInfo, const
 
     m_frontendAPIDispatcher.reset();
     m_frontendAPIDispatcher.dispatchCommand("setDockingUnavailable"_s, true);
+}
+
+void RemoteWebInspectorUI::updateFindString(const String& findString)
+{
+    StringBuilder builder;
+    JSON::Value::escapeString(builder, findString);
+    m_frontendAPIDispatcher.dispatchCommand("updateFindString"_s, builder.toString());
 }
 
 void RemoteWebInspectorUI::didSave(const String& url)

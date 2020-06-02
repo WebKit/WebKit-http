@@ -31,6 +31,10 @@
 #include <wtf/Forward.h>
 #include <wtf/WeakPtr.h>
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatPoint;
@@ -131,6 +135,9 @@ public:
 
     virtual bool horizontalScrollbarHiddenByStyle() const { return false; }
     virtual bool verticalScrollbarHiddenByStyle() const { return false; }
+
+    WEBCORE_EXPORT String horizontalScrollbarStateForTesting() const;
+    WEBCORE_EXPORT String verticalScrollbarStateForTesting() const;
 
     bool inLiveResize() const { return m_inLiveResize; }
     WEBCORE_EXPORT virtual void willStartLiveResize();
@@ -273,7 +280,7 @@ public:
 
     virtual IntSize contentsSize() const = 0;
     virtual IntSize overhangAmount() const { return IntSize(); }
-    virtual IntPoint lastKnownMousePosition() const { return IntPoint(); }
+    virtual IntPoint lastKnownMousePositionInView() const { return IntPoint(); }
     virtual bool isHandlingWheelEvent() const { return false; }
 
     virtual int headerHeight() const { return 0; }
@@ -345,6 +352,8 @@ public:
     virtual void logMockScrollAnimatorMessage(const String&) const { };
 
     virtual bool shouldPlaceBlockDirectionScrollbarOnLeft() const = 0;
+    
+    virtual String debugDescription() const = 0;
 
 protected:
     WEBCORE_EXPORT ScrollableArea();
@@ -413,5 +422,7 @@ private:
     unsigned m_scrollShouldClearLatchedState : 1;
     unsigned m_currentScrollBehaviorStatus : 1;
 };
+
+WTF::TextStream& operator<<(WTF::TextStream&, const ScrollableArea&);
 
 } // namespace WebCore

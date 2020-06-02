@@ -55,6 +55,15 @@ std::shared_ptr<WaitableCompileEvent> ShaderVk::compile(const gl::Context *conte
         compileOptions |= SH_USE_OLD_REWRITE_STRUCT_SAMPLERS;
     }
 
+    if (!contextVk->getFeatures().enablePrecisionQualifiers.enabled)
+    {
+        compileOptions |= SH_IGNORE_PRECISION_QUALIFIERS;
+    }
+
+    // Let compiler detect and emit early fragment test execution mode. We will remove it if
+    // context state does not allow it
+    compileOptions |= SH_EARLY_FRAGMENT_TESTS_OPTIMIZATION;
+
     return compileImpl(context, compilerInstance, mData.getSource(), compileOptions | options);
 }
 

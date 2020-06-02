@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 #include "JSArray.h"
 #include "JSBigInt.h"
 #include "JSBoundFunction.h"
-#include "JSCInlines.h"
+#include "JSDataView.h"
 #include "JSFunction.h"
 #include "JSMap.h"
 #include "JSSet.h"
@@ -44,7 +44,6 @@
 #include "RegExpObject.h"
 #include "ScopedArguments.h"
 #include "StringObject.h"
-#include "ValueProfile.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/StringPrintStream.h>
 
@@ -239,11 +238,6 @@ void dumpSpeculation(PrintStream& outStream, SpeculatedType value)
             strOut.print("Symbol");
         else
             isTop = false;
-
-        if (value & SpecBigInt)
-            strOut.print("BigInt");
-        else
-            isTop = false;
     }
     
     if (value == SpecInt32Only)
@@ -278,7 +272,23 @@ void dumpSpeculation(PrintStream& outStream, SpeculatedType value)
         else
             isTop = false;
     }
-    
+
+    if ((value & SpecBigInt) == SpecBigInt)
+        strOut.print("BigInt");
+#if USE(BIGINT32)
+    else {
+        if (value & SpecBigInt32)
+            strOut.print("BigInt32");
+        else
+            isTop = false;
+
+        if (value & SpecHeapBigInt)
+            strOut.print("HeapBigInt");
+        else
+            isTop = false;
+    }
+#endif
+
     if (value & SpecDoubleImpureNaN)
         strOut.print("DoubleImpureNaN");
     
@@ -422,56 +432,70 @@ SpeculatedType speculationFromTypedArrayType(TypedArrayType type)
     return SpecNone;
 }
 
-SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
+SpeculatedType speculationFromClassInfoInheritance(const ClassInfo* classInfo)
 {
     if (classInfo == JSString::info())
         return SpecString;
+    ASSERT_WITH_MESSAGE(!classInfo->isSubClassOf(JSString::info()), "Rope strings should still have JSString's ClassInfo");
 
+    static_assert(std::is_final_v<Symbol>);
     if (classInfo == Symbol::info())
         return SpecSymbol;
-    
-    if (classInfo == JSBigInt::info())
-        return SpecBigInt;
 
+    static_assert(std::is_final_v<JSBigInt>);
+    if (classInfo == JSBigInt::info())
+        return SpecHeapBigInt;
+
+    static_assert(std::is_final_v<JSFinalObject>);
     if (classInfo == JSFinalObject::info())
         return SpecFinalObject;
     
-    if (classInfo == JSArray::info())
-        return SpecArray;
-    
+    static_assert(std::is_final_v<DirectArguments>);
     if (classInfo == DirectArguments::info())
         return SpecDirectArguments;
     
+    static_assert(std::is_final_v<ScopedArguments>);
     if (classInfo == ScopedArguments::info())
         return SpecScopedArguments;
-    
-    if (classInfo == StringObject::info())
-        return SpecStringObject;
 
+    static_assert(std::is_final_v<RegExpObject>);
     if (classInfo == RegExpObject::info())
         return SpecRegExpObject;
 
+    static_assert(std::is_final_v<DateInstance>);
     if (classInfo == DateInstance::info())
         return SpecDateObject;
 
+    static_assert(std::is_final_v<JSMap>);
     if (classInfo == JSMap::info())
         return SpecMapObject;
 
+    static_assert(std::is_final_v<JSSet>);
     if (classInfo == JSSet::info())
         return SpecSetObject;
 
+    static_assert(std::is_final_v<JSWeakMap>);
     if (classInfo == JSWeakMap::info())
         return SpecWeakMapObject;
 
+    static_assert(std::is_final_v<JSWeakSet>);
     if (classInfo == JSWeakSet::info())
         return SpecWeakSetObject;
 
+    static_assert(std::is_final_v<ProxyObject>);
     if (classInfo == ProxyObject::info())
         return SpecProxyObject;
 
+    static_assert(std::is_final_v<JSDataView>);
     if (classInfo == JSDataView::info())
         return SpecDataViewObject;
-    
+
+    if (classInfo->isSubClassOf(StringObject::info()))
+        return SpecStringObject | SpecObjectOther;
+
+    if (classInfo->isSubClassOf(JSArray::info()))
+        return SpecArray | SpecDerivedArray;
+
     if (classInfo->isSubClassOf(JSFunction::info())) {
         if (classInfo == JSBoundFunction::info())
             return SpecFunctionWithNonDefaultHasInstance;
@@ -483,9 +507,6 @@ SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
     
     if (isTypedView(classInfo->typedArrayStorageType))
         return speculationFromTypedArrayType(classInfo->typedArrayStorageType);
-
-    if (classInfo->isSubClassOf(JSArray::info()))
-        return SpecDerivedArray;
     
     if (classInfo->isSubClassOf(JSObject::info()))
         return SpecObjectOther;
@@ -495,15 +516,25 @@ SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 
 SpeculatedType speculationFromStructure(Structure* structure)
 {
+    SpeculatedType filteredResult = SpecNone;
     if (structure->typeInfo().type() == StringType)
-        return SpecString;
-    if (structure->typeInfo().type() == SymbolType)
-        return SpecSymbol;
-    if (structure->typeInfo().type() == BigIntType)
-        return SpecBigInt;
-    if (structure->typeInfo().type() == DerivedArrayType)
-        return SpecDerivedArray;
-    return speculationFromClassInfo(structure->classInfo());
+        filteredResult = SpecString;
+    else if (structure->typeInfo().type() == SymbolType)
+        filteredResult = SpecSymbol;
+    else if (structure->typeInfo().type() == HeapBigIntType)
+        filteredResult = SpecHeapBigInt;
+    else if (structure->typeInfo().type() == DerivedArrayType)
+        filteredResult = SpecDerivedArray;
+    else if (structure->typeInfo().type() == ArrayType)
+        filteredResult = SpecArray;
+    else if (structure->typeInfo().type() == StringObjectType)
+        filteredResult = SpecStringObject;
+    else
+        return speculationFromClassInfoInheritance(structure->classInfo());
+
+    ASSERT(filteredResult);
+    ASSERT(isSubtypeSpeculation(filteredResult, speculationFromClassInfoInheritance(structure->classInfo())));
+    return filteredResult;
 }
 
 SpeculatedType speculationFromCell(JSCell* cell)
@@ -536,6 +567,8 @@ SpeculatedType speculationFromValue(JSValue value)
             return SpecAnyIntAsDouble;
         return SpecNonIntAsDouble;
     }
+    if (value.isBigInt32())
+        return SpecBigInt32;
     if (value.isCell())
         return speculationFromCell(value.asCell());
     if (value.isBoolean())
@@ -595,8 +628,8 @@ Optional<SpeculatedType> speculationFromJSType(JSType type)
         return SpecString;
     case SymbolType:
         return SpecSymbol;
-    case BigIntType:
-        return SpecBigInt;
+    case HeapBigIntType:
+        return SpecHeapBigInt;
     case ArrayType:
         return SpecArray;
     case DerivedArrayType:
@@ -632,6 +665,10 @@ SpeculatedType leastUpperBoundOfStrictlyEquivalentSpeculations(SpeculatedType ty
 
     if (type & SpecString)
         type |= SpecString;
+
+    if (type & SpecBigInt)
+        type |= SpecBigInt;
+
     return type;
 }
 

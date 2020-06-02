@@ -32,13 +32,10 @@
 #include "InjectedScriptManager.h"
 
 #include "CatchScope.h"
-#include "Completion.h"
 #include "InjectedScriptHost.h"
 #include "InjectedScriptSource.h"
-#include "JSCInlines.h"
-#include "JSInjectedScriptHost.h"
 #include "JSLock.h"
-#include "ScriptObject.h"
+#include "JSObjectInlines.h"
 #include "SourceCode.h"
 #include <wtf/JSONValues.h>
 
@@ -158,9 +155,8 @@ Expected<JSObject*, NakedPtr<Exception>> InjectedScriptManager::createInjectedSc
     if (evaluationException)
         return makeUnexpected(evaluationException);
 
-    CallData callData;
-    CallType callType = getCallData(vm, functionValue, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, functionValue);
+    if (callData.type == CallData::Type::None)
         return nullptr;
 
     MarkedArgumentBuffer args;
@@ -169,7 +165,7 @@ Expected<JSObject*, NakedPtr<Exception>> InjectedScriptManager::createInjectedSc
     args.append(jsNumber(id));
     ASSERT(!args.hasOverflowed());
 
-    JSValue result = JSC::call(globalObject, functionValue, callType, callData, globalThisValue, args);
+    JSValue result = JSC::call(globalObject, functionValue, callData, globalThisValue, args);
     scope.clearException();
     return result.getObject();
 }
@@ -191,6 +187,9 @@ InjectedScript InjectedScriptManager::injectedScriptFor(JSGlobalObject* globalOb
     if (!createResult) {
         auto& error = createResult.error();
         ASSERT(error);
+
+        if (isTerminatedExecutionException(globalObject->vm(), error))
+            return InjectedScript();
 
         unsigned line = 0;
         unsigned column = 0;

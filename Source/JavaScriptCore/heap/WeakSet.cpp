@@ -27,7 +27,6 @@
 #include "WeakSet.h"
 
 #include "Heap.h"
-#include "JSCInlines.h"
 #include "VM.h"
 
 namespace JSC {
@@ -102,7 +101,7 @@ WeakBlock::FreeCell* WeakSet::tryFindAllocator()
             return sweepResult.freeList;
     }
 
-    return 0;
+    return nullptr;
 }
 
 WeakBlock::FreeCell* WeakSet::addAllocator(CellContainer container)

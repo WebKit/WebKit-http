@@ -111,15 +111,14 @@ bool FilterOperations::transformColor(Color& color) const
     if (color.isSemantic())
         return false;
 
-    FloatComponents components;
-    color.getRGBA(components.components[0], components.components[1], components.components[2], components.components[3]);
+    auto sRGBAComponents = color.toSRGBAComponentsLossy();
 
     for (auto& operation : m_operations) {
-        if (!operation->transformColor(components))
+        if (!operation->transformColor(sRGBAComponents))
             return false;
     }
 
-    color = Color(components.components[0], components.components[1], components.components[2], components.components[3]);
+    color = makeSimpleColor(sRGBAComponents);
     return true;
 }
 
@@ -131,15 +130,14 @@ bool FilterOperations::inverseTransformColor(Color& color) const
     if (color.isSemantic())
         return false;
 
-    FloatComponents components;
-    color.getRGBA(components.components[0], components.components[1], components.components[2], components.components[3]);
+    auto sRGBAComponents = color.toSRGBAComponentsLossy();
 
     for (auto& operation : m_operations) {
-        if (!operation->inverseTransformColor(components))
+        if (!operation->inverseTransformColor(sRGBAComponents))
             return false;
     }
 
-    color = Color(components.components[0], components.components[1], components.components[2], components.components[3]);
+    color = makeSimpleColor(sRGBAComponents);
     return true;
 }
 

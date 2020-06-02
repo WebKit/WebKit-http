@@ -86,6 +86,9 @@
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #include "PlaybackSessionManager.h"
+#endif
+
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 #include "VideoFullscreenManager.h"
 #endif
 
@@ -104,33 +107,6 @@
 namespace WebKit {
 using namespace WebCore;
 using namespace HTMLNames;
-
-static double area(WebFrame* frame)
-{
-    IntSize size = frame->visibleContentBoundsExcludingScrollbars().size();
-    return static_cast<double>(size.height()) * size.width();
-}
-
-static WebFrame* findLargestFrameInFrameSet(WebPage& page)
-{
-    // Approximate what a user could consider a default target frame for application menu operations.
-
-    auto& mainFrame = page.mainWebFrame();
-    if (!mainFrame.isFrameSet())
-        return nullptr;
-
-    WebFrame* largestSoFar = nullptr;
-
-    Ref<API::Array> frameChildren = mainFrame.childFrames();
-    size_t count = frameChildren->size();
-    for (size_t i = 0; i < count; ++i) {
-        auto* childFrame = frameChildren->at<WebFrame>(i);
-        if (!largestSoFar || area(childFrame) > area(largestSoFar))
-            largestSoFar = childFrame;
-    }
-
-    return largestSoFar;
-}
 
 WebChromeClient::WebChromeClient(WebPage& page)
     : m_page(page)
@@ -623,14 +599,6 @@ void WebChromeClient::contentsSizeChanged(Frame& frame, const IntSize& size) con
 {
     FrameView* frameView = frame.view();
 
-    if (frameView && frameView->effectiveFrameFlattening() == FrameFlattening::Disabled) {
-        WebFrame* largestFrame = findLargestFrameInFrameSet(m_page);
-        if (largestFrame != m_cachedFrameSetLargestFrame.get()) {
-            m_cachedFrameSetLargestFrame = largestFrame;
-            m_page.send(Messages::WebPageProxy::FrameSetLargestFrameChanged(largestFrame ? makeOptional(largestFrame->frameID()) : WTF::nullopt));
-        }
-    }
-
     if (&frame.page()->mainFrame() != &frame)
         return;
 
@@ -887,14 +855,12 @@ GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
     return nullptr;
 }
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<DisplayRefreshMonitor> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
     if (auto* drawingArea = m_page.drawingArea())
         return drawingArea->createDisplayRefreshMonitor(displayID);
     return nullptr;
 }
-#endif
 
 #if ENABLE(GPU_PROCESS)
 
@@ -972,7 +938,7 @@ RefPtr<ScrollingCoordinator> WebChromeClient::createScrollingCoordinator(Page& p
 
 #endif
 
-#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 bool WebChromeClient::supportsVideoFullscreen(HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
@@ -984,14 +950,9 @@ bool WebChromeClient::supportsVideoFullscreenStandby()
     return m_page.videoFullscreenManager().supportsVideoFullscreenStandby();
 }
 
-void WebChromeClient::setUpPlaybackControlsManager(HTMLMediaElement& mediaElement)
+void WebChromeClient::setMockVideoPresentationModeEnabled(bool enabled)
 {
-    m_page.playbackSessionManager().setUpPlaybackControlsManager(mediaElement);
-}
-
-void WebChromeClient::clearPlaybackControlsManager()
-{
-    m_page.playbackSessionManager().clearPlaybackControlsManager();
+    m_page.send(Messages::WebPageProxy::SetMockVideoPresentationModeEnabled(enabled));
 }
 
 void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode mode, bool standby)
@@ -1009,9 +970,36 @@ void WebChromeClient::exitVideoFullscreenForVideoElement(HTMLVideoElement& video
     m_page.videoFullscreenManager().exitVideoFullscreenForVideoElement(videoElement);
 }
 
+void WebChromeClient::setUpPlaybackControlsManager(HTMLMediaElement& mediaElement)
+{
+    m_page.playbackSessionManager().setUpPlaybackControlsManager(mediaElement);
+}
+
+void WebChromeClient::clearPlaybackControlsManager()
+{
+    m_page.playbackSessionManager().clearPlaybackControlsManager();
+}
+
 #endif
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if ENABLE(MEDIA_USAGE)
+void WebChromeClient::addMediaUsageManagerSession(MediaSessionIdentifier identifier, const String& bundleIdentifier, const URL& pageURL)
+{
+    m_page.addMediaUsageManagerSession(identifier, bundleIdentifier, pageURL);
+}
+
+void WebChromeClient::updateMediaUsageManagerSessionState(MediaSessionIdentifier identifier, const MediaUsageInfo& usage)
+{
+    m_page.updateMediaUsageManagerSessionState(identifier, usage);
+}
+
+void WebChromeClient::removeMediaUsageManagerSession(MediaSessionIdentifier identifier)
+{
+    m_page.removeMediaUsageManagerSession(identifier);
+}
+#endif // ENABLE(MEDIA_USAGE)
+
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 void WebChromeClient::exitVideoFullscreenToModeWithoutAnimation(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode targetMode)
 {
@@ -1333,11 +1321,11 @@ void WebChromeClient::hasStorageAccess(RegistrableDomain&& subFrameDomain, Regis
     m_page.hasStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), *webFrame, WTFMove(completionHandler));
 }
 
-void WebChromeClient::requestStorageAccess(RegistrableDomain&& subFrameDomain, RegistrableDomain&& topFrameDomain, Frame& frame, CompletionHandler<void(StorageAccessWasGranted, StorageAccessPromptWasShown)>&& completionHandler)
+void WebChromeClient::requestStorageAccess(RegistrableDomain&& subFrameDomain, RegistrableDomain&& topFrameDomain, Frame& frame, StorageAccessScope scope, CompletionHandler<void(RequestStorageAccessResult)>&& completionHandler)
 {
     auto* webFrame = WebFrame::fromCoreFrame(frame);
     ASSERT(webFrame);
-    m_page.requestStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), *webFrame, WTFMove(completionHandler));
+    m_page.requestStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), *webFrame, scope, WTFMove(completionHandler));
 }
 #endif
 
@@ -1371,5 +1359,10 @@ void WebChromeClient::setMockWebAuthenticationConfiguration(const MockWebAuthent
     m_page.send(Messages::WebPageProxy::SetMockWebAuthenticationConfiguration(configuration));
 }
 #endif
+
+void WebChromeClient::animationDidFinishForElement(const Element& element)
+{
+    m_page.animationDidFinishForElement(element);
+}
 
 } // namespace WebKit

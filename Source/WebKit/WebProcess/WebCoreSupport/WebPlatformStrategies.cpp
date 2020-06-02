@@ -34,6 +34,7 @@
 #include "NetworkProcessConnection.h"
 #include "NetworkResourceLoadParameters.h"
 #include "PluginInfoStore.h"
+#include "SharedBufferDataReference.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebFrame.h"
@@ -70,7 +71,7 @@
 #endif
 
 #if PLATFORM(GTK)
-#include "WebSelectionData.h"
+#include <WebCore/SelectionData.h>
 #endif
 
 namespace WebKit {
@@ -136,6 +137,9 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::bufferForType(const String&
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardBufferForType(pasteboardName, pasteboardType), Messages::WebPasteboardProxy::GetPasteboardBufferForType::Reply(handle, size), 0);
     if (handle.isNull())
         return nullptr;
+    // SharedMemory::Handle::size() is rounded up to the nearest page.
+    if (!size || size > handle.size())
+        return nullptr;
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }
@@ -146,10 +150,7 @@ void WebPlatformStrategies::getPathnamesForType(Vector<String>& pathnames, const
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardPathnamesForType(pasteboardName, pasteboardType),
         Messages::WebPasteboardProxy::GetPasteboardPathnamesForType::Reply(pathnames, sandboxExtensionsHandleArray), 0);
     ASSERT(pathnames.size() == sandboxExtensionsHandleArray.size());
-    for (size_t i = 0; i < sandboxExtensionsHandleArray.size(); i++) {
-        if (auto extension = SandboxExtension::create(WTFMove(sandboxExtensionsHandleArray[i])))
-            extension->consumePermanently();
-    }
+    SandboxExtension::consumePermanently(sandboxExtensionsHandleArray);
 }
 
 String WebPlatformStrategies::stringForType(const String& pasteboardType, const String& pasteboardName)
@@ -293,17 +294,43 @@ void WebPlatformStrategies::updateSupportedTypeIdentifiers(const Vector<String>&
 #if PLATFORM(GTK)
 // PasteboardStrategy
 
-void WebPlatformStrategies::writeToClipboard(const String& pasteboardName, const SelectionData& selection)
+Vector<String> WebPlatformStrategies::types(const String& pasteboardName)
 {
-    WebSelectionData selectionData(selection);
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteToClipboard(pasteboardName, selectionData), 0);
+    Vector<String> result;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetTypes(pasteboardName), Messages::WebPasteboardProxy::GetTypes::Reply(result), 0);
+    return result;
 }
 
-Ref<SelectionData> WebPlatformStrategies::readFromClipboard(const String& pasteboardName)
+String WebPlatformStrategies::readTextFromClipboard(const String& pasteboardName)
 {
-    WebSelectionData selection;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadFromClipboard(pasteboardName), Messages::WebPasteboardProxy::ReadFromClipboard::Reply(selection), 0);
-    return WTFMove(selection.selectionData);
+    String result;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadText(pasteboardName), Messages::WebPasteboardProxy::ReadText::Reply(result), 0);
+    return result;
+}
+
+Vector<String> WebPlatformStrategies::readFilePathsFromClipboard(const String& pasteboardName)
+{
+    Vector<String> result;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadFilePaths(pasteboardName), Messages::WebPasteboardProxy::ReadFilePaths::Reply(result), 0);
+    return result;
+}
+
+RefPtr<SharedBuffer> WebPlatformStrategies::readBufferFromClipboard(const String& pasteboardName, const String& pasteboardType)
+{
+
+    IPC::SharedBufferDataReference data;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadBuffer(pasteboardName, pasteboardType), Messages::WebPasteboardProxy::ReadBuffer::Reply(data), 0);
+    return data.buffer();
+}
+
+void WebPlatformStrategies::writeToClipboard(const String& pasteboardName, SelectionData&& selectionData)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteToClipboard(pasteboardName, WTFMove(selectionData)), 0);
+}
+
+void WebPlatformStrategies::clearClipboard(const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::ClearClipboard(pasteboardName), 0);
 }
 
 #endif // PLATFORM(GTK)
@@ -377,6 +404,14 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(si
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadBufferFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadBufferFromPasteboard::Reply(handle, size), 0);
     if (handle.isNull())
         return nullptr;
+#if OS(DARWIN) || OS(WINDOWS)
+    // SharedMemory::Handle::size() is rounded up to the nearest page.
+    if (!size || size > handle.size())
+        return nullptr;
+#else
+    if (!size)
+        return nullptr;
+#endif
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }

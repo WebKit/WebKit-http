@@ -277,8 +277,6 @@ http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-sub-frame-2-leve
 
 # These tests use Flash, which is not a good idea, because it is not installed on all machines that run tests.
 # WebKitTestRunner detects attempts to use Flash, and raises an assertion.
-fast/dom/beforeload/flash-before-load.html [ Skip ]
-fast/dom/beforeload/remove-flash-in-beforeload-listener.html [ Skip ]
 fast/loader/sandboxed-plugin-crash.html [ Skip ]
 plugins/hidden-iframe-with-swf-plugin.html [ Skip ]
 plugins/plugin-document-load-prevented-userscript.html [ Skip ]
@@ -424,7 +422,6 @@ http/tests/cache/subresource-expiration-2.html
 fast/frames/sandboxed-iframe-plugins.html
 fast/frames/sandboxed-iframe-storage.html
 fast/overflow/overflow_hidden.html
-media/controls-styling.html
 platform/mac/fast/loader/non-html-load-event.html
 plugins/embed-attributes-style.html
 plugins/plugin-initiate-popup-window.html
@@ -770,6 +767,10 @@ inspector/runtime/callFunctionOn-emulateUserGesture-userIsInteracting.html [ Pas
 
 # Target domain is only present in WebKit2.
 http/tests/inspector/target [ Pass ]
+
+# ITP and AdClickAttribution are WK2 only.
+inspector/page/overrideSetting-AdClickAttributionDebugModeEnabled.html [ Pass ]
+inspector/page/overrideSetting-ITPDebugModeEnabled.html [ Pass ]
 
 # Highlighting marked text ranges from layout tests is only supported in WebKit2.
 editing/input/composition-highlights.html [ Pass ]

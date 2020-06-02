@@ -24,6 +24,7 @@
 
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
+#include "Element.h"
 #include "Timer.h"
 #include <wtf/Vector.h>
 #include <wtf/text/AtomString.h>
@@ -32,8 +33,8 @@ namespace WebCore {
 
 class DeferredPromise;
 class Document;
-class Element;
 class ImageLoader;
+class Page;
 class RenderImageResource;
 
 template<typename T> class EventSender;
@@ -72,17 +73,19 @@ public:
 
     void dispatchPendingEvent(ImageEventSender*);
 
-    static void dispatchPendingBeforeLoadEvents();
-    static void dispatchPendingLoadEvents();
-    static void dispatchPendingErrorEvents();
+    static void dispatchPendingBeforeLoadEvents(Page*);
+    static void dispatchPendingLoadEvents(Page*);
+    static void dispatchPendingErrorEvents(Page*);
 
     void loadDeferredImage();
 
     bool isDeferred() const { return m_lazyImageLoadState == LazyImageLoadState::Deferred; }
 
+    Document& document() { return m_element.document(); }
+
 protected:
     explicit ImageLoader(Element&);
-    void notifyFinished(CachedResource&) override;
+    void notifyFinished(CachedResource&, const NetworkLoadMetrics&) override;
 
 private:
     enum class LazyImageLoadState : uint8_t { None, Deferred, LoadImmediately, FullImage };

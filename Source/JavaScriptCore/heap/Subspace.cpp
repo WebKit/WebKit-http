@@ -27,13 +27,9 @@
 #include "Subspace.h"
 
 #include "AlignedMemoryAllocator.h"
-#include "BlockDirectoryInlines.h"
 #include "HeapCellType.h"
-#include "JSCInlines.h"
-#include "MarkedBlockInlines.h"
 #include "MarkedSpaceInlines.h"
 #include "ParallelSourceAdapter.h"
-#include "PreventCollectionScope.h"
 #include "SubspaceInlines.h"
 
 namespace JSC {
@@ -90,14 +86,14 @@ MarkedBlock::Handle* Subspace::findEmptyBlockToSteal()
 
 Ref<SharedTask<BlockDirectory*()>> Subspace::parallelDirectorySource()
 {
-    class Task : public SharedTask<BlockDirectory*()> {
+    class Task final : public SharedTask<BlockDirectory*()> {
     public:
         Task(BlockDirectory* directory)
             : m_directory(directory)
         {
         }
         
-        BlockDirectory* run() override
+        BlockDirectory* run() final
         {
             auto locker = holdLock(m_lock);
             BlockDirectory* result = m_directory;

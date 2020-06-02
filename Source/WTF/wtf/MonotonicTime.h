@@ -155,7 +155,7 @@ public:
     }
 
     template<class Decoder>
-    static bool decode(Decoder& decoder, MonotonicTime& time)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, MonotonicTime& time)
     {
         double value;
         if (!decoder.decode(value))

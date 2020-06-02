@@ -30,6 +30,7 @@
 
 #include "FloatPoint.h"
 #include "GtkUtilities.h"
+#include "GtkVersioning.h"
 #include "PlatformKeyboardEvent.h"
 #include "Scrollbar.h"
 #include <gdk/gdk.h>
@@ -46,6 +47,7 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
 
     m_type = PlatformEvent::Wheel;
     m_timestamp = wallTimeForEvent(event);
+
     gdk_event_get_state(reinterpret_cast<GdkEvent*>(event), &state);
 
     if (state & GDK_SHIFT_MASK)
@@ -62,6 +64,7 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
     m_deltaX = 0;
     m_deltaY = 0;
     GdkScrollDirection direction;
+
     if (!gdk_event_get_scroll_direction(reinterpret_cast<GdkEvent*>(event), &direction)) {
         direction = GDK_SCROLL_SMOOTH;
         gdouble deltaX, deltaY;
@@ -96,9 +99,8 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
     m_wheelTicksY = m_deltaY;
 
 #if ENABLE(KINETIC_SCROLLING)
-    m_phase = gdk_event_is_scroll_stop_event(reinterpret_cast<GdkEvent*>(event)) ?
-        PlatformWheelEventPhaseEnded :
-        PlatformWheelEventPhaseChanged;
+    const auto isStopEvent = gdk_event_is_scroll_stop_event(reinterpret_cast<GdkEvent*>(event));
+    m_phase = isStopEvent ?  PlatformWheelEventPhaseEnded : PlatformWheelEventPhaseChanged;
 #endif // ENABLE(KINETIC_SCROLLING)
 
     gdouble x, y, rootX, rootY;

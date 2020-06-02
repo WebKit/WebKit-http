@@ -65,12 +65,26 @@ public:
     FormattingContext(const ContainerBox& formattingContextRoot, FormattingState&);
     virtual ~FormattingContext();
 
-    virtual void layoutInFlowContent(InvalidationState&, const HorizontalConstraints&, const VerticalConstraints&) = 0;
-    void layoutOutOfFlowContent(InvalidationState&, const OutOfFlowHorizontalConstraints&, const VerticalConstraints&);
+    struct ConstraintsForInFlowContent {
+        HorizontalConstraints horizontal;
+        VerticalConstraints vertical;
+    };
+    virtual void layoutInFlowContent(InvalidationState&, const ConstraintsForInFlowContent&) = 0;
+
+    struct ConstraintsForOutOfFlowContent {
+        HorizontalConstraints horizontal;
+        VerticalConstraints vertical;
+        // Borders and paddings are resolved against the containing block's content box as if the box was an in-flow box.
+        LayoutUnit borderAndPaddingConstraints;
+    };
+    void layoutOutOfFlowContent(InvalidationState&, const ConstraintsForOutOfFlowContent&);
 
     struct IntrinsicWidthConstraints {
         void expand(LayoutUnit horizontalValue);
         IntrinsicWidthConstraints& operator+=(const IntrinsicWidthConstraints&);
+        IntrinsicWidthConstraints& operator+=(LayoutUnit);
+        IntrinsicWidthConstraints& operator-=(const IntrinsicWidthConstraints&);
+        IntrinsicWidthConstraints& operator-=(LayoutUnit);
 
         LayoutUnit minimum;
         LayoutUnit maximum;
@@ -125,7 +139,7 @@ protected:
         LayoutUnit shrinkToFitWidth(const Box&, LayoutUnit availableWidth);
 
         Edges computedBorder(const Box&) const;
-        Optional<Edges> computedPadding(const Box&, const HorizontalConstraints&) const;
+        Optional<Edges> computedPadding(const Box&, LayoutUnit containingBlockWidth) const;
 
         ComputedHorizontalMargin computedHorizontalMargin(const Box&, const HorizontalConstraints&) const;
         ComputedVerticalMargin computedVerticalMargin(const Box&, const HorizontalConstraints&) const;
@@ -143,19 +157,15 @@ protected:
 
         LayoutUnit contentHeightForFormattingContextRoot(const Box&) const;
 
-        static OutOfFlowHorizontalConstraints horizontalConstraintsForOutOfFlow(const Display::Box& containingBlockGeometry);
-        static VerticalConstraints verticalConstraintsForOutOfFlow(const Display::Box& containingBlockGeometry);
-        static HorizontalConstraints horizontalConstraintsForInFlow(const Display::Box& containingBlockGeometry);
-        static VerticalConstraints verticalConstraintsForInFlow(const Display::Box& containingBlockGeometry);
+        ConstraintsForOutOfFlowContent constraintsForOutOfFlowContent(const ContainerBox&);
+        ConstraintsForInFlowContent constraintsForInFlowContent(const ContainerBox&, Optional<EscapeReason> = WTF::nullopt);
+
+        Optional<LayoutUnit> computedHeight(const Box&, Optional<LayoutUnit> containingBlockHeight = WTF::nullopt) const;
+        Optional<LayoutUnit> computedWidth(const Box&, LayoutUnit containingBlockWidth) const;
 
     protected:
         friend class FormattingContext;
         Geometry(const FormattingContext&);
-
-        enum class HeightType { Min, Max, Normal };
-        Optional<LayoutUnit> computedHeightValue(const Box&, HeightType, Optional<LayoutUnit> containingBlockHeight) const;
-        Optional<LayoutUnit> computedContentHeight(const Box&, Optional<LayoutUnit> containingBlockHeight = WTF::nullopt) const;
-        Optional<LayoutUnit> computedContentWidth(const Box&, LayoutUnit containingBlockWidth) const;
 
         const LayoutState& layoutState() const { return m_formattingContext.layoutState(); }
         LayoutState& layoutState() { return m_formattingContext.layoutState(); }
@@ -175,6 +185,9 @@ protected:
 
         LayoutUnit staticVerticalPositionForOutOfFlowPositioned(const Box&, const VerticalConstraints&) const;
         LayoutUnit staticHorizontalPositionForOutOfFlowPositioned(const Box&, const HorizontalConstraints&) const;
+
+        enum class HeightType { Min, Max, Normal };
+        Optional<LayoutUnit> computedHeightValue(const Box&, HeightType, Optional<LayoutUnit> containingBlockHeight) const;
 
         const FormattingContext& m_formattingContext;
     };
@@ -198,8 +211,8 @@ protected:
 
 private:
     void collectOutOfFlowDescendantsIfNeeded();
-    void computeOutOfFlowVerticalGeometry(const Box&, const HorizontalConstraints&, const VerticalConstraints&);
-    void computeOutOfFlowHorizontalGeometry(const Box&, const HorizontalConstraints&, const VerticalConstraints&);
+    void computeOutOfFlowVerticalGeometry(const Box&, const ConstraintsForOutOfFlowContent&);
+    void computeOutOfFlowHorizontalGeometry(const Box&, const ConstraintsForOutOfFlowContent&);
 
     WeakPtr<const ContainerBox> m_root;
     FormattingState& m_formattingState;
@@ -225,6 +238,25 @@ inline FormattingContext::IntrinsicWidthConstraints& FormattingContext::Intrinsi
 {
     minimum += other.minimum;
     maximum += other.maximum;
+    return *this;
+}
+
+inline FormattingContext::IntrinsicWidthConstraints& FormattingContext::IntrinsicWidthConstraints::operator+=(LayoutUnit value)
+{
+    expand(value);
+    return *this;
+}
+
+inline FormattingContext::IntrinsicWidthConstraints& FormattingContext::IntrinsicWidthConstraints::operator-=(const IntrinsicWidthConstraints& other)
+{
+    minimum -= other.minimum;
+    maximum -= other.maximum;
+    return *this;
+}
+
+inline FormattingContext::IntrinsicWidthConstraints& FormattingContext::IntrinsicWidthConstraints::operator-=(LayoutUnit value)
+{
+    expand(-value);
     return *this;
 }
 

@@ -49,6 +49,8 @@ public:
     void recomputeRegion();
     PageOverlay& overlay() { return *m_overlay; }
 
+    void setRegionChanged() { m_regionChanged = true; }
+
 protected:
     RegionOverlay(Page&, Color);
 
@@ -68,6 +70,7 @@ protected:
     RefPtr<PageOverlay> m_overlay;
     std::unique_ptr<Region> m_region;
     Color m_color;
+    bool m_regionChanged { true };
 };
 
 class MouseWheelRegionOverlay final : public RegionOverlay {
@@ -79,7 +82,7 @@ public:
 
 private:
     explicit MouseWheelRegionOverlay(Page& page)
-        : RegionOverlay(page, Color(0.5f, 0.0f, 0.0f, 0.4f))
+        : RegionOverlay(page, makeSimpleColorFromFloats(0.5f, 0.0f, 0.0f, 0.4f))
     {
     }
 
@@ -115,7 +118,7 @@ public:
 
 private:
     explicit NonFastScrollableRegionOverlay(Page& page)
-        : RegionOverlay(page, Color(1.0f, 0.5f, 0.0f, 0.4f))
+        : RegionOverlay(page, makeSimpleColorFromFloats(1.0f, 0.5f, 0.0f, 0.4f))
     {
     }
 
@@ -141,7 +144,7 @@ bool NonFastScrollableRegionOverlay::updateRegion()
     return regionChanged;
 }
 
-static const HashMap<String, Color>& touchEventRegionColors()
+static const HashMap<String, SimpleColor>& touchEventRegionColors()
 {
     static const auto regionColors = makeNeverDestroyed([] {
         struct MapEntry {
@@ -160,9 +163,9 @@ static const HashMap<String, Color>& touchEventRegionColors()
             { "mousemove"_s, 245, 245, 80 },
             { "mouseup"_s, 80, 245, 176 },
         };
-        HashMap<String, Color> map;
+        HashMap<String, SimpleColor> map;
         for (auto& entry : entries)
-            map.add(entry.name, Color { entry.r, entry.g, entry.b, 50 });
+            map.add(entry.name, makeSimpleColor(entry.r, entry.g, entry.b, 50));
         return map;
     }());
     return regionColors;
@@ -243,7 +246,7 @@ void NonFastScrollableRegionOverlay::drawRect(PageOverlay& pageOverlay, Graphics
 #endif
 
     for (const auto& synchronousEventRegion : m_eventTrackingRegions.eventSpecificSynchronousDispatchRegions) {
-        Color regionColor(0, 0, 0, 64);
+        auto regionColor = makeSimpleColor(0, 0, 0, 64);
         auto it = touchEventRegionColors().find(synchronousEventRegion.key);
         if (it != touchEventRegionColors().end())
             regionColor = it->value;
@@ -287,7 +290,7 @@ void RegionOverlay::willMoveToPage(PageOverlay&, Page* page)
 void RegionOverlay::didMoveToPage(PageOverlay&, Page* page)
 {
     if (page)
-        recomputeRegion();
+        setRegionChanged();
 }
 
 void RegionOverlay::drawRect(PageOverlay&, GraphicsContext& context, const IntRect& dirtyRect)
@@ -321,8 +324,13 @@ void RegionOverlay::didScrollFrame(PageOverlay&, Frame&)
 
 void RegionOverlay::recomputeRegion()
 {
+    if (!m_regionChanged)
+        return;
+
     if (updateRegion())
         m_overlay->setNeedsDisplay();
+
+    m_regionChanged = false;
 }
 
 DebugPageOverlays& DebugPageOverlays::singleton()
@@ -380,6 +388,12 @@ void DebugPageOverlays::regionChanged(Frame& frame, RegionType regionType)
         return;
 
     if (auto* visualizer = regionOverlayForPage(*page, regionType))
+        visualizer->setRegionChanged();
+}
+
+void DebugPageOverlays::updateRegionIfNecessary(Page& page, RegionType regionType)
+{
+    if (auto* visualizer = regionOverlayForPage(page, regionType))
         visualizer->recomputeRegion();
 }
 

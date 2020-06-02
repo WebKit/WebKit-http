@@ -290,7 +290,7 @@ WI.contentLoaded = function()
 
     WI.clearKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "K", WI._clear);
 
-    // FIXME: <https://webkit.org/b/151310> Web Inspector: Command-E should propagate to other search fields (including the system)
+    WI.findString = "";
     WI.populateFindKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "E", WI._populateFind);
     WI.populateFindKeyboardShortcut.implicitlyPreventsDefault = false;
     WI.findNextKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "G", WI._findNext);
@@ -362,6 +362,12 @@ WI.contentLoaded = function()
     WI.stepIntoAlternateKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Semicolon, WI.debuggerStepInto);
     WI.stepOutAlternateKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift | WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Semicolon, WI.debuggerStepOut);
 
+    // COMPATIBILITY (iOS 13.4): Debugger.stepNext did not exist yet.
+    if (InspectorBackend.hasCommand("Debugger.stepNext")) {
+        WI.stepNextKeyboardShortcut = new WI.KeyboardShortcut(null, WI.KeyboardShortcut.Key.F9, WI.debuggerStepNext);
+        WI.stepNextAlternateKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift | WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.SingleQuote, WI.debuggerStepNext);
+    }
+
     WI.settingsKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Comma, WI._handleSettingsKeyboardShortcut);
 
     WI._togglePreviousDockConfigurationKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, "D", WI._togglePreviousDockConfiguration);
@@ -420,7 +426,7 @@ WI.contentLoaded = function()
         }
 
         let reloadToolTip;
-        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript)
+        if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ITML)
             reloadToolTip = WI.UIString("Restart (%s)").format(WI._reloadPageKeyboardShortcut.displayName);
         else
             reloadToolTip = WI.UIString("Reload page (%s)\nReload page ignoring cache (%s)").format(WI._reloadPageKeyboardShortcut.displayName, WI._reloadPageFromOriginKeyboardShortcut.displayName);
@@ -1039,6 +1045,16 @@ WI.updateVisibilityState = function(visible)
     WI.notifications.dispatchEventToListeners(WI.Notification.VisibilityStateDidChange);
 };
 
+WI.updateFindString = function(findString)
+{
+    if (!findString || WI.findString === findString)
+        return false;
+
+    WI.findString = findString;
+
+    return true;
+};
+
 WI.handlePossibleLinkClick = function(event, frame, options = {})
 {
     let anchorElement = event.target.closest("a");
@@ -1391,7 +1407,12 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
         || representedObject instanceof WI.AuditTestCaseResult || representedObject instanceof WI.AuditTestGroupResult)
         return WI.AuditTabContentView;
 
-    if (representedObject instanceof WI.Canvas || representedObject instanceof WI.ShaderProgram || representedObject instanceof WI.Recording || representedObject instanceof WI.Animation)
+    if (representedObject instanceof WI.CanvasCollection
+        || representedObject instanceof WI.Canvas
+        || representedObject instanceof WI.Recording
+        || representedObject instanceof WI.ShaderProgram
+        || representedObject instanceof WI.AnimationCollection
+        || representedObject instanceof WI.Animation)
         return WI.GraphicsTabContentView;
 
     return null;
@@ -1525,6 +1546,11 @@ WI.debuggerPauseResumeToggle = function(event)
         WI.debuggerManager.pause();
 };
 
+WI.debuggerStepNext = function(event)
+{
+    WI.debuggerManager.stepNext();
+};
+
 WI.debuggerStepOver = function(event)
 {
     WI.debuggerManager.stepOver();
@@ -1542,12 +1568,23 @@ WI.debuggerStepOut = function(event)
 
 WI._focusSearchField = function(event)
 {
+    let searchQuery = "";
+
+    if (WI.settings.searchFromSelection.value) {
+        let selection = window.getSelection();
+        if (selection.type === "Range" || !selection.isCollapsed)
+            searchQuery = selection.toString().removeWordBreakCharacters();
+    }
+
     WI.tabBrowser.showTabForContentView(WI._searchTabContentView, {
         // Classify this as a keyboard shortcut, as the only other way to get to Search Tab is via TabBar itself.
         initiatorHint: WI.TabBrowser.TabNavigationInitiator.KeyboardShortcut,
     });
 
     WI._searchTabContentView.focusSearchField();
+
+    if (searchQuery)
+        WI._searchTabContentView.performSearch(searchQuery);
 };
 
 WI._focusChanged = function(event)
@@ -2238,6 +2275,15 @@ WI._handleDeviceSettingsTabBarButtonClicked = function(event)
             ],
         },
         {
+            name: WI.UIString("Enable:"),
+            columns: [
+                [
+                    {name: WI.UIString("ITP Debug Mode"), setting: InspectorBackend.Enum.Page.Setting.ITPDebugModeEnabled, value: true},
+                    {name: WI.UIString("Ad Click Attribution Debug Mode"), setting: InspectorBackend.Enum.Page.Setting.AdClickAttributionDebugModeEnabled, value: true},
+                ],
+            ],
+        },
+        {
             name: WI.UIString("%s:").format(WI.unlocalizedString("WebRTC")),
             columns: [
                 [
@@ -2347,7 +2393,7 @@ WI._updateDownloadTabBarButton = function()
     if (!WI._reloadTabBarButton)
         return;
 
-    if (!InspectorBackend.hasDomain("Page")) {
+    if (!InspectorBackend.hasCommand("Page.archive")) {
         WI._downloadTabBarButton.hidden = true;
         WI._updateTabBarDividers();
         return;
@@ -2369,15 +2415,19 @@ WI._updateInspectModeTabBarButton = function()
 
 WI._updateTabBarDividers = function()
 {
-    let closeHidden = WI._closeTabBarButton?.hidden;
-    let dockToSideHidden = WI._dockToSideTabBarButton?.hidden;
-    let dockBottomHidden = WI._dockBottomTabBarButton?.hidden;
-    let undockHidden = WI._undockTabBarButton?.hidden;
+    function isHidden(navigationItem) {
+        return !navigationItem || navigationItem.hidden;
+    }
 
-    let inspectModeHidden = WI._inspectModeTabBarButton.hidden;
-    let deviceSettingsHidden = WI._deviceSettingsTabBarButton && WI._deviceSettingsTabBarButton.hidden;
-    let reloadHidden = WI._reloadTabBarButton && WI._reloadTabBarButton.hidden;
-    let downloadHidden = WI._downloadTabBarButton && WI._downloadTabBarButton.hidden;
+    let closeHidden = isHidden(WI._closeTabBarButton);
+    let dockToSideHidden = isHidden(WI._dockToSideTabBarButton);
+    let dockBottomHidden = isHidden(WI._dockBottomTabBarButton);
+    let undockHidden = isHidden(WI._undockTabBarButton);
+
+    let inspectModeHidden = isHidden(WI._inspectModeTabBarButton);
+    let deviceSettingsHidden = isHidden(WI._deviceSettingsTabBarButton);
+    let reloadHidden = isHidden(WI._reloadTabBarButton);
+    let downloadHidden = isHidden(WI._downloadTabBarButton);
 
     let warningsHidden = WI._consoleWarningsTabBarButton.hidden;
     let errorsHidden = WI._consoleErrorsTabBarButton.hidden;
@@ -2583,55 +2633,46 @@ WI._clear = function(event)
 WI._populateFind = function(event)
 {
     let focusedContentView = WI._focusedContentView();
-    if (!focusedContentView)
-        return;
-
-    if (focusedContentView.supportsCustomFindBanner) {
+    if (focusedContentView && focusedContentView.supportsCustomFindBanner) {
         focusedContentView.handlePopulateFindShortcut();
         return;
     }
 
     let contentBrowser = WI._focusedOrVisibleContentBrowser();
-    if (!contentBrowser)
+    if (contentBrowser) {
+        contentBrowser.handlePopulateFindShortcut();
         return;
-
-    contentBrowser.handlePopulateFindShortcut();
+    }
 };
 
 WI._findNext = function(event)
 {
     let focusedContentView = WI._focusedContentView();
-    if (!focusedContentView)
-        return;
-
-    if (focusedContentView.supportsCustomFindBanner) {
+    if (focusedContentView?.supportsCustomFindBanner) {
         focusedContentView.handleFindNextShortcut();
         return;
     }
 
     let contentBrowser = WI._focusedOrVisibleContentBrowser();
-    if (!contentBrowser)
+    if (contentBrowser) {
+        contentBrowser.handleFindNextShortcut();
         return;
-
-    contentBrowser.handleFindNextShortcut();
+    }
 };
 
 WI._findPrevious = function(event)
 {
     let focusedContentView = WI._focusedContentView();
-    if (!focusedContentView)
-        return;
-
-    if (focusedContentView.supportsCustomFindBanner) {
+    if (focusedContentView?.supportsCustomFindBanner) {
         focusedContentView.handleFindPreviousShortcut();
         return;
     }
 
     let contentBrowser = WI._focusedOrVisibleContentBrowser();
-    if (!contentBrowser)
+    if (contentBrowser) {
+        contentBrowser.handleFindPreviousShortcut();
         return;
-
-    contentBrowser.handleFindPreviousShortcut();
+    }
 };
 
 WI._copy = function(event)
@@ -3132,13 +3173,15 @@ WI._redoKeyboardShortcut = function(event)
 WI.undo = function()
 {
     let target = WI.assumingMainTarget();
-    target.DOMAgent.undo();
+    if (target.hasCommand("DOM.undo"))
+        target.DOMAgent.undo();
 };
 
 WI.redo = function()
 {
     let target = WI.assumingMainTarget();
-    target.DOMAgent.redo();
+    if (target.hasCommand("DOM.redo"))
+        target.DOMAgent.redo();
 };
 
 WI.highlightRangesWithStyleClass = function(element, resultRanges, styleClass, changes)
@@ -3258,7 +3301,7 @@ WI.archiveMainFrame = function()
 
 WI.canArchiveMainFrame = function()
 {
-    if (!WI.sharedApp.isWebDebuggable())
+    if (!InspectorBackend.hasCommand("Page.archive"))
         return false;
 
     if (!WI.networkManager.mainFrame || !WI.networkManager.mainFrame.mainResource)

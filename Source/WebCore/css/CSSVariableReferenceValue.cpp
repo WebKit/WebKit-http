@@ -1,5 +1,5 @@
 // Copyright 2015 The Chromium Authors. All rights reserved.
-// Copyright (C) 2016 Apple Inc. All rights reserved.
+// Copyright (C) 2016-2020 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -30,22 +30,38 @@
 #include "config.h"
 #include "CSSVariableReferenceValue.h"
 
+#include "CSSVariableData.h"
+#include "ConstantPropertyMap.h"
 #include "RenderStyle.h"
 #include "StyleBuilder.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
 
-String CSSVariableReferenceValue::customCSSText() const
+static bool resolveTokenRange(CSSParserTokenRange, Vector<CSSParserToken>&, Style::BuilderState&);
+
+CSSVariableReferenceValue::CSSVariableReferenceValue(Ref<CSSVariableData>&& data)
+    : CSSValue(VariableReferenceClass)
+    , m_data(WTFMove(data))
 {
-    if (!m_serialized) {
-        m_serialized = true;
-        m_stringValue = m_data->tokenRange().serialize();
-    }
-    return m_stringValue;
 }
 
-static bool resolveTokenRange(CSSParserTokenRange, Vector<CSSParserToken>&, Style::BuilderState&);
+Ref<CSSVariableReferenceValue> CSSVariableReferenceValue::create(const CSSParserTokenRange& range)
+{
+    return adoptRef(*new CSSVariableReferenceValue(CSSVariableData::create(range)));
+}
+
+bool CSSVariableReferenceValue::equals(const CSSVariableReferenceValue& other) const
+{
+    return m_data.get() == other.m_data.get();
+}
+
+String CSSVariableReferenceValue::customCSSText() const
+{
+    if (m_stringValue.isNull())
+        m_stringValue = m_data->tokenRange().serialize();
+    return m_stringValue;
+}
 
 static bool resolveVariableFallback(CSSParserTokenRange range, Vector<CSSParserToken>& result, Style::BuilderState& builderState)
 {
@@ -56,8 +72,10 @@ static bool resolveVariableFallback(CSSParserTokenRange range, Vector<CSSParserT
     return resolveTokenRange(range, result, builderState);
 }
 
-static bool resolveVariableReference(CSSParserTokenRange range, Vector<CSSParserToken>& result, Style::BuilderState& builderState)
+static bool resolveVariableReference(CSSParserTokenRange range, CSSValueID functionId, Vector<CSSParserToken>& result, Style::BuilderState& builderState)
 {
+    ASSERT(functionId == CSSValueVar || functionId == CSSValueEnv);
+
     auto& registeredProperties = builderState.document().getCSSRegisteredCustomPropertySet();
     auto& style = builderState.style();
 
@@ -73,8 +91,10 @@ static bool resolveVariableReference(CSSParserTokenRange range, Vector<CSSParser
     Vector<CSSParserToken> fallbackResult;
     bool fallbackReturn = resolveVariableFallback(CSSParserTokenRange(range), fallbackResult, builderState);
 
-    auto* property = style.getCustomProperty(variableName);
 
+    auto* property = functionId == CSSValueVar
+        ? style.getCustomProperty(variableName)
+        : builderState.document().constantProperties().values().get(variableName);
     if (!property || property->isUnset()) {
         auto* registered = registeredProperties.get(variableName);
         if (registered && registered->initialValue())
@@ -97,8 +117,9 @@ static bool resolveTokenRange(CSSParserTokenRange range, Vector<CSSParserToken>&
 {
     bool success = true;
     while (!range.atEnd()) {
-        if (range.peek().functionId() == CSSValueVar || range.peek().functionId() == CSSValueEnv)
-            success &= resolveVariableReference(range.consumeBlock(), result, builderState);
+        auto functionId = range.peek().functionId();
+        if (functionId == CSSValueVar || functionId == CSSValueEnv)
+            success &= resolveVariableReference(range.consumeBlock(), functionId, result, builderState);
         else
             result.append(range.consume());
     }
@@ -108,9 +129,7 @@ static bool resolveTokenRange(CSSParserTokenRange range, Vector<CSSParserToken>&
 RefPtr<CSSVariableData> CSSVariableReferenceValue::resolveVariableReferences(Style::BuilderState& builderState) const
 {
     Vector<CSSParserToken> resolvedTokens;
-    CSSParserTokenRange range = m_data->tokenRange();
-
-    if (!resolveTokenRange(range, resolvedTokens, builderState))
+    if (!resolveTokenRange(m_data->tokenRange(), resolvedTokens, builderState))
         return nullptr;
 
     return CSSVariableData::create(resolvedTokens);

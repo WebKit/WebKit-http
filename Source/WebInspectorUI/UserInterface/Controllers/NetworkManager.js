@@ -148,10 +148,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
 
         if (target.hasDomain("Network")) {
             target.NetworkAgent.enable();
-
-            // COMPATIBILITY (iOS 10.3): Network.setDisableResourceCaching did not exist.
-            if (target.hasCommand("Network.setResourceCachingDisabled"))
-                target.NetworkAgent.setResourceCachingDisabled(WI.settings.resourceCachingDisabled.value);
+            target.NetworkAgent.setResourceCachingDisabled(WI.settings.resourceCachingDisabled.value);
 
             // COMPATIBILITY (iOS 13.0): Network.setInterceptionEnabled did not exist.
             if (target.hasCommand("Network.setInterceptionEnabled")) {
@@ -639,13 +636,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         if (this._waitingForMainFrameResourceTreePayload)
             return;
 
-        // COMPATIBILITY (iOS 8): Timeline timestamps for legacy backends are computed
-        // dynamically from the first backend timestamp received. For navigations we
-        // need to reset that base timestamp, and an appropriate timestamp to use is
-        // the new main resource's will be sent timestamp. So save this value on the
-        // resource in case it becomes a main resource.
-        var originalRequestWillBeSentTimestamp = timestamp;
-
         var elapsedTime = WI.timelineManager.computeElapsedTime(timestamp);
         let resource = this._resourceRequestIdentifierMap.get(requestIdentifier);
         if (resource) {
@@ -671,7 +661,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             initiatorCallFrames: this._initiatorCallFramesFromPayload(initiator),
             initiatorSourceCodeLocation: this._initiatorSourceCodeLocationFromPayload(initiator),
             initiatorNode: this._initiatorNodeFromPayload(initiator),
-            originalRequestWillBeSentTimestamp,
         });
 
         // Associate the resource with the requestIdentifier so it can be found in future loading events.
@@ -689,12 +678,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         console.assert(url);
         if (!url)
             return;
-
-        // COMPATIBILITY(iOS 10.3): `walltime` did not exist in 10.3 and earlier.
-        if (!InspectorBackend.hasEvent("Network.webSocketWillSendHandshakeRequest", "walltime")) {
-            request = arguments[2];
-            walltime = NaN;
-        }
 
         // FIXME: <webkit.org/b/168475> Web Inspector: Correctly display iframe's and worker's WebSockets
 
@@ -774,23 +757,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         resource.addFrame(payloadData, payloadLength, isOutgoing, opcode, timestamp, elapsedTime);
     }
 
-    markResourceRequestAsServedFromMemoryCache(requestIdentifier)
-    {
-        // Ignore this while waiting for the whole frame/resource tree.
-        if (this._waitingForMainFrameResourceTreePayload)
-            return;
-
-        let resource = this._resourceRequestIdentifierMap.get(requestIdentifier);
-
-        // We might not have a resource if the inspector was opened during the page load (after resourceRequestWillBeSent is called).
-        // We don't want to assert in this case since we do likely have the resource, via Page.getResourceTree. The Resource
-        // just doesn't have a requestIdentifier for us to look it up.
-        if (!resource)
-            return;
-
-        resource.legacyMarkServedFromMemoryCache();
-    }
-
     resourceRequestWasServedFromMemoryCache(requestIdentifier, frameIdentifier, loaderIdentifier, cachedResourcePayload, timestamp, initiator)
     {
         // Ignore this while waiting for the whole frame/resource tree.
@@ -868,10 +834,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             // Associate the resource with the requestIdentifier so it can be found in future loading events.
             this._resourceRequestIdentifierMap.set(requestIdentifier, resource);
         }
-
-        // COMPATIBILITY (iOS 10.3): `fromDiskCache` is legacy, replaced by `source`.
-        if (response.fromDiskCache)
-            resource.legacyMarkServedFromDiskCache();
 
         resource.updateForResponse(response.url, response.mimeType, type, response.headers, response.status, response.statusText, elapsedTime, response.timing, response.source, response.security);
     }
@@ -1330,7 +1292,8 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             return;
         }
 
-        if (!InspectorBackend.hasDomain("Network")) {
+        let target = WI.assumingMainTarget();
+        if (!target.hasCommand("Network.loadResource")) {
             this._sourceMapLoadAndParseFailed(sourceMapURL);
             return;
         }
@@ -1342,7 +1305,6 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         if (!frameIdentifier)
             frameIdentifier = WI.networkManager.mainFrame ? WI.networkManager.mainFrame.id : "";
 
-        let target = WI.assumingMainTarget();
         target.NetworkAgent.loadResource(frameIdentifier, sourceMapURL, sourceMapLoaded);
     }
 

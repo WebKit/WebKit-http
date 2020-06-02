@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2020 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -23,11 +23,8 @@
 #include "config.h"
 
 #include "ArrayBuffer.h"
-#include "ArrayPrototype.h"
-#include "BuiltinNames.h"
-#include "ButterflyInlines.h"
+#include "BigIntConstructor.h"
 #include "BytecodeCacheError.h"
-#include "CallFrameInlines.h"
 #include "CatchScope.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
@@ -37,7 +34,6 @@
 #include "Disassembler.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
-#include "HeapProfiler.h"
 #include "HeapSnapshotBuilder.h"
 #include "InitializeThreading.h"
 #include "Interpreter.h"
@@ -45,11 +41,9 @@
 #include "JSArray.h"
 #include "JSArrayBuffer.h"
 #include "JSBigInt.h"
-#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSInternalPromise.h"
 #include "JSLock.h"
-#include "JSModuleLoader.h"
 #include "JSNativeStdFunction.h"
 #include "JSONObject.h"
 #include "JSObjectInlines.h"
@@ -63,43 +57,32 @@
 #include "ParserError.h"
 #include "ProfilerDatabase.h"
 #include "PromiseTimer.h"
-#include "ProtoCallFrame.h"
 #include "ReleaseHeapAccessScope.h"
 #include "SamplingProfiler.h"
 #include "StackVisitor.h"
 #include "StructureInlines.h"
-#include "StructureRareDataInlines.h"
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypedArrayInlines.h"
 #include "VMInspector.h"
 #include "WasmCapabilities.h"
-#include "WasmContext.h"
-#include "WasmFaultSignalHandler.h"
 #include "WasmMemory.h"
-#include <locale.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <thread>
 #include <type_traits>
-#include <wtf/Box.h>
 #include <wtf/CPUTime.h>
-#include <wtf/CommaPrinter.h>
 #include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/MonotonicTime.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Scope.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/URL.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/StringConcatenateNumbers.h>
 
 #if OS(WINDOWS)
 #include <direct.h>
@@ -120,10 +103,6 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #undef Function
-#endif
-
-#if HAVE(SYS_TIME_H)
-#include <sys/time.h>
 #endif
 
 #if HAVE(SIGNAL_H)
@@ -196,40 +175,6 @@ NO_RETURN_WITH_VALUE static void jscExit(int status)
     exit(status);
 }
 
-class Masquerader : public JSNonFinalObject {
-public:
-    Masquerader(VM& vm, Structure* structure)
-        : Base(vm, structure)
-    {
-    }
-
-    typedef JSNonFinalObject Base;
-    static constexpr unsigned StructureFlags = Base::StructureFlags | JSC::MasqueradesAsUndefined;
-
-    template<typename CellType, SubspaceAccess>
-    static CompleteSubspace* subspaceFor(VM& vm)
-    {
-        return &vm.cellSpace;
-    }
-
-    static Masquerader* create(VM& vm, JSGlobalObject* globalObject)
-    {
-        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll(vm, "Masquerading object allocated");
-        Structure* structure = createStructure(vm, globalObject, jsNull());
-        Masquerader* result = new (NotNull, allocateCell<Masquerader>(vm.heap)) Masquerader(vm, structure);
-        result->finishCreation(vm);
-        return result;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
-    }
-
-    DECLARE_INFO;
-};
-
-const ClassInfo Masquerader::s_info = { "Masquerader", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(Masquerader) };
 static unsigned asyncTestPasses { 0 };
 static unsigned asyncTestExpectedPasses { 0 };
 
@@ -304,6 +249,13 @@ private:
 
 
 static EncodedJSValue JSC_HOST_CALL functionCreateGlobalObject(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL functionCreateHeapBigInt(JSGlobalObject*, CallFrame*);
+#if USE(BIGINT32)
+static EncodedJSValue JSC_HOST_CALL functionCreateBigInt32(JSGlobalObject*, CallFrame*);
+#endif
+static EncodedJSValue JSC_HOST_CALL functionUseBigInt32(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL functionIsBigInt32(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL functionIsHeapBigInt(JSGlobalObject*, CallFrame*);
 
 static EncodedJSValue JSC_HOST_CALL functionPrintStdOut(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionPrintStdErr(JSGlobalObject*, CallFrame*);
@@ -348,6 +300,7 @@ static EncodedJSValue JSC_HOST_CALL functionIsPureNaN(JSGlobalObject*, CallFrame
 static EncodedJSValue JSC_HOST_CALL functionEffectful42(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionIdentity(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL functionCallMasquerader(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionHasCustomProperties(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionDumpTypesForAllVariables(JSGlobalObject*, CallFrame*);
 static EncodedJSValue JSC_HOST_CALL functionDrainMicrotasks(JSGlobalObject*, CallFrame*);
@@ -399,6 +352,7 @@ static EncodedJSValue JSC_HOST_CALL functionMallocInALoop(JSGlobalObject*, CallF
 static EncodedJSValue JSC_HOST_CALL functionTotalCompileTime(JSGlobalObject*, CallFrame*);
 
 static EncodedJSValue JSC_HOST_CALL functionSetUnhandledRejectionCallback(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL functionAsDoubleNumber(JSGlobalObject*, CallFrame*);
 
 struct Script {
     enum class StrictMode {
@@ -493,11 +447,8 @@ static inline String stringFromUTF(const Vector& utf8)
 }
 
 class GlobalObject final : public JSGlobalObject {
-private:
-    GlobalObject(VM&, Structure*);
-
 public:
-    typedef JSGlobalObject Base;
+    using Base = JSGlobalObject;
 
     static GlobalObject* create(VM& vm, Structure* structure, const Vector<String>& arguments)
     {
@@ -511,15 +462,18 @@ public:
 
     static Structure* createStructure(VM& vm, JSValue prototype)
     {
-        return Structure::create(vm, 0, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
+        return Structure::create(vm, nullptr, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
     }
 
     static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject*) { return RuntimeFlags::createAllEnabled(); }
 
-protected:
+private:
+    GlobalObject(VM&, Structure*);
+
     void finishCreation(VM& vm, const Vector<String>& arguments)
     {
         Base::finishCreation(vm);
+        JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 
         addFunction(vm, "debug", functionDebug, 1);
         addFunction(vm, "describe", functionDescribe, 1);
@@ -575,6 +529,13 @@ protected:
         addFunction(vm, "hasCustomProperties", functionHasCustomProperties, 0);
 
         addFunction(vm, "createGlobalObject", functionCreateGlobalObject, 0);
+        addFunction(vm, "createHeapBigInt", functionCreateHeapBigInt, 1);
+#if USE(BIGINT32)
+        addFunction(vm, "createBigInt32", functionCreateBigInt32, 1);
+#endif
+        addFunction(vm, "useBigInt32", functionUseBigInt32, 0);
+        addFunction(vm, "isBigInt32", functionIsBigInt32, 1);
+        addFunction(vm, "isHeapBigInt", functionIsHeapBigInt, 1);
 
         addFunction(vm, "dumpTypesForAllVariables", functionDumpTypesForAllVariables , 0);
 
@@ -610,7 +571,7 @@ protected:
 #endif
 
         if (!arguments.isEmpty()) {
-            JSArray* array = constructEmptyArray(this, 0);
+            JSArray* array = constructEmptyArray(this, nullptr);
             for (size_t i = 0; i < arguments.size(); ++i)
                 array->putDirectIndex(this, i, jsString(vm, arguments[i]));
             putDirect(vm, Identifier::fromString(vm, "arguments"), array);
@@ -629,7 +590,13 @@ protected:
         addFunction(vm, dollar, "evalScript", functionDollarEvalScript, 1);
         
         dollar->putDirect(vm, Identifier::fromString(vm, "global"), this);
-        
+        dollar->putDirectCustomAccessor(vm, Identifier::fromString(vm, "IsHTMLDDA"),
+            CustomGetterSetter::create(vm, [](JSGlobalObject* globalObject, EncodedJSValue, PropertyName) {
+                return functionMakeMasquerader(globalObject, nullptr);
+            }, nullptr),
+            static_cast<unsigned>(PropertyAttribute::CustomValue)
+        );
+
         JSObject* agent = JSFinalObject::create(vm, plainObjectStructure);
         dollar->putDirect(vm, Identifier::fromString(vm, "agent"), agent);
         
@@ -654,6 +621,8 @@ protected:
         addFunction(vm, "totalCompileTime", functionTotalCompileTime, 0);
 
         addFunction(vm, "setUnhandledRejectionCallback", functionSetUnhandledRejectionCallback, 1);
+
+        addFunction(vm, "asDoubleNumber", functionAsDoubleNumber, 1);
     }
     
     void addFunction(VM& vm, JSObject* object, const char* name, NativeFunction function, unsigned arguments)
@@ -985,26 +954,26 @@ static bool fetchScriptFromLocalFileSystem(const String& fileName, Vector<char>&
     return true;
 }
 
-class ShellSourceProvider : public StringSourceProvider {
+class ShellSourceProvider final : public StringSourceProvider {
 public:
     static Ref<ShellSourceProvider> create(const String& source, const SourceOrigin& sourceOrigin, URL&& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
     {
         return adoptRef(*new ShellSourceProvider(source, sourceOrigin, WTFMove(url), startPosition, sourceType));
     }
 
-    ~ShellSourceProvider()
+    ~ShellSourceProvider() final
     {
         commitCachedBytecode();
     }
 
-    RefPtr<CachedBytecode> cachedBytecode() const override
+    RefPtr<CachedBytecode> cachedBytecode() const final
     {
         if (!m_cachedBytecode)
             loadBytecode();
         return m_cachedBytecode.copyRef();
     }
 
-    void updateCache(const UnlinkedFunctionExecutable* executable, const SourceCode&, CodeSpecializationKind kind, const UnlinkedFunctionCodeBlock* codeBlock) const override
+    void updateCache(const UnlinkedFunctionExecutable* executable, const SourceCode&, CodeSpecializationKind kind, const UnlinkedFunctionCodeBlock* codeBlock) const final
     {
         if (!cacheEnabled() || !m_cachedBytecode)
             return;
@@ -1014,7 +983,7 @@ public:
             m_cachedBytecode->addFunctionUpdate(executable, kind, *cachedBytecode);
     }
 
-    void cacheBytecode(const BytecodeCacheGenerator& generator) const override
+    void cacheBytecode(const BytecodeCacheGenerator& generator) const final
     {
         if (!cacheEnabled())
             return;
@@ -1025,7 +994,7 @@ public:
             m_cachedBytecode->addGlobalUpdate(*update);
     }
 
-    void commitCachedBytecode() const override
+    void commitCachedBytecode() const final
     {
         if (!cacheEnabled() || !m_cachedBytecode || !m_cachedBytecode->hasUpdates())
             return;
@@ -1268,7 +1237,8 @@ static EncodedJSValue printInternal(JSGlobalObject* globalObject, CallFrame* cal
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         auto string = cStringFromViewWithString(globalObject, scope, viewWithString);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
-        if (fprintf(out, "%s", string.data()) < 0)
+        fwrite(string.data(), sizeof(char), string.length(), out);
+        if (ferror(out))
             goto fail;
     }
 
@@ -1289,7 +1259,9 @@ EncodedJSValue JSC_HOST_CALL functionDebug(JSGlobalObject* globalObject, CallFra
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     auto string = cStringFromViewWithString(globalObject, scope, viewWithString);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    fprintf(stderr, "--> %s\n", string.data());
+    fputs("--> ", stderr);
+    fwrite(string.data(), sizeof(char), string.length(), stderr);
+    fputc('\n', stderr);
     return JSValue::encode(jsUndefined());
 }
 
@@ -1485,7 +1457,7 @@ EncodedJSValue JSC_HOST_CALL functionRun(JSGlobalObject* globalObject, CallFrame
 
     GlobalObject* realm = GlobalObject::create(vm, GlobalObject::createStructure(vm, jsNull()), Vector<String>());
 
-    JSArray* array = constructEmptyArray(realm, 0);
+    JSArray* array = constructEmptyArray(realm, nullptr);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     for (unsigned i = 1; i < callFrame->argumentCount(); ++i) {
         array->putDirectIndex(realm, i - 1, callFrame->uncheckedArgument(i));
@@ -1517,7 +1489,7 @@ EncodedJSValue JSC_HOST_CALL functionRunString(JSGlobalObject* globalObject, Cal
 
     GlobalObject* realm = GlobalObject::create(vm, GlobalObject::createStructure(vm, jsNull()), Vector<String>());
 
-    JSArray* array = constructEmptyArray(realm, 0);
+    JSArray* array = constructEmptyArray(realm, nullptr);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     for (unsigned i = 1; i < callFrame->argumentCount(); ++i) {
         array->putDirectIndex(realm, i - 1, callFrame->uncheckedArgument(i));
@@ -1884,8 +1856,9 @@ EncodedJSValue JSC_HOST_CALL functionDollarEvalScript(JSGlobalObject* globalObje
     String sourceCode = callFrame->argument(0).toWTFString(globalObject);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     
-    GlobalObject* realm = jsDynamicCast<GlobalObject*>(vm,
-        callFrame->thisValue().get(globalObject, Identifier::fromString(vm, "global")));
+    JSValue global = callFrame->thisValue().get(globalObject, Identifier::fromString(vm, "global"));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    GlobalObject* realm = jsDynamicCast<GlobalObject*>(vm, global);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     if (!realm)
         return JSValue::encode(throwException(globalObject, scope, createError(globalObject, "Expected global to point to a global object"_s)));
@@ -1950,9 +1923,8 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentReceiveBroadcast(JSGlobalObject*
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSValue callback = callFrame->argument(0);
-    CallData callData;
-    CallType callType = getCallData(vm, callback, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, callback);
+    if (callData.type == CallData::Type::None)
         return JSValue::encode(throwException(globalObject, scope, createError(globalObject, "Expected callback"_s)));
     
     RefPtr<Message> message;
@@ -1970,7 +1942,7 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentReceiveBroadcast(JSGlobalObject*
     args.append(jsNumber(message->index()));
     if (UNLIKELY(args.hasOverflowed()))
         return JSValue::encode(throwOutOfMemoryError(globalObject, scope));
-    RELEASE_AND_RETURN(scope, JSValue::encode(call(globalObject, callback, callType, callData, jsNull(), args)));
+    RELEASE_AND_RETURN(scope, JSValue::encode(call(globalObject, callback, callData, jsNull(), args)));
 }
 
 EncodedJSValue JSC_HOST_CALL functionDollarAgentReport(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -2216,7 +2188,12 @@ EncodedJSValue JSC_HOST_CALL functionEffectful42(JSGlobalObject*, CallFrame*)
 EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(JSGlobalObject* globalObject, CallFrame*)
 {
     VM& vm = globalObject->vm();
-    return JSValue::encode(Masquerader::create(vm, globalObject));
+    return JSValue::encode(JSFunction::createFunctionThatMasqueradesAsUndefined(vm, globalObject, 0, "IsHTMLDDA"_s, functionCallMasquerader));
+}
+
+EncodedJSValue JSC_HOST_CALL functionCallMasquerader(JSGlobalObject*, CallFrame*)
+{
+    return JSValue::encode(jsNull());
 }
 
 EncodedJSValue JSC_HOST_CALL functionHasCustomProperties(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -2261,6 +2238,77 @@ EncodedJSValue JSC_HOST_CALL functionCreateGlobalObject(JSGlobalObject* globalOb
 {
     VM& vm = globalObject->vm();
     return JSValue::encode(GlobalObject::create(vm, GlobalObject::createStructure(vm, jsNull()), Vector<String>()));
+}
+
+EncodedJSValue JSC_HOST_CALL functionCreateHeapBigInt(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue argument = callFrame->argument(0);
+    JSValue bigInt = toBigInt(globalObject, argument);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+#if USE(BIGINT32)
+    if (bigInt.isHeapBigInt())
+        return JSValue::encode(bigInt);
+    ASSERT(bigInt.isBigInt32());
+    int32_t value = bigInt.bigInt32AsInt32();
+    RELEASE_AND_RETURN(scope, JSValue::encode(JSBigInt::createFrom(globalObject, value)));
+#else
+    return JSValue::encode(bigInt);
+#endif
+}
+
+#if USE(BIGINT32)
+EncodedJSValue JSC_HOST_CALL functionCreateBigInt32(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue argument = callFrame->argument(0);
+    JSValue bigIntValue = toBigInt(globalObject, argument);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    if (bigIntValue.isBigInt32())
+        return JSValue::encode(bigIntValue);
+    ASSERT(bigIntValue.isHeapBigInt());
+    JSBigInt* bigInt = jsCast<JSBigInt*>(bigIntValue);
+    if (!bigInt->length())
+        return JSValue::encode(jsBigInt32(0));
+    if (bigInt->length() == 1) {
+        JSBigInt::Digit digit = bigInt->digit(0);
+        if (bigInt->sign()) {
+            if (digit <= static_cast<uint64_t>(-static_cast<int64_t>(INT32_MIN)))
+                return JSValue::encode(jsBigInt32(static_cast<int32_t>(-static_cast<int64_t>(digit))));
+        } else {
+            if (digit <= INT32_MAX)
+                return JSValue::encode(jsBigInt32(static_cast<int32_t>(digit)));
+        }
+    }
+    throwTypeError(globalObject, scope, "Out of range of BigInt32"_s);
+    return { };
+}
+#endif
+
+EncodedJSValue JSC_HOST_CALL functionUseBigInt32(JSGlobalObject*, CallFrame*)
+{
+#if USE(BIGINT32)
+    return JSValue::encode(jsBoolean(true));
+#else
+    return JSValue::encode(jsBoolean(false));
+#endif
+}
+
+EncodedJSValue JSC_HOST_CALL functionIsBigInt32(JSGlobalObject*, CallFrame* callFrame)
+{
+#if USE(BIGINT32)
+    return JSValue::encode(jsBoolean(callFrame->argument(0).isBigInt32()));
+#else
+    UNUSED_PARAM(callFrame);
+    return JSValue::encode(jsBoolean(false));
+#endif
+}
+
+EncodedJSValue JSC_HOST_CALL functionIsHeapBigInt(JSGlobalObject*, CallFrame* callFrame)
+{
+    return JSValue::encode(jsBoolean(callFrame->argument(0).isHeapBigInt()));
 }
 
 EncodedJSValue JSC_HOST_CALL functionCheckModuleSyntax(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -2419,11 +2467,20 @@ EncodedJSValue JSC_HOST_CALL functionSetUnhandledRejectionCallback(JSGlobalObjec
     JSObject* object = callFrame->argument(0).getObject();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (!object || !object->isFunction(vm))
+    if (!object || !object->isCallable(vm))
         return throwVMTypeError(globalObject, scope);
 
     globalObject->setUnhandledRejectionCallback(vm, object);
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL functionAsDoubleNumber(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    double num = callFrame->argument(0).toNumber(globalObject);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return JSValue::encode(jsDoubleNumber(num));
 }
 
 // Use SEH for Release builds only to get rid of the crash report dialog
@@ -2547,6 +2604,12 @@ int main(int argc, char** argv)
         res = jscmain(argc, argv);
     EXCEPT(res = 3)
     finalizeStatsAtEndOfTesting();
+    if (getenv("JS_SHELL_WAIT_FOR_INPUT_TO_EXIT")) {
+        WTF::fastDisableScavenger();
+        fprintf(stdout, "\njs shell waiting for input to exit\n");
+        fflush(stdout);
+        getc(stdin);
+    }
 
     jscExit(res);
 }
@@ -2795,10 +2858,22 @@ static void runInteractive(GlobalObject* globalObject)
         NakedPtr<Exception> evaluationException;
         JSValue returnValue = evaluate(globalObject, jscSource(line, sourceOrigin, sourceOrigin.string()), JSValue(), evaluationException);
 #endif
-        if (evaluationException)
-            printf("Exception: %s\n", evaluationException->value().toWTFString(globalObject).utf8().data());
+        Expected<CString, UTF8ConversionError> utf8;
+        if (evaluationException) {
+            fputs("Exception: ", stdout);
+            utf8 = evaluationException->value().toWTFString(globalObject).tryGetUtf8();
+        } else
+            utf8 = returnValue.toWTFString(globalObject).tryGetUtf8();
+
+        CString result;
+        if (utf8)
+            result = utf8.value();
+        else if (utf8.error() == UTF8ConversionError::OutOfMemory)
+            result = "OutOfMemory while processing string";
         else
-            printf("%s\n", returnValue.toWTFString(globalObject).utf8().data());
+            result = "Error while processing string";
+        fwrite(result.data(), sizeof(char), result.length(), stdout);
+        putchar('\n');
 
         scope.clearException();
         vm.drainMicrotasks();
@@ -3154,9 +3229,9 @@ int jscmain(int argc, char** argv)
     // Initialize JSC before getting VM.
     JSC::initializeThreading();
     initializeTimeoutIfNeeded();
-#if ENABLE(WEBASSEMBLY)
-    JSC::Wasm::enableFastMemory();
-#endif
+
+    if (Options::useSuperSampler())
+        enableSuperSampler();
 
     bool gigacageDisableRequested = false;
 #if GIGACAGE_ENABLED && !COMPILER(MSVC)

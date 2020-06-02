@@ -32,14 +32,18 @@
 
 #include "AnimationBase.h"
 #include "CSSFontSelector.h"
+#include "DOMWindow.h"
 #include "Element.h"
+#include "EventNames.h"
 #include "FrameView.h"
+#include "HTMLDivElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLMarqueeElement.h"
 #include "HTMLNames.h"
 #include "HTMLSlotElement.h"
 #include "HTMLTableElement.h"
 #include "HTMLTextAreaElement.h"
+#include "HTMLVideoElement.h"
 #include "MathMLElement.h"
 #include "Page.h"
 #include "Quirks.h"
@@ -188,6 +192,53 @@ static OptionSet<TouchAction> computeEffectiveTouchActions(const RenderStyle& st
         return { TouchAction::None };
 
     return sharedTouchActions;
+}
+
+void Adjuster::adjustEventListenerRegionTypesForRootStyle(RenderStyle& rootStyle, const Document& document)
+{
+    auto regionTypes = computeEventListenerRegionTypes(document, { });
+    if (auto* window = document.domWindow())
+        regionTypes.add(computeEventListenerRegionTypes(*window, { }));
+
+    rootStyle.setEventListenerRegionTypes(regionTypes);
+}
+
+OptionSet<EventListenerRegionType> Adjuster::computeEventListenerRegionTypes(const EventTarget& eventTarget, OptionSet<EventListenerRegionType> parentTypes)
+{
+#if !PLATFORM(IOS_FAMILY)
+    if (!eventTarget.hasEventListeners())
+        return parentTypes;
+
+    auto types = parentTypes;
+
+    auto findListeners = [&](auto& eventName, auto type, auto nonPassiveType) {
+        auto* eventListenerVector = eventTarget.eventTargetData()->eventListenerMap.find(eventName);
+        if (!eventListenerVector)
+            return;
+
+        types.add(type);
+
+        auto isPassiveOnly = [&] {
+            for (auto& listener : *eventListenerVector) {
+                if (!listener->isPassive())
+                    return false;
+            }
+            return true;
+        }();
+
+        if (!isPassiveOnly)
+            types.add(nonPassiveType);
+    };
+
+    findListeners(eventNames().wheelEvent, EventListenerRegionType::Wheel, EventListenerRegionType::NonPassiveWheel);
+    findListeners(eventNames().mousewheelEvent, EventListenerRegionType::Wheel, EventListenerRegionType::NonPassiveWheel);
+
+    return types;
+#else
+    UNUSED_PARAM(eventTarget);
+    UNUSED_PARAM(parentTypes);
+    return { };
+#endif
 }
 
 void Adjuster::adjust(RenderStyle& style, const RenderStyle* userAgentAppearanceStyle) const
@@ -435,6 +486,9 @@ void Adjuster::adjust(RenderStyle& style, const RenderStyle* userAgentAppearance
 
     style.setEffectiveTouchActions(computeEffectiveTouchActions(style, m_parentStyle.effectiveTouchActions()));
 
+    if (m_element)
+        style.setEventListenerRegionTypes(computeEventListenerRegionTypes(*m_element, m_parentStyle.eventListenerRegionTypes()));
+
 #if ENABLE(TEXT_AUTOSIZING)
     if (m_element)
         adjustForTextAutosizing(style, *m_element);
@@ -538,17 +592,33 @@ void Adjuster::adjustAnimatedStyle(RenderStyle& style, const RenderStyle* parent
 
 void Adjuster::adjustForSiteSpecificQuirks(RenderStyle& style) const
 {
-    if (m_document.quirks().needsGMailOverflowScrollQuirk() && m_element) {
+    if (!m_element)
+        return;
+
+    if (m_document.quirks().needsGMailOverflowScrollQuirk()) {
         // This turns sidebar scrollable without mouse move event.
-        static NeverDestroyed<AtomString> roleValue("navigation", AtomString::ConstructFromLiteral);
+        static MainThreadNeverDestroyed<const AtomString> roleValue("navigation", AtomString::ConstructFromLiteral);
         if (style.overflowY() == Overflow::Hidden && m_element->attributeWithoutSynchronization(roleAttr) == roleValue)
             style.setOverflowY(Overflow::Auto);
     }
-    if (m_document.quirks().needsYouTubeOverflowScrollQuirk() && m_element) {
+    if (m_document.quirks().needsYouTubeOverflowScrollQuirk()) {
         // This turns sidebar scrollable without hover.
-        static NeverDestroyed<AtomString> idValue("guide-inner-content", AtomString::ConstructFromLiteral);
+        static MainThreadNeverDestroyed<const AtomString> idValue("guide-inner-content", AtomString::ConstructFromLiteral);
         if (style.overflowY() == Overflow::Hidden && m_element->idForStyleResolution() == idValue)
             style.setOverflowY(Overflow::Auto);
+    }
+    if (m_document.quirks().needsFullscreenDisplayNoneQuirk()) {
+        if (is<HTMLDivElement>(m_element) && style.display() == DisplayType::None) {
+            static MainThreadNeverDestroyed<const AtomString> instreamNativeVideoDivClass("instream-native-video--mobile", AtomString::ConstructFromLiteral);
+            static MainThreadNeverDestroyed<const AtomString> videoElementID("vjs_video_3_html5_api", AtomString::ConstructFromLiteral);
+
+            auto& div = downcast<HTMLDivElement>(*m_element);
+            if (div.hasClass() && div.classNames().contains(instreamNativeVideoDivClass)) {
+                auto* video = div.treeScope().getElementById(videoElementID);
+                if (is<HTMLVideoElement>(video) && downcast<HTMLVideoElement>(*video).isFullscreen())
+                    style.setDisplay(DisplayType::Block);
+            }
+        }
     }
 }
 
@@ -567,7 +637,9 @@ auto Adjuster::adjustmentForTextAutosizing(const RenderStyle& style, const Eleme
     AdjustmentForTextAutosizing adjustmentForTextAutosizing;
 
     auto& document = element.document();
-    if (!document.settings().textAutosizingEnabled() || !document.settings().textAutosizingUsesIdempotentMode())
+    if (!document.settings().textAutosizingEnabled()
+        || !document.settings().textAutosizingUsesIdempotentMode()
+        || document.settings().idempotentModeAutosizingOnlyHonorsPercentages())
         return adjustmentForTextAutosizing;
 
     auto newStatus = AutosizeStatus::computeStatus(style);
@@ -577,7 +649,7 @@ auto Adjuster::adjustmentForTextAutosizing(const RenderStyle& style, const Eleme
     if (style.textSizeAdjust().isNone())
         return adjustmentForTextAutosizing;
 
-    float initialScale = document.page() ? document.page()->initialScale() : 1;
+    float initialScale = document.page() ? document.page()->initialScaleIgnoringContentSize() : 1;
     auto adjustLineHeightIfNeeded = [&](auto computedFontSize) {
         auto lineHeight = style.specifiedLineHeight();
         constexpr static unsigned eligibleFontSize = 12;

@@ -61,14 +61,8 @@ inline const URL& Location::url() const
 
 String Location::href() const
 {
-    auto& url = this->url();
-
-    if (!url.hasUsername() && !url.hasPassword())
-        return url.string();
-
-    URL urlWithoutCredentials(url);
-    urlWithoutCredentials.setUser(WTF::emptyString());
-    urlWithoutCredentials.setPass(WTF::emptyString());
+    URL urlWithoutCredentials(url());
+    urlWithoutCredentials.removeCredentials();
     return urlWithoutCredentials.string();
 }
 
@@ -91,20 +85,19 @@ String Location::hostname() const
 
 String Location::port() const
 {
-    const URL& url = this->url();
-    return url.port() ? String::number(url.port().value()) : emptyString();
+    auto port = url().port();
+    return port ? String::number(*port) : emptyString();
 }
 
 String Location::pathname() const
 {
     auto path = url().path();
-    return path.isEmpty() ? "/" : path.toString();
+    return path.isEmpty() ? "/"_s : path.toString();
 }
 
 String Location::search() const
 {
-    const URL& url = this->url();
-    return url.query().isEmpty() ? emptyString() : "?" + url.query();
+    return url().query().isEmpty() ? emptyString() : url().queryWithLeadingQuestionMark().toString();
 }
 
 String Location::origin() const
@@ -125,8 +118,7 @@ Ref<DOMStringList> Location::ancestorOrigins() const
 
 String Location::hash() const
 {
-    const String& fragmentIdentifier = url().fragmentIdentifier();
-    return fragmentIdentifier.isEmpty() ? emptyString() : "#" + fragmentIdentifier;
+    return url().fragmentIdentifier().isEmpty() ? emptyString() : url().fragmentIdentifierWithLeadingNumberSign().toString();
 }
 
 ExceptionOr<void> Location::setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
@@ -173,11 +165,7 @@ ExceptionOr<void> Location::setPort(DOMWindow& activeWindow, DOMWindow& firstWin
     if (!frame)
         return { };
     URL url = frame->document()->url();
-    int port = portString.toInt();
-    if (port < 0 || port > 0xFFFF || portString.isEmpty())
-        url.removePort();
-    else
-        url.setPort(port);
+    url.setPort(parseUInt16(portString));
     return setLocation(activeWindow, firstWindow, url.string());
 }
 
@@ -271,7 +259,7 @@ void Location::reload(DOMWindow& activeWindow)
         return;
     }
 
-    if (WTF::protocolIsJavaScript(targetDocument.url()))
+    if (targetDocument.url().protocolIsJavaScript())
         return;
 
     frame->navigationScheduler().scheduleRefresh(activeDocument);

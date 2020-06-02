@@ -7,12 +7,13 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 accessibility/mac [ Pass ]
+compositing/scrolling/async-overflow-scrolling/mac [ Pass ]
 displaylists [ Pass ]
 editing/mac [ Pass ]
-fast/scrolling/latching [ Pass ]
-media/mac [ Pass ]
 editing/pasteboard/mac [ Pass ]
 fast/dom/Range/mac [ Pass ]
+fast/scrolling/latching [ Pass ]
+media/mac [ Pass ]
 
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
@@ -37,7 +38,7 @@ http/tests/gzip-content-encoding [ Pass ]
 http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass ]
 
 fast/text/mac [ Pass ]
-webkit.org/b/181964 fast/text/mac/select-character-before-zero-width-joiner.html [ ImageOnlyFailure ]
+webkit.org/b/181964 fast/text/mac/select-character-before-zero-width-joiner.html [ Pass ImageOnlyFailure ]
 
 pointerevents/mouse [ Pass ]
 imported/w3c/web-platform-tests/pointerevents [ Pass ]
@@ -67,7 +68,6 @@ accessibility/aria-checkbox-sends-notification.html
 accessibility/aria-switch-sends-notification.html
 accessibility/combo-box-collapsed-selection-changed.html
 accessibility/children-changed-sends-notification.html
-accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
 
 # Need to implement AccessibilityUIElement::clearSelectedChildren()
@@ -366,10 +366,6 @@ editing/pasteboard/paste-TIFF.html [ Skip ]
 editing/mac/pasteboard/dataTransfer-set-data-file-url.html [ Skip ]
 webkit.org/b/147674 editing/mac/pasteboard/5583362.html [ Skip ]
 
-# Assorted failures that need investigation
-[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any.worker.html [ Skip ]
-[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any.html [ Skip ]
-
 webkit.org/b/107118 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
 webkit.org/b/142258 fast/css/object-fit/object-fit-canvas.html [ Pass ImageOnlyFailure ]
 
@@ -557,12 +553,6 @@ webkit.org/b/112176 fast/canvas/webgl/read-pixels-test.html [ Failure Pass ]
 
 # Baseline Alignment tests affected by 1px diff failures only on Mac and iOS platforms
 webkit.org/b/170293 fast/css-grid-layout/grid-align-baseline-vertical.html [ Failure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-03.html [ ImageOnlyFailure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-04.html [ ImageOnlyFailure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-vertical-rl-05.html [ ImageOnlyFailure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-vertical-rl-04.html [ ImageOnlyFailure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-06.html [ ImageOnlyFailure ]
-webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-07.html [ ImageOnlyFailure ]
 
 # The following ref-test appears to fail on EWS bots as well.
 webkit.org/b/112176 fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure Pass ]
@@ -719,11 +709,6 @@ media/video-does-not-loop.html [ WontFix ]
 # This test uses movie matricies, which AVFoundation and QTKit64 do not support.
 media/video-size-intrinsic-scale.html [ WontFix ]
 
-# These tests are for an obsolete version of the EME spec.
-media/encrypted-media/encrypted-media-events.html [ WontFix ]
-media/encrypted-media/encrypted-media-not-loaded.html [ WontFix ]
-media/encrypted-media/encrypted-media-syntax.html [ WontFix ]
-
 # This test requires media engines not purge buffered date before currentTime.
 http/tests/media/video-buffered.html [ WontFix ]
 ## --- End media wontfix tests ---
@@ -764,7 +749,6 @@ webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/align.html [ Pass Fa
 webkit.org/b/135071 media/video-seek-with-negative-playback.html [ Pass Timeout ]
 webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Failure ]
 webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Failure ]
-webkit.org/b/137311 media/video-fullscreen-only-playback.html [ Pass Timeout Crash ]
 webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
 webkit.org/b/141084 http/tests/media/video-preload.html [ Pass Timeout ]
@@ -1005,9 +989,8 @@ webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/modify-rule-selector.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
-webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
+webkit.org/b/210062 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Failure ]
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
@@ -1051,10 +1034,14 @@ webkit.org/b/191539 http/tests/inspector/network/resource-security-connection.ht
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
+
+# VNE testing is flaky.
+webkit.org/b/210436 http/tests/performance/paint-timing/performance-paint-timing-fcp-after-visually-non-empty-for-num-chars.html [ Pass Failure ]
+
 # Touch events are not enabled on Mac
 webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Skip ]
 
-webkit.org/b/149819 [ Debug ] compositing/video/video-poster.html [ Pass Crash ]
+webkit.org/b/149819 [ Debug ] compositing/video/video-poster.html [ Pass Crash Failure ]
 
 webkit.org/b/168953 [ Release ] compositing/video/video-poster.html [ Pass Failure ]
 
@@ -1069,7 +1056,7 @@ imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ 
 webkit.org/b/150806 imported/w3c/web-platform-tests/xhr/send-timeout-events.htm [ Pass Failure ]
 webkit.org/b/150823 imported/w3c/web-platform-tests/xhr/getresponseheader-chunked-trailer.htm [ Pass Failure ]
 
-webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ ImageOnlyFailure ]
+webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
 
@@ -1126,6 +1113,8 @@ webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailur
 webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure Timeout ]
 
 fast/css/appearance-apple-pay-button.html [ Pass ]
+fast/css/appearance-apple-pay-button-border-radius.html [ Pass ]
+fast/css/getComputedStyle/computed-style-apple-pay-button.html [ Pass ]
 
 # <rdar://problem/23500327> storage/websql/alter-to-info-table.html
 storage/websql/alter-to-info-table.html [ Pass Failure ]
@@ -1257,6 +1246,7 @@ webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
 
 webkit.org/b/168094 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html [ Pass Failure ]
 webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]
+webkit.org/b/187911 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-readyState.html [ Pass Failure ]
 
 [ Debug ] imported/w3c/web-platform-tests/hr-time/idlharness.html [ Slow ]
 
@@ -1459,9 +1449,6 @@ fast/dom/HTMLMeterElement/meter-appearances-rating-relevancy.html [ Failure ]
 canvas/philip/tests/2d.path.stroke.scale2.html [ Failure ]
 imported/w3c/canvas/2d.path.stroke.scale2.html [ Failure ]
 
-# <rdar://problem/32799573> REGRESSION: LayoutTest fast/text/ipa-tone-letters.html is failing
-fast/text/ipa-tone-letters.html [ Failure ]
-
 # <rdar://problem/32799624> REGRESSION: LayoutTests css3/font-variant-petite-caps-synthesis-coverage.html and css3/font-variant-small-caps-synthesis-coverage.html are failing
 css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
@@ -1565,9 +1552,6 @@ webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [
 
 webkit.org/b/185659 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
-# macOS doesn't have ICU v59
-webkit.org/b/185375 js/intl-numberformat-format-to-parts.html [ Failure ]
-
 # Imported css-text test suite from WPT
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-010.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-011.html [ ImageOnlyFailure ]
@@ -1578,16 +1562,6 @@ webkit.org/b/196169 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/o
 
 webkit.org/b/197970 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-010.html [ ImageOnlyFailure ]
 webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html [ ImageOnlyFailure ]
-
-
-# Color Well is turned off
-accessibility/color-well.html [ Skip ]
-fast/forms/color [ Skip ]
-editing/pasteboard/drag-and-drop-color-input.html [ Skip ]
-editing/pasteboard/drag-and-drop-color-input-events.html [ Skip ]
-imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/color.html [ Skip ]
-fast/css/read-only-read-write-input-basics.html [ ImageOnlyFailure ]
-fast/css/pseudo-visited-background-color-on-input.html [ ImageOnlyFailure ]
 
 webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html [ Pass Failure ]
 
@@ -1655,8 +1629,6 @@ webkit.org/b/189680 platform/mac/media/audio-session-category-video-paused.html 
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay.html [ Pass Failure ]
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/error-codes/error.html [ Pass Failure ]
 
-webkit.org/b/193399 media/media-fullscreen-return-to-inline.html [ Pass Timeout Crash ]
-
 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html [ Pass Failure ]
 
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-width-1000px.html [ Pass Failure ]
@@ -1708,8 +1680,8 @@ webkit.org/b/190882 animations/change-one-anim.html [ Pass Failure ]
 [ Catalina+ ] fast/images/animated-heics-verify.html [ Pass ]
 
 # <rdar://problem/40172428>
-[ Catalina+ ] fast/text/font-collection.html [ ImageOnlyFailure ]
-[ Catalina+ ] fast/text/woff2.html [ ImageOnlyFailure ]
+webkit.org/b/212172 [ Catalina ] fast/text/font-collection.html [ ImageOnlyFailure ]
+[ Catalina+ ] fast/text/woff2.html [ Pass ImageOnlyFailure ]
 
 # <rdar://problem/45056204>
 [ Catalina+ ] http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
@@ -1718,9 +1690,6 @@ webkit.org/b/190882 animations/change-one-anim.html [ Pass Failure ]
 
 # <rdar://problem/50383285>
 [ Catalina+ ] imported/w3c/web-platform-tests/css/css-text/writing-system/writing-system-line-break-001.html [ ImageOnlyFailure ]
-
-# <rdar://problem/51055223>
-[ Catalina+ ] js/intl-numberformat.html [ Failure ]
 
 # <rdar://problem/51762717>
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.html [ Pass Failure ]
@@ -1818,7 +1787,7 @@ webkit.org/b/204820 [ Catalina+ ] fast/text/emoji-gender-9.html [ ImageOnlyFailu
 
 webkit.org/b/204247 [ Catalina ] webaudio/silence-after-playback.html [ Failure ]
 
-webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure ]
+webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/205361 [ Release ] crypto/workers/subtle/aes-indexeddb.html [ Pass Timeout ]
 
@@ -1826,7 +1795,6 @@ webkit.org/b/205403 accessibility/presentation-role-iframe.html [ Pass Failure ]
 
 webkit.org/b/202064 webaudio/silent-audio-interrupted-in-background.html [ Pass Crash ]
 
-webkit.org/b/205757 webgl/1.0.3/conformance/textures/texture-upload-size.html [ Pass Timeout ]
 webkit.org/b/205756 webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader.html [ Pass Failure ]
 
 webkit.org/b/205862 webgpu/whlsl/while-loop-break.html [ Pass ImageOnlyFailure ]
@@ -1837,6 +1805,7 @@ webkit.org/b/197204 webexposed/css-properties-behind-flags.html [ Pass Failure ]
 
 # The navigator.language tests rely on functionality only available in recent releases of macOS Catalina and onward.
 webkit.org/b/200043 [ Mojave Catalina ] fast/text/international/system-language/navigator-language [ Pass Failure ]
+webkit.org/b/208023 [ Sierra HighSierra Mojave ] fast/text/international/system-language/declarative-language.html [ Failure ]
 
 webkit.org/b/204312 imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-manual.svg [ Failure Pass ]
 
@@ -1884,8 +1853,6 @@ webkit.org/b/207225 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/207226 http/tests/misc/image-blocked-src-change.html [ Pass Failure ]
 
-webkit.org/b/207230 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch.html [ Pass Failure ]
-
 webkit.org/b/206908 imported/w3c/web-platform-tests/hr-time/basic.any.html [ Pass Failure ]
 
 webkit.org/b/207306 inspector/animation/lifecycle-css-animation.html [ Pass Failure ]
@@ -1900,11 +1867,7 @@ webkit.org/b/207392 [ Debug ] imported/w3c/web-platform-tests/workers/WorkerGlob
 
 webkit.org/b/207461 imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html [ Pass Failure ]
 
-webkit.org/b/207463 [ Debug ] inspector/runtime/getCollectionEntries.html [ Pass Failure ]
-
-webkit.org/b/207517 [ Debug ] inspector/animation/lifecycle-css-transition.html [ Pass Failure ]
-
-webkit.org/b/207642 inspector/runtime/getCollectionEntries.html [ Pass Failure ]
+webkit.org/b/207463 inspector/runtime/getCollectionEntries.html [ Pass Failure ]
 
 webkit.org/b/194162 storage/websql/read-transactions-running-concurrently.html [ Pass Failure ]
 
@@ -1926,9 +1889,6 @@ webkit.org/b/207858 [ Mojave ] webgl/1.0.3/conformance/textures/tex-image-and-su
 webkit.org/b/208219 compositing/video/video-clip-change-src.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/208220 [ Debug ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html [ Pass Failure ]
-
-webkit.org/b/208053 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-effects.sub.html [ Skip ]
-webkit.org/b/208053 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-occlusion.sub.html [ Skip ]
 
 webkit.org/b/208078 [ Debug ] webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Pass Timeout ]
 
@@ -1954,8 +1914,6 @@ webkit.org/b/209056 webgpu/whlsl/uint-bitwise.html [ Pass Crash ]
 
 webkit.org/b/209072 [ Debug ] http/tests/css/shared-stylesheet-mutation-preconstruct.html [ Pass Crash Failure ]
 
-webkit.org/b/209079 fast/animation/request-animation-frame-timestamps.html [ Pass Failure ]
-
 webkit.org/b/207150 platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html [ Pass Failure ]
 
 # The line breaking rules changed in ICU 66. We've updated the tests to match, but old platforms won't get updated line breaking rules.
@@ -1966,8 +1924,6 @@ webkit.org/b/207858 fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.h
 
 webkit.org/b/209446 [ Debug ] imported/w3c/web-platform-tests/navigation-timing/test_timing_attributes_order.html [ Pass Failure ]
 
-webkit.org/b/209491 fast/animation/request-animation-frame-cancel2.html [ Pass Failure ]
-
 webkit.org/b/209619 [ Catalina ] compositing/clipping/border-radius-async-overflow-stacking.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/208023 [ Catalina ] fast/text/international/system-language/declarative-language.html [ Failure ]
@@ -1975,3 +1931,44 @@ webkit.org/b/208023 [ Catalina ] fast/text/international/system-language/declara
 webkit.org/b/209740 webgl/2.0.0/conformance2/rendering/framebuffer-completeness-unaffected.html [ Failure ]
 
 webkit.org/b/209908 svg/custom/animate-initial-pause-unpause.html [ Pass Timeout ]
+
+webkit.org/b/210046 [ Release ] storage/indexeddb/value-cursor-cycle.html [ Pass Failure ]
+
+webkit.org/b/207160 css2.1/20110323/replaced-intrinsic-ratio-001.htm [ Pass Failure ]
+
+webkit.org/b/210351 scrollingcoordinator/mac/latching/horizontal-overflow-back-swipe.html [ Pass Timeout ]
+
+webkit.org/b/182571 [ Debug ] media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html [ Pass Timeout ]
+
+# Certain versions of macOS use different text security characters.
+webkit.org/b/209692 [ Mojave Catalina ] platform/mac/fast/text/text-security-disc-bullet-pua-mac.html [ ImageOnlyFailure ]
+
+webkit.org/b/210517 storage/indexeddb/result-request-cycle.html [ Pass Failure ]
+
+webkit.org/b/211856 media/video-poster-set-after-playback.html [ Pass Failure ]
+
+# These media controls tests are not relevant on macOS and iOS.
+media/media-document-audio-repaint.html [ Skip ]
+media/controls-styling.html [ Skip ]
+
+http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html [ Pass Failure ]
+
+webkit.org/b/211891 imported/w3c/web-platform-tests/css/css-flexbox/flexbox_direction-row-reverse.html [ ImageOnlyFailure ]
+
+webkit.org/b/212165 http/tests/resourceLoadStatistics/telemetry-generation-basic-functionality-database.html [ Pass Failure ]
+
+webkit.org/b/212215 media/video-isplayingtoautomotiveheadunit.html [ Pass Failure ]
+
+webkit.org/b/212219 media/track/track-cue-missing.html [ Pass Failure ]
+
+webkit.org/b/212218 webrtc/datachannel/gather-candidates-networkprocess-crash.html [ Pass Timeout ]
+
+webkit.org/b/212226 imported/w3c/web-platform-tests/css/css-grid/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-008.html [ ImageOnlyFailure ]
+
+webkit.org/b/212488 [ Catalina ] media/video-play-audio-require-user-gesture.html [ Pass Timeout ]
+
+webkit.org/b/212594 webgl/2.0.0/conformance/canvas/buffer-offscreen-test.html [ Failure ]
+webkit.org/b/212594 webgl/1.0.3/conformance/canvas/buffer-offscreen-test.html [ Failure ]
+
+# This test requires an update to system decoders
+webkit.org/b/212565 [ Catalina Mojave ] imported/w3c/web-platform-tests/encoding/single-byte-decoder.html [ Failure ]

@@ -31,8 +31,13 @@
 
 namespace WebCore {
 
+class Element;
 class RenderStyle;
 class TimingFunction;
+
+namespace Style {
+class Resolver;
+}
 
 class KeyframeValue {
 public:
@@ -54,7 +59,7 @@ public:
 
     TimingFunction* timingFunction() const { return m_timingFunction.get(); }
     void setTimingFunction(const RefPtr<TimingFunction>& timingFunction) { m_timingFunction = timingFunction; }
-    
+
 private:
     double m_key;
     HashSet<CSSPropertyID> m_properties; // The properties specified in this keyframe.
@@ -87,6 +92,10 @@ public:
     size_t size() const { return m_keyframes.size(); }
     const KeyframeValue& operator[](size_t index) const { return m_keyframes[index]; }
     const Vector<KeyframeValue>& keyframes() const { return m_keyframes; }
+
+    void copyKeyframes(KeyframeList&);
+    bool hasImplicitKeyframes() const;
+    void fillImplicitKeyframes(const Element&, Style::Resolver&, const RenderStyle*);
 
 private:
     AtomString m_animationName;

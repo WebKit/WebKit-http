@@ -28,6 +28,7 @@
 
 #if PLATFORM(MAC)
 
+#import "GlobalFindInPageState.h"
 #import "WKInspectorPrivateMac.h"
 #import "WKInspectorViewController.h"
 #import "WKViewInternal.h"
@@ -163,6 +164,12 @@ static void* kWindowContentLayoutObserverContext = &kWindowContentLayoutObserver
 
 // MARK: WKInspectorViewControllerDelegate methods
 
+- (void)inspectorViewControllerDidBecomeActive:(WKInspectorViewController *)inspectorViewController
+{
+    if (_inspectorProxy)
+        _inspectorProxy->didBecomeActive();
+}
+
 - (void)inspectorViewControllerInspectorDidCrash:(WKInspectorViewController *)inspectorViewController
 {
     if (_inspectorProxy)
@@ -190,6 +197,11 @@ static void* kWindowContentLayoutObserverContext = &kWindowContentLayoutObserver
 
 namespace WebKit {
 using namespace WebCore;
+
+void WebInspectorProxy::didBecomeActive()
+{
+    m_inspectorPage->send(Messages::WebInspectorUI::UpdateFindString(WebKit::stringForFind()));
+}
 
 void WebInspectorProxy::attachmentViewDidChange(NSView *oldView, NSView *newView)
 {
@@ -490,7 +502,7 @@ void WebInspectorProxy::platformSave(const String& suggestedURL, const String& c
         } else
             [contentCopy writeToURL:actualURL atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 
-        m_inspectorPage->process().send(Messages::WebInspectorUI::DidSave([actualURL absoluteString]), m_inspectorPage->webPageID());
+        m_inspectorPage->send(Messages::WebInspectorUI::DidSave([actualURL absoluteString]));
     };
 
     if (!forceSaveDialog) {
@@ -535,7 +547,7 @@ void WebInspectorProxy::platformAppend(const String& suggestedURL, const String&
     [handle writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 
-    m_inspectorPage->process().send(Messages::WebInspectorUI::DidAppend([actualURL absoluteString]), m_inspectorPage->webPageID());
+    m_inspectorPage->send(Messages::WebInspectorUI::DidAppend([actualURL absoluteString]));
 }
 
 void WebInspectorProxy::windowFrameDidChange()

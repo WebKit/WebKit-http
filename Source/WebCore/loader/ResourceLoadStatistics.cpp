@@ -125,8 +125,9 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
 
 static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, HashCountedSet<RegistrableDomain>& hashCountedSet)
 {
-    Vector<String> ignore;
-    decoder.decodeObjects(label, ignore, [&hashCountedSet](KeyedDecoder& decoderInner, String& domain) {
+    Vector<String> ignored;
+IGNORE_WARNINGS_BEGIN("unused-result")
+    decoder.decodeObjects(label, ignored, [&hashCountedSet](KeyedDecoder& decoderInner, String& domain) {
         if (!decoderInner.decodeString("origin", domain))
             return false;
         
@@ -137,26 +138,29 @@ static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, Has
         hashCountedSet.add(RegistrableDomain::uncheckedCreateFromRegistrableDomainString(domain), count);
         return true;
     });
+IGNORE_WARNINGS_END
 }
 
 static void decodeHashSet(KeyedDecoder& decoder, const String& label, const String& key, HashSet<RegistrableDomain>& hashSet)
 {
-    Vector<String> ignore;
-    decoder.decodeObjects(label, ignore, [&hashSet, &key](KeyedDecoder& decoderInner, String& domain) {
+    Vector<String> ignored;
+IGNORE_WARNINGS_BEGIN("unused-result")
+    decoder.decodeObjects(label, ignored, [&hashSet, &key](KeyedDecoder& decoderInner, String& domain) {
         if (!decoderInner.decodeString(key, domain))
             return false;
         
         hashSet.add(RegistrableDomain::uncheckedCreateFromRegistrableDomainString(domain));
         return true;
     });
+IGNORE_WARNINGS_END
 }
 
 template<typename T>
 static void decodeOptionSet(KeyedDecoder& decoder, const String& label, OptionSet<T>& optionSet)
 {
     uint64_t optionSetBitMask = 0;
-    decoder.decodeUInt64(label, optionSetBitMask);
-    optionSet = OptionSet<T>::fromRaw(optionSetBitMask);
+    if (decoder.decodeUInt64(label, optionSetBitMask))
+        optionSet = OptionSet<T>::fromRaw(optionSetBitMask);
 }
 
 #if ENABLE(WEB_API_STATISTICS)

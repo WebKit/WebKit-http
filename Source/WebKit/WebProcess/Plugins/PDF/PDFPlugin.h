@@ -135,6 +135,8 @@ public:
 #if HAVE(INCREMENTAL_PDF_APIS)
     void getResourceBytesAtPosition(size_t count, off_t position, CompletionHandler<void(const uint8_t*, size_t count)>&&);
     size_t getResourceBytesAtPositionMainThread(void* buffer, off_t position, size_t count);
+    void receivedNonLinearizedPDFSentinel();
+    bool incrementalPDFLoadingEnabled() const { return m_incrementalPDFLoadingEnabled; }
 #ifndef NDEBUG
     void pdfLog(const String& event);
     size_t incrementThreadsWaitingOnCallback() { return ++m_threadsWaitingOnCallback; }
@@ -228,7 +230,7 @@ private:
     void setScrollOffset(const WebCore::ScrollOffset&) final;
     void invalidateScrollbarRect(WebCore::Scrollbar&, const WebCore::IntRect&) final;
     void invalidateScrollCornerRect(const WebCore::IntRect&) final;
-    WebCore::IntPoint lastKnownMousePosition() const final { return m_lastMousePositionInPluginCoordinates; }
+    WebCore::IntPoint lastKnownMousePositionInView() const final { return m_lastMousePositionInPluginCoordinates; }
     bool isActive() const final;
     bool isScrollCornerVisible() const final { return false; }
     WebCore::ScrollPosition scrollPosition() const final;
@@ -246,6 +248,7 @@ private:
     WebCore::IntPoint convertFromContainingViewToScrollbar(const WebCore::Scrollbar&, const WebCore::IntPoint& parentPoint) const final;
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const final;
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const final { return false; }
+    String debugDescription() const final;
 
     // PDFPlugin functions.
     void updateScrollbars();

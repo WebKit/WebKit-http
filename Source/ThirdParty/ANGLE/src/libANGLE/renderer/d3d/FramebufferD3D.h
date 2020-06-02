@@ -35,15 +35,12 @@ struct ClearParameters
     ClearParameters();
     ClearParameters(const ClearParameters &other);
 
-    bool clearColor[gl::IMPLEMENTATION_MAX_DRAW_BUFFERS];
+    gl::DrawBufferMask clearColor;
     gl::ColorF colorF;
     gl::ColorI colorI;
     gl::ColorUI colorUI;
     GLenum colorType;
-    bool colorMaskRed;
-    bool colorMaskGreen;
-    bool colorMaskBlue;
-    bool colorMaskAlpha;
+    gl::BlendStateExt::ColorMaskStorage::Type colorMask;
 
     bool clearDepth;
     float depthValue;
@@ -81,8 +78,6 @@ class FramebufferD3D : public FramebufferImpl
                                 GLfloat depth,
                                 GLint stencil) override;
 
-    GLenum getImplementationColorReadFormat(const gl::Context *context) const override;
-    GLenum getImplementationColorReadType(const gl::Context *context) const override;
     angle::Result readPixels(const gl::Context *context,
                              const gl::Rectangle &area,
                              GLenum format,
@@ -98,9 +93,15 @@ class FramebufferD3D : public FramebufferImpl
     bool checkStatus(const gl::Context *context) const override;
 
     angle::Result syncState(const gl::Context *context,
+                            GLenum binding,
                             const gl::Framebuffer::DirtyBits &dirtyBits) override;
 
     const gl::AttachmentList &getColorAttachmentsForRender(const gl::Context *context);
+
+    const gl::DrawBufferMask getLastColorAttachmentsForRenderMask() const
+    {
+        return mColorAttachmentsForRenderMask;
+    }
 
     void destroy(const gl::Context *context) override;
 
@@ -126,11 +127,10 @@ class FramebufferD3D : public FramebufferImpl
                                    GLenum filter,
                                    const gl::Framebuffer *sourceFramebuffer) = 0;
 
-    virtual GLenum getRenderTargetImplementationFormat(RenderTargetD3D *renderTarget) const = 0;
-
     RendererD3D *mRenderer;
     Optional<gl::AttachmentList> mColorAttachmentsForRender;
     gl::DrawBufferMask mCurrentActiveProgramOutputs;
+    gl::DrawBufferMask mColorAttachmentsForRenderMask;
 
     gl::FramebufferAttachment mDummyAttachment;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,16 +28,12 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "Bytecodes.h"
-#include "CheckpointOSRExitSideState.h"
 #include "DFGJITCode.h"
 #include "DFGOperations.h"
 #include "JIT.h"
 #include "JSCJSValueInlines.h"
-#include "JSCInlines.h"
 #include "LLIntData.h"
 #include "LLIntThunks.h"
-#include "ProbeContext.h"
 #include "StructureStubInfo.h"
 
 namespace JSC { namespace DFG {
@@ -108,7 +104,7 @@ void handleExitCounts(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
     
     jit.setupArguments<decltype(operationTriggerReoptimizationNow)>(GPRInfo::regT0, GPRInfo::regT3, AssemblyHelpers::TrustedImmPtr(&exit));
     jit.prepareCallOperation(vm);
-    jit.move(AssemblyHelpers::TrustedImmPtr(tagCFunctionPtr<OperationPtrTag>(operationTriggerReoptimizationNow)), GPRInfo::nonArgGPR0);
+    jit.move(AssemblyHelpers::TrustedImmPtr(tagCFunction<OperationPtrTag>(operationTriggerReoptimizationNow)), GPRInfo::nonArgGPR0);
     jit.call(GPRInfo::nonArgGPR0, OperationPtrTag);
     AssemblyHelpers::Jump doneAdjusting = jit.jump();
     
@@ -159,9 +155,15 @@ MacroAssemblerCodePtr<JSEntryPtrTag> callerReturnPC(CodeBlock* baselineCodeBlock
 #define LLINT_RETURN_LOCATION(name) (callInstruction.isWide16() ? LLInt::getWide16CodePtr<JSEntryPtrTag>(name##_return_location) : (callInstruction.isWide32() ? LLInt::getWide32CodePtr<JSEntryPtrTag>(name##_return_location) : LLInt::getCodePtr<JSEntryPtrTag>(name##_return_location)))
 
         switch (trueCallerCallKind) {
-        case InlineCallFrame::Call:
-            jumpTarget = LLINT_RETURN_LOCATION(op_call);
+        case InlineCallFrame::Call: {
+            if (callInstruction.opcodeID() == op_call)
+                jumpTarget = LLINT_RETURN_LOCATION(op_call);
+            else if (callInstruction.opcodeID() == op_iterator_open)
+                jumpTarget = LLINT_RETURN_LOCATION(op_iterator_open);
+            else if (callInstruction.opcodeID() == op_iterator_next)
+                jumpTarget = LLINT_RETURN_LOCATION(op_iterator_next);
             break;
+        }
         case InlineCallFrame::Construct:
             jumpTarget = LLINT_RETURN_LOCATION(op_construct);
             break;
@@ -239,6 +241,7 @@ MacroAssemblerCodePtr<JSEntryPtrTag> callerReturnPC(CodeBlock* baselineCodeBlock
         }
     }
 
+    ASSERT(jumpTarget);
     return jumpTarget;
 }
 
@@ -354,7 +357,7 @@ static void osrWriteBarrier(VM& vm, CCallHelpers& jit, GPRReg owner, GPRReg scra
 
     jit.setupArguments<decltype(operationOSRWriteBarrier)>(&vm, owner);
     jit.prepareCallOperation(vm);
-    jit.move(MacroAssembler::TrustedImmPtr(tagCFunctionPtr<OperationPtrTag>(operationOSRWriteBarrier)), scratch);
+    jit.move(MacroAssembler::TrustedImmPtr(tagCFunction<OperationPtrTag>(operationOSRWriteBarrier)), scratch);
     jit.call(scratch, OperationPtrTag);
 
     ownerIsRememberedOrInEden.link(&jit);

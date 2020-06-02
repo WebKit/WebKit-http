@@ -51,7 +51,10 @@ public:
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(NumberObjectType, StructureFlags), info());
     }
+
+    static String toStringName(const JSObject*, JSGlobalObject*);
 };
+static_assert(sizeof(NumberObject) == sizeof(JSWrapperObject));
 
 JS_EXPORT_PRIVATE NumberObject* constructNumber(JSGlobalObject*, JSValue);
 

@@ -27,8 +27,7 @@
 #include "config.h"
 #include "WeakMapImpl.h"
 
-#include "IsoCellSetInlines.h"
-#include "JSCInlines.h"
+#include "AuxiliaryBarrierInlines.h"
 #include "WeakMapImplInlines.h"
 
 namespace JSC {

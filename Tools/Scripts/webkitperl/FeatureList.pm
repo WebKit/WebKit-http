@@ -109,7 +109,6 @@ my (
     $inspectorAlternateDispatchersSupport,
     $inspectorTelemetrySupport,
     $intersectionObserverSupport,
-    $intlSupport,
     $iosGestureEventsSupport,
     $iosTouchEventsSupport,
     $jitSupport,
@@ -208,12 +207,6 @@ my @features = (
 
     { option => "apple-pay", desc => "Toggle Apply Pay support",
       define => "ENABLE_APPLE_PAY", value => \$applePaySupport },
-
-    { option => "apple-pay-session-v3", desc => "Toggle Apple Pay Session V3 support",
-      define => "ENABLE_APPLE_PAY_SESSION_V3", value => \$applePaySessionV3Support },
-
-    { option => "apple-pay-session-v4", desc => "Toggle Apple Pay Session V4 support",
-      define => "ENABLE_APPLE_PAY_SESSION_V4", value => \$applePaySessionV4Support },
 
     { option => "apple-pay-session-v9", desc => "Toggle Apple Pay Session V9 support",
       define => "ENABLE_APPLE_PAY_SESSION_V9", value => \$applePaySessionV9Support },
@@ -376,9 +369,6 @@ my @features = (
 
     { option => "intersection-observer", desc => "Enable Intersection Observer support",
       define => "ENABLE_INTERSECTION_OBSERVER", value => \$intersectionObserverSupport },
-
-    { option => "intl", desc => "Toggle Intl support",
-      define => "ENABLE_INTL", value => \$intlSupport },
 
     { option => "ios-gesture-events", desc => "Toggle iOS gesture events support",
       define => "ENABLE_IOS_GESTURE_EVENTS", value => \$iosGestureEventsSupport },

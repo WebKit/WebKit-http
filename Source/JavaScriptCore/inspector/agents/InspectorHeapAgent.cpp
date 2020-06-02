@@ -32,7 +32,6 @@
 #include "InjectedScriptManager.h"
 #include "InspectorEnvironment.h"
 #include "JSBigInt.h"
-#include "JSCInlines.h"
 #include "VM.h"
 #include <wtf/Stopwatch.h>
 
@@ -104,7 +103,7 @@ void InspectorHeapAgent::snapshot(ErrorString&, double* timestamp, String* snaps
     HeapSnapshotBuilder snapshotBuilder(vm.ensureHeapProfiler());
     snapshotBuilder.buildSnapshot();
 
-    *timestamp = m_environment.executionStopwatch()->elapsedTime().seconds();
+    *timestamp = m_environment.executionStopwatch().elapsedTime().seconds();
     *snapshotData = snapshotBuilder.json([&] (const HeapSnapshotNode& node) {
         if (Structure* structure = node.cell->structure(vm)) {
             if (JSGlobalObject* globalObject = structure->globalObject()) {
@@ -187,8 +186,8 @@ void InspectorHeapAgent::getPreview(ErrorString& errorString, int heapObjectId, 
     }
 
     // BigInt preview.
-    if (cell->isBigInt()) {
-        resultString = JSBigInt::tryGetString(vm, asBigInt(cell), 10);
+    if (cell->isHeapBigInt()) {
+        resultString = JSBigInt::tryGetString(vm, asHeapBigInt(cell), 10);
         return;
     }
 
@@ -274,7 +273,7 @@ void InspectorHeapAgent::willGarbageCollect()
     if (!m_enabled)
         return;
 
-    m_gcStartTime = m_environment.executionStopwatch()->elapsedTime();
+    m_gcStartTime = m_environment.executionStopwatch().elapsedTime();
 }
 
 void InspectorHeapAgent::didGarbageCollect(CollectionScope scope)
@@ -291,7 +290,7 @@ void InspectorHeapAgent::didGarbageCollect(CollectionScope scope)
 
     // FIXME: Include number of bytes freed by collection.
 
-    Seconds endTime = m_environment.executionStopwatch()->elapsedTime();
+    Seconds endTime = m_environment.executionStopwatch().elapsedTime();
     dispatchGarbageCollectedEvent(protocolTypeForHeapOperation(scope), m_gcStartTime, endTime);
 
     m_gcStartTime = Seconds::nan();

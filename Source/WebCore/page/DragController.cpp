@@ -30,7 +30,6 @@
 #include "SVGAElement.h"
 
 #if ENABLE(DRAG_SUPPORT)
-
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "DataTransfer.h"
@@ -87,17 +86,15 @@
 #include "VisiblePosition.h"
 #include "WebContentReader.h"
 #include "markup.h"
-
-#if ENABLE(DATA_INTERACTION)
-#include "SelectionRect.h"
-#endif
-
-#include <wtf/RefPtr.h>
 #include <wtf/SetForScope.h>
 #endif
 
 #if ENABLE(DATA_DETECTION)
 #include "DataDetection.h"
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+#include "SelectionRect.h"
 #endif
 
 namespace WebCore {
@@ -250,7 +247,7 @@ bool DragController::performDragOperation(const DragData& dragData)
     removeAllDroppedImagePlaceholders();
 
     SetForScope<bool> isPerformingDrop(m_isPerformingDrop, true);
-    TemporarySelectionChange ignoreSelectionChanges(m_page.focusController().focusedOrMainFrame(), WTF::nullopt, TemporarySelectionOption::IgnoreSelectionChanges);
+    IgnoreSelectionChangeForScope ignoreSelectionChanges { m_page.focusController().focusedOrMainFrame() };
 
     m_documentUnderMouse = m_page.mainFrame().documentAtPoint(dragData.clientPosition());
 
@@ -258,8 +255,8 @@ bool DragController::performDragOperation(const DragData& dragData)
     if (m_documentUnderMouse)
         shouldOpenExternalURLsPolicy = m_documentUnderMouse->shouldOpenExternalURLsPolicyToPropagate();
 
-    if ((m_dragDestinationAction & DragDestinationActionDHTML) && dragIsHandledByDocument(m_dragHandlingMethod)) {
-        client().willPerformDragDestinationAction(DragDestinationActionDHTML, dragData);
+    if ((m_dragDestinationActionMask.contains(DragDestinationAction::DHTML)) && dragIsHandledByDocument(m_dragHandlingMethod)) {
+        client().willPerformDragDestinationAction(DragDestinationAction::DHTML, dragData);
         Ref<Frame> mainFrame(m_page.mainFrame());
         bool preventedDefault = false;
         if (mainFrame->view())
@@ -271,7 +268,7 @@ bool DragController::performDragOperation(const DragData& dragData)
         }
     }
 
-    if ((m_dragDestinationAction & DragDestinationActionEdit) && concludeEditDrag(dragData)) {
+    if ((m_dragDestinationActionMask.contains(DragDestinationAction::Edit)) && concludeEditDrag(dragData)) {
         client().didConcludeEditDrag();
         m_documentUnderMouse = nullptr;
         clearDragCaret();
@@ -288,8 +285,9 @@ bool DragController::performDragOperation(const DragData& dragData)
     if (urlString.isEmpty())
         return false;
 
-    client().willPerformDragDestinationAction(DragDestinationActionLoad, dragData);
-    FrameLoadRequest frameLoadRequest { m_page.mainFrame(), ResourceRequest { urlString }, shouldOpenExternalURLsPolicy };
+    client().willPerformDragDestinationAction(DragDestinationAction::Load, dragData);
+    FrameLoadRequest frameLoadRequest { m_page.mainFrame(), ResourceRequest { urlString } };
+    frameLoadRequest.setShouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy);
     frameLoadRequest.setIsRequestFromClientOrUserInput();
     m_page.mainFrame().loader().load(WTFMove(frameLoadRequest));
     return true;
@@ -310,15 +308,15 @@ DragOperation DragController::dragEnteredOrUpdated(const DragData& dragData)
 {
     mouseMovedIntoDocument(m_page.mainFrame().documentAtPoint(dragData.clientPosition()));
 
-    m_dragDestinationAction = dragData.dragDestinationAction();
-    if (m_dragDestinationAction == DragDestinationActionNone) {
+    m_dragDestinationActionMask = dragData.dragDestinationActionMask();
+    if (m_dragDestinationActionMask.isEmpty()) {
         clearDragCaret(); // FIXME: Why not call mouseMovedIntoDocument(nullptr)?
         return DragOperationNone;
     }
 
     DragOperation dragOperation = DragOperationNone;
-    m_dragHandlingMethod = tryDocumentDrag(dragData, m_dragDestinationAction, dragOperation);
-    if (m_dragHandlingMethod == DragHandlingMethod::None && (m_dragDestinationAction & DragDestinationActionLoad)) {
+    m_dragHandlingMethod = tryDocumentDrag(dragData, m_dragDestinationActionMask, dragOperation);
+    if (m_dragHandlingMethod == DragHandlingMethod::None && (m_dragDestinationActionMask.contains(DragDestinationAction::Load))) {
         dragOperation = operationForLoad(dragData);
         if (dragOperation != DragOperationNone)
             m_dragHandlingMethod = DragHandlingMethod::PageLoad;
@@ -390,7 +388,7 @@ void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHan
 
 #endif
 
-DragHandlingMethod DragController::tryDocumentDrag(const DragData& dragData, DragDestinationAction actionMask, DragOperation& dragOperation)
+DragHandlingMethod DragController::tryDocumentDrag(const DragData& dragData, OptionSet<DragDestinationAction> destinationActionMask, DragOperation& dragOperation)
 {
     if (!m_documentUnderMouse)
         return DragHandlingMethod::None;
@@ -399,7 +397,7 @@ DragHandlingMethod DragController::tryDocumentDrag(const DragData& dragData, Dra
         return DragHandlingMethod::None;
 
     bool isHandlingDrag = false;
-    if (actionMask & DragDestinationActionDHTML) {
+    if (destinationActionMask.contains(DragDestinationAction::DHTML)) {
         isHandlingDrag = tryDHTMLDrag(dragData, dragOperation);
         // Do not continue if m_documentUnderMouse has been reset by tryDHTMLDrag.
         // tryDHTMLDrag fires dragenter event. The event listener that listens
@@ -422,7 +420,7 @@ DragHandlingMethod DragController::tryDocumentDrag(const DragData& dragData, Dra
         return DragHandlingMethod::NonDefault;
     }
 
-    if ((actionMask & DragDestinationActionEdit) && canProcessDrag(dragData)) {
+    if (destinationActionMask.contains(DragDestinationAction::Edit) && canProcessDrag(dragData)) {
         if (dragData.containsColor()) {
             dragOperation = DragOperationGeneric;
             return DragHandlingMethod::SetColor;
@@ -510,14 +508,13 @@ DragOperation DragController::operationForLoad(const DragData& dragData)
     return dragOperation(dragData);
 }
 
-static bool setSelectionToDragCaret(Frame* frame, VisibleSelection& dragCaret, RefPtr<Range>& range, const IntPoint& point)
+static bool setSelectionToDragCaret(Frame* frame, VisibleSelection& dragCaret, const IntPoint& point)
 {
     Ref<Frame> protector(*frame);
     frame->selection().setSelection(dragCaret);
     if (frame->selection().selection().isNone()) {
         dragCaret = frame->visiblePositionForPoint(point);
         frame->selection().setSelection(dragCaret);
-        range = dragCaret.toNormalizedRange();
     }
     return !frame->selection().isNone() && frame->selection().selection().isContentEditable();
 }
@@ -565,14 +562,14 @@ bool DragController::concludeEditDrag(const DragData& dragData)
             return true;
         }
 #endif
-        auto innerRange = innerFrame->selection().toNormalizedRange();
+        auto innerRange = innerFrame->selection().selection().toNormalizedRange();
         if (!innerRange)
             return false;
         auto style = MutableStyleProperties::create();
         style->setProperty(CSSPropertyColor, color.serialized(), false);
-        if (!innerFrame->editor().shouldApplyStyle(style.ptr(), innerRange.get()))
+        if (!innerFrame->editor().shouldApplyStyle(style.ptr(), createLiveRange(innerRange).get()))
             return false;
-        client().willPerformDragDestinationAction(DragDestinationActionEdit, dragData);
+        client().willPerformDragDestinationAction(DragDestinationAction::Edit, dragData);
         innerFrame->editor().applyStyle(style.ptr(), EditAction::SetColor);
         return true;
     }
@@ -591,7 +588,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
         return false;
 
     VisibleSelection dragCaret = m_page.dragCaretController().caretPosition();
-    RefPtr<Range> range = dragCaret.toNormalizedRange();
+    auto range = dragCaret.toNormalizedRange();
     RefPtr<Element> rootEditableElement = innerFrame->selection().selection().rootEditableElement();
 
     // For range to be null a WebKit client must have done something bad while
@@ -599,28 +596,28 @@ bool DragController::concludeEditDrag(const DragData& dragData)
     if (!range)
         return false;
 
-    ResourceCacheValidationSuppressor validationSuppressor(range->ownerDocument().cachedResourceLoader());
+    ResourceCacheValidationSuppressor validationSuppressor(range->start.document().cachedResourceLoader());
     auto& editor = innerFrame->editor();
     bool isMove = dragIsMove(innerFrame->selection(), dragData);
     if (isMove || dragCaret.isContentRichlyEditable()) {
         bool chosePlainText = false;
-        RefPtr<DocumentFragment> fragment = documentFragmentFromDragData(dragData, *innerFrame, *range, true, chosePlainText);
-        if (!fragment || !editor.shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Dropped))
+        RefPtr<DocumentFragment> fragment = documentFragmentFromDragData(dragData, *innerFrame, createLiveRange(*range), true, chosePlainText);
+        if (!fragment || !editor.shouldInsertFragment(*fragment, createLiveRange(range).get(), EditorInsertAction::Dropped))
             return false;
 
-        client().willPerformDragDestinationAction(DragDestinationActionEdit, dragData);
+        client().willPerformDragDestinationAction(DragDestinationAction::Edit, dragData);
 
-        if (editor.client() && editor.client()->performTwoStepDrop(*fragment, *range, isMove))
+        if (editor.client() && editor.client()->performTwoStepDrop(*fragment, createLiveRange(*range), isMove))
             return true;
 
         if (isMove) {
             // NSTextView behavior is to always smart delete on moving a selection,
             // but only to smart insert if the selection granularity is word granularity.
             bool smartDelete = editor.smartInsertDeleteEnabled();
-            bool smartInsert = smartDelete && innerFrame->selection().granularity() == WordGranularity && dragData.canSmartReplace();
+            bool smartInsert = smartDelete && innerFrame->selection().granularity() == TextGranularity::WordGranularity && dragData.canSmartReplace();
             MoveSelectionCommand::create(fragment.releaseNonNull(), dragCaret.base(), smartInsert, smartDelete)->apply();
         } else {
-            if (setSelectionToDragCaret(innerFrame.get(), dragCaret, range, point)) {
+            if (setSelectionToDragCaret(innerFrame.get(), dragCaret, point)) {
                 OptionSet<ReplaceSelectionCommand::CommandOption> options { ReplaceSelectionCommand::SelectReplacement, ReplaceSelectionCommand::PreventNesting };
                 if (dragData.canSmartReplace())
                     options.add(ReplaceSelectionCommand::SmartReplace);
@@ -631,19 +628,16 @@ bool DragController::concludeEditDrag(const DragData& dragData)
         }
     } else {
         String text = dragData.asPlainText();
-        if (text.isEmpty() || !editor.shouldInsertText(text, range.get(), EditorInsertAction::Dropped))
+        if (text.isEmpty() || !editor.shouldInsertText(text, createLiveRange(*range).ptr(), EditorInsertAction::Dropped))
             return false;
 
-        client().willPerformDragDestinationAction(DragDestinationActionEdit, dragData);
-        RefPtr<DocumentFragment> fragment = createFragmentFromText(*range, text);
-        if (!fragment)
-            return false;
-
-        if (editor.client() && editor.client()->performTwoStepDrop(*fragment, *range, isMove))
+        client().willPerformDragDestinationAction(DragDestinationAction::Edit, dragData);
+        auto fragment = createFragmentFromText(createLiveRange(*range), text);
+        if (editor.client() && editor.client()->performTwoStepDrop(fragment.get(), createLiveRange(*range), isMove))
             return true;
 
-        if (setSelectionToDragCaret(innerFrame.get(), dragCaret, range, point))
-            ReplaceSelectionCommand::create(*m_documentUnderMouse, fragment.get(), { ReplaceSelectionCommand::SelectReplacement, ReplaceSelectionCommand::MatchStyle, ReplaceSelectionCommand::PreventNesting }, EditAction::InsertFromDrop)->apply();
+        if (setSelectionToDragCaret(innerFrame.get(), dragCaret, point))
+            ReplaceSelectionCommand::create(*m_documentUnderMouse, WTFMove(fragment), { ReplaceSelectionCommand::SelectReplacement, ReplaceSelectionCommand::MatchStyle, ReplaceSelectionCommand::PreventNesting }, EditAction::InsertFromDrop)->apply();
     }
 
     if (rootEditableElement) {
@@ -782,7 +776,7 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
         bool isSingleAttachmentSelection = selection.start() == Position(attachment.get(), Position::PositionIsBeforeAnchor) && selection.end() == Position(attachment.get(), Position::PositionIsAfterAnchor);
         bool isAttachmentElementInCurrentSelection = false;
         if (auto selectedRange = selection.toNormalizedRange()) {
-            auto compareResult = selectedRange->compareNode(*attachment);
+            auto compareResult = createLiveRange(*selectedRange)->compareNode(*attachment);
             isAttachmentElementInCurrentSelection = !compareResult.hasException() && compareResult.releaseReturnValue() == Range::NODE_INSIDE;
         }
 
@@ -972,10 +966,10 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             }
 
             // FIXME: This entire block is almost identical to the code in Editor::copy, and the code should be shared.
-            RefPtr<Range> selectionRange = src.selection().toNormalizedRange();
+            auto selectionRange = src.selection().selection().toNormalizedRange();
             ASSERT(selectionRange);
 
-            src.editor().willWriteSelectionToPasteboard(selectionRange.get());
+            src.editor().willWriteSelectionToPasteboard(createLiveRange(*selectionRange).ptr());
 
             if (enclosingTextFormControl(src.selection().selection().start())) {
                 if (mustUseLegacyDragClient)
@@ -988,11 +982,11 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
                 }
             } else {
                 if (mustUseLegacyDragClient) {
-#if PLATFORM(COCOA) || PLATFORM(GTK)
+#if !PLATFORM(WIN)
                     src.editor().writeSelectionToPasteboard(dataTransfer.pasteboard());
 #else
-                    // FIXME: Convert all other platforms to match Mac and delete this.
-                    dataTransfer.pasteboard().writeSelection(*selectionRange, src.editor().canSmartCopyOrDelete(), src, IncludeImageAltTextForDataTransfer);
+                    // FIXME: Convert Windows to match the other platforms and delete this.
+                    dataTransfer.pasteboard().writeSelection(createLiveRange(*selectionRange), src.editor().canSmartCopyOrDelete(), src, IncludeImageAltTextForDataTransfer);
 #endif
                 } else {
 #if PLATFORM(COCOA)
@@ -1042,7 +1036,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         ASSERT(!image->filenameExtension().isEmpty());
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-        auto attachmentInfo = promisedAttachmentInfo(src, element);
+        auto attachmentInfo = src.editor().promisedAttachmentInfo(element);
 #else
         PromisedAttachmentInfo attachmentInfo;
 #endif
@@ -1138,16 +1132,16 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 
         PromisedAttachmentInfo promisedAttachment;
         if (hasData == HasNonDefaultPasteboardData::No) {
-            promisedAttachment = promisedAttachmentInfo(src, attachment);
             auto& editor = src.editor();
-            if (!promisedAttachment && editor.client()) {
+            promisedAttachment = editor.promisedAttachmentInfo(attachment);
 #if PLATFORM(COCOA)
+            if (!promisedAttachment && editor.client()) {
                 // Otherwise, if no file URL is specified, call out to the injected bundle to populate the pasteboard with data.
-                editor.willWriteSelectionToPasteboard(src.selection().toNormalizedRange().get());
+                editor.willWriteSelectionToPasteboard(createLiveRange(src.selection().selection().toNormalizedRange()).get());
                 editor.writeSelectionToPasteboard(dataTransfer.pasteboard());
                 editor.didWriteSelectionToPasteboard();
-#endif
             }
+#endif
         }
         
         client().willPerformDragSourceAction(DragSourceActionAttachment, dragOrigin, dataTransfer);
@@ -1388,7 +1382,7 @@ void DragController::insertDroppedImagePlaceholdersAtCaret(const Vector<IntSize>
     if (!frame)
         return;
 
-    TemporarySelectionChange selectionChange(*frame, WTF::nullopt, { TemporarySelectionOption::IgnoreSelectionChanges });
+    IgnoreSelectionChangeForScope selectionChange { *frame };
 
     auto fragment = DocumentFragment::create(*document);
     for (auto& size : imageSizes) {
@@ -1479,46 +1473,6 @@ bool DragController::shouldUseCachedImageForDragImage(const Image& image) const
     return image.size().height() * image.size().width() <= MaxOriginalImageArea;
 #endif
 }
-
-#if !PLATFORM(COCOA)
-
-String DragController::platformContentTypeForBlobType(const String& type) const
-{
-    return type;
-}
-
-#endif
-
-#if ENABLE(ATTACHMENT_ELEMENT)
-
-PromisedAttachmentInfo DragController::promisedAttachmentInfo(Frame& frame, Element& element)
-{
-    auto* client = frame.editor().client();
-    if (!client || !client->supportsClientSideAttachmentData())
-        return { };
-
-    RefPtr<HTMLAttachmentElement> attachment;
-    if (is<HTMLAttachmentElement>(element))
-        attachment = &downcast<HTMLAttachmentElement>(element);
-    else if (is<HTMLImageElement>(element))
-        attachment = downcast<HTMLImageElement>(element).attachmentElement();
-
-    if (!attachment)
-        return { };
-
-    Vector<String> additionalTypes;
-    Vector<RefPtr<SharedBuffer>> additionalData;
-#if PLATFORM(COCOA)
-    frame.editor().getPasteboardTypesAndDataForAttachment(element, additionalTypes, additionalData);
-#endif
-
-    if (auto* file = attachment->file())
-        return { file->url(), platformContentTypeForBlobType(file->type()), file->name(), { }, WTFMove(additionalTypes), WTFMove(additionalData) };
-
-    return { { }, { }, { }, attachment->uniqueIdentifier(), WTFMove(additionalTypes), WTFMove(additionalData) };
-}
-
-#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 #endif // ENABLE(DRAG_SUPPORT)
 

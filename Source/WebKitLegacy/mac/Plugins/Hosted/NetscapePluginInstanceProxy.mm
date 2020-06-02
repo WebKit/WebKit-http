@@ -920,16 +920,15 @@ bool NetscapePluginInstanceProxy::invoke(uint32_t objectID, const Identifier& me
 
     JSGlobalObject* lexicalGlobalObject = frame->script().globalObject(pluginWorld());
     JSValue function = object->get(lexicalGlobalObject, methodName);
-    CallData callData;
-    CallType callType = getCallData(vm, function, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, function);
+    if (callData.type == CallData::Type::None)
         return false;
 
     MarkedArgumentBuffer argList;
     demarshalValues(lexicalGlobalObject, argumentsData, argumentsLength, argList);
     RELEASE_ASSERT(!argList.hasOverflowed());
 
-    JSValue value = call(lexicalGlobalObject, function, callType, callData, object, argList);
+    JSValue value = call(lexicalGlobalObject, function, callData, object, argList);
         
     marshalValue(lexicalGlobalObject, value, resultData, resultLength);
     scope.clearException();
@@ -956,16 +955,15 @@ bool NetscapePluginInstanceProxy::invokeDefault(uint32_t objectID, data_t argume
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     JSGlobalObject* lexicalGlobalObject = frame->script().globalObject(pluginWorld());
-    CallData callData;
-    CallType callType = object->methodTable(vm)->getCallData(object, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, object);
+    if (callData.type == CallData::Type::None)
         return false;
 
     MarkedArgumentBuffer argList;
     demarshalValues(lexicalGlobalObject, argumentsData, argumentsLength, argList);
     RELEASE_ASSERT(!argList.hasOverflowed());
 
-    JSValue value = call(lexicalGlobalObject, object, callType, callData, object, argList);
+    JSValue value = call(lexicalGlobalObject, object, callData, object, argList);
     
     marshalValue(lexicalGlobalObject, value, resultData, resultLength);
     scope.clearException();
@@ -993,16 +991,15 @@ bool NetscapePluginInstanceProxy::construct(uint32_t objectID, data_t argumentsD
 
     JSGlobalObject* lexicalGlobalObject = frame->script().globalObject(pluginWorld());
 
-    ConstructData constructData;
-    ConstructType constructType = object->methodTable(vm)->getConstructData(object, constructData);
-    if (constructType == ConstructType::None)
+    auto constructData = getConstructData(vm, object);
+    if (constructData.type == CallData::Type::None)
         return false;
 
     MarkedArgumentBuffer argList;
     demarshalValues(lexicalGlobalObject, argumentsData, argumentsLength, argList);
     RELEASE_ASSERT(!argList.hasOverflowed());
 
-    JSValue value = JSC::construct(lexicalGlobalObject, object, constructType, constructData, argList);
+    JSValue value = JSC::construct(lexicalGlobalObject, object, constructData, argList);
     
     marshalValue(lexicalGlobalObject, value, resultData, resultLength);
     scope.clearException();
@@ -1322,28 +1319,28 @@ void NetscapePluginInstanceProxy::addValueToArray(NSMutableArray *array, JSGloba
     JSLockHolder lock(vm);
 
     if (value.isString()) {
-        [array addObject:[NSNumber numberWithInt:StringValueType]];
+        [array addObject:@(StringValueType)];
         [array addObject:asString(value)->value(lexicalGlobalObject)];
     } else if (value.isNumber()) {
-        [array addObject:[NSNumber numberWithInt:DoubleValueType]];
-        [array addObject:[NSNumber numberWithDouble:value.toNumber(lexicalGlobalObject)]];
+        [array addObject:@(DoubleValueType)];
+        [array addObject:@(value.toNumber(lexicalGlobalObject))];
     } else if (value.isBoolean()) {
-        [array addObject:[NSNumber numberWithInt:BoolValueType]];
+        [array addObject:@(BoolValueType)];
         [array addObject:[NSNumber numberWithBool:value.toBoolean(lexicalGlobalObject)]];
     } else if (value.isNull())
-        [array addObject:[NSNumber numberWithInt:NullValueType]];
+        [array addObject:@(NullValueType)];
     else if (value.isObject()) {
         JSObject* object = asObject(value);
         uint64_t objectID;
         if (getObjectID(this, object, objectID)) {
-            [array addObject:[NSNumber numberWithInt:NPObjectValueType]];
-            [array addObject:[NSNumber numberWithInt:objectID]];
+            [array addObject:@(NPObjectValueType)];
+            [array addObject:@(objectID)];
         } else {
-            [array addObject:[NSNumber numberWithInt:JSObjectValueType]];
-            [array addObject:[NSNumber numberWithInt:m_localObjects.idForObject(vm, object)]];
+            [array addObject:@(JSObjectValueType)];
+            [array addObject:@(m_localObjects.idForObject(vm, object))];
         }
     } else
-        [array addObject:[NSNumber numberWithInt:VoidValueType]];
+        [array addObject:@(VoidValueType)];
 }
 
 void NetscapePluginInstanceProxy::marshalValue(JSGlobalObject* lexicalGlobalObject, JSValue value, data_t& resultData, mach_msg_type_number_t& resultLength)

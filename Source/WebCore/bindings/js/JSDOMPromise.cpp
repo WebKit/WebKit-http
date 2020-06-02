@@ -61,16 +61,15 @@ void DOMPromise::whenPromiseIsSettled(JSDOMGlobalObject* globalObject, JSC::JSOb
     if (scope.exception())
         return;
 
-    ASSERT(thenFunction.isFunction(vm));
+    ASSERT(thenFunction.isCallable(vm));
 
     JSC::MarkedArgumentBuffer arguments;
     arguments.append(handler);
     arguments.append(handler);
 
-    JSC::CallData callData;
-    auto callType = JSC::getCallData(vm, thenFunction, callData);
-    ASSERT(callType != JSC::CallType::None);
-    call(&lexicalGlobalObject, thenFunction, callType, callData, promise, arguments);
+    auto callData = JSC::getCallData(vm, thenFunction);
+    ASSERT(callData.type != JSC::CallData::Type::None);
+    call(&lexicalGlobalObject, thenFunction, callData, promise, arguments);
 
     EXCEPTION_ASSERT(!scope.exception() || isTerminatedExecutionException(lexicalGlobalObject.vm(), scope.exception()));
 }

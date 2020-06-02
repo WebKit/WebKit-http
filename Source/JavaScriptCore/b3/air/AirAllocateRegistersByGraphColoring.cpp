@@ -38,15 +38,14 @@
 #include "AirTmpInlines.h"
 #include "AirTmpWidth.h"
 #include "AirUseCounts.h"
-#include <wtf/ListDump.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
 namespace {
 
-bool debug = false;
-bool traceDebug = false;
-bool reportStats = false;
+static constexpr bool debug = false;
+static constexpr bool traceDebug = false;
+static constexpr bool reportStats = false;
 
 // The AbstractColoringAllocator defines all the code that is independant
 // from the bank or register and can be shared when allocating registers.

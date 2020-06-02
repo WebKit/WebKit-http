@@ -357,10 +357,10 @@ static ReplacementPlugin* pluginReplacementForType(const URL& url, const String&
         return nullptr;
 
     String extension;
-    String lastPathComponent = url.lastPathComponent();
+    auto lastPathComponent = url.lastPathComponent();
     size_t dotOffset = lastPathComponent.reverseFind('.');
     if (dotOffset != notFound)
-        extension = lastPathComponent.substring(dotOffset + 1);
+        extension = lastPathComponent.substring(dotOffset + 1).toString();
 
     String type = mimeType;
     if (type.isEmpty() && url.protocolIsData())

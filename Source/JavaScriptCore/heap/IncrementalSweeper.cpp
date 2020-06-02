@@ -26,11 +26,10 @@
 #include "config.h"
 #include "IncrementalSweeper.h"
 
-#include "Heap.h"
-#include "JSObject.h"
-#include "JSString.h"
+#include "DeferGC.h"
+#include "HeapInlines.h"
 #include "MarkedBlock.h"
-#include "JSCInlines.h"
+#include "VM.h"
 
 namespace JSC {
 

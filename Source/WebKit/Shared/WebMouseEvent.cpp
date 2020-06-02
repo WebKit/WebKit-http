@@ -31,29 +31,17 @@
 namespace WebKit {
 using namespace WebCore;
 
-WebMouseEvent::WebMouseEvent()
-    : WebEvent()
-    , m_button(static_cast<uint32_t>(NoButton))
-    , m_deltaX(0)
-    , m_deltaY(0)
-    , m_deltaZ(0)
-    , m_clickCount(0)
-#if PLATFORM(MAC)
-    , m_eventNumber(-1)
-    , m_menuTypeForEvent(0)
-#endif
-{
-}
+WebMouseEvent::WebMouseEvent() = default;
 
 #if PLATFORM(MAC)
-WebMouseEvent::WebMouseEvent(Type type, Button button, unsigned short buttons, const IntPoint& position, const IntPoint& globalPosition, float deltaX, float deltaY, float deltaZ, int clickCount, OptionSet<Modifier> modifiers, WallTime timestamp, double force, SyntheticClickType syntheticClickType, int eventNumber, int menuType)
+WebMouseEvent::WebMouseEvent(Type type, Button button, unsigned short buttons, const IntPoint& positionInView, const IntPoint& globalPosition, float deltaX, float deltaY, float deltaZ, int clickCount, OptionSet<Modifier> modifiers, WallTime timestamp, double force, SyntheticClickType syntheticClickType, int eventNumber, int menuType)
 #else
-WebMouseEvent::WebMouseEvent(Type type, Button button, unsigned short buttons, const IntPoint& position, const IntPoint& globalPosition, float deltaX, float deltaY, float deltaZ, int clickCount, OptionSet<Modifier> modifiers, WallTime timestamp, double force, SyntheticClickType syntheticClickType)
+WebMouseEvent::WebMouseEvent(Type type, Button button, unsigned short buttons, const IntPoint& positionInView, const IntPoint& globalPosition, float deltaX, float deltaY, float deltaZ, int clickCount, OptionSet<Modifier> modifiers, WallTime timestamp, double force, SyntheticClickType syntheticClickType)
 #endif
     : WebEvent(type, modifiers, timestamp)
     , m_button(button)
     , m_buttons(buttons)
-    , m_position(position)
+    , m_position(positionInView)
     , m_globalPosition(globalPosition)
     , m_deltaX(deltaX)
     , m_deltaY(deltaY)

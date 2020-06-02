@@ -25,9 +25,10 @@
 
 #include "config.h"
 #include "B3FenceValue.h"
-#include "B3ValueInlines.h"
 
 #if ENABLE(B3_JIT)
+
+#include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
 

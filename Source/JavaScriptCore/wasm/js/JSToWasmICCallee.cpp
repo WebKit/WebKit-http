@@ -28,7 +28,9 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCInlines.h"
+#include "JSCellInlines.h"
+#include "JSObjectInlines.h"
+#include "StructureInlines.h"
 #include "WebAssemblyFunction.h"
 
 namespace JSC {

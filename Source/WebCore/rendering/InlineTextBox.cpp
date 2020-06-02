@@ -854,7 +854,7 @@ auto InlineTextBox::resolveStyleForMarkedText(const MarkedText& markedText, cons
         Color selectionBackgroundColor = renderer().selectionBackgroundColor();
         style.backgroundColor = selectionBackgroundColor;
         if (selectionBackgroundColor.isValid() && selectionBackgroundColor.alpha() && style.textStyles.fillColor == selectionBackgroundColor)
-            style.backgroundColor = { 0xff - selectionBackgroundColor.red(), 0xff - selectionBackgroundColor.green(), 0xff - selectionBackgroundColor.blue() };
+            style.backgroundColor = selectionBackgroundColor.invertedColorWithAlpha(1.0);
         break;
     }
     case MarkedText::TextMatch: {
@@ -863,7 +863,7 @@ auto InlineTextBox::resolveStyleForMarkedText(const MarkedText& markedText, cons
 #if PLATFORM(MAC)
         style.textStyles.fillColor = renderer().theme().systemColor(CSSValueAppleSystemLabel, styleColorOptions);
 #endif
-        style.backgroundColor = markedText.marker->isActiveMatch() ? renderer().theme().activeTextSearchHighlightColor(styleColorOptions) : renderer().theme().inactiveTextSearchHighlightColor(styleColorOptions);
+        style.backgroundColor = renderer().theme().textSearchHighlightColor(styleColorOptions);
         break;
     }
     }
@@ -1248,7 +1248,7 @@ void InlineTextBox::paintMarkedTextDecoration(PaintInfo& paintInfo, const FloatR
 void InlineTextBox::paintCompositionBackground(PaintInfo& paintInfo, const FloatPoint& boxOrigin)
 {
     if (!renderer().frame().editor().compositionUsesCustomHighlights()) {
-        paintMarkedTextBackground(paintInfo, boxOrigin, Color::compositionFill, clampedOffset(renderer().frame().editor().compositionStart()), clampedOffset(renderer().frame().editor().compositionEnd()));
+        paintMarkedTextBackground(paintInfo, boxOrigin, CompositionHighlight::defaultCompositionFillColor, clampedOffset(renderer().frame().editor().compositionStart()), clampedOffset(renderer().frame().editor().compositionEnd()));
         return;
     }
 
@@ -1414,17 +1414,23 @@ TextRun InlineTextBox::createTextRun(bool ignoreCombinedText, bool ignoreHyphen)
 
 String InlineTextBox::text(bool ignoreCombinedText, bool ignoreHyphen) const
 {
+    String result;
     if (auto* combinedText = this->combinedText()) {
         if (ignoreCombinedText)
-            return renderer().text().substring(m_start, m_len);
-        return combinedText->combinedStringForRendering();
-    }
-    if (hasHyphen()) {
+            result = renderer().text().substring(m_start, m_len);
+        else
+            result = combinedText->combinedStringForRendering();
+    } else if (hasHyphen()) {
         if (ignoreHyphen)
-            return renderer().text().substring(m_start, m_len);
-        return makeString(StringView(renderer().text()).substring(m_start, m_len), lineStyle().hyphenString());
-    }
-    return renderer().text().substring(m_start, m_len);
+            result = renderer().text().substring(m_start, m_len);
+        else
+            result = makeString(StringView(renderer().text()).substring(m_start, m_len), lineStyle().hyphenString());
+    } else
+        result = renderer().text().substring(m_start, m_len);
+
+    // This works because this replacement doesn't affect string indices. We're replacing a single Unicode code unit with another Unicode code unit.
+    // How convenient.
+    return RenderBlock::updateSecurityDiscCharacters(lineStyle(), WTFMove(result));
 }
 
 inline const RenderCombineText* InlineTextBox::combinedText() const

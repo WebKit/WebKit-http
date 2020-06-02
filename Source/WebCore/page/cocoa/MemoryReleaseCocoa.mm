@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "MemoryRelease.h"
+#import "config.h"
+#import "MemoryRelease.h"
 
 #import "FontFamilySpecificationCoreText.h"
 #import "GCController.h"
@@ -67,9 +67,7 @@ void platformReleaseMemory(Critical)
     tileControllerMemoryHandler().trimUnparentedTilesToTarget(0);
 #endif
 
-#if HAVE(IOSURFACE)
     IOSurfacePool::sharedPool().discardAllSurfaces();
-#endif
 
 #if CACHE_SUBIMAGES
     SubimageCacheWithTimer::clear();

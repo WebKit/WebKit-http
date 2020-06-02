@@ -1,3 +1,212 @@
+2020-05-23  Caio Lima  <ticaiolima@gmail.com>
+
+        [bmalloc] Fix OOM errors on MIPS after r261667
+        https://bugs.webkit.org/show_bug.cgi?id=212016
+
+        Reviewed by Yusuke Suzuki.
+
+        The way we were calculating `newBegin` and `newEnd` on
+        `ObjectTypeTable::set` when index is out of bounds didn't consider
+        cases where `bits->begin() - bits->count()` or `index - ObjectTypeTable::Bits::bitCountPerWord * 4`
+        can underflow and `bits->end() + bits->count()` can overflow.
+        Given that, the value used is going to be `index` or `index + 1`.
+        Since we extend the size of bitvector everytime we have an OOB, this can cause a pathological case
+        that memory will keep extending quite often until systems reachs OOM.
+        It is reproducible on ARMv7 and MIPS architectures on
+        `stress/array-buffer-view-watchpoint-can-be-fired-in-really-add-in-dfg.js`,
+        `stress/big-int-mod-memory-stress.js` and some other tests.
+        This patch is including a verification if those operations are going
+        to overflow/underflow, and properly set `newBegin` to 0 and `newEnd`
+        to UINT_MAX when we observe such behavior.
+
+        * bmalloc/ObjectTypeTable.cpp:
+        (bmalloc::ObjectTypeTable::set):
+
+2020-05-18  Mark Lam  <mark.lam@apple.com>
+
+        Implement a faster findBitInWord() using the hardware ctz instruction.
+        https://bugs.webkit.org/show_bug.cgi?id=212032
+        <rdar://problem/63348086>
+
+        Reviewed by Saam Barati.
+
+        Apply same changes to bmalloc's copy of findBitInWord().
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::ctz):
+        (bmalloc::findBitInWord):
+
+2020-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] Introduce lock-less ObjectType query
+        https://bugs.webkit.org/show_bug.cgi?id=211809
+
+        Reviewed by Mark Lam.
+
+        This patch introduces ObjectTypeTable, which allows lock-less ObjectType query for Chunk*.
+        It has bit-vector to store ObjectType per address. And each bit represents 1MB of VA region since
+        Chunk*'s size is at least 1MB and ObjectType is 1bit data. Every time we extend this bit-vector
+        to support larger VA region, we do not free the old bit-vector. Since we always allocate power-of-2
+        sized bit-vector, # of extension is limited and it does not waste much memory because Chunk's size
+        is enough large (1MB). Since each 4KB page on macOS can represent a bit-vector for 32GB VA region,
+        in practice, this extension almost never happens. I verified that 4KB page can handle memory
+        allocations in JetStream2 and Gmail.
+
+        * CMakeLists.txt:
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Algorithm.h:
+        (bmalloc::roundUpToPowerOfTwo):
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::deallocateSlowCase):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::freeableMemory):
+        (bmalloc::Heap::decommitLargeRange):
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::scavengeToHighWatermark):
+        (bmalloc::Heap::allocateSmallChunk):
+        (bmalloc::Heap::deallocateSmallChunk):
+        (bmalloc::Heap::deallocateSmallLine):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::isLarge): Deleted.
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::isLarge):
+        * bmalloc/ObjectType.cpp:
+        (bmalloc::objectType):
+        * bmalloc/ObjectTypeTable.cpp: Added.
+        (bmalloc::ObjectTypeTable::set):
+        * bmalloc/ObjectTypeTable.h: Added.
+        (bmalloc::ObjectTypeTable::convertToIndex):
+        (bmalloc::ObjectTypeTable::Bits::Bits):
+        (bmalloc::ObjectTypeTable::Bits::previous const):
+        (bmalloc::ObjectTypeTable::Bits::begin const):
+        (bmalloc::ObjectTypeTable::Bits::end const):
+        (bmalloc::ObjectTypeTable::Bits::count const):
+        (bmalloc::ObjectTypeTable::Bits::sizeInBytes const):
+        (bmalloc::ObjectTypeTable::Bits::words const):
+        (bmalloc::ObjectTypeTable::Bits::words):
+        (bmalloc::ObjectTypeTable::ObjectTypeTable):
+        (bmalloc::ObjectTypeTable::get):
+        (bmalloc::ObjectTypeTable::Bits::get):
+        (bmalloc::ObjectTypeTable::Bits::set):
+        (bmalloc::ObjectTypeTable::Bits::wordForIndex):
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::scavenge):
+        (bmalloc::Scavenger::partialScavenge):
+        (bmalloc::Scavenger::freeableMemory):
+
+2020-05-11  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [bmalloc][WTF] Add computing memory size implementation for FreeBSD
+        https://bugs.webkit.org/show_bug.cgi?id=211749
+
+        Reviewed by David Kilzer.
+
+        * bmalloc/AvailableMemory.cpp:
+        (bmalloc::computeAvailableMemory):
+
+2020-05-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use WEBKIT_EXECUTABLE in MallocBench
+        https://bugs.webkit.org/show_bug.cgi?id=211665
+
+        Reviewed by Yusuke Suzuki.
+
+        Only build mbmalloc if its possible to run MallocBench.
+
+        * CMakeLists.txt:
+
+2020-05-08  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [WTF] Share Linux's MemoryPressureHandler among other Unix ports
+        https://bugs.webkit.org/show_bug.cgi?id=208955
+
+        Reviewed by Yusuke Suzuki.
+
+        Added FreeBSD implementation of memoryFootprint().
+
+        * bmalloc/AvailableMemory.cpp:
+        (bmalloc::memoryStatus):
+        * bmalloc/AvailableMemory.h:
+        (bmalloc::isUnderMemoryPressure):
+        * bmalloc/bmalloc.h:
+
+2020-05-05  Saam Barati  <sbarati@apple.com>
+
+        Don't use the DebugHeap for catalyst
+        https://bugs.webkit.org/show_bug.cgi?id=211471
+
+        Reviewed by Tim Horton.
+
+        * bmalloc/BPlatform.h:
+        * bmalloc/Environment.cpp:
+        (bmalloc::Environment::computeIsDebugHeapEnabled):
+        * bmalloc/ProcessCheck.h:
+        (bmalloc::shouldProcessUnconditionallyUseBmalloc): Deleted.
+        * bmalloc/ProcessCheck.mm:
+
+2020-05-01  Don Olmstead  <don.olmstead@sony.com>
+
+        Use export macros on all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=211293
+
+        Reviewed by Michael Catanzaro.
+
+        Always use export macros on all platforms. Remove BUSE_EXPORT_MACROS and always
+        define macros based on the platform. Allow overriding of BEXPORT if desired
+        otherwise use the defaults.
+
+        * bmalloc/BExport.h:
+        * bmalloc/BPlatform.h:
+
+2020-04-29  Mark Lam  <mark.lam@apple.com>
+
+        Freezing of Gigacage and JSC Configs should be thread safe.
+        https://bugs.webkit.org/show_bug.cgi?id=211201
+        <rdar://problem/62597619>
+
+        Reviewed by Yusuke Suzuki.
+
+        * bmalloc/Gigacage.cpp:
+        (Gigacage::bmalloc::permanentlyFreezeGigacageConfig):
+
+2020-04-25  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Deal with another round of Xcode upgrade checks
+        https://bugs.webkit.org/show_bug.cgi?id=211027
+
+        Reviewed by Alexey Proskuryakov.
+
+        * bmalloc.xcodeproj/project.pbxproj: Bump the upgrade check version.
+        Add a harmless base localization; this project contains nothing localized.
+
+2020-04-07  Saam Barati  <sbarati@apple.com>
+
+        RAMification should have a way of gathering vmmaps for each test at the end of each run
+        https://bugs.webkit.org/show_bug.cgi?id=210060
+
+        Reviewed by Yusuke Suzuki.
+
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::scavenge):
+        (bmalloc::Scavenger::partialScavenge):
+        * bmalloc/Scavenger.h:
+        (bmalloc::Scavenger::disable):
+        * bmalloc/bmalloc.cpp:
+        (bmalloc::api::disableScavenger):
+        * bmalloc/bmalloc.h:
+
+2020-04-03  David Kilzer  <ddkilzer@apple.com>
+
+        [Xcode] Replace ASAN_OTHER_CFLAGS and ASAN_OTHER_CPLUSPLUSFLAGS with $(inherited)
+        <https://webkit.org/b/209963>
+        <rdar://problem/61257504>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        - Remove ASAN_OTHER_CFLAGS, ASAN_OTHER_CPLUSPLUSFLAGS and
+          ASAN_OTHER_LDFLAGS.
+
 2020-04-01  Michael Catanzaro  <mcatanzaro@gnome.org>
 
         Update check for aarch64

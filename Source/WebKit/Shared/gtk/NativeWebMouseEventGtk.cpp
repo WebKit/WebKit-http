@@ -31,15 +31,31 @@
 
 namespace WebKit {
 
-NativeWebMouseEvent::NativeWebMouseEvent(GdkEvent* event, int eventClickCount, Optional<WebCore::IntPoint> delta)
+NativeWebMouseEvent::NativeWebMouseEvent(GdkEvent* event, int eventClickCount, Optional<WebCore::FloatSize> delta)
     : WebMouseEvent(WebEventFactory::createWebMouseEvent(event, eventClickCount, delta))
     , m_nativeEvent(gdk_event_copy(event))
 {
 }
 
+NativeWebMouseEvent::NativeWebMouseEvent(GdkEvent* event, const WebCore::IntPoint& position, int eventClickCount, Optional<WebCore::FloatSize> delta)
+    : WebMouseEvent(WebEventFactory::createWebMouseEvent(event, position, position, eventClickCount, delta))
+    , m_nativeEvent(gdk_event_copy(event))
+{
+}
+
+NativeWebMouseEvent::NativeWebMouseEvent(const WebCore::IntPoint& position)
+    : WebMouseEvent(WebEventFactory::createWebMouseEvent(position))
+{
+}
+
+NativeWebMouseEvent::NativeWebMouseEvent(Type type, Button button, unsigned short buttons, const WebCore::IntPoint& position, const WebCore::IntPoint& globalPosition, int clickCount, OptionSet<Modifier> modifiers, Optional<WebCore::FloatSize> delta)
+    : WebMouseEvent(type, button, buttons, position, globalPosition, delta.valueOr(FloatSize()).width(), delta.valueOr(FloatSize()).height(), 0, clickCount, modifiers, WallTime::now())
+{
+}
+
 NativeWebMouseEvent::NativeWebMouseEvent(const NativeWebMouseEvent& event)
-    : WebMouseEvent(WebEventFactory::createWebMouseEvent(event.nativeEvent(), event.clickCount(), WebCore::IntPoint(event.deltaX(), event.deltaY())))
-    , m_nativeEvent(gdk_event_copy(event.nativeEvent()))
+    : WebMouseEvent(event.type(), event.button(), event.buttons(), event.position(), event.globalPosition(), event.deltaX(), event.deltaY(), event.deltaZ(), event.clickCount(), event.modifiers(), event.timestamp())
+    , m_nativeEvent(event.nativeEvent() ? gdk_event_copy(const_cast<GdkEvent*>(event.nativeEvent())) : nullptr)
 {
 }
 

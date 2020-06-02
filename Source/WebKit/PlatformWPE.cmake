@@ -2,9 +2,9 @@ include(InspectorGResources.cmake)
 include(GNUInstallDirs)
 
 set(WebKit_OUTPUT_NAME WPEWebKit-${WPE_API_VERSION})
-set(WebKit_WebProcess_OUTPUT_NAME WPEWebProcess)
-set(WebKit_NetworkProcess_OUTPUT_NAME WPENetworkProcess)
-set(WebKit_GPUProcess_OUTPUT_NAME WPEGPUProcess)
+set(WebProcess_OUTPUT_NAME WPEWebProcess)
+set(NetworkProcess_OUTPUT_NAME WPENetworkProcess)
+set(GPUProcess_OUTPUT_NAME WPEGPUProcess)
 
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WPE_API_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_DIR})
@@ -59,7 +59,7 @@ add_custom_target(webkitwpe-fake-api-headers
             ${FORWARDING_HEADERS_WPE_DOM_DIR}/wpe
 )
 
-set(WEBKIT_EXTRA_DEPENDENCIES
+list(APPEND WebKit_DEPENDENCIES
     webkitwpe-fake-api-headers
     webkitwpe-forwarding-headers
 )
@@ -241,6 +241,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Platform/IPC/glib"
     "${WEBKIT_DIR}/Platform/IPC/unix"
     "${WEBKIT_DIR}/Platform/classifier"
+    "${WEBKIT_DIR}/Platform/generic"
     "${WEBKIT_DIR}/Shared/API/c/wpe"
     "${WEBKIT_DIR}/Shared/API/glib"
     "${WEBKIT_DIR}/Shared/CoordinatedGraphics"
@@ -276,8 +277,12 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${ATK_BRIDGE_INCLUDE_DIRS}
+    ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
+    ${GSTREAMER_AUDIO_INCLUDE_DIRS}
+    ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
+    ${GSTREAMER_VIDEO_INCLUDE_DIRS}
     ${LIBSECCOMP_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )
@@ -297,9 +302,9 @@ list(APPEND WebKit_LIBRARIES
     ${LIBSOUP_LIBRARIES}
 )
 
-WEBKIT_BUILD_INSPECTOR_GRESOURCES(${DERIVED_SOURCES_WEBINSPECTORUI_DIR})
+WEBKIT_BUILD_INSPECTOR_GRESOURCES(${WebInspectorUI_DERIVED_SOURCES_DIR})
 list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
+    ${WebInspectorUI_DERIVED_SOURCES_DIR}/InspectorGResourceBundle.c
 )
 
 list(APPEND WPEWebInspectorResources_LIBRARIES
@@ -320,7 +325,7 @@ add_library(WPEInjectedBundle MODULE "${WEBKIT_DIR}/WebProcess/InjectedBundle/AP
 ADD_WEBKIT_PREFIX_HEADER(WPEInjectedBundle)
 target_link_libraries(WPEInjectedBundle WebKit)
 
-target_include_directories(WPEInjectedBundle PRIVATE ${WebKit_INCLUDE_DIRECTORIES})
+target_include_directories(WPEInjectedBundle PRIVATE ${WebKit_INCLUDE_DIRECTORIES} ${WebKit_PRIVATE_INCLUDE_DIRECTORIES})
 target_include_directories(WPEInjectedBundle SYSTEM PRIVATE ${WebKit_SYSTEM_INCLUDE_DIRECTORIES})
 
 file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-wpe.cfg
@@ -378,9 +383,12 @@ if (ENABLE_WPE_QT_API)
     )
 
     set(qtwpe_INCLUDE_DIRECTORIES
+        ${CMAKE_BINARY_DIR}
+        ${GLIB_INCLUDE_DIRS}
         ${Qt5_INCLUDE_DIRS}
         ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
         ${LIBEPOXY_INCLUDE_DIRS}
+        ${LIBSOUP_INCLUDE_DIRS}
         ${WPEBACKEND_FDO_INCLUDE_DIRS}
     )
 

@@ -27,16 +27,10 @@
 #include "JSMap.h"
 
 #include "JSCInlines.h"
-#include "MapPrototype.h"
 
 namespace JSC {
 
 const ClassInfo JSMap::s_info = { "Map", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSMap) };
-
-String JSMap::toStringName(const JSObject*, JSGlobalObject*)
-{
-    return "Object"_s;
-}
 
 JSMap* JSMap::clone(JSGlobalObject* globalObject, VM& vm, Structure* structure)
 {

@@ -68,7 +68,7 @@ void MediaSessionManageriOS::resetRestrictions()
 
     ALWAYS_LOG(LOGIDENTIFIER);
 
-    PlatformMediaSessionManager::resetRestrictions();
+    MediaSessionManagerCocoa::resetRestrictions();
 
     if (ramSize() < systemMemoryRequiredForVideoInBackgroundTabs) {
         ALWAYS_LOG(LOGIDENTIFIER, "restricting video in background tabs because system memory = ", ramSize());
@@ -86,7 +86,7 @@ bool MediaSessionManageriOS::hasWirelessTargetsAvailable()
 
 void MediaSessionManageriOS::configureWireLessTargetMonitoring()
 {
-#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
+#if !PLATFORM(WATCHOS)
     bool requiresMonitoring = anyOfSessions([] (auto& session) {
         return session.requiresPlaybackTargetRouteMonitoring();
     });
@@ -122,7 +122,7 @@ void MediaSessionManageriOS::providePresentingApplicationPID()
 
 bool MediaSessionManageriOS::sessionWillBeginPlayback(PlatformMediaSession& session)
 {
-    if (!PlatformMediaSessionManager::sessionWillBeginPlayback(session))
+    if (!MediaSessionManagerCocoa::sessionWillBeginPlayback(session))
         return false;
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(MACCATALYST) && !PLATFORM(WATCHOS)
@@ -131,7 +131,7 @@ bool MediaSessionManageriOS::sessionWillBeginPlayback(PlatformMediaSession& sess
         m_playbackTargetSupportsAirPlayVideo = m_playbackTarget->supportsRemoteVideoPlayback();
     }
 
-    ALWAYS_LOG(LOGIDENTIFIER, m_playbackTargetSupportsAirPlayVideo);
+    ALWAYS_LOG(LOGIDENTIFIER, "Playback Target Supports AirPlay Video = ", m_playbackTargetSupportsAirPlayVideo);
     if (m_playbackTargetSupportsAirPlayVideo)
         session.setPlaybackTarget(*m_playbackTarget.copyRef());
     session.setShouldPlayToPlaybackTarget(m_playbackTargetSupportsAirPlayVideo);

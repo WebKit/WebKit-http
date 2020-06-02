@@ -27,6 +27,7 @@
 
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
+#include "DisplayLinkObserverID.h"
 #include <CoreVideo/CVDisplayLink.h>
 #include <WebCore/PlatformScreen.h>
 #include <wtf/HashMap.h>
@@ -44,19 +45,21 @@ public:
     explicit DisplayLink(WebCore::PlatformDisplayID);
     ~DisplayLink();
     
-    void addObserver(IPC::Connection&, unsigned observerID);
-    void removeObserver(IPC::Connection&, unsigned observerID);
+    void addObserver(IPC::Connection&, DisplayLinkObserverID);
+    void removeObserver(IPC::Connection&, DisplayLinkObserverID);
     void removeObservers(IPC::Connection&);
     bool hasObservers() const;
 
     WebCore::PlatformDisplayID displayID() const { return m_displayID; }
+    
+    Optional<unsigned> nominalFramesPerSecond() const;
 
 private:
     static CVReturn displayLinkCallback(CVDisplayLinkRef, const CVTimeStamp*, const CVTimeStamp*, CVOptionFlags, CVOptionFlags*, void* data);
     
     CVDisplayLinkRef m_displayLink { nullptr };
     Lock m_observersLock;
-    HashMap<RefPtr<IPC::Connection>, Vector<unsigned>> m_observers;
+    HashMap<RefPtr<IPC::Connection>, Vector<DisplayLinkObserverID>> m_observers;
     WebCore::PlatformDisplayID m_displayID;
 };
 

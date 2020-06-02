@@ -295,6 +295,7 @@ public:
     // to know if there is non-affine content, e.g. for drawing into an image.
     bool has3DContent() const;
     
+    static bool isCompositedSubframeRenderer(const RenderObject&);
     static RenderLayerCompositor* frameContentsCompositor(RenderWidget&);
     // Return true if the layers changed.
     bool parentFrameContentLayers(RenderWidget&);
@@ -346,7 +347,7 @@ public:
     ScrollPositioningBehavior computeCoordinatedPositioningForLayer(const RenderLayer&, const RenderLayer* compositingAncestor) const;
     bool isLayerForIFrameWithScrollCoordinatedContents(const RenderLayer&) const;
 
-    ScrollableArea* scrollableAreaForScrollLayerID(ScrollingNodeID) const;
+    ScrollableArea* scrollableAreaForScrollingNodeID(ScrollingNodeID) const;
 
     void removeFromScrollCoordinatedLayers(RenderLayer&);
 
@@ -357,6 +358,8 @@ public:
     void setTracksRepaints(bool tracksRepaints) { m_isTrackingRepaints = tracksRepaints; }
 
     bool viewHasTransparentBackground(Color* backgroundColor = nullptr) const;
+
+    bool viewNeedsToInvalidateEventRegionOfEnclosingCompositingLayerForRepaint() const;
 
     bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
 
@@ -474,9 +477,7 @@ private:
     GraphicsLayerFactory* graphicsLayerFactory() const;
     ScrollingCoordinator* scrollingCoordinator() const;
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
-#endif
 
     // Non layout-dependent
     bool requiresCompositingForAnimation(RenderLayerModelObject&) const;
@@ -524,7 +525,9 @@ private:
 
     void detachScrollCoordinatedLayer(RenderLayer&, OptionSet<ScrollCoordinationRole>);
     void detachScrollCoordinatedLayerWithRole(RenderLayer&, ScrollingCoordinator&, ScrollCoordinationRole);
-    
+
+    void updateSynchronousScrollingNodes();
+
     FixedPositionViewportConstraints computeFixedViewportConstraints(RenderLayer&) const;
     StickyPositionViewportConstraints computeStickyViewportConstraints(RenderLayer&) const;
 

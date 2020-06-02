@@ -37,14 +37,11 @@ import traceback
 
 from optparse import make_option
 
-from webkitpy.common.config.committervalidator import CommitterValidator
 from webkitpy.common.config.ports import DeprecatedPort
 from webkitpy.common.net.bugzilla import Attachment
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.unicode_compatibility import BytesIO
 from webkitpy.tool.bot.botinfo import BotInfo
-from webkitpy.tool.bot.commitqueuetask import CommitQueueTask, CommitQueueTaskDelegate
-from webkitpy.tool.bot.feeders import CommitQueueFeeder, EWSFeeder
 from webkitpy.tool.bot.flakytestreporter import FlakyTestReporter
 from webkitpy.tool.bot.layouttestresultsreader import LayoutTestResultsReader
 from webkitpy.tool.bot.patchanalysistask import UnableToApplyPatch, PatchIsNotValid
@@ -89,9 +86,6 @@ class AbstractQueue(Command, QueueEngineDelegate):
         # FIXME: We must always pass global options and their value in one argument
         # because our global option code looks for the first argument which does
         # not begin with "-" and assumes that is the command name.
-        webkit_patch_args += ["--status-host=%s" % self._tool.status_server.host]
-        if self._tool.status_server.bot_id:
-            webkit_patch_args += ["--bot-id=%s" % self._tool.status_server.bot_id]
         if self._options.port:
             webkit_patch_args += ["--port=%s" % self._options.port]
         webkit_patch_args.extend(args)
@@ -126,10 +120,9 @@ class AbstractQueue(Command, QueueEngineDelegate):
                 _log.error("User declined.")
                 sys.exit(1)
         _log.info("Running WebKit %s." % self.name)
-        self._tool.status_server.update_status(self.name, "Starting Queue")
 
     def stop_work_queue(self, reason):
-        self._tool.status_server.update_status(self.name, "Stopping Queue, reason: %s" % reason)
+        pass
 
     def should_continue_work_queue(self):
         self._iteration_count += 1
@@ -153,104 +146,19 @@ class AbstractQueue(Command, QueueEngineDelegate):
         self._tool = tool  # FIXME: This code is wrong too!  Command.bind_to_tool handles this!
         return engine(self.name, self, self._tool.wakeup_event, self._options.seconds_to_sleep).run()
 
-    @classmethod
-    def _log_from_script_error_for_upload(cls, script_error, output_limit=None):
-        # We have seen request timeouts with app engine due to large
-        # log uploads.  Trying only the last 512k.
-        if not output_limit:
-            output_limit = 512 * 1024  # 512k
-        output = script_error.message_with_output(output_limit=output_limit)
-        # We pre-encode the string to a byte array before passing it
-        # to status_server, because ClientForm (part of mechanize)
-        # wants a file-like object with pre-encoded data.
-        return BytesIO(output.encode("utf-8"))
-
-    @classmethod
-    def _update_status_for_script_error(cls, tool, state, script_error, is_error=False):
-        message = str(script_error)
-        if is_error:
-            message = "Error: %s" % message
-        failure_log = cls._log_from_script_error_for_upload(script_error)
-        return tool.status_server.update_status(cls.name, message, state["patch"], failure_log)
-
-
-class FeederQueue(AbstractQueue):
-    name = "feeder-queue"
-
-    _sleep_duration = 30  # seconds
-
-    # AbstractQueue methods
-
-    def begin_work_queue(self):
-        AbstractQueue.begin_work_queue(self)
-        self.feeders = [
-            CommitQueueFeeder(self._tool),
-            EWSFeeder(self._tool),
-        ]
-
-    def next_work_item(self):
-        # This really show inherit from some more basic class that doesn't
-        # understand work items, but the base class in the heirarchy currently
-        # understands work items.
-        return "synthetic-work-item"
-
-    def process_work_item(self, work_item):
-        for feeder in self.feeders:
-            feeder.feed()
-        time.sleep(self._sleep_duration)
-        return True
-
-    def work_item_log_path(self, work_item):
-        return None
-
-    def handle_unexpected_error(self, work_item, message):
-        _log.error(message)
-
 
 class AbstractPatchQueue(AbstractQueue):
-    def _update_status(self, message, patch=None, results_file=None):
-        return self._tool.status_server.update_status(self.name, message, patch, results_file)
-
     def _next_patch(self):
-        # FIXME: Bugzilla accessibility should be checked here; if it's unaccessible,
-        # it should return None.
-        patch = None
-        while not patch:
-            patch_id = self._tool.status_server.next_work_item(self.name)
-            if not patch_id:
-                return None
-            patch = self._tool.bugs.fetch_attachment(patch_id)
-            if not patch:
-                # FIXME: Using a fake patch because release_work_item has the wrong API.
-                # We also don't really need to release the lock (although that's fine),
-                # mostly we just need to remove this bogus patch from our queue.
-                # If for some reason bugzilla is just down, then it will be re-fed later.
-                fake_patch = Attachment({'id': patch_id}, None)
-                self._did_skip(fake_patch)
-        return patch
-
-    def _release_work_item(self, patch):
-        self._tool.status_server.release_work_item(self.name, patch)
-
-    def _did_pass(self, patch):
-        self._update_status(self._pass_status, patch)
-        self._release_work_item(patch)
-
-    def _did_fail(self, patch):
-        self._update_status(self._fail_status, patch)
-        self._release_work_item(patch)
+        pass
 
     def _did_error(self, patch, reason):
-        message = "%s: %s" % (self._error_status, reason)
-        self._update_status(message, patch)
-        self._release_work_item(patch)
+        pass
 
     def _did_skip(self, patch):
-        self._update_status(self._skip_status, patch)
-        self._release_work_item(patch)
+        pass
 
     def _unlock_patch(self, patch):
-        self._tool.status_server.release_lock(self.name, patch)
+        pass
 
     def work_item_log_path(self, patch):
         return os.path.join(self._log_directory(), "%s.log" % patch.bug_id())
@@ -308,8 +216,7 @@ class PatchProcessingQueue(AbstractPatchQueue):
         if not self._port:
             self._create_port()
 
-        bot_id = self._tool.status_server.bot_id or "bot"
-        description = "Archive of layout-test-results from %s for %s" % (bot_id, self._port.name())
+        description = "Archive of layout-test-results for %s" % (self._port.name())
         # results_archive is a ZipFile object, grab the File object (.fp) to pass to Mechanize for uploading.
         results_archive_file = results_archive_zip.fp
         # Rewind the file object to start (since Mechanize won't do that automatically)
@@ -323,123 +230,6 @@ class PatchProcessingQueue(AbstractPatchQueue):
         comment_text += BotInfo(self._tool, self._port.name()).summary_text()
         if self._can_access_bug(patch.bug_id()):
             self._tool.bugs.add_attachment_to_bug(patch.bug_id(), results_archive_file, description, filename="layout-test-results.zip", comment_text=comment_text)
-
-
-class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTaskDelegate):
-    def __init__(self, commit_queue_task_class=CommitQueueTask):
-        self._commit_queue_task_class = commit_queue_task_class
-        PatchProcessingQueue.__init__(self)
-
-    name = "commit-queue"
-    port_name = "mac"
-
-    # AbstractPatchQueue methods
-
-    def begin_work_queue(self):
-        PatchProcessingQueue.begin_work_queue(self)
-        self.committer_validator = CommitterValidator(self._tool)
-        self._layout_test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
-
-    def next_work_item(self):
-        return self._next_patch()
-
-    def process_work_item(self, patch):
-        self._cc_watchers(patch.bug_id())
-        task = self._commit_queue_task_class(self, patch)
-        try:
-            if task.run():
-                self._did_pass(patch)
-                return True
-            self._unlock_patch(patch)
-            return False
-        except PatchIsNotValid as error:
-            self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
-            return False
-        except ScriptError as e:
-            if self._can_access_bug(patch.bug_id()):
-                validator = CommitterValidator(self._tool)
-                validator.reject_patch_from_commit_queue(patch.id(), self._error_message_for_bug(task, patch, e))
-            results_archive = task.results_archive_from_patch_test_run(patch)
-            if results_archive:
-                self._upload_results_archive_for_patch(patch, results_archive)
-            self._did_fail(patch)
-            return False
-
-    def _failing_tests_message(self, task, patch):
-        results = task.results_from_patch_test_run(patch)
-
-        if not results:
-            return None
-
-        if results.did_exceed_test_failure_limit():
-            return "Number of test failures exceeded the failure limit."
-        return "New failing tests:\n%s" % "\n".join(results.failing_tests())
-
-    def _error_message_for_bug(self, task, patch, script_error):
-        message = self._failing_tests_message(task, patch)
-        if not message:
-            message = script_error.message_with_output(output_limit=5000)
-        results_link = self._tool.status_server.results_url_for_status(task.failure_status_id)
-        return "%s\nFull output: %s" % (message, results_link)
-
-    def handle_unexpected_error(self, patch, message):
-        self.committer_validator.reject_patch_from_commit_queue(patch.id(), message)
-
-    # CommitQueueTaskDelegate methods
-
-    def run_command(self, command):
-        self.run_webkit_patch(command + [self._deprecated_port.flag()])
-
-    def command_passed(self, message, patch):
-        self._update_status(message, patch=patch)
-
-    def command_failed(self, message, script_error, patch):
-        failure_log = self._log_from_script_error_for_upload(script_error)
-        return self._update_status(message, patch=patch, results_file=failure_log)
-
-    def expected_failures(self):
-        return self._expected_failures
-
-    def test_results(self):
-        return self._layout_test_results_reader.results()
-
-    def archive_last_test_results(self, patch):
-        return self._layout_test_results_reader.archive(patch)
-
-    def refetch_patch(self, patch):
-        return self._tool.bugs.fetch_attachment(patch.id())
-
-    def report_flaky_tests(self, patch, flaky_test_results, results_archive=None):
-        reporter = FlakyTestReporter(self._tool, self.name)
-        reporter.report_flaky_tests(patch, flaky_test_results, results_archive)
-
-    def did_pass_testing_ews(self, patch):
-        # Only Mac and Mac WK2 run tests
-        # FIXME: We shouldn't have to hard-code it here.
-        patch_status = self._tool.status_server.patch_status
-        return patch_status("mac-ews", patch.id()) == self._pass_status or patch_status("mac-wk2-ews", patch.id()) == self._pass_status
-
-    # StepSequenceErrorHandler methods
-
-    @classmethod
-    def handle_script_error(cls, tool, state, script_error):
-        # Hitting this error handler should be pretty rare.  It does occur,
-        # however, when a patch no longer applies to top-of-tree in the final
-        # land step.
-        _log.error(script_error.message_with_output(output_limit=5000))
-
-    @classmethod
-    def handle_checkout_needs_update(cls, tool, state, options, error):
-        message = "Tests passed, but commit failed (checkout out of date).  Updating, then landing without building or re-running tests."
-        tool.status_server.update_status(cls.name, message, state["patch"])
-        # The only time when we find out that out checkout needs update is
-        # when we were ready to actually pull the trigger and land the patch.
-        # Rather than spinning in the master process, we retry without
-        # building or testing, which is much faster.
-        options.build = False
-        options.test = False
-        options.update = True
-        raise TryAgain()
 
 
 class AbstractReviewQueue(PatchProcessingQueue, StepSequenceErrorHandler):
@@ -456,13 +246,10 @@ class AbstractReviewQueue(PatchProcessingQueue, StepSequenceErrorHandler):
         PatchProcessingQueue.begin_work_queue(self)
 
     def next_work_item(self):
-        return self._next_patch()
+        return None
 
     def process_work_item(self, patch):
-        self._update_status("Started processing patch", patch)
         passed = self.review_patch(patch)
-        if passed:
-            self._did_pass(patch)
         return passed
 
     def handle_unexpected_error(self, patch, message):
@@ -485,9 +272,6 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
         task = StyleQueueTask(self, patch)
         try:
             style_check_succeeded = task.run()
-            if not style_check_succeeded:
-                # Caller unlocks when review_patch returns True, so we only need to unlock on transient failure.
-                self._unlock_patch(patch)
             return style_check_succeeded
         except UnableToApplyPatch as e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
@@ -499,7 +283,6 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
             output = re.sub(r'Failed to run .+ exit_code: 1', '', e.output)
             message = "Attachment %s did not pass %s:\n\n%s\n\nIf any of these errors are false positives, please file a bug against check-webkit-style." % (patch.id(), self.name, output)
             self._tool.bugs.post_comment_to_bug(patch.bug_id(), message, cc=self.watchers)
-            self._did_fail(patch)
             return False
         return True
 
@@ -509,11 +292,10 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
         self.run_webkit_patch(command)
 
     def command_passed(self, message, patch):
-        self._update_status(message, patch=patch)
+        pass
 
     def command_failed(self, message, script_error, patch):
-        failure_log = self._log_from_script_error_for_upload(script_error)
-        return self._update_status(message, patch=patch, results_file=failure_log)
+        pass
 
     def expected_failures(self):
         return None

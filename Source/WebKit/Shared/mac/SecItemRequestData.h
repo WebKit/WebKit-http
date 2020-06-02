@@ -45,12 +45,12 @@ public:
         Delete,
     };
 
-    SecItemRequestData();
+    SecItemRequestData() = default;
     SecItemRequestData(Type, CFDictionaryRef query);
     SecItemRequestData(Type, CFDictionaryRef query, CFDictionaryRef attributesToMatch);
 
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, SecItemRequestData&);
+    static WARN_UNUSED_RETURN bool decode(IPC::Decoder&, SecItemRequestData&);
 
     Type type() const { return m_type; }
 
@@ -58,7 +58,7 @@ public:
     CFDictionaryRef attributesToMatch() const { return m_attributesToMatch.get(); }
 
 private:
-    Type m_type;
+    Type m_type { Invalid };
     RetainPtr<CFDictionaryRef> m_queryDictionary;
     RetainPtr<CFDictionaryRef> m_attributesToMatch;
 };

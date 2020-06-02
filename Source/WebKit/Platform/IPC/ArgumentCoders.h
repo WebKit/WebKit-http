@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "Encoder.h"
 #include <utility>
 #include <wtf/Box.h>
+#include <wtf/CheckedArithmetic.h>
 #include <wtf/Forward.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/SHA1.h>
@@ -45,7 +46,7 @@ template<typename T> struct SimpleArgumentCoder {
         encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(&t), sizeof(T), alignof(T));
     }
 
-    static bool decode(Decoder& decoder, T& t)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, T& t)
     {
         return decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(&t), sizeof(T), alignof(T));
     }
@@ -54,12 +55,12 @@ template<typename T> struct SimpleArgumentCoder {
 template<typename T> struct ArgumentCoder<OptionSet<T>> {
     static void encode(Encoder& encoder, const OptionSet<T>& optionSet)
     {
-        encoder << (static_cast<uint64_t>(optionSet.toRaw()));
+        encoder << optionSet.toRaw();
     }
 
-    static bool decode(Decoder& decoder, OptionSet<T>& optionSet)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, OptionSet<T>& optionSet)
     {
-        uint64_t value;
+        typename OptionSet<T>::StorageType value;
         if (!decoder.decode(value))
             return false;
 
@@ -69,7 +70,7 @@ template<typename T> struct ArgumentCoder<OptionSet<T>> {
 
     static Optional<OptionSet<T>> decode(Decoder& decoder)
     {
-        Optional<uint64_t> value;
+        Optional<typename OptionSet<T>::StorageType> value;
         decoder >> value;
         if (!value)
             return WTF::nullopt;
@@ -89,7 +90,7 @@ template<typename T> struct ArgumentCoder<Optional<T>> {
         encoder << optional.value();
     }
 
-    static bool decode(Decoder& decoder, Optional<T>& optional)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, Optional<T>& optional)
     {
         bool isEngaged;
         if (!decoder.decode(isEngaged))
@@ -137,7 +138,7 @@ template<typename T> struct ArgumentCoder<Box<T>> {
         encoder << *box.get();
     }
 
-    static bool decode(Decoder& decoder, Box<T>& box)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, Box<T>& box)
     {
         bool isEngaged;
         if (!decoder.decode(isEngaged))
@@ -179,7 +180,7 @@ template<typename T, typename U> struct ArgumentCoder<std::pair<T, U>> {
         encoder << pair.first << pair.second;
     }
 
-    static bool decode(Decoder& decoder, std::pair<T, U>& pair)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, std::pair<T, U>& pair)
     {
         T first;
         if (!decoder.decode(first))
@@ -301,7 +302,7 @@ template<typename KeyType, typename ValueType> struct ArgumentCoder<WTF::KeyValu
         encoder << pair.key << pair.value;
     }
 
-    static bool decode(Decoder& decoder, WTF::KeyValuePair<KeyType, ValueType>& pair)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, WTF::KeyValuePair<KeyType, ValueType>& pair)
     {
         KeyType key;
         if (!decoder.decode(key))
@@ -327,7 +328,7 @@ template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t min
             encoder << vector[i];
     }
 
-    static bool decode(Decoder& decoder, Vector<T, inlineCapacity, OverflowHandler, minCapacity>& vector)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, Vector<T, inlineCapacity, OverflowHandler, minCapacity>& vector)
     {
         Optional<Vector<T, inlineCapacity, OverflowHandler, minCapacity>> optional;
         decoder >> optional;
@@ -363,11 +364,20 @@ template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t min
         encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(vector.data()), vector.size() * sizeof(T), alignof(T));
     }
     
-    static bool decode(Decoder& decoder, Vector<T, inlineCapacity, OverflowHandler, minCapacity>& vector)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, Vector<T, inlineCapacity, OverflowHandler, minCapacity>& vector)
     {
-        uint64_t size;
-        if (!decoder.decode(size))
+        uint64_t decodedSize;
+        if (!decoder.decode(decodedSize)) {
+            decoder.markInvalid();
             return false;
+        }
+
+        if (!isInBounds<size_t>(decodedSize)) {
+            decoder.markInvalid();
+            return false;
+        }
+
+        auto size = static_cast<size_t>(decodedSize);
 
         // Since we know the total size of the elements, we can allocate the vector in
         // one fell swoop. Before allocating we must however make sure that the decoder buffer
@@ -391,10 +401,19 @@ template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t min
     
     static Optional<Vector<T, inlineCapacity, OverflowHandler, minCapacity>> decode(Decoder& decoder)
     {
-        uint64_t size;
-        if (!decoder.decode(size))
+        uint64_t decodedSize;
+        if (!decoder.decode(decodedSize)) {
+            decoder.markInvalid();
             return WTF::nullopt;
-        
+        }
+
+        if (!isInBounds<size_t>(decodedSize)) {
+            decoder.markInvalid();
+            return WTF::nullopt;
+        }
+
+        auto size = static_cast<size_t>(decodedSize);
+
         // Since we know the total size of the elements, we can allocate the vector in
         // one fell swoop. Before allocating we must however make sure that the decoder buffer
         // is big enough.
@@ -460,7 +479,7 @@ template<typename KeyArg, typename MappedArg, typename HashArg, typename KeyTrai
         return hashMap;
     }
 
-    static bool decode(Decoder& decoder, HashMapType& hashMap)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, HashMapType& hashMap)
     {
         Optional<HashMapType> tempHashMap;
         decoder >> tempHashMap;
@@ -481,7 +500,7 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Argume
             encoder << *it;
     }
 
-    static bool decode(Decoder& decoder, HashSetType& hashSet)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, HashSetType& hashSet)
     {
         Optional<HashSetType> tempHashSet;
         decoder >> tempHashSet;
@@ -534,7 +553,7 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Argume
         }
     }
     
-    static bool decode(Decoder& decoder, HashCountedSetType& hashCountedSet)
+    static WARN_UNUSED_RETURN bool decode(Decoder& decoder, HashCountedSetType& hashCountedSet)
     {
         uint64_t hashCountedSetSize;
         if (!decoder.decode(hashCountedSetSize))
@@ -666,35 +685,35 @@ template<typename... Types> struct ArgumentCoder<WTF::Variant<Types...>> {
     
 template<> struct ArgumentCoder<WallTime> {
     static void encode(Encoder&, const WallTime&);
-    static bool decode(Decoder&, WallTime&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, WallTime&);
     static Optional<WallTime> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<AtomString> {
     static void encode(Encoder&, const AtomString&);
-    static bool decode(Decoder&, AtomString&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, AtomString&);
 };
 
 template<> struct ArgumentCoder<CString> {
     static void encode(Encoder&, const CString&);
-    static bool decode(Decoder&, CString&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, CString&);
 };
 
 template<> struct ArgumentCoder<String> {
     static void encode(Encoder&, const String&);
-    static bool decode(Decoder&, String&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, String&);
     static Optional<String> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<SHA1::Digest> {
     static void encode(Encoder&, const SHA1::Digest&);
-    static bool decode(Decoder&, SHA1::Digest&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, SHA1::Digest&);
 };
 
 #if HAVE(AUDIT_TOKEN)
 template<> struct ArgumentCoder<audit_token_t> {
     static void encode(Encoder&, const audit_token_t&);
-    static bool decode(Decoder&, audit_token_t&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, audit_token_t&);
 };
 #endif
 

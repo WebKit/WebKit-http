@@ -60,9 +60,10 @@ class StatusBubble(View):
     STEPS_TO_HIDE = ['^Archived built product$', '^Uploaded built product$', '^Transferred archive to S3$',
                      '^Archived test results$', '^Uploaded test results$', '^Extracted test results$',
                      '^Downloaded built product$', '^Extracted built product$',
+                     '^Crash collection has quiesced$', '^Triggered crash log submission$',
                      '^Cleaned and updated working directory$', '^Checked out required revision$', '^Updated working directory$',
                      '^Validated patch$', '^Killed old processes$', '^Configured build$', '^OS:.*Xcode:', '(skipped)',
-                     '^Printed configuration$', '^Checked patch relevance$', '^Deleted .git/index.lock$',
+                     '^Printed configuration$', '^Patch contains relevant changes$', '^Deleted .git/index.lock$',
                      '^triggered.*$', '^Found modified ChangeLogs$', '^Created local git commit$', '^Set build summary$',
                      '^Validated commiter$', '^Validated commiter and reviewer$', '^Validated ChangeLog and Reviewer$',
                      '^Removed flags on bugzilla patch$', '^Checked patch status on other queues$']

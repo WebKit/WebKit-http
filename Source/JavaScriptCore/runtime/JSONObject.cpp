@@ -29,17 +29,11 @@
 #include "ArrayConstructor.h"
 #include "BigIntObject.h"
 #include "BooleanObject.h"
-#include "Error.h"
-#include "ExceptionHelpers.h"
-#include "JSArray.h"
 #include "JSArrayInlines.h"
-#include "JSGlobalObject.h"
-#include "LiteralParser.h"
-#include "Lookup.h"
-#include "ObjectConstructor.h"
 #include "JSCInlines.h"
+#include "LiteralParser.h"
+#include "ObjectConstructor.h"
 #include "PropertyNameArray.h"
-#include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace JSC {
@@ -64,8 +58,7 @@ void JSONObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "JSON"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 // PropertyNameForFunctionCall objects must be on the stack, since the JSValue that they create is not marked.
@@ -121,13 +114,12 @@ private:
     void indent();
     void unindent();
     void startNewLine(StringBuilder&) const;
-    bool isCallableReplacer() const { return m_replacerCallType != CallType::None; }
+    bool isCallableReplacer() const { return m_replacerCallData.type != CallData::Type::None; }
 
     JSGlobalObject* const m_globalObject;
     JSValue m_replacer;
     bool m_usingArrayReplacer { false };
     PropertyNameArray m_arrayReplacerPropertyNames;
-    CallType m_replacerCallType { CallType::None };
     CallData m_replacerCallData;
     String m_gap;
 
@@ -198,7 +190,7 @@ inline PropertyNameForFunctionCall::PropertyNameForFunctionCall(const Identifier
 }
 
 inline PropertyNameForFunctionCall::PropertyNameForFunctionCall(unsigned number)
-    : m_identifier(0)
+    : m_identifier(nullptr)
     , m_number(number)
 {
 }
@@ -231,18 +223,18 @@ Stringifier::Stringifier(JSGlobalObject* globalObject, JSValue replacer, JSValue
     if (m_replacer.isObject()) {
         JSObject* replacerObject = asObject(m_replacer);
 
-        m_replacerCallType = CallType::None;
-        if (!replacerObject->isCallable(vm, m_replacerCallType, m_replacerCallData)) {
+        m_replacerCallData = getCallData(vm, replacerObject);
+        if (m_replacerCallData.type == CallData::Type::None) {
             bool isArrayReplacer = JSC::isArray(globalObject, replacerObject);
             RETURN_IF_EXCEPTION(scope, );
             if (isArrayReplacer) {
                 m_usingArrayReplacer = true;
-                unsigned length = toLength(globalObject, replacerObject);
+                uint64_t length = static_cast<uint64_t>(toLength(globalObject, replacerObject));
                 RETURN_IF_EXCEPTION(scope, );
-                for (unsigned index = 0; index < length; ++index) {
+                for (uint64_t index = 0; index < length; ++index) {
                     JSValue name;
                     if (isJSArray(replacerObject) && replacerObject->canGetIndexQuickly(index))
-                        name = replacerObject->getIndexQuickly(index);
+                        name = replacerObject->getIndexQuickly(static_cast<uint32_t>(index));
                     else {
                         name = replacerObject->get(globalObject, index);
                         RETURN_IF_EXCEPTION(scope, );
@@ -304,15 +296,14 @@ ALWAYS_INLINE JSValue Stringifier::toJSON(JSValue baseValue, const PropertyNameF
     JSValue toJSONFunction = baseValue.get(m_globalObject, vm.propertyNames->toJSON);
     RETURN_IF_EXCEPTION(scope, { });
 
-    CallType callType;
-    CallData callData;
-    if (!toJSONFunction.isCallable(vm, callType, callData))
+    auto callData = getCallData(vm, toJSONFunction);
+    if (callData.type == CallData::Type::None)
         return baseValue;
 
     MarkedArgumentBuffer args;
     args.append(propertyName.value(m_globalObject));
     ASSERT(!args.hasOverflowed());
-    RELEASE_AND_RETURN(scope, call(m_globalObject, asObject(toJSONFunction), callType, callData, baseValue, args));
+    RELEASE_AND_RETURN(scope, call(m_globalObject, asObject(toJSONFunction), callData, baseValue, args));
 }
 
 Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& builder, JSValue value, const Holder& holder, const PropertyNameForFunctionCall& propertyName)
@@ -333,7 +324,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
         args.append(value);
         ASSERT(!args.hasOverflowed());
         ASSERT(holder.object());
-        value = call(m_globalObject, m_replacer, m_replacerCallType, m_replacerCallData, holder.object(), args);
+        value = call(m_globalObject, m_replacer, m_replacerCallData, holder.object(), args);
         RETURN_IF_EXCEPTION(scope, StringifyFailed);
     }
 
@@ -386,7 +377,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
         return StringifyFailed;
 
     JSObject* object = asObject(value);
-    if (object->isFunction(vm)) {
+    if (object->isCallable(vm)) {
         if (holder.isArray()) {
             builder.appendLiteral("null");
             return StringifySucceeded;
@@ -478,7 +469,13 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
     // First time through, initialize.
     if (!m_index) {
         if (m_isArray) {
-            m_size = toLength(globalObject, m_object);
+            uint64_t length = static_cast<uint64_t>(toLength(globalObject, m_object));
+            RETURN_IF_EXCEPTION(scope, false);
+            if (UNLIKELY(length > std::numeric_limits<uint32_t>::max())) {
+                throwOutOfMemoryError(globalObject, scope);
+                return false;
+            }
+            m_size = static_cast<uint32_t>(length);
             RETURN_IF_EXCEPTION(scope, false);
             builder.append('[');
         } else {
@@ -591,10 +588,9 @@ class Walker {
     WTF_MAKE_NONCOPYABLE(Walker);
     WTF_FORBID_HEAP_ALLOCATION;
 public:
-    Walker(JSGlobalObject* globalObject, JSObject* function, CallType callType, CallData callData)
+    Walker(JSGlobalObject* globalObject, JSObject* function, CallData callData)
         : m_globalObject(globalObject)
         , m_function(function)
-        , m_callType(callType)
         , m_callData(callData)
     {
     }
@@ -606,14 +602,13 @@ private:
         args.append(property);
         args.append(unfiltered);
         ASSERT(!args.hasOverflowed());
-        return call(m_globalObject, m_function, m_callType, m_callData, thisObj, args);
+        return call(m_globalObject, m_function, m_callData, thisObj, args);
     }
 
     friend class Holder;
 
     JSGlobalObject* m_globalObject;
     JSObject* m_function;
-    CallType m_callType;
     CallData m_callData;
 };
 
@@ -649,9 +644,14 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
 
                 JSObject* array = asObject(inValue);
                 markedStack.appendWithCrashOnOverflow(array);
-                unsigned length = toLength(m_globalObject, array);
+                uint64_t length = static_cast<uint64_t>(toLength(m_globalObject, array));
                 RETURN_IF_EXCEPTION(scope, { });
-                arrayLengthStack.append(length);
+                if (UNLIKELY(length > std::numeric_limits<uint32_t>::max())) {
+                    throwOutOfMemoryError(m_globalObject, scope);
+                    return { };
+                }
+                RETURN_IF_EXCEPTION(scope, { });
+                arrayLengthStack.append(static_cast<uint32_t>(length));
                 indexStack.append(0);
             }
             arrayStartVisitMember:
@@ -800,12 +800,11 @@ EncodedJSValue JSC_HOST_CALL JSONProtoFuncParse(JSGlobalObject* globalObject, Ca
         return JSValue::encode(unfiltered);
     
     JSValue function = callFrame->uncheckedArgument(1);
-    CallData callData;
-    CallType callType = getCallData(vm, function, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, function);
+    if (callData.type == CallData::Type::None)
         return JSValue::encode(unfiltered);
     scope.release();
-    Walker walker(globalObject, asObject(function), callType, callData);
+    Walker walker(globalObject, asObject(function), callData);
     return JSValue::encode(walker.walk(unfiltered));
 }
 

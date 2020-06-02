@@ -58,16 +58,16 @@ public:
     typedef unsigned Options;
 
     static void deleteSelection(Document&, Options = 0, TextCompositionType = TextCompositionNone);
-    static void deleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
-    static void forwardDeleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
+    static void deleteKeyPressed(Document&, Options = 0, TextGranularity = TextGranularity::CharacterGranularity);
+    static void forwardDeleteKeyPressed(Document&, Options = 0, TextGranularity = TextGranularity::CharacterGranularity);
     static void insertText(Document&, const String&, Options, TextCompositionType = TextCompositionNone);
     static void insertText(Document&, const String&, const VisibleSelection&, Options, TextCompositionType = TextCompositionNone);
     static void insertLineBreak(Document&, Options);
     static void insertParagraphSeparator(Document&, Options);
     static void insertParagraphSeparatorInQuotedContent(Document&);
-    static void closeTyping(Frame*);
+    static void closeTyping(Document&);
 #if PLATFORM(IOS_FAMILY)
-    static void ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping(Frame*, const VisibleSelection&);
+    static void ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping(Document&, const VisibleSelection&);
 #endif
 
     void insertText(const String &text, bool selectInsertedText);
@@ -86,14 +86,14 @@ public:
 #endif
 
 private:
-    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = emptyString(), Options options = 0, TextGranularity granularity = CharacterGranularity, TextCompositionType compositionType = TextCompositionNone)
+    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = emptyString(), Options options = 0, TextGranularity granularity = TextGranularity::CharacterGranularity, TextCompositionType compositionType = TextCompositionNone)
     {
         return adoptRef(*new TypingCommand(document, command, text, options, granularity, compositionType));
     }
 
     static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text, Options options, TextCompositionType compositionType)
     {
-        return adoptRef(*new TypingCommand(document, command, text, options, CharacterGranularity, compositionType));
+        return adoptRef(*new TypingCommand(document, command, text, options, TextGranularity::CharacterGranularity, compositionType));
     }
 
     TypingCommand(Document&, ETypingCommand, const String& text, Options, TextGranularity, TextCompositionType);
@@ -103,7 +103,7 @@ private:
     bool isOpenForMoreTyping() const { return m_openForMoreTyping; }
     void closeTyping() { m_openForMoreTyping = false; }
 
-    static RefPtr<TypingCommand> lastTypingCommandIfStillOpenForTyping(Frame&);
+    static RefPtr<TypingCommand> lastTypingCommandIfStillOpenForTyping(Document&);
 
     void doApply() final;
     bool isTypingCommand() const final;
@@ -122,7 +122,7 @@ private:
     RefPtr<DataTransfer> inputEventDataTransfer() const final;
     bool isBeforeInputEventCancelable() const final;
 
-    static void updateSelectionIfDifferentFromCurrentSelection(TypingCommand*, Frame*);
+    static void updateSelectionIfDifferentFromCurrentSelection(TypingCommand*, Document&);
 
     void updatePreservesTypingStyle(ETypingCommand);
     bool willAddTypingToOpenCommand(ETypingCommand, TextGranularity, const String& = emptyString(), RefPtr<Range>&& = nullptr);

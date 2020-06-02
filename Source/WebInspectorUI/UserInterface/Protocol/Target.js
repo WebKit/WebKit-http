@@ -95,8 +95,7 @@ WI.Target = class Target extends WI.Object
             // Tell the backend we are initialized after all our initialization messages have been sent.
             // This allows an automatically paused backend to resume execution, but we want to ensure
             // our breakpoints were already sent to that backend.
-            // COMPATIBILITY (iOS 8): Inspector.initialized did not exist yet.
-            if (this.hasCommand("Inspector.initialized"))
+            if (this.hasDomain("Inspector"))
                 this.InspectorAgent.initialized();
         });
 
@@ -122,8 +121,6 @@ WI.Target = class Target extends WI.Object
 
     activateExtraDomain(domainName)
     {
-        // FIXME: <https://webkit.org/b/201150> Web Inspector: remove "extra domains" concept now that domains can be added based on the debuggable type
-
         this._agents[domainName] = InspectorBackend._makeAgent(domainName, this);
     }
 

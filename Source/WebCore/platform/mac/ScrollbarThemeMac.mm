@@ -51,20 +51,21 @@
 
 namespace WebCore {
 
-    typedef HashMap<Scrollbar*, RetainPtr<NSScrollerImp>> ScrollerImpMap;
+using ScrollbarToScrollerImpMap = HashMap<Scrollbar*, RetainPtr<NSScrollerImp>>;
 
-    static ScrollerImpMap* scrollbarMap()
-    {
-        static ScrollerImpMap* map = new ScrollerImpMap;
-        return map;
-    }
-
+static ScrollbarToScrollerImpMap& scrollbarMap()
+{
+    static NeverDestroyed<ScrollbarToScrollerImpMap> instances;
+    return instances;
 }
+
+} // namespace WebCore
 
 using WebCore::ScrollbarTheme;
 using WebCore::ScrollbarThemeMac;
 using WebCore::scrollbarMap;
-using WebCore::ScrollerImpMap;
+using WebCore::ScrollbarToScrollerImpMap;
+
 @interface NSColor (WebNSColorDetails)
 + (NSImage *)_linenPatternImage;
 @end
@@ -90,12 +91,11 @@ using WebCore::ScrollerImpMap;
         return;
 
     static_cast<ScrollbarThemeMac&>(theme).preferencesChanged();
-    if (scrollbarMap()->isEmpty())
-        return;
-    ScrollerImpMap::iterator end = scrollbarMap()->end();
-    for (ScrollerImpMap::iterator it = scrollbarMap()->begin(); it != end; ++it) {
-        it->key->styleChanged();
-        it->key->invalidate();
+
+    for (auto keyValuePair : scrollbarMap()) {
+        auto* scrollbar = keyValuePair.key;
+        scrollbar->styleChanged();
+        scrollbar->invalidate();
     }
 }
 
@@ -171,8 +171,8 @@ void ScrollbarThemeMac::registerScrollbar(Scrollbar& scrollbar)
         return;
 
     bool isHorizontal = scrollbar.orientation() == HorizontalScrollbar;
-    NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:ScrollerStyle::recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil];
-    scrollbarMap()->add(&scrollbar, scrollerImp);
+    auto scrollerImp = retainPtr([NSScrollerImp scrollerImpWithStyle:ScrollerStyle::recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil]);
+    scrollbarMap().add(&scrollbar, WTFMove(scrollerImp));
     didCreateScrollerImp(scrollbar);
     updateEnabledState(scrollbar);
     updateScrollbarOverlayStyle(scrollbar);
@@ -180,19 +180,19 @@ void ScrollbarThemeMac::registerScrollbar(Scrollbar& scrollbar)
 
 void ScrollbarThemeMac::unregisterScrollbar(Scrollbar& scrollbar)
 {
-    scrollbarMap()->remove(&scrollbar);
+    [scrollbarMap().take(&scrollbar) setDelegate:nil];
 }
 
-void ScrollbarThemeMac::setNewPainterForScrollbar(Scrollbar& scrollbar, NSScrollerImp *newPainter)
+void ScrollbarThemeMac::setNewPainterForScrollbar(Scrollbar& scrollbar, RetainPtr<NSScrollerImp>&& newPainter)
 {
-    scrollbarMap()->set(&scrollbar, newPainter);
+    scrollbarMap().set(&scrollbar, WTFMove(newPainter));
     updateEnabledState(scrollbar);
     updateScrollbarOverlayStyle(scrollbar);
 }
 
 NSScrollerImp *ScrollbarThemeMac::painterForScrollbar(Scrollbar& scrollbar)
 {
-    return scrollbarMap()->get(&scrollbar).get();
+    return scrollbarMap().get(&scrollbar).get();
 }
 
 bool ScrollbarThemeMac::isLayoutDirectionRTL(Scrollbar& scrollbar)
@@ -296,7 +296,7 @@ bool ScrollbarThemeMac::hasThumb(Scrollbar& scrollbar)
 {
     int minLengthForThumb;
 
-    NSScrollerImp *painter = scrollbarMap()->get(&scrollbar).get();
+    NSScrollerImp *painter = scrollbarMap().get(&scrollbar).get();
     minLengthForThumb = [painter knobMinLength] + [painter trackOverlapEndInset] + [painter knobOverlapEndInset]
         + 2 * ([painter trackEndInset] + [painter knobEndInset]);
 
@@ -437,7 +437,7 @@ IntRect ScrollbarThemeMac::trackRect(Scrollbar& scrollbar, bool painting)
 int ScrollbarThemeMac::minimumThumbLength(Scrollbar& scrollbar)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    return [scrollbarMap()->get(&scrollbar) knobMinLength];
+    return [scrollbarMap().get(&scrollbar) knobMinLength];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
@@ -496,7 +496,7 @@ int ScrollbarThemeMac::scrollbarPartToHIPressedState(ScrollbarPart part)
 void ScrollbarThemeMac::updateEnabledState(Scrollbar& scrollbar)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    [scrollbarMap()->get(&scrollbar) setEnabled:scrollbar.enabled()];
+    [scrollbarMap().get(&scrollbar) setEnabled:scrollbar.enabled()];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
@@ -550,7 +550,7 @@ bool ScrollbarThemeMac::paint(Scrollbar& scrollbar, GraphicsContext& context, co
     context.clip(damageRect);
     context.translate(scrollbar.frameRect().location());
     LocalCurrentGraphicsContext localContext(context);
-    scrollerImpPaint(scrollbarMap()->get(&scrollbar).get(), scrollbar.enabled());
+    scrollerImpPaint(scrollbarMap().get(&scrollbar).get(), scrollbar.enabled());
 
     return true;
 }

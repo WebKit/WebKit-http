@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "DragActions.h"
 #include <gtk/gtk.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/WallTime.h>
@@ -30,13 +31,17 @@ class IntPoint;
 
 IntPoint convertWidgetPointToScreenPoint(GtkWidget*, const IntPoint&);
 bool widgetIsOnscreenToplevelWindow(GtkWidget*);
+IntPoint widgetRootCoords(GtkWidget*, int, int);
+void widgetDevicePosition(GtkWidget*, GdkDevice*, double*, double*, GdkModifierType*);
+unsigned widgetKeyvalToKeycode(GtkWidget*, unsigned);
 
 template<typename GdkEventType>
 WallTime wallTimeForEvent(const GdkEventType* event)
 {
-    if (event->time == GDK_CURRENT_TIME)
+    const auto eventTime = gdk_event_get_time(reinterpret_cast<GdkEvent*>(const_cast<GdkEventType*>(event)));
+    if (eventTime == GDK_CURRENT_TIME)
         return WallTime::now();
-    return MonotonicTime::fromRawSeconds(event->time / 1000.).approximateWallTime();
+    return MonotonicTime::fromRawSeconds(eventTime / 1000.).approximateWallTime();
 }
 
 template<>
@@ -44,6 +49,10 @@ WallTime wallTimeForEvent(const GdkEvent*);
 
 String defaultGtkSystemFont();
 
-unsigned stateModifierForGdkButton(unsigned button);
+WEBCORE_EXPORT unsigned stateModifierForGdkButton(unsigned button);
+
+WEBCORE_EXPORT DragOperation gdkDragActionToDragOperation(GdkDragAction);
+WEBCORE_EXPORT GdkDragAction dragOperationToGdkDragActions(DragOperation);
+WEBCORE_EXPORT GdkDragAction dragOperationToSingleGdkDragAction(DragOperation);
 
 } // namespace WebCore

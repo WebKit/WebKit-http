@@ -28,11 +28,36 @@
 
 #if ENABLE(WEBXR)
 
+#include "JSWebXRReferenceSpace.h"
+#include "WebXRBoundedReferenceSpace.h"
+#include "WebXRFrame.h"
+#include "WebXRSystem.h"
+#include "XRFrameRequestCallback.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(WebXRSession);
+
+Ref<WebXRSession> WebXRSession::create(Document& document, WebXRSystem& system, XRSessionMode mode, PlatformXR::Device& device)
+{
+    return adoptRef(*new WebXRSession(document, system, mode, device));
+}
+
+WebXRSession::WebXRSession(Document& document, WebXRSystem& system, XRSessionMode mode, PlatformXR::Device& device)
+    : ActiveDOMObject(&document)
+    , m_xrSystem(system)
+    , m_mode(mode)
+    , m_device(makeWeakPtr(device))
+    , m_activeRenderState(WebXRRenderState::create(mode))
+    , m_animationTimer(*this, &WebXRSession::animationTimerFired)
+{
+    // TODO: If no other features of the user agent have done so already,
+    // perform the necessary platform-specific steps to initialize the device's
+    // tracking and rendering capabilities, including showing any necessary
+    // instructions to the user.
+    suspendIfNeeded();
+}
 
 WebXRSession::~WebXRSession() = default;
 
@@ -48,7 +73,7 @@ XRVisibilityState WebXRSession::visibilityState() const
 
 const WebXRRenderState& WebXRSession::renderState() const
 {
-    return *m_renderState;
+    return *m_activeRenderState;
 }
 
 const WebXRInputSourceArray& WebXRSession::inputSources() const
@@ -60,21 +85,193 @@ void WebXRSession::updateRenderState(const XRRenderStateInit&)
 {
 }
 
-void WebXRSession::requestReferenceSpace(const XRReferenceSpaceType&, RequestReferenceSpacePromise&&)
+// https://immersive-web.github.io/webxr/#reference-space-is-supported
+bool WebXRSession::referenceSpaceIsSupported(XRReferenceSpaceType type) const
 {
+    // 1. If type is not contained in session’s XR device's list of enabled features for mode return false.
+    if (!m_device->enabledFeatures(m_mode).contains(type))
+        return false;
+
+    // 2. If type is viewer, return true.
+    if (type == XRReferenceSpaceType::Viewer)
+        return true;
+
+    bool isImmersiveSession = m_mode == XRSessionMode::ImmersiveAr || m_mode == XRSessionMode::ImmersiveVr;
+    if (type == XRReferenceSpaceType::Local || type == XRReferenceSpaceType::LocalFloor) {
+        // 3. If type is local or local-floor, and session is an immersive session, return true.
+        if (isImmersiveSession)
+            return true;
+
+        // 4. If type is local or local-floor, and the XR device supports reporting orientation data, return true.
+        // TODO: add API to PlatformXR::Device
+        return true;
+    }
+
+
+    // 5. If type is bounded-floor and session is an immersive session, return the result of whether bounded
+    //    reference spaces are supported by the XR device.
+    // https://immersive-web.github.io/webxr/#bounded-reference-spaces-are-supported
+    // TODO: add API to PlatformXR::Device
+    if (type == XRReferenceSpaceType::BoundedFloor && isImmersiveSession)
+        return true;
+
+    // 6. If type is unbounded, session is an immersive session, and the XR device supports stable tracking
+    //    near the user over an unlimited distance, return true.
+    // TODO: add API to PlatformXR::Device to check stable tracking over unlimited distance.
+    if (type == XRReferenceSpaceType::Unbounded && isImmersiveSession)
+        return true;
+
+    // 7. Return false.
+    return false;
 }
 
-int WebXRSession::requestAnimationFrame(Ref<XRFrameRequestCallback>&&)
+// https://immersive-web.github.io/webxr/#dom-xrsession-requestreferencespace
+void WebXRSession::requestReferenceSpace(XRReferenceSpaceType type, RequestReferenceSpacePromise&& promise)
 {
-    return 0;
+    if (!scriptExecutionContext()) {
+        promise.reject(Exception { InvalidStateError });
+        return;
+    }
+    // 1. Let promise be a new Promise.
+    // 2. Run the following steps in parallel:
+    scriptExecutionContext()->postTask([this, promise = WTFMove(promise), type] (auto& context) mutable {
+        //  2.1. Create a reference space, referenceSpace, with the XRReferenceSpaceType type.
+        //  2.2. If referenceSpace is null, reject promise with a NotSupportedError and abort these steps.
+        if (!referenceSpaceIsSupported(type)) {
+            promise.reject(Exception { NotSupportedError });
+            return;
+        }
+
+        // https://immersive-web.github.io/webxr/#create-a-reference-space
+        RefPtr<WebXRReferenceSpace> referenceSpace;
+        ASSERT(is<Document>(context));
+        if (type == XRReferenceSpaceType::BoundedFloor)
+            referenceSpace = WebXRBoundedReferenceSpace::create(downcast<Document>(context), makeRef(*this), type);
+        else
+            referenceSpace = WebXRReferenceSpace::create(downcast<Document>(context), makeRef(*this), type);
+
+        //  2.3. Resolve promise with referenceSpace.
+        // 3. Return promise.
+        promise.resolve(referenceSpace.releaseNonNull());
+    });
 }
 
-void WebXRSession::cancelAnimationFrame(int)
+void WebXRSession::animationTimerFired()
 {
+    m_lastAnimationFrameTimestamp = MonotonicTime::now();
+
+    if (m_callbacks.isEmpty())
+        return;
+
+    // TODO: retrieve frame from platform.
+    auto frame = WebXRFrame::create(*this);
+
+    m_runningCallbacks.swap(m_callbacks);
+    for (auto& callback : m_runningCallbacks) {
+        if (callback->isCancelled())
+            continue;
+        callback->handleEvent(m_lastAnimationFrameTimestamp.secondsSinceEpoch().milliseconds(), frame.get());
+    }
+
+    m_runningCallbacks.clear();
 }
 
-void WebXRSession::end(EndPromise&&)
+void WebXRSession::scheduleAnimation()
 {
+    if (m_animationTimer.isActive())
+        return;
+
+    if (m_ended)
+        return;
+
+    // TODO: use device's refresh rate. Let's start with 60fps.
+    Seconds animationInterval = 15_ms;
+    Seconds scheduleDelay = std::max(animationInterval - (MonotonicTime::now() - m_lastAnimationFrameTimestamp), 0_s);
+    m_animationTimer.startOneShot(scheduleDelay);
+}
+
+// https://immersive-web.github.io/webxr/#dom-xrsession-requestanimationframe
+XRFrameRequestCallback::Id WebXRSession::requestAnimationFrame(Ref<XRFrameRequestCallback>&& callback)
+{
+    // 1. Let session be the target XRSession object.
+    // 2. Increment session's animation frame callback identifier by one.
+    XRFrameRequestCallback::Id newId = ++m_nextCallbackId;
+
+    // 3. Append callback to session's list of animation frame callbacks, associated with session's
+    // animation frame callback identifier's current value.
+    callback->setCallbackId(newId);
+    m_callbacks.append(WTFMove(callback));
+
+    scheduleAnimation();
+
+    // 4. Return session's animation frame callback identifier's current value.
+    return newId;
+}
+
+// https://immersive-web.github.io/webxr/#dom-xrsession-cancelanimationframe
+void WebXRSession::cancelAnimationFrame(int callbackId)
+{
+    // 1. Let session be the target XRSession object.
+    // 2. Find the entry in session's list of animation frame callbacks or session's list of
+    //    currently running animation frame callbacks that is associated with the value handle.
+    // 3. If there is such an entry, set its cancelled boolean to true and remove it from
+    //    session's list of animation frame callbacks.
+    size_t position = m_callbacks.findMatching([callbackId] (auto& item) {
+        return item->callbackId() == callbackId;
+    });
+
+    if (position != notFound) {
+        m_callbacks[position]->cancel();
+        m_callbacks.remove(position);
+        return;
+    }
+
+    position = m_runningCallbacks.findMatching([callbackId] (auto& item) {
+        return item->callbackId() == callbackId;
+    });
+
+    if (position != notFound)
+        m_runningCallbacks[position]->cancel();
+}
+
+// https://immersive-web.github.io/webxr/#shut-down-the-session
+void WebXRSession::shutdown()
+{
+    // 1. Let session be the target XRSession object.
+    // 2. Set session's ended value to true.
+    m_ended = true;
+
+    // 3. If the active immersive session is equal to session, set the active immersive session to null.
+    // 4. Remove session from the list of inline sessions.
+    m_xrSystem.sessionEnded(*this);
+
+    // TODO: complete the implementation
+    // 5. Reject any outstanding promises returned by session with an InvalidStateError, except for any promises returned by end().
+    // 6. If no other features of the user agent are actively using them, perform the necessary platform-specific steps to shut down the device's tracking and rendering capabilities. This MUST include:
+    //  6.1. Releasing exclusive access to the XR device if session is an immersive session.
+    //  6.2. Deallocating any graphics resources acquired by session for presentation to the XR device.
+    //  6.3. Putting the XR device in a state such that a different source may be able to initiate a session with the same device if session is an immersive session.
+    // 7. Queue a task that fires an XRSessionEvent named end on session.
+}
+
+// https://immersive-web.github.io/webxr/#dom-xrsession-end
+void WebXRSession::end(EndPromise&& promise)
+{
+    // The shutdown() call bellow might remove the sole reference to session
+    // that could exist (the XRSystem owns the sessions) so let's protect this.
+    Ref<WebXRSession> protectedThis(*this);
+    // 1. Let promise be a new Promise.
+    // 2. Shut down the target XRSession object.
+    shutdown();
+
+    // 3. Queue a task to perform the following steps:
+    queueTaskKeepingObjectAlive(*this, TaskSource::WebXR, [promise = WTFMove(promise)] () mutable {
+        // 3.1 Wait until any platform-specific steps related to shutting down the session have completed.
+        // 3.2 Resolve promise.
+        promise.resolve();
+    });
+
+    // 4. Return promise.
 }
 
 const char* WebXRSession::activeDOMObjectName() const

@@ -141,7 +141,7 @@ static Color parseColor(const JSON::Object* colorObject)
 
     double a = 1.0;
     if (!colorObject->getDouble("a", a))
-        return Color(r, g, b);
+        return makeSimpleColor(r, g, b);
 
     // Clamp alpha to the [0..1] range.
     if (a < 0)
@@ -149,7 +149,7 @@ static Color parseColor(const JSON::Object* colorObject)
     else if (a > 1)
         a = 1;
 
-    return Color(r, g, b, static_cast<int>(a * 255));
+    return makeSimpleColor(r, g, b, static_cast<int>(a * 255));
 }
 
 static Color parseConfigColor(const String& fieldName, const JSON::Object* configObject)
@@ -262,7 +262,7 @@ public:
             data->setBoolean("enabled"_s, !!node->document().fullscreenManager().fullscreenElement());
 #endif // ENABLE(FULLSCREEN_API)
 
-        auto timestamp = m_domAgent.m_environment.executionStopwatch()->elapsedTime().seconds();
+        auto timestamp = m_domAgent.m_environment.executionStopwatch().elapsedTime().seconds();
         m_domAgent.m_frontendDispatcher->didFireEvent(nodeId, event.type(), timestamp, data->size() ? WTFMove(data) : nullptr);
     }
 
@@ -885,6 +885,7 @@ void InspectorDOMAgent::getSupportedEventNames(ErrorString&, RefPtr<JSON::ArrayO
 #undef DOM_EVENT_NAMES_ADD
 }
 
+#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 void InspectorDOMAgent::getDataBindingsForNode(ErrorString& errorString, int /* nodeId */, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::DataBinding>>& /* dataBindings */)
 {
     errorString = "Not supported"_s;
@@ -894,6 +895,7 @@ void InspectorDOMAgent::getAssociatedDataForNode(ErrorString& errorString, int /
 {
     errorString = "Not supported"_s;
 }
+#endif
 
 void InspectorDOMAgent::getEventListenersForNode(ErrorString& errorString, int nodeId, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::EventListener>>& listenersArray)
 {
@@ -1207,10 +1209,17 @@ std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspector
     return highlightConfig;
 }
 
+#if PLATFORM(IOS_FAMILY)
+void InspectorDOMAgent::setInspectModeEnabled(ErrorString& errorString, bool enabled, const JSON::Object* highlightConfig)
+{
+    setSearchingForNode(errorString, enabled, highlightConfig ? highlightConfig : nullptr, false);
+}
+#else
 void InspectorDOMAgent::setInspectModeEnabled(ErrorString& errorString, bool enabled, const JSON::Object* highlightConfig, const bool* showRulers)
 {
     setSearchingForNode(errorString, enabled, highlightConfig ? highlightConfig : nullptr, showRulers && *showRulers);
 }
+#endif
 
 void InspectorDOMAgent::highlightRect(ErrorString&, int x, int y, int width, int height, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
@@ -1291,8 +1300,7 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const JSON::
             SelectorChecker::CheckingContext context(SelectorChecker::Mode::ResolvingStyle);
             context.pseudoId = pseudoId;
 
-            unsigned ignoredSpecificity;
-            if (selectorChecker.match(*selector, descendantElement, context, ignoredSpecificity)) {
+            if (selectorChecker.match(*selector, descendantElement, context)) {
                 if (seenNodes.add(&descendantElement))
                     nodeList.append(descendantElement);
             }
@@ -2592,7 +2600,7 @@ void InspectorDOMAgent::mediaMetricsTimerFired()
 
             int nodeId = pushNodePathToFrontend(mediaElement);
             if (nodeId) {
-                auto timestamp = m_environment.executionStopwatch()->elapsedTime().seconds();
+                auto timestamp = m_environment.executionStopwatch().elapsedTime().seconds();
                 m_frontendDispatcher->powerEfficientPlaybackStateChanged(nodeId, timestamp, iterator->value.isPowerEfficient);
             }
         }

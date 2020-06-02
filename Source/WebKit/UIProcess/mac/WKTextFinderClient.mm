@@ -37,6 +37,7 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/Deque.h>
 #import <wtf/NakedPtr.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 // FIXME: Implement scrollFindMatchToVisible.
 // FIXME: The NSTextFinder overlay doesn't move with scrolling; we should have a mode where we manage the overlay.
@@ -270,34 +271,22 @@ private:
 
 #pragma mark - FindMatchesClient
 
-static RetainPtr<NSArray> arrayFromRects(const Vector<WebCore::IntRect>& matchRects)
-{
-    RetainPtr<NSMutableArray> nsMatchRects = adoptNS([[NSMutableArray alloc] initWithCapacity:matchRects.size()]);
-    for (auto& rect : matchRects)
-        [nsMatchRects addObject:[NSValue valueWithRect:rect]];
-    return nsMatchRects;
-}
-
 - (void)didFindStringMatchesWithRects:(const Vector<Vector<WebCore::IntRect>>&)rectsForMatches didWrapAround:(BOOL)didWrapAround
 {
     if (_findReplyCallbacks.isEmpty())
         return;
 
-    auto replyCallback = _findReplyCallbacks.takeFirst();
-    unsigned matchCount = rectsForMatches.size();
-    RetainPtr<NSMutableArray> matchObjects = adoptNS([[NSMutableArray alloc] initWithCapacity:matchCount]);
-    for (unsigned i = 0; i < matchCount; i++) {
-        RetainPtr<NSArray> nsMatchRects;
-
+    unsigned index = 0;
+    auto matchObjects = createNSArray(rectsForMatches, [&] (auto& rects) {
+        RetainPtr<NSArray> rectsArray;
         if (_usePlatformFindUI)
-            nsMatchRects = arrayFromRects(rectsForMatches[i]);
+            rectsArray = createNSArray(rects);
         else
-            nsMatchRects = @[];
-        RetainPtr<WKTextFinderMatch> match = adoptNS([[WKTextFinderMatch alloc] initWithClient:self view:_view index:i rects:nsMatchRects.get()]);
-        [matchObjects addObject:match.get()];
-    }
+            rectsArray = @[];
+        return adoptNS([[WKTextFinderMatch alloc] initWithClient:self view:_view index:index++ rects:rectsArray.get()]);
+    });
 
-    replyCallback(matchObjects.get(), didWrapAround);
+    _findReplyCallbacks.takeFirst()(matchObjects.get(), didWrapAround);
 }
 
 - (void)didGetImageForMatchResult:(WebKit::WebImage *)image

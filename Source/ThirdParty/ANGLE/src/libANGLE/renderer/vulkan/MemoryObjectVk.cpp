@@ -7,17 +7,22 @@
 
 #include "libANGLE/renderer/vulkan/MemoryObjectVk.h"
 
-#include "volk.h"
-
 #include "common/debug.h"
 #include "libANGLE/Context.h"
 #include "libANGLE/renderer/vulkan/ContextVk.h"
 #include "libANGLE/renderer/vulkan/RendererVk.h"
+#include "libANGLE/renderer/vulkan/vk_headers.h"
+#include "vulkan/vulkan_fuchsia_ext.h"
 
 #if !defined(ANGLE_PLATFORM_WINDOWS)
 #    include <unistd.h>
 #else
 #    include <io.h>
+#endif
+
+#if defined(ANGLE_PLATFORM_FUCHSIA)
+#    include <zircon/status.h>
+#    include <zircon/syscalls.h>
 #endif
 
 namespace rx
@@ -26,8 +31,6 @@ namespace rx
 namespace
 {
 
-constexpr int kInvalidFd = -1;
-
 #if defined(ANGLE_PLATFORM_WINDOWS)
 int close(int fd)
 {
@@ -35,9 +38,45 @@ int close(int fd)
 }
 #endif
 
+void CloseZirconVmo(zx_handle_t handle)
+{
+#if defined(ANGLE_PLATFORM_FUCHSIA)
+    zx_handle_close(handle);
+#else
+    UNREACHABLE();
+#endif
+}
+
+angle::Result DuplicateZirconVmo(ContextVk *contextVk, zx_handle_t handle, zx_handle_t *duplicate)
+{
+#if defined(ANGLE_PLATFORM_FUCHSIA)
+    zx_status_t status = zx_handle_duplicate(handle, ZX_RIGHT_SAME_RIGHTS, duplicate);
+    ANGLE_VK_CHECK(contextVk, status == ZX_OK, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+    return angle::Result::Continue;
+#else
+    UNREACHABLE();
+    return angle::Result::Stop;
+#endif
+}
+
+VkExternalMemoryHandleTypeFlagBits ToVulkanHandleType(gl::HandleType handleType)
+{
+    switch (handleType)
+    {
+        case gl::HandleType::OpaqueFd:
+            return VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+        case gl::HandleType::ZirconVmo:
+            return VK_EXTERNAL_MEMORY_HANDLE_TYPE_TEMP_ZIRCON_VMO_BIT_FUCHSIA;
+        default:
+            // Not a memory handle type.
+            UNREACHABLE();
+            return VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+    }
+}
+
 }  // namespace
 
-MemoryObjectVk::MemoryObjectVk() : mSize(0), mFd(kInvalidFd) {}
+MemoryObjectVk::MemoryObjectVk() {}
 
 MemoryObjectVk::~MemoryObjectVk() = default;
 
@@ -48,6 +87,18 @@ void MemoryObjectVk::onDestroy(const gl::Context *context)
         close(mFd);
         mFd = kInvalidFd;
     }
+
+    if (mZirconHandle != ZX_HANDLE_INVALID)
+    {
+        CloseZirconVmo(mZirconHandle);
+        mZirconHandle = ZX_HANDLE_INVALID;
+    }
+}
+
+angle::Result MemoryObjectVk::setDedicatedMemory(const gl::Context *context, bool dedicatedMemory)
+{
+    mDedicatedMemory = dedicatedMemory;
+    return angle::Result::Continue;
 }
 
 angle::Result MemoryObjectVk::importFd(gl::Context *context,
@@ -55,10 +106,12 @@ angle::Result MemoryObjectVk::importFd(gl::Context *context,
                                        gl::HandleType handleType,
                                        GLint fd)
 {
+    ContextVk *contextVk = vk::GetImpl(context);
+
     switch (handleType)
     {
         case gl::HandleType::OpaqueFd:
-            return importOpaqueFd(context, size, fd);
+            return importOpaqueFd(contextVk, size, fd);
 
         default:
             UNREACHABLE();
@@ -66,15 +119,47 @@ angle::Result MemoryObjectVk::importFd(gl::Context *context,
     }
 }
 
-angle::Result MemoryObjectVk::importOpaqueFd(gl::Context *context, GLuint64 size, GLint fd)
+angle::Result MemoryObjectVk::importZirconHandle(gl::Context *context,
+                                                 GLuint64 size,
+                                                 gl::HandleType handleType,
+                                                 GLuint handle)
 {
+    ContextVk *contextVk = vk::GetImpl(context);
+
+    switch (handleType)
+    {
+        case gl::HandleType::ZirconVmo:
+            return importZirconVmo(contextVk, size, handle);
+
+        default:
+            UNREACHABLE();
+            return angle::Result::Stop;
+    }
+}
+
+angle::Result MemoryObjectVk::importOpaqueFd(ContextVk *contextVk, GLuint64 size, GLint fd)
+{
+    ASSERT(mHandleType == gl::HandleType::InvalidEnum);
     ASSERT(mFd == kInvalidFd);
-    mFd   = fd;
-    mSize = size;
+    ASSERT(fd != kInvalidFd);
+    mHandleType = gl::HandleType::OpaqueFd;
+    mFd         = fd;
+    mSize       = size;
     return angle::Result::Continue;
 }
 
-angle::Result MemoryObjectVk::createImage(const gl::Context *context,
+angle::Result MemoryObjectVk::importZirconVmo(ContextVk *contextVk, GLuint64 size, GLuint handle)
+{
+    ASSERT(mHandleType == gl::HandleType::InvalidEnum);
+    ASSERT(mZirconHandle == ZX_HANDLE_INVALID);
+    ASSERT(handle != ZX_HANDLE_INVALID);
+    mHandleType   = gl::HandleType::ZirconVmo;
+    mZirconHandle = handle;
+    mSize         = size;
+    return angle::Result::Continue;
+}
+
+angle::Result MemoryObjectVk::createImage(ContextVk *contextVk,
                                           gl::TextureType type,
                                           size_t levels,
                                           GLenum internalFormat,
@@ -82,7 +167,6 @@ angle::Result MemoryObjectVk::createImage(const gl::Context *context,
                                           GLuint64 offset,
                                           vk::ImageHelper *image)
 {
-    ContextVk *contextVk = vk::GetImpl(context);
     RendererVk *renderer = contextVk->getRenderer();
 
     const vk::Format &vkFormat = renderer->getFormat(internalFormat);
@@ -94,25 +178,66 @@ angle::Result MemoryObjectVk::createImage(const gl::Context *context,
 
     VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = {};
     externalMemoryImageCreateInfo.sType       = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
-    externalMemoryImageCreateInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+    externalMemoryImageCreateInfo.handleTypes = ToVulkanHandleType(mHandleType);
 
     VkExtent3D vkExtents;
     uint32_t layerCount;
     gl_vk::GetExtentsAndLayerCount(type, size, &vkExtents, &layerCount);
 
+    // Initialize VkImage with initial layout of VK_IMAGE_LAYOUT_UNDEFINED.
+    //
+    // Binding a VkImage with an initial layout of VK_IMAGE_LAYOUT_UNDEFINED to
+    // external memory whose content has already been defined does not make the
+    // content undefined (see 11.7.1. External Resource Sharing).
+    //
+    // If the content is already defined, the ownership rules imply that the
+    // first operation on the texture must be a call to glWaitSemaphoreEXT that
+    // grants ownership of the image and informs us of the true layout.
+    //
+    // If the content is not already defined, the first operation may not be a
+    // glWaitSemaphore, but in this case undefined layout is appropriate.
     ANGLE_TRY(image->initExternal(
-        contextVk, type, vkExtents, vkFormat, 1, imageUsageFlags,
-        vk::ImageLayout::ExternalPreInitialized, &externalMemoryImageCreateInfo, 0,
+        contextVk, type, vkExtents, vkFormat, 1, imageUsageFlags, vk::kVkImageCreateFlagsNone,
+        vk::ImageLayout::Undefined, &externalMemoryImageCreateInfo, 0,
         static_cast<uint32_t>(levels) - 1, static_cast<uint32_t>(levels), layerCount));
 
     VkMemoryRequirements externalMemoryRequirements;
     image->getImage().getMemoryRequirements(renderer->getDevice(), &externalMemoryRequirements);
 
-    ASSERT(mFd != -1);
-    VkImportMemoryFdInfoKHR importMemoryFdInfo = {};
-    importMemoryFdInfo.sType                   = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
-    importMemoryFdInfo.handleType              = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-    importMemoryFdInfo.fd                      = dup(mFd);
+    void *importMemoryInfo                                    = nullptr;
+    VkMemoryDedicatedAllocateInfo memoryDedicatedAllocateInfo = {};
+    if (mDedicatedMemory)
+    {
+        memoryDedicatedAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
+        memoryDedicatedAllocateInfo.image = image->getImage().getHandle();
+        importMemoryInfo                  = &memoryDedicatedAllocateInfo;
+    }
+
+    VkImportMemoryFdInfoKHR importMemoryFdInfo                         = {};
+    VkImportMemoryZirconHandleInfoFUCHSIA importMemoryZirconHandleInfo = {};
+    switch (mHandleType)
+    {
+        case gl::HandleType::OpaqueFd:
+            ASSERT(mFd != kInvalidFd);
+            importMemoryFdInfo.sType      = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+            importMemoryFdInfo.pNext      = importMemoryInfo;
+            importMemoryFdInfo.handleType = ToVulkanHandleType(mHandleType);
+            importMemoryFdInfo.fd         = dup(mFd);
+            importMemoryInfo              = &importMemoryFdInfo;
+            break;
+        case gl::HandleType::ZirconVmo:
+            ASSERT(mZirconHandle != ZX_HANDLE_INVALID);
+            importMemoryZirconHandleInfo.sType =
+                VK_STRUCTURE_TYPE_TEMP_IMPORT_MEMORY_ZIRCON_HANDLE_INFO_FUCHSIA;
+            importMemoryZirconHandleInfo.pNext      = importMemoryInfo;
+            importMemoryZirconHandleInfo.handleType = ToVulkanHandleType(mHandleType);
+            ANGLE_TRY(
+                DuplicateZirconVmo(contextVk, mZirconHandle, &importMemoryZirconHandleInfo.handle));
+            importMemoryInfo = &importMemoryZirconHandleInfo;
+            break;
+        default:
+            UNREACHABLE();
+    }
 
     // TODO(jmadill, spang): Memory sub-allocation. http://anglebug.com/2162
     ASSERT(offset == 0);
@@ -120,8 +245,8 @@ angle::Result MemoryObjectVk::createImage(const gl::Context *context,
 
     VkMemoryPropertyFlags flags = 0;
     ANGLE_TRY(image->initExternalMemory(contextVk, renderer->getMemoryProperties(),
-                                        externalMemoryRequirements, &importMemoryFdInfo,
-                                        VK_QUEUE_FAMILY_EXTERNAL, flags));
+                                        externalMemoryRequirements, importMemoryInfo,
+                                        renderer->getQueueFamilyIndex(), flags));
 
     return angle::Result::Continue;
 }

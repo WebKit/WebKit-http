@@ -25,15 +25,12 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "JSObject.h"
 
 struct UCollator;
 
 namespace JSC {
 
-class IntlCollatorConstructor;
 class JSBoundFunction;
 
 class IntlCollator final : public JSNonFinalObject {
@@ -59,18 +56,20 @@ public:
     DECLARE_INFO;
 
     void initializeCollator(JSGlobalObject*, JSValue locales, JSValue optionsValue);
-    JSValue compareStrings(JSGlobalObject*, StringView, StringView);
-    JSObject* resolvedOptions(JSGlobalObject*);
+    JSValue compareStrings(JSGlobalObject*, StringView, StringView) const;
+    JSObject* resolvedOptions(JSGlobalObject*) const;
 
     JSBoundFunction* boundCompare() const { return m_boundCompare.get(); }
     void setBoundCompare(VM&, JSBoundFunction*);
 
-protected:
+private:
     IntlCollator(VM&, Structure*);
     void finishCreation(VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-private:
+    static Vector<String> sortLocaleData(const String&, size_t);
+    static Vector<String> searchLocaleData(const String&, size_t);
+
     enum class Usage : uint8_t { Sort, Search };
     enum class Sensitivity : uint8_t { Base, Accent, Case, Variant };
     enum class CaseFirst : uint8_t { Upper, Lower, False };
@@ -79,23 +78,20 @@ private:
         void operator()(UCollator*) const;
     };
 
-    void createCollator(JSGlobalObject*);
     static ASCIILiteral usageString(Usage);
     static ASCIILiteral sensitivityString(Sensitivity);
     static ASCIILiteral caseFirstString(CaseFirst);
 
-    String m_locale;
-    String m_collation;
     WriteBarrier<JSBoundFunction> m_boundCompare;
     std::unique_ptr<UCollator, UCollatorDeleter> m_collator;
+
+    String m_locale;
+    String m_collation;
     Usage m_usage;
     Sensitivity m_sensitivity;
     CaseFirst m_caseFirst;
     bool m_numeric;
     bool m_ignorePunctuation;
-    bool m_initializedCollator { false };
 };
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

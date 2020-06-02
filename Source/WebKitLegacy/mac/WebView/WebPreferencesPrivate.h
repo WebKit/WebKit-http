@@ -586,6 +586,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (void)setWebAnimationsMutableTimelinesEnabled:(BOOL)flag;
 - (BOOL)webAnimationsMutableTimelinesEnabled;
 
+- (void)setCSSCustomPropertiesAndValuesEnabled:(BOOL)flag;
+- (BOOL)CSSCustomPropertiesAndValuesEnabled;
+
 - (void)setSyntheticEditingCommandsEnabled:(BOOL)flag;
 - (BOOL)syntheticEditingCommandsEnabled;
 
@@ -612,6 +615,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 
 - (void)setCSSLogicalEnabled:(BOOL)flag;
 - (BOOL)cssLogicalEnabled;
+
+- (void)setLineHeightUnitsEnabled:(BOOL)flag;
+- (BOOL)lineHeightUnitsEnabled;
 
 - (BOOL)adClickAttributionEnabled;
 - (void)setAdClickAttributionEnabled:(BOOL)flag;

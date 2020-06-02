@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,24 +32,16 @@
 #include "B3BasicBlockInlines.h"
 #include "B3BlockInsertionSet.h"
 #include "B3ComputeDivisionMagic.h"
-#include "B3Dominators.h"
 #include "B3EliminateDeadCode.h"
 #include "B3InsertionSetInlines.h"
-#include "B3MemoryValueInlines.h"
 #include "B3PhaseScope.h"
 #include "B3PhiChildren.h"
 #include "B3ProcedureInlines.h"
 #include "B3PureCSE.h"
-#include "B3SlotBaseValue.h"
-#include "B3StackSlot.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueKeyInlines.h"
 #include "B3ValueInlines.h"
-#include "B3Variable.h"
-#include "B3VariableValue.h"
-#include <wtf/GraphNodeWorklist.h>
 #include <wtf/HashMap.h>
-#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -1818,7 +1810,8 @@ private:
         case CCall: {
             // Turn this: Call(fmod, constant1, constant2)
             // Into this: fcall-constant(constant1, constant2)
-            auto* fmodDouble = tagCFunctionPtr<double (*)(double, double)>(fmod, B3CCallPtrTag);
+            double(*fmodDouble)(double, double) = fmod;
+            fmodDouble = tagCFunction<B3CCallPtrTag>(fmodDouble);
             if (m_value->type() == Double
                 && m_value->numChildren() == 3
                 && m_value->child(0)->isIntPtr(reinterpret_cast<intptr_t>(fmodDouble))
@@ -1893,7 +1886,7 @@ private:
         case AboveEqual:
         case BelowEqual: {
             CanonicalizedComparison comparison = canonicalizeComparison(m_value);
-            TriState result = MixedTriState;
+            TriState result = TriState::Indeterminate;
             switch (comparison.opcode) {
             case LessThan:
                 result = comparison.operands[1]->greaterThanConstant(comparison.operands[0]);
@@ -2166,7 +2159,7 @@ private:
 
             // Turn this: Branch(0, then, else)
             // Into this: Jump(else)
-            if (triState == FalseTriState) {
+            if (triState == TriState::False) {
                 m_block->taken().block()->removePredecessor(m_block);
                 m_value->replaceWithJump(m_block, m_block->notTaken());
                 m_changedCFG = true;
@@ -2175,7 +2168,7 @@ private:
 
             // Turn this: Branch(not 0, then, else)
             // Into this: Jump(then)
-            if (triState == TrueTriState) {
+            if (triState == TriState::True) {
                 m_block->notTaken().block()->removePredecessor(m_block);
                 m_value->replaceWithJump(m_block, m_block->taken());
                 m_changedCFG = true;

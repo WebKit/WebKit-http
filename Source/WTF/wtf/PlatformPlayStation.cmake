@@ -1,7 +1,6 @@
 list(APPEND WTF_SOURCES
     generic/MainThreadGeneric.cpp
     generic/MemoryFootprintGeneric.cpp
-    generic/MemoryPressureHandlerGeneric.cpp
     generic/RunLoopGeneric.cpp
     generic/WorkQueueGeneric.cpp
 
@@ -15,12 +14,17 @@ list(APPEND WTF_SOURCES
     text/unix/TextBreakIteratorInternalICUUnix.cpp
 
     unix/CPUTimeUnix.cpp
+    unix/MemoryPressureHandlerUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES
-    ${C_STD_LIBRARY}
     ${KERNEL_LIBRARY}
     Threads::Threads
+)
+
+PLAYSTATION_COPY_SHARED_LIBRARIES(WTF_CopySharedLibs
+    FILES
+        ${ICU_LIBRARIES}
 )
 
 # bmalloc is compiled as an OBJECT library so it is statically linked

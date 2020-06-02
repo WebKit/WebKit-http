@@ -166,8 +166,6 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void didRestoreFromBackForwardCache() final { }
 
-    void dispatchDidBecomeFrameset(bool) final { }
-
     void updateGlobalHistory() final { }
     void updateGlobalHistoryRedirectLinks() final { }
     bool shouldGoToHistoryItem(HistoryItem&) const final { return false; }
@@ -176,7 +174,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void didDisplayInsecureContent() final { }
     void didRunInsecureContent(SecurityOrigin&, const URL&) final { }
     void didDetectXSS(const URL&, bool) final { }
-    RefPtr<Frame> createFrame(const URL&, const String&, HTMLFrameOwnerElement&, const String&) final;
+    RefPtr<Frame> createFrame(const String&, HTMLFrameOwnerElement&) final;
     RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool) final;
     RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL&, const Vector<String>&, const Vector<String>&) final;
 

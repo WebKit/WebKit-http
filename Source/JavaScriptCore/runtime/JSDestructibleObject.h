@@ -38,11 +38,9 @@ public:
     static constexpr bool needsDestruction = true;
     
     const ClassInfo* classInfo() const { return m_classInfo; }
-    
-    static ptrdiff_t classInfoOffset() { return OBJECT_OFFSETOF(JSDestructibleObject, m_classInfo); }
 
 protected:
-    JSDestructibleObject(VM& vm, Structure* structure, Butterfly* butterfly = 0)
+    JSDestructibleObject(VM& vm, Structure* structure, Butterfly* butterfly = nullptr)
         : JSNonFinalObject(vm, structure, butterfly)
         , m_classInfo(structure->classInfo())
     {

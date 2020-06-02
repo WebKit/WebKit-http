@@ -23,11 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
+#import "HTTPServer.h"
 #import "TestWKWebView.h"
+#import "Utilities.h"
 #import <WebKit/WKProcessPoolPrivate.h>
+#import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/Vector.h>
 
 TEST(WebKit, NetworkProcessEntitlements)
 {
@@ -42,3 +46,39 @@ TEST(WebKit, NetworkProcessEntitlements)
 #endif
     EXPECT_FALSE([pool _networkProcessHasEntitlementForTesting:@"test failure case"]);
 }
+
+#if HAVE(NETWORK_FRAMEWORK)
+
+TEST(WebKit, HTTPReferer)
+{
+    auto checkReferer = [] (NSURL *baseURL, const char* expectedReferer) {
+        using namespace TestWebKitAPI;
+        bool done = false;
+        HTTPServer server([&] (Connection connection) {
+            connection.receiveHTTPRequest([connection, expectedReferer, &done] (Vector<char>&& request) {
+                if (expectedReferer) {
+                    auto expectedHeaderField = makeString("Referer: ", expectedReferer, "\r\n");
+                    EXPECT_TRUE(strnstr(request.data(), expectedHeaderField.utf8().data(), request.size()));
+                } else
+                    EXPECT_FALSE(strnstr(request.data(), "Referer:", request.size()));
+                done = true;
+            });
+        });
+        auto webView = adoptNS([WKWebView new]);
+        [webView loadHTMLString:[NSString stringWithFormat:@"<body onload='document.getElementById(\"formID\").submit()'><form id='formID' method='post' action='http://127.0.0.1:%d/'></form></body>", server.port()] baseURL:baseURL];
+        Util::run(&done);
+    };
+    
+    Vector<char> a5k(5000, 'a');
+    Vector<char> a3k(3000, 'a');
+    NSString *longPath = [NSString stringWithFormat:@"http://webkit.org/%s?asdf", a5k.data()];
+    NSString *shorterPath = [NSString stringWithFormat:@"http://webkit.org/%s?asdf", a3k.data()];
+    NSString *longHost = [NSString stringWithFormat:@"http://webkit.org%s/path", a5k.data()];
+    NSString *shorterHost = [NSString stringWithFormat:@"http://webkit.org%s/path", a3k.data()];
+    checkReferer([NSURL URLWithString:longPath], "http://webkit.org");
+    checkReferer([NSURL URLWithString:shorterPath], shorterPath.UTF8String);
+    checkReferer([NSURL URLWithString:longHost], nullptr);
+    checkReferer([NSURL URLWithString:shorterHost], shorterHost.UTF8String);
+}
+
+#endif

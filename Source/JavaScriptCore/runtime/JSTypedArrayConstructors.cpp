@@ -26,8 +26,6 @@
 #include "config.h"
 #include "JSTypedArrayConstructors.h"
 
-#include "JSGenericTypedArrayViewConstructorInlines.h"
-#include "JSGenericTypedArrayViewInlines.h"
 #include "JSCInlines.h"
 
 namespace JSC {

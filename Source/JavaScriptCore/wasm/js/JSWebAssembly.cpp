@@ -28,14 +28,14 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "AuxiliaryBarrierInlines.h"
 #include "CatchScope.h"
 #include "Exception.h"
-#include "FunctionPrototype.h"
 #include "JSCBuiltins.h"
-#include "JSCInlines.h"
+#include "JSGlobalObjectInlines.h"
 #include "JSModuleNamespaceObject.h"
+#include "JSObjectInlines.h"
 #include "JSPromise.h"
-#include "JSToWasm.h"
 #include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyInstance.h"
 #include "JSWebAssemblyModule.h"
@@ -43,16 +43,8 @@
 #include "Options.h"
 #include "PromiseTimer.h"
 #include "StrongInlines.h"
+#include "StructureInlines.h"
 #include "ThrowScope.h"
-#include "WasmBBQPlan.h"
-#include "WasmOperations.h"
-#include "WasmToJS.h"
-#include "WasmWorklist.h"
-#include "WebAssemblyInstanceConstructor.h"
-#include "WebAssemblyModuleConstructor.h"
-
-using JSC::Wasm::Plan;
-using JSC::Wasm::BBQPlan;
 
 namespace JSC {
 
@@ -114,6 +106,7 @@ void JSWebAssembly::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
     if (Options::useWebAssemblyStreamingApi()) {
         JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("compileStreaming", webAssemblyCompileStreamingCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
         JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("instantiateStreaming", webAssemblyInstantiateStreamingCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));

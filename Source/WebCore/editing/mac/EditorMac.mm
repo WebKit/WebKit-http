@@ -50,7 +50,6 @@
 #import "RenderImage.h"
 #import "RuntimeApplicationChecks.h"
 #import "RuntimeEnabledFeatures.h"
-#import "SimpleRange.h"
 #import "StyleProperties.h"
 #import "WebContentReader.h"
 #import "WebNSAttributedStringExtras.h"
@@ -103,7 +102,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, OptionSet<PasteOption> 
 void Editor::readSelectionFromPasteboard(const String& pasteboardName)
 {
     Pasteboard pasteboard(pasteboardName);
-    if (m_frame.selection().selection().isContentRichlyEditable())
+    if (m_document.selection().selection().isContentRichlyEditable())
         pasteWithPasteboard(&pasteboard, { PasteOption::AllowPlainText });
     else
         pasteAsPlainTextWithPasteboard(pasteboard);
@@ -137,16 +136,17 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
 {
     ASSERT(node);
 
-    if (&node->document() != m_frame.document())
+    if (node->document() != m_document)
         return;
 
-    Ref<Frame> protector(m_frame);
-    auto range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
-    m_frame.selection().setSelection(VisibleSelection(range.get()), FrameSelection::DoNotSetFocus);
+    Ref<Document> protector(m_document);
+
+    auto range = makeRangeSelectingNodeContents(*node);
+    m_document.selection().setSelection(VisibleSelection(range), FrameSelection::DoNotSetFocus);
 
     Pasteboard pasteboard(pasteboardName);
 
-    if (!m_frame.selection().selection().isContentRichlyEditable()) {
+    if (!m_document.selection().selection().isContentRichlyEditable()) {
         pasteAsPlainTextWithPasteboard(pasteboard);
         return;
     }
@@ -157,9 +157,9 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
     ALLOW_DEPRECATED_DECLARATIONS_END
 
     bool chosePlainText;
-    if (RefPtr<DocumentFragment> fragment = webContentFromPasteboard(pasteboard, range.get(), true, chosePlainText)) {
+    if (auto fragment = webContentFromPasteboard(pasteboard, range, true, chosePlainText)) {
         maybeCopyNodeAttributesToFragment(*node, *fragment);
-        if (shouldInsertFragment(*fragment, range.ptr(), EditorInsertAction::Pasted))
+        if (shouldInsertFragment(*fragment, createLiveRange(range).ptr(), EditorInsertAction::Pasted))
             pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(pasteboard), false, MailBlockquoteHandling::IgnoreBlockquote);
     }
 
@@ -188,14 +188,14 @@ RefPtr<SharedBuffer> Editor::dataSelectionForPasteboard(const String& pasteboard
         return selectionInWebArchiveFormat();
 
     if (pasteboardType == String(legacyRTFDPasteboardType()))
-       return dataInRTFDFormat(attributedStringFromRange(*adjustedSelectionRange()));
+        return dataInRTFDFormat(attributedString(*adjustedSelectionRange()).string.get());
 
     if (pasteboardType == String(legacyRTFPasteboardType())) {
-        NSAttributedString* attributedString = attributedStringFromRange(*adjustedSelectionRange());
-        // FIXME: Why is this attachment character stripping needed here, but not needed in writeSelectionToPasteboard?
-        if ([attributedString containsAttachments])
-            attributedString = attributedStringByStrippingAttachmentCharacters(attributedString);
-        return dataInRTFFormat(attributedString);
+        auto string = attributedString(*adjustedSelectionRange()).string;
+        // FIXME: Why is this stripping needed here, but not in writeSelectionToPasteboard?
+        if ([string containsAttachments])
+            string = attributedStringByStrippingAttachmentCharacters(string.get());
+        return dataInRTFFormat(string.get());
     }
 
     return nullptr;
@@ -220,7 +220,7 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
 
 void Editor::selectionWillChange()
 {
-    if (!hasComposition() || ignoreSelectionChanges() || m_frame.selection().isNone())
+    if (!hasComposition() || ignoreSelectionChanges() || m_document.selection().isNone())
         return;
 
     cancelComposition();

@@ -208,3 +208,27 @@ if (o1["p1"])
 
 if (String.raw`test`)
     a();
+
+a(), b(), c();
+
+a(),
+b(),
+c();
+
+true && (a(), b(), c()) && true;
+
+true && (
+    a(),
+    b(),
+    c()
+) && true;
+
+try {
+    throw a(), b(), c();
+} catch { }
+
+try {
+    throw a(),
+        b(),
+        c();
+} catch { }

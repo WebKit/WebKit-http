@@ -43,6 +43,7 @@ class CallLinkInfo;
 
 namespace Wasm {
 
+class CodeBlock;
 struct Context;
 
 class Plan : public ThreadSafeRefCounted<Plan> {
@@ -82,6 +83,8 @@ protected:
 
     virtual bool isComplete() const = 0;
     virtual void complete(const AbstractLocker&) = 0;
+
+    static void updateCallSitesToCallUs(CodeBlock&, CodeLocationLabel<WasmEntryPtrTag> entrypoint, uint32_t functionIndex, uint32_t functionIndexSpace);
 
     Ref<ModuleInformation> m_moduleInformation;
 

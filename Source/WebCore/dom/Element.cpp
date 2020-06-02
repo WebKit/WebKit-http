@@ -396,7 +396,7 @@ bool Element::dispatchWheelEvent(const PlatformWheelEvent& platformEvent)
     // Events with no deltas are important because they convey platform information about scroll gestures
     // and momentum beginning or ending. However, those events should not be sent to the DOM since some
     // websites will break. They need to be dispatched because dispatching them will call into the default
-    // event handler, and our platform code will correctly handle the phase changes. Calling stopPropogation()
+    // event handler, and our platform code will correctly handle the phase changes. Calling stopPropagation()
     // will prevent the event from being sent to the DOM, but will still call the default event handler.
     // FIXME: Move this logic into WheelEvent::create.
     if (!platformEvent.deltaX() && !platformEvent.deltaY())
@@ -419,9 +419,9 @@ bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
     return !event->defaultPrevented() && !event->defaultHandled();
 }
 
-void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
+bool Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
 {
-    simulateClick(*this, underlyingEvent, eventOptions, visualOptions, SimulatedClickSource::UserAgent);
+    return simulateClick(*this, underlyingEvent, eventOptions, visualOptions, SimulatedClickSource::UserAgent);
 }
 
 Ref<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
@@ -950,7 +950,7 @@ void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
         clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()),
         clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom())
     );
-    bool animated = useSmoothScrolling(scrollToOptions.behavior.valueOr(ScrollBehavior::Auto), this);
+    AnimatedScroll animated = useSmoothScrolling(scrollToOptions.behavior.valueOr(ScrollBehavior::Auto), this) ? AnimatedScroll::Yes : AnimatedScroll::No;
     renderer->setScrollPosition(scrollPosition, ScrollType::Programmatic, clamping, animated);
 }
 
@@ -1293,7 +1293,7 @@ void Element::setScrollLeft(int newLeft)
         if (auto* frame = documentFrameWithNonNullView()) {
             // FIXME: Should we use document()->scrollingElement()?
             // See https://bugs.webkit.org/show_bug.cgi?id=205059
-            bool animated = useSmoothScrolling(ScrollBehavior::Auto, document().documentElement());
+            AnimatedScroll animated = useSmoothScrolling(ScrollBehavior::Auto, document().documentElement()) ? AnimatedScroll::Yes : AnimatedScroll::No;
             IntPoint position(static_cast<int>(newLeft * frame->pageZoomFactor() * frame->frameScaleFactor()), frame->view()->scrollY());
             frame->view()->setScrollPosition(position, ScrollClamping::Clamped, animated);
         }
@@ -1302,7 +1302,7 @@ void Element::setScrollLeft(int newLeft)
 
     if (auto* renderer = renderBox()) {
         int clampedLeft = clampToInteger(newLeft * renderer->style().effectiveZoom());
-        bool animated = useSmoothScrolling(ScrollBehavior::Auto, this);
+        AnimatedScroll animated = useSmoothScrolling(ScrollBehavior::Auto, this) ? AnimatedScroll::Yes : AnimatedScroll::No;
         renderer->setScrollLeft(clampedLeft, ScrollType::Programmatic, ScrollClamping::Clamped, animated);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrollShouldClearLatchedState(true);
@@ -1317,7 +1317,7 @@ void Element::setScrollTop(int newTop)
         if (auto* frame = documentFrameWithNonNullView()) {
             // FIXME: Should we use document()->scrollingElement()?
             // See https://bugs.webkit.org/show_bug.cgi?id=205059
-            bool animated = useSmoothScrolling(ScrollBehavior::Auto, document().documentElement());
+            AnimatedScroll animated = useSmoothScrolling(ScrollBehavior::Auto, document().documentElement()) ? AnimatedScroll::Yes : AnimatedScroll::No;
             IntPoint position(frame->view()->scrollX(), static_cast<int>(newTop * frame->pageZoomFactor() * frame->frameScaleFactor()));
             frame->view()->setScrollPosition(position, ScrollClamping::Clamped, animated);
         }
@@ -1326,7 +1326,7 @@ void Element::setScrollTop(int newTop)
 
     if (auto* renderer = renderBox()) {
         int clampedTop = clampToInteger(newTop * renderer->style().effectiveZoom());
-        bool animated = useSmoothScrolling(ScrollBehavior::Auto, this);
+        AnimatedScroll animated = useSmoothScrolling(ScrollBehavior::Auto, this) ? AnimatedScroll::Yes : AnimatedScroll::No;
         renderer->setScrollTop(clampedTop, ScrollType::Programmatic, ScrollClamping::Clamped, animated);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrollShouldClearLatchedState(true);
@@ -1389,15 +1389,7 @@ IntRect Element::boundsInRootViewSpace()
             renderBoxModelObject()->absoluteQuads(quads);
     }
 
-    if (quads.isEmpty())
-        return IntRect();
-
-    IntRect result = quads[0].enclosingBoundingBox();
-    for (size_t i = 1; i < quads.size(); ++i)
-        result.unite(quads[i].enclosingBoundingBox());
-
-    result = view->contentsToRootView(result);
-    return result;
+    return view->contentsToRootView(enclosingIntRect(unitedBoundingBoxes(quads)));
 }
 
 static bool layoutOverflowRectContainsAllDescendants(const RenderBox& renderBox)
@@ -1464,11 +1456,7 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
                 Vector<FloatQuad> quads;
                 FloatRect localRect(0, 0, box.width(), box.height());
                 if (fragmentedFlow->absoluteQuadsForBox(quads, &wasFixed, &box, localRect.y(), localRect.maxY())) {
-                    FloatRect quadBounds = quads[0].boundingBox();
-                    for (size_t i = 1; i < quads.size(); ++i)
-                        quadBounds.unite(quads[i].boundingBox());
-                    
-                    result = LayoutRect(quadBounds);
+                    result = LayoutRect(unitedBoundingBoxes(quads));
                     computedBounds = true;
                 } else {
                     // Probably columns. Just return the bounds of the multicol block for now.
@@ -1603,11 +1591,7 @@ Optional<std::pair<RenderObject*, FloatRect>> Element::boundingAbsoluteRectWitho
     if (quads.isEmpty())
         return WTF::nullopt;
 
-    FloatRect result = quads[0].boundingBox();
-    for (size_t i = 1; i < quads.size(); ++i)
-        result.unite(quads[i].boundingBox());
-
-    return std::make_pair(renderer, result);
+    return std::make_pair(renderer, unitedBoundingBoxes(quads));
 }
 
 FloatRect Element::boundingClientRect()
@@ -1982,6 +1966,12 @@ void Element::invalidateStyleForSubtreeInternal()
     Node::invalidateStyle(Style::Validity::SubtreeInvalid);
 }
 
+void Element::invalidateEventListenerRegions()
+{
+    // Event listener region is updated via style update.
+    invalidateStyleInternal();
+}
+
 bool Element::hasDisplayContents() const
 {
     if (!hasRareData())
@@ -2259,7 +2249,7 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
         timeline->elementWasRemoved(*this);
 
     if (frame)
-        frame->animation().cancelAnimations(*this);
+        frame->legacyAnimation().cancelAnimations(*this);
 
 #if PLATFORM(MAC)
     if (frame && frame->page())
@@ -2639,6 +2629,38 @@ void Element::finishParsingChildren()
     ContainerNode::finishParsingChildren();
     setIsParsingChildrenFinished();
     checkForSiblingStyleChanges(*this, FinishedParsingChildren, ElementTraversal::lastChild(*this), nullptr);
+}
+
+String Element::debugDescription() const
+{
+    StringBuilder builder;
+
+    builder.append(ContainerNode::debugDescription());
+
+    if (hasID())
+        builder.append(" id=\'", getIdAttribute(), '\'');
+
+    if (hasClass()) {
+        builder.appendLiteral(" class=\'");
+        size_t classNamesToDump = classNames().size();
+        constexpr size_t maxNumClassNames = 7;
+        bool addEllipsis = false;
+        if (classNamesToDump > maxNumClassNames) {
+            classNamesToDump = maxNumClassNames;
+            addEllipsis = true;
+        }
+        
+        for (size_t i = 0; i < classNamesToDump; ++i) {
+            if (i > 0)
+                builder.append(' ');
+            builder.append(classNames()[i]);
+        }
+        if (addEllipsis)
+            builder.append(" ...");
+        builder.append('\'');
+    }
+
+    return builder.toString();
 }
 
 #if ENABLE(TREE_DEBUGGING)
@@ -3465,6 +3487,20 @@ void Element::normalizeAttributes()
         attrNode->normalize();
 }
 
+PseudoElement& Element::ensurePseudoElement(PseudoId pseudoId)
+{
+    if (pseudoId == PseudoId::Before) {
+        if (!beforePseudoElement())
+            ensureElementRareData().setBeforePseudoElement(PseudoElement::create(*this, pseudoId));
+        return *beforePseudoElement();
+    }
+
+    ASSERT(pseudoId == PseudoId::After);
+    if (!afterPseudoElement())
+        ensureElementRareData().setAfterPseudoElement(PseudoElement::create(*this, pseudoId));
+    return *afterPseudoElement();
+}
+
 PseudoElement* Element::beforePseudoElement() const
 {
     return hasRareData() ? elementRareData()->beforePseudoElement() : nullptr;
@@ -3473,16 +3509,6 @@ PseudoElement* Element::beforePseudoElement() const
 PseudoElement* Element::afterPseudoElement() const
 {
     return hasRareData() ? elementRareData()->afterPseudoElement() : nullptr;
-}
-
-void Element::setBeforePseudoElement(Ref<PseudoElement>&& element)
-{
-    ensureElementRareData().setBeforePseudoElement(WTFMove(element));
-}
-
-void Element::setAfterPseudoElement(Ref<PseudoElement>&& element)
-{
-    ensureElementRareData().setAfterPseudoElement(WTFMove(element));
 }
 
 static void disconnectPseudoElement(PseudoElement* pseudoElement)
@@ -3872,6 +3898,18 @@ PropertyToTransitionMap& Element::ensureCompletedTransitionsByProperty()
 PropertyToTransitionMap& Element::ensureRunningTransitionsByProperty()
 {
     return ensureAnimationRareData().runningTransitionsByProperty();
+}
+
+const RenderStyle* Element::lastStyleChangeEventStyle() const
+{
+    if (auto* animationData = animationRareData())
+        return animationData->lastStyleChangeEventStyle();
+    return nullptr;
+}
+
+void Element::setLastStyleChangeEventStyle(std::unique_ptr<const RenderStyle>&& style)
+{
+    ensureAnimationRareData().setLastStyleChangeEventStyle(WTFMove(style));
 }
 
 #if ENABLE(RESIZE_OBSERVER)
@@ -4471,7 +4509,7 @@ Element* Element::findAnchorElementForLink(String& outAnchorName)
         return nullptr;
 
     if (url.hasFragmentIdentifier() && equalIgnoringFragmentIdentifier(url, document.baseURL())) {
-        outAnchorName = url.fragmentIdentifier();
+        outAnchorName = url.fragmentIdentifier().toString();
         return document.findAnchor(outAnchorName);
     }
 
@@ -4515,19 +4553,11 @@ Vector<RefPtr<WebAnimation>> Element::getAnimations(Optional<GetAnimationsOption
     // animations targeting that are not registered on this element, one of its pseudo elements or a child's
     // pseudo element.
     if (options && options->subtree) {
-        Vector<RefPtr<WebAnimation>> animations;
-        for (auto& animation : document().getAnimations()) {
-            auto* effect = animation->effect();
-            ASSERT(is<KeyframeEffect>(animation->effect()));
-            auto* target = downcast<KeyframeEffect>(*effect).target();
-            ASSERT(target);
-            if (is<PseudoElement>(target)) {
-                if (contains(downcast<PseudoElement>(*target).hostElement()))
-                    animations.append(animation);
-            } else if (contains(target))
-                animations.append(animation);
-        }
-        return animations;
+        return document().matchingAnimations([&] (Element& target) -> bool {
+            if (is<PseudoElement>(target))
+                return contains(downcast<PseudoElement>(target).hostElement());
+            return contains(&target);
+        });
     }
 
     // For the list of animations to be current, we need to account for any pending CSS changes,

@@ -184,7 +184,7 @@ FrameInfoData WebFrame::info() const
     FrameInfoData info {
         isMainFrame(),
         // FIXME: This should use the full request.
-        ResourceRequest(URL(URL(), url())),
+        ResourceRequest(url()),
         SecurityOriginData::fromFrame(m_coreFrame),
         m_frameID,
         parent ? Optional<WebCore::FrameIdentifier> { parent->frameID() } : WTF::nullopt,
@@ -272,6 +272,11 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyDecision&& po
             documentLoader->setNavigationID(policyDecision.navigationID);
     }
 
+    if (policyDecision.policyAction == PolicyAction::Use && policyDecision.sandboxExtensionHandle) {
+        if (auto* page = this->page())
+            page->sandboxExtensionTracker().beginLoad(&page->mainWebFrame(), WTFMove(*(policyDecision.sandboxExtensionHandle)));
+    }
+
     function(policyDecision.policyAction, policyDecision.identifier);
 }
 
@@ -282,7 +287,7 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
     auto policyDownloadID = m_policyDownloadID;
     m_policyDownloadID = { };
 
-    auto isAppBound = NavigatingToAppBoundDomain::No;
+    Optional<NavigatingToAppBoundDomain> isAppBound = NavigatingToAppBoundDomain::No;
     if (page())
         isAppBound = page()->isNavigatingToAppBoundDomain();
     
@@ -308,7 +313,7 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     else
         mainResourceLoadIdentifier = 0;
 
-    auto isAppBound = NavigatingToAppBoundDomain::No;
+    Optional<NavigatingToAppBoundDomain> isAppBound = NavigatingToAppBoundDomain::No;
     if (page())
         isAppBound = page()->isNavigatingToAppBoundDomain();
         
@@ -655,7 +660,11 @@ bool WebFrame::getDocumentBackgroundColor(double* red, double* green, double* bl
     if (!bgColor.isValid())
         return false;
 
-    bgColor.getRGBA(*red, *green, *blue, *alpha);
+    auto [r, g, b, a] = bgColor.toSRGBAComponentsLossy();
+    *red = r;
+    *green = g;
+    *blue = b;
+    *alpha = a;
     return true;
 }
 

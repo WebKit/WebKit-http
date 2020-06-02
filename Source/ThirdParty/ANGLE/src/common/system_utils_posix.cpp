@@ -9,6 +9,7 @@
 #include "system_utils.h"
 
 #include <array>
+#include <iostream>
 
 #include <dlfcn.h>
 #include <sys/stat.h>
@@ -55,25 +56,28 @@ const char *GetPathSeparatorForEnvironmentVar()
     return ":";
 }
 
+std::string GetHelperExecutableDir()
+{
+    std::string directory;
+    static int dummySymbol = 0;
+    Dl_info dlInfo;
+    if (dladdr(&dummySymbol, &dlInfo) != 0)
+    {
+        std::string moduleName = dlInfo.dli_fname;
+        directory              = moduleName.substr(0, moduleName.find_last_of('/') + 1);
+    }
+    return directory;
+}
+
 class PosixLibrary : public Library
 {
   public:
-    PosixLibrary(const char *libraryName, SearchType searchType)
+    PosixLibrary(const std::string &fullPath) : mModule(dlopen(fullPath.c_str(), RTLD_NOW))
     {
-        std::string directory;
-        if (searchType == SearchType::ApplicationDir)
+        if (!mModule)
         {
-            static int dummySymbol = 0;
-            Dl_info dlInfo;
-            if (dladdr(&dummySymbol, &dlInfo) != 0)
-            {
-                std::string moduleName = dlInfo.dli_fname;
-                directory              = moduleName.substr(0, moduleName.find_last_of('/') + 1);
-            }
+            std::cerr << "Failed to load " << fullPath << ": " << dlerror() << std::endl;
         }
-
-        std::string fullPath = directory + libraryName + "." + GetSharedLibraryExtension();
-        mModule              = dlopen(fullPath.c_str(), RTLD_NOW);
     }
 
     ~PosixLibrary() override
@@ -102,7 +106,19 @@ class PosixLibrary : public Library
 
 Library *OpenSharedLibrary(const char *libraryName, SearchType searchType)
 {
-    return new PosixLibrary(libraryName, searchType);
+    std::string directory;
+    if (searchType == SearchType::ApplicationDir)
+    {
+        directory = GetHelperExecutableDir();
+    }
+
+    std::string fullPath = directory + libraryName + "." + GetSharedLibraryExtension();
+    return new PosixLibrary(fullPath);
+}
+
+Library *OpenSharedLibraryWithExtension(const char *libraryName)
+{
+    return new PosixLibrary(libraryName);
 }
 
 bool IsDirectory(const char *filename)

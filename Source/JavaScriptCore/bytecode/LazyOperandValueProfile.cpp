@@ -26,7 +26,7 @@
 #include "config.h"
 #include "LazyOperandValueProfile.h"
 
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 
 namespace JSC {
 
@@ -81,7 +81,7 @@ LazyOperandValueProfile* LazyOperandValueProfileParser::getIfPresent(
         m_map.find(key);
     
     if (iter == m_map.end())
-        return 0;
+        return nullptr;
     
     return iter->value;
 }

@@ -26,12 +26,7 @@
 #include "config.h"
 #include "JSInjectedScriptHostPrototype.h"
 
-#include "Error.h"
-#include "GetterSetter.h"
-#include "Identifier.h"
-#include "InjectedScriptHost.h"
 #include "JSCInlines.h"
-#include "JSFunction.h"
 #include "JSInjectedScriptHost.h"
 
 namespace Inspector {

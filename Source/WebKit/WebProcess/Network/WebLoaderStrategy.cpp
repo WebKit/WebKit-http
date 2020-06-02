@@ -268,12 +268,14 @@ static void addParametersShared(const Frame* frame, NetworkResourceLoadParameter
 
     parameters.isHTTPSUpgradeEnabled = frame->settings().HTTPSUpgradeEnabled();
 
-    if (auto* page = frame->page())
+    if (auto* page = frame->page()) {
         parameters.pageHasResourceLoadClient = page->hasResourceLoadClient();
+        parameters.shouldRelaxThirdPartyCookieBlocking = page->shouldRelaxThirdPartyCookieBlocking();
+    }
 
     if (auto* ownerElement = frame->ownerElement()) {
         if (auto* parentFrame = ownerElement->document().frame())
-            parameters.parentFrameID = parentFrame->loader().client().frameID();
+            parameters.parentFrameID = parentFrame->loader().frameID();
     }
 }
 
@@ -397,12 +399,6 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     }
 
     auto loader = WebResourceLoader::create(resourceLoader, trackingParameters);
-    if (resourceLoader.originalRequest().hasUpload()) {
-        if (m_loadersWithUploads.isEmpty())
-            WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessPool::SetWebProcessHasUploads(Process::identifier()), 0);
-        m_loadersWithUploads.add(loader.ptr());
-    }
-
     m_webResourceLoaders.set(identifier, WTFMove(loader));
 }
 
@@ -463,9 +459,6 @@ void WebLoaderStrategy::remove(ResourceLoader* resourceLoader)
         return;
 
     WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveLoadIdentifier(identifier), 0);
-
-    if (m_loadersWithUploads.remove(loader.get()) && m_loadersWithUploads.isEmpty())
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessPool::ClearWebProcessHasUploads { Process::identifier() }, 0);
 
     // It's possible that this WebResourceLoader might be just about to message back to the NetworkProcess (e.g. ContinueWillSendRequest)
     // but there's no point in doing so anymore.
@@ -614,10 +607,6 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
     HangDetectionDisabler hangDetectionDisabler;
     IPC::UnboundedSynchronousIPCScope unboundedSynchronousIPCScope;
 
-    bool shouldNotifyOfUpload = request.hasUpload() && m_loadersWithUploads.isEmpty();
-    if (shouldNotifyOfUpload)
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessPool::SetWebProcessHasUploads { Process::identifier() }, 0);
-
     if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, data), 0)) {
         WEBLOADERSTRATEGY_WITH_FRAMELOADER_RELEASE_LOG_ERROR_IF_ALLOWED("loadResourceSynchronously: failed sending synchronous network process message");
         if (page)
@@ -625,9 +614,6 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
         response = ResourceResponse();
         error = internalError(request.url());
     }
-
-    if (shouldNotifyOfUpload)
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessPool::ClearWebProcessHasUploads { Process::identifier() }, 0);
 }
 
 void WebLoaderStrategy::pageLoadCompleted(Page& page)
@@ -655,8 +641,16 @@ bool WebLoaderStrategy::usePingLoad() const
 
 void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, const HTTPHeaderMap& originalRequestHeaders, const FetchOptions& options, ContentSecurityPolicyImposition policyCheck, PingLoadCompletionHandler&& completionHandler)
 {
+    auto* webFrame = WebFrame::fromCoreFrame(frame);
     auto* document = frame.document();
-    if (!document) {
+    if (!document || !webFrame) {
+        if (completionHandler)
+            completionHandler(internalError(request.url()), { });
+        return;
+    }
+
+    auto* webPage = webFrame->page();
+    if (!webPage) {
         if (completionHandler)
             completionHandler(internalError(request.url()), { });
         return;
@@ -664,6 +658,9 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
 
     NetworkResourceLoadParameters loadParameters;
     loadParameters.identifier = generateLoadIdentifier();
+    loadParameters.webPageProxyID = webPage->webPageProxyIdentifier();
+    loadParameters.webPageID = webPage->identifier();
+    loadParameters.webFrameID = webFrame->frameID();
     loadParameters.request = request;
     loadParameters.sourceOrigin = &document->securityOrigin();
     loadParameters.topOrigin = &document->topOrigin();
@@ -682,17 +679,12 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
     }
     addParametersShared(&frame, loadParameters);
     
-    auto* webFrameLoaderClient = toWebFrameLoaderClient(frame.loader().client());
-    auto* webFrame = webFrameLoaderClient ? &webFrameLoaderClient->webFrame() : nullptr;
-    auto* webPage = webFrame ? webFrame->page() : nullptr;
-    if (webPage)
-        loadParameters.isNavigatingToAppBoundDomain = webPage->isNavigatingToAppBoundDomain();
+    loadParameters.isNavigatingToAppBoundDomain = webPage->isNavigatingToAppBoundDomain();
     
 #if ENABLE(CONTENT_EXTENSIONS)
     loadParameters.mainDocumentURL = document->topDocument().url();
     // FIXME: Instead of passing userContentControllerIdentifier, we should just pass webPageId to NetworkProcess.
-    if (webPage)
-        loadParameters.userContentControllerIdentifier = webPage->userContentControllerIdentifier();
+    loadParameters.userContentControllerIdentifier = webPage->userContentControllerIdentifier();
 #endif
 
     if (completionHandler)

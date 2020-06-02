@@ -71,7 +71,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << urlSchemesRegisteredAsCORSEnabled;
     encoder << urlSchemesRegisteredAsAlwaysRevalidated;
     encoder << urlSchemesRegisteredAsCachePartitioned;
-    encoder << urlSchemesServiceWorkersCanHandle;
     encoder << urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
     encoder.encodeEnum(cacheModel);
     encoder << shouldAlwaysUseComplexTextCodePath;
@@ -159,11 +158,14 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(IOS)
     encoder << compilerServiceExtensionHandle;
     encoder << contentFilterExtensionHandle;
+    encoder << frontboardServiceExtensionHandle;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     encoder << diagnosticsExtensionHandle;
+    encoder << runningboardExtensionHandle;
     encoder << dynamicMachExtensionHandles;
+    encoder << dynamicIOKitExtensionHandles;
 #endif
 
 #if PLATFORM(COCOA)
@@ -171,7 +173,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << neSessionManagerExtensionHandle;
     encoder << mapDBExtensionHandle;
     encoder << systemHasBattery;
-    encoder << mimeTypesMap;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -180,17 +181,18 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << cssValueToSystemColorMap;
     encoder << focusRingColor;
     encoder << localizedDeviceModel;
-#if USE(UTTYPE_SWIZZLER)
-    encoder << vectorOfUTTypeItem;
-#endif
 #endif
 
 #if PLATFORM(COCOA)
     // FIXME(207716): The following should be removed when the GPU process is complete.
     encoder << mediaExtensionHandles;
 #if ENABLE(CFPREFS_DIRECT_MODE)
-    encoder << preferencesExtensionHandle;
+    encoder << preferencesExtensionHandles;
 #endif
+#endif
+
+#if PLATFORM(GTK)
+    encoder << useSystemAppearanceForScrollbars;
 #endif
 }
 
@@ -266,8 +268,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!decoder.decode(parameters.urlSchemesRegisteredAsAlwaysRevalidated))
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsCachePartitioned))
-        return false;
-    if (!decoder.decode(parameters.urlSchemesServiceWorkersCanHandle))
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest))
         return false;
@@ -428,6 +428,12 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!contentFilterExtensionHandle)
         return false;
     parameters.contentFilterExtensionHandle = WTFMove(*contentFilterExtensionHandle);
+
+    Optional<Optional<SandboxExtension::Handle>> frontboardServiceExtensionHandle;
+    decoder >> frontboardServiceExtensionHandle;
+    if (!frontboardServiceExtensionHandle)
+        return false;
+    parameters.frontboardServiceExtensionHandle = WTFMove(*frontboardServiceExtensionHandle);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -437,11 +443,23 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     parameters.diagnosticsExtensionHandle = WTFMove(*diagnosticsExtensionHandle);
 
+    Optional<Optional<SandboxExtension::Handle>> runningboardExtensionHandle;
+    decoder >> runningboardExtensionHandle;
+    if (!runningboardExtensionHandle)
+        return false;
+    parameters.runningboardExtensionHandle = WTFMove(*runningboardExtensionHandle);
+
     Optional<SandboxExtension::HandleArray> dynamicMachExtensionHandles;
     decoder >> dynamicMachExtensionHandles;
     if (!dynamicMachExtensionHandles)
         return false;
     parameters.dynamicMachExtensionHandles = WTFMove(*dynamicMachExtensionHandles);
+
+    Optional<SandboxExtension::HandleArray> dynamicIOKitExtensionHandles;
+    decoder >> dynamicIOKitExtensionHandles;
+    if (!dynamicIOKitExtensionHandles)
+        return false;
+    parameters.dynamicIOKitExtensionHandles = WTFMove(*dynamicIOKitExtensionHandles);
 #endif
 
 #if PLATFORM(COCOA)
@@ -468,12 +486,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!systemHasBattery)
         return false;
     parameters.systemHasBattery = WTFMove(*systemHasBattery);
-
-    Optional<Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>>> mimeTypesMap;
-    decoder >> mimeTypesMap;
-    if (!mimeTypesMap)
-        return false;
-    parameters.mimeTypesMap = WTFMove(*mimeTypesMap);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -497,14 +509,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     
     if (!decoder.decode(parameters.localizedDeviceModel))
         return false;
-    
-#if USE(UTTYPE_SWIZZLER)
-    Optional<Vector<WebCore::UTTypeItem>> vectorOfUTTypeItem;
-    decoder >> vectorOfUTTypeItem;
-    if (!vectorOfUTTypeItem)
-        return false;
-    parameters.vectorOfUTTypeItem = WTFMove(*vectorOfUTTypeItem);
-#endif
 #endif
 
 #if PLATFORM(COCOA)
@@ -517,12 +521,20 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     // FIXME(207716): End region to remove.
 
 #if ENABLE(CFPREFS_DIRECT_MODE)
-    Optional<Optional<SandboxExtension::Handle>> preferencesExtensionHandle;
-    decoder >> preferencesExtensionHandle;
-    if (!preferencesExtensionHandle)
+    Optional<Optional<SandboxExtension::HandleArray>> preferencesExtensionHandles;
+    decoder >> preferencesExtensionHandles;
+    if (!preferencesExtensionHandles)
         return false;
-    parameters.preferencesExtensionHandle = WTFMove(*preferencesExtensionHandle);
+    parameters.preferencesExtensionHandles = WTFMove(*preferencesExtensionHandles);
 #endif
+#endif
+
+#if PLATFORM(GTK)
+    Optional<bool> useSystemAppearanceForScrollbars;
+    decoder >> useSystemAppearanceForScrollbars;
+    if (!useSystemAppearanceForScrollbars)
+        return false;
+    parameters.useSystemAppearanceForScrollbars = WTFMove(*useSystemAppearanceForScrollbars);
 #endif
 
     return true;

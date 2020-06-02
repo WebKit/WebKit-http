@@ -22,11 +22,9 @@
 #include "config.h"
 #include <wtf/text/WTFString.h>
 
-#include <stdarg.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/DataLog.h>
 #include <wtf/HexNumber.h>
-#include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 #include <wtf/dtoa.h>
@@ -924,102 +922,102 @@ static unsigned lengthOfCharactersAsInteger(const CharacterType* data, size_t le
 
 int charactersToIntStrict(const LChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<int, LChar>(data, length, ok, base);
+    return toIntegralType<int>(data, length, ok, base);
 }
 
 int charactersToIntStrict(const UChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<int, UChar>(data, length, ok, base);
+    return toIntegralType<int>(data, length, ok, base);
 }
 
 unsigned charactersToUIntStrict(const LChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<unsigned, LChar>(data, length, ok, base);
+    return toIntegralType<unsigned>(data, length, ok, base);
 }
 
 unsigned charactersToUIntStrict(const UChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<unsigned, UChar>(data, length, ok, base);
+    return toIntegralType<unsigned>(data, length, ok, base);
 }
 
 int64_t charactersToInt64Strict(const LChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<int64_t, LChar>(data, length, ok, base);
+    return toIntegralType<int64_t>(data, length, ok, base);
 }
 
 int64_t charactersToInt64Strict(const UChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<int64_t, UChar>(data, length, ok, base);
+    return toIntegralType<int64_t>(data, length, ok, base);
 }
 
 uint64_t charactersToUInt64Strict(const LChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<uint64_t, LChar>(data, length, ok, base);
+    return toIntegralType<uint64_t>(data, length, ok, base);
 }
 
 uint64_t charactersToUInt64Strict(const UChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<uint64_t, UChar>(data, length, ok, base);
+    return toIntegralType<uint64_t>(data, length, ok, base);
 }
 
 intptr_t charactersToIntPtrStrict(const LChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<intptr_t, LChar>(data, length, ok, base);
+    return toIntegralType<intptr_t>(data, length, ok, base);
 }
 
 intptr_t charactersToIntPtrStrict(const UChar* data, size_t length, bool* ok, int base)
 {
-    return toIntegralType<intptr_t, UChar>(data, length, ok, base);
+    return toIntegralType<intptr_t>(data, length, ok, base);
 }
 
 int charactersToInt(const LChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<int, LChar>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
+    return toIntegralType<int>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
 }
 
 int charactersToInt(const UChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<int, UChar>(data, lengthOfCharactersAsInteger(data, length), ok, 10);
+    return toIntegralType<int>(data, lengthOfCharactersAsInteger(data, length), ok, 10);
 }
 
 unsigned charactersToUInt(const LChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<unsigned, LChar>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
+    return toIntegralType<unsigned>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
 }
 
 unsigned charactersToUInt(const UChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<unsigned, UChar>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
+    return toIntegralType<unsigned>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
 }
 
 int64_t charactersToInt64(const LChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<int64_t, LChar>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
+    return toIntegralType<int64_t>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
 }
 
 int64_t charactersToInt64(const UChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<int64_t, UChar>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
+    return toIntegralType<int64_t>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
 }
 
 uint64_t charactersToUInt64(const LChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<uint64_t, LChar>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
+    return toIntegralType<uint64_t>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
 }
 
 uint64_t charactersToUInt64(const UChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<uint64_t, UChar>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
+    return toIntegralType<uint64_t>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
 }
 
 intptr_t charactersToIntPtr(const LChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<intptr_t, LChar>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
+    return toIntegralType<intptr_t>(data, lengthOfCharactersAsInteger<LChar>(data, length), ok, 10);
 }
 
 intptr_t charactersToIntPtr(const UChar* data, size_t length, bool* ok)
 {
-    return toIntegralType<intptr_t, UChar>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
+    return toIntegralType<intptr_t>(data, lengthOfCharactersAsInteger<UChar>(data, length), ok, 10);
 }
 
 enum TrailingJunkPolicy { DisallowTrailingJunk, AllowTrailingJunk };
@@ -1073,13 +1071,13 @@ float charactersToFloat(const UChar* data, size_t length, bool* ok)
 float charactersToFloat(const LChar* data, size_t length, size_t& parsedLength)
 {
     // FIXME: This will return ok even when the string fits into a double but not a float.
-    return static_cast<float>(toDoubleType<LChar, AllowTrailingJunk>(data, length, 0, parsedLength));
+    return static_cast<float>(toDoubleType<LChar, AllowTrailingJunk>(data, length, nullptr, parsedLength));
 }
 
 float charactersToFloat(const UChar* data, size_t length, size_t& parsedLength)
 {
     // FIXME: This will return ok even when the string fits into a double but not a float.
-    return static_cast<float>(toDoubleType<UChar, AllowTrailingJunk>(data, length, 0, parsedLength));
+    return static_cast<float>(toDoubleType<UChar, AllowTrailingJunk>(data, length, nullptr, parsedLength));
 }
 
 const String& emptyString()

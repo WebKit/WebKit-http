@@ -46,7 +46,7 @@
 #import <wtf/text/StringBuilder.h>
 
 #if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/WebsiteDataStoreAdditions.h>
+#import <WebKitAdditions/WebsiteDataStoreAdditions.h>
 #else
 #define WEBSITE_DATA_STORE_ADDITIONS
 #endif
@@ -75,6 +75,7 @@ static WorkQueue& appBoundDomainQueue()
 }
 
 static std::atomic<bool> hasInitializedAppBoundDomains = false;
+static std::atomic<bool> keyExists = false;
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 WebCore::ThirdPartyCookieBlockingMode WebsiteDataStore::thirdPartyCookieBlockingMode() const
@@ -180,6 +181,7 @@ void WebsiteDataStore::platformSetNetworkParameters(WebsiteDataStoreParameters& 
     parameters.networkSessionParameters.resourceLoadStatisticsParameters.enableDebugMode = enableResourceLoadStatisticsDebugMode;
     parameters.networkSessionParameters.resourceLoadStatisticsParameters.sameSiteStrictEnforcementEnabled = sameSiteStrictEnforcementEnabled;
     parameters.networkSessionParameters.resourceLoadStatisticsParameters.firstPartyWebsiteDataRemovalMode = firstPartyWebsiteDataRemovalMode;
+    parameters.networkSessionParameters.resourceLoadStatisticsParameters.standaloneApplicationDomain = WebCore::RegistrableDomain { m_configuration->standaloneApplicationURL() };
     parameters.networkSessionParameters.resourceLoadStatisticsParameters.manualPrevalentResource = WTFMove(resourceLoadStatisticsManualPrevalentResource);
 
     auto cookieFile = resolvedCookieStorageFile();
@@ -403,20 +405,24 @@ void WebsiteDataStore::initializeAppBoundDomains(ForceReinitialization forceRein
     
     static const auto maxAppBoundDomainCount = 10;
     
-    appBoundDomainQueue().dispatch([forceReinitialization] () mutable {
+    appBoundDomainQueue().dispatch([isInAppBrowserPrivacyEnabled = parameters().networkSessionParameters.isInAppBrowserPrivacyEnabled, forceReinitialization] () mutable {
         if (hasInitializedAppBoundDomains && forceReinitialization != ForceReinitialization::Yes)
             return;
         
         NSArray<NSString *> *domains = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"WKAppBoundDomains"];
+        keyExists = domains ? true : false;
         
-        RunLoop::main().dispatch([forceReinitialization , domains = retainPtr(domains)] {
+        RunLoop::main().dispatch([isInAppBrowserPrivacyEnabled, forceReinitialization, domains = retainPtr(domains)] {
+            if (hasInitializedAppBoundDomains && forceReinitialization != ForceReinitialization::Yes)
+                return;
+
             if (forceReinitialization == ForceReinitialization::Yes)
                 appBoundDomains().clear();
 
             for (NSString *domain in domains.get()) {
                 URL url { URL(), domain };
                 if (url.protocol().isEmpty())
-                    url.setProtocol("https"_s);
+                    url.setProtocol("https");
                 if (!url.isValid())
                     continue;
                 WebCore::RegistrableDomain appBoundDomain { url };
@@ -426,8 +432,12 @@ void WebsiteDataStore::initializeAppBoundDomains(ForceReinitialization forceRein
                 if (appBoundDomains().size() >= maxAppBoundDomainCount)
                     break;
             }
-            WEBSITE_DATA_STORE_ADDITIONS
+            if (isInAppBrowserPrivacyEnabled) {
+                WEBSITE_DATA_STORE_ADDITIONS
+            }
             hasInitializedAppBoundDomains = true;
+            if (isAppBoundITPRelaxationEnabled)
+                forwardAppBoundDomainsToITPIfInitialized([] { });
         });
     });
 }
@@ -439,6 +449,8 @@ void WebsiteDataStore::ensureAppBoundDomains(CompletionHandler<void(const HashSe
         return;
     }
 
+    // Hopping to the background thread then back to the main thread
+    // ensures that initializeAppBoundDomains() has finished.
     appBoundDomainQueue().dispatch([completionHandler = WTFMove(completionHandler)] () mutable {
         RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] () mutable {
             ASSERT(hasInitializedAppBoundDomains);
@@ -447,30 +459,47 @@ void WebsiteDataStore::ensureAppBoundDomains(CompletionHandler<void(const HashSe
     });
 }
 
-static bool shouldTreatURLProtocolAsAppBound(const URL& requestURL)
-{
-    return requestURL.protocolIsAbout() || requestURL.protocolIsData() || requestURL.protocolIsBlob() || requestURL.isLocalFile();
-}
-
 void WebsiteDataStore::beginAppBoundDomainCheck(const URL& requestURL, WebFramePolicyListenerProxy& listener)
 {
     ASSERT(RunLoop::isMain());
 
-    if (shouldTreatURLProtocolAsAppBound(requestURL)) {
-        listener.didReceiveAppBoundDomainResult(true);
-        return;
-    }
-
-    ensureAppBoundDomains([domain = WebCore::RegistrableDomain(requestURL), listener = makeRef(listener)] (auto& domains) mutable {
-        listener->didReceiveAppBoundDomainResult(domains.contains(domain));
+    ensureAppBoundDomains([&requestURL, listener = makeRef(listener)] (auto& domains) mutable {
+        // Must check for both an empty app bound domains list and an empty key before returning nullopt
+        // because test cases may have app bound domains but no key.
+        bool hasAppBoundDomains = keyExists || !domains.isEmpty();
+        if (!hasAppBoundDomains) {
+            listener->didReceiveAppBoundDomainResult(WTF::nullopt);
+            return;
+        }
+        listener->didReceiveAppBoundDomainResult(domains.contains(WebCore::RegistrableDomain(requestURL)) ? NavigatingToAppBoundDomain::Yes : NavigatingToAppBoundDomain::No);
     });
 }
 
-void WebsiteDataStore::appBoundDomainsForTesting(CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&& completionHandler) const
+void WebsiteDataStore::getAppBoundDomains(CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&& completionHandler) const
 {
+    ASSERT(RunLoop::isMain());
+
     ensureAppBoundDomains([completionHandler = WTFMove(completionHandler)] (auto& domains) mutable {
         completionHandler(domains);
     });
+}
+
+Optional<HashSet<WebCore::RegistrableDomain>> WebsiteDataStore::appBoundDomainsIfInitialized()
+{
+    ASSERT(RunLoop::isMain());
+    if (!hasInitializedAppBoundDomains)
+        return WTF::nullopt;
+    return appBoundDomains();
+}
+
+void WebsiteDataStore::setAppBoundDomainsForTesting(HashSet<WebCore::RegistrableDomain>&& domains, CompletionHandler<void()>&& completionHandler)
+{
+    for (auto& domain : domains)
+        RELEASE_ASSERT(domain == "localhost"_s || domain == "127.0.0.1"_s);
+
+    appBoundDomains() = WTFMove(domains);
+    hasInitializedAppBoundDomains = true;
+    forwardAppBoundDomainsToITPIfInitialized(WTFMove(completionHandler));
 }
 
 void WebsiteDataStore::reinitializeAppBoundDomains()

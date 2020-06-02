@@ -193,6 +193,7 @@ WI.settings = {
     indentWithTabs: new WI.Setting("indent-with-tabs", false),
     resourceCachingDisabled: new WI.Setting("disable-resource-caching", false),
     searchCaseSensitive: new WI.Setting("search-case-sensitive", false),
+    searchFromSelection: new WI.Setting("search-from-selection", false),
     searchRegularExpression: new WI.Setting("search-regular-expression", false),
     selectedNetworkDetailContentViewIdentifier: new WI.Setting("network-detail-content-view-identifier", "preview"),
     sourceMapsEnabled: new WI.Setting("source-maps-enabled", true),
@@ -219,6 +220,7 @@ WI.settings = {
     // Experimental
     experimentalEnablePreviewFeatures: new WI.Setting("experimental-enable-preview-features", true),
     experimentalEnableStylesJumpToEffective: new WI.Setting("experimental-styles-jump-to-effective", false),
+    experimentalEnableStyelsJumpToVariableDeclaration: new WI.Setting("experimental-styles-jump-to-variable-declaration", false),
 
     // Protocol
     protocolLogAsText: new WI.Setting("protocol-log-as-text", false),

@@ -21,10 +21,6 @@
 #include "config.h"
 #include "StringConstructor.h"
 
-#include "Error.h"
-#include "JITCode.h"
-#include "JSFunction.h"
-#include "JSGlobalObject.h"
 #include "JSCInlines.h"
 #include "StringPrototype.h"
 #include <wtf/text/StringBuilder.h>
@@ -144,8 +140,11 @@ static EncodedJSValue JSC_HOST_CALL constructWithStringConstructor(JSGlobalObjec
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    Structure* structure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), globalObject->stringObjectStructure());
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* structure = newTarget == callFrame->jsCallee()
+        ? globalObject->stringObjectStructure()
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->stringObjectStructure());
+    RETURN_IF_EXCEPTION(scope, { });
 
     if (!callFrame->argumentCount())
         return JSValue::encode(StringObject::create(vm, structure));

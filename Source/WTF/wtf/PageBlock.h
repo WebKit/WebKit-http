@@ -49,7 +49,7 @@ namespace WTF {
 // Use 64 KiB for any unknown CPUs to be conservative.
 #if OS(DARWIN) || PLATFORM(PLAYSTATION)
 constexpr size_t CeilingOnPageSize = 16 * KB;
-#elif OS(WINDOWS) || CPU(MIPS) || CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64)
+#elif OS(WINDOWS) || CPU(MIPS) || CPU(MIPS64) || CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64)
 constexpr size_t CeilingOnPageSize = 4 * KB;
 #elif CPU(UNKNOWN) || CPU(PPC) || CPU(PPC64) || CPU(PPC64LE)
 constexpr size_t CeilingOnPageSize = 64 * KB;
@@ -66,8 +66,7 @@ inline bool isPowerOfTwo(size_t size) { return !(size & (size - 1)); }
 class PageBlock {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PageBlock();
-    PageBlock(const PageBlock&);
+    PageBlock() = default;
     PageBlock(void*, size_t, bool hasGuardPages);
     
     void* base() const { return m_base; }
@@ -82,24 +81,10 @@ public:
     }
 
 private:
-    void* m_realBase;
-    void* m_base;
-    size_t m_size;
+    void* m_realBase { nullptr };
+    void* m_base { nullptr };
+    size_t m_size { 0 };
 };
-
-inline PageBlock::PageBlock()
-    : m_realBase(0)
-    , m_base(0)
-    , m_size(0)
-{
-}
-
-inline PageBlock::PageBlock(const PageBlock& other)
-    : m_realBase(other.m_realBase)
-    , m_base(other.m_base)
-    , m_size(other.m_size)
-{
-}
 
 inline PageBlock::PageBlock(void* base, size_t size, bool hasGuardPages)
     : m_realBase(base)

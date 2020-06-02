@@ -1074,36 +1074,66 @@ PAUSES AT: 164:0
     167        l2 = 2;
 
 INSERTING AT: 164:1
-PAUSES AT: 166:0
+PAUSES AT: 165:4
     161        a();
     162    }
     163    
  -> 164    v#ar v1 = 1,
-    165        v2 = 1;
+ => 165        |v2 = 1;
+    166    let l1 = 2,
+    167        l2 = 2;
+    168    const c1 = 3,
+
+INSERTING AT: 165:5
+PAUSES AT: 166:0
+    162    }
+    163    
+    164    var v1 = 1,
+ -> 165        v#2 = 1;
  => 166    |let l1 = 2,
     167        l2 = 2;
     168    const c1 = 3,
     169        c2 = 3;
 
 INSERTING AT: 166:1
-PAUSES AT: 168:0
+PAUSES AT: 167:4
     163    
     164    var v1 = 1,
     165        v2 = 1;
  -> 166    l#et l1 = 2,
-    167        l2 = 2;
+ => 167        |l2 = 2;
+    168    const c1 = 3,
+    169        c2 = 3;
+    170    
+
+INSERTING AT: 167:5
+PAUSES AT: 168:0
+    164    var v1 = 1,
+    165        v2 = 1;
+    166    let l1 = 2,
+ -> 167        l#2 = 2;
  => 168    |const c1 = 3,
     169        c2 = 3;
     170    
     171    v1 = v2 = v1;
 
 INSERTING AT: 168:1
-PAUSES AT: 171:0
+PAUSES AT: 169:4
     165        v2 = 1;
     166    let l1 = 2,
     167        l2 = 2;
  -> 168    c#onst c1 = 3,
-    169        c2 = 3;
+ => 169        |c2 = 3;
+    170    
+    171    v1 = v2 = v1;
+    172    
+
+INSERTING AT: 169:5
+PAUSES AT: 171:0
+    166    let l1 = 2,
+    167        l2 = 2;
+    168    const c1 = 3,
+ -> 169        c#2 = 3;
     170    
  => 171    |v1 = v2 = v1;
     172    
@@ -1315,6 +1345,7 @@ PAUSES AT: 208:4
  => 208    if (|String.raw`test`)
     209        a();
     210    
+    211    a(), b(), c();
 
 INSERTING AT: 208:5
 PAUSES AT: 209:4
@@ -1324,6 +1355,190 @@ PAUSES AT: 209:4
  -> 208    if (S#tring.raw`test`)
  => 209        |a();
     210    
+    211    a(), b(), c();
+    212    
+
+INSERTING AT: 209:5
+PAUSES AT: 211:0
+    206        a();
+    207    
+    208    if (String.raw`test`)
+ -> 209        a#();
+    210    
+ => 211    |a(), b(), c();
+    212    
+    213    a(),
+    214    b(),
+
+INSERTING AT: 211:1
+PAUSES AT: 211:5
+    208    if (String.raw`test`)
+    209        a();
+    210    
+-=> 211    a#(), |b(), c();
+    212    
+    213    a(),
+    214    b(),
+
+INSERTING AT: 211:6
+PAUSES AT: 211:10
+    208    if (String.raw`test`)
+    209        a();
+    210    
+-=> 211    a(), b#(), |c();
+    212    
+    213    a(),
+    214    b(),
+
+INSERTING AT: 211:11
+PAUSES AT: 213:0
+    208    if (String.raw`test`)
+    209        a();
+    210    
+ -> 211    a(), b(), c#();
+    212    
+ => 213    |a(),
+    214    b(),
+    215    c();
+    216    
+
+INSERTING AT: 213:1
+PAUSES AT: 214:0
+    210    
+    211    a(), b(), c();
+    212    
+ -> 213    a#(),
+ => 214    |b(),
+    215    c();
+    216    
+    217    true && (a(), b(), c()) && true;
+
+INSERTING AT: 214:1
+PAUSES AT: 215:0
+    211    a(), b(), c();
+    212    
+    213    a(),
+ -> 214    b#(),
+ => 215    |c();
+    216    
+    217    true && (a(), b(), c()) && true;
+    218    
+
+INSERTING AT: 215:1
+PAUSES AT: 217:0
+    212    
+    213    a(),
+    214    b(),
+ -> 215    c#();
+    216    
+ => 217    |true && (a(), b(), c()) && true;
+    218    
+    219    true && (
+    220        a(),
+
+INSERTING AT: 217:1
+PAUSES AT: 219:0
+    214    b(),
+    215    c();
+    216    
+ -> 217    t#rue && (a(), b(), c()) && true;
+    218    
+ => 219    |true && (
+    220        a(),
+    221        b(),
+    222        c()
+
+INSERTING AT: 219:1
+PAUSES AT: 226:4
+    216    
+    217    true && (a(), b(), c()) && true;
+    218    
+ -> 219    t#rue && (
+    220        a(),
+    221        b(),
+    222        c()
+    223    ) && true;
+    224    
+    225    try {
+ => 226        |throw a(), b(), c();
+    227    } catch { }
+    228    
+    229    try {
+
+INSERTING AT: 226:5
+PAUSES AT: 226:10
+    223    ) && true;
+    224    
+    225    try {
+-=> 226        t#hrow |a(), b(), c();
+    227    } catch { }
+    228    
+    229    try {
+
+INSERTING AT: 226:11
+PAUSES AT: 226:15
+    223    ) && true;
+    224    
+    225    try {
+-=> 226        throw a#(), |b(), c();
+    227    } catch { }
+    228    
+    229    try {
+
+INSERTING AT: 226:16
+PAUSES AT: 226:20
+    223    ) && true;
+    224    
+    225    try {
+-=> 226        throw a(), b#(), |c();
+    227    } catch { }
+    228    
+    229    try {
+
+INSERTING AT: 226:21
+PAUSES AT: 230:4
+    223    ) && true;
+    224    
+    225    try {
+ -> 226        throw a(), b(), c#();
+    227    } catch { }
+    228    
+    229    try {
+ => 230        |throw a(),
+    231            b(),
+    232            c();
+    233    } catch { }
+
+INSERTING AT: 230:5
+PAUSES AT: 230:10
+    227    } catch { }
+    228    
+    229    try {
+-=> 230        t#hrow |a(),
+    231            b(),
+    232            c();
+    233    } catch { }
+
+INSERTING AT: 230:11
+PAUSES AT: 231:8
+    227    } catch { }
+    228    
+    229    try {
+ -> 230        throw a#(),
+ => 231            |b(),
+    232            c();
+    233    } catch { }
+    234    
+
+INSERTING AT: 231:9
+PAUSES AT: 232:8
+    228    
+    229    try {
+    230        throw a(),
+ -> 231            b#(),
+ => 232            |c();
+    233    } catch { }
+    234    
 
 
 -- Running test case: Debugger.resolvedBreakpoint.dumpAllLocations.Functions
@@ -2366,6 +2581,196 @@ PAUSES AT: 112:4
  => 112        |}   
     113    };
     114    
+    115    function commaOneLine() {
+
+INSERTING AT: 115:0
+PAUSES AT: 116:4
+    112        }   
+    113    };
+    114    
+ -> 115    #function commaOneLine() {
+ => 116        |inline(), inline(), inline();
+    117    }
+    118    
+    119    function commaMultiLine() {
+
+INSERTING AT: 116:5
+PAUSES AT: 116:14
+    113    };
+    114    
+    115    function commaOneLine() {
+-=> 116        i#nline(), |inline(), inline();
+    117    }
+    118    
+    119    function commaMultiLine() {
+
+INSERTING AT: 116:15
+PAUSES AT: 116:24
+    113    };
+    114    
+    115    function commaOneLine() {
+-=> 116        inline(), i#nline(), |inline();
+    117    }
+    118    
+    119    function commaMultiLine() {
+
+INSERTING AT: 116:25
+PAUSES AT: 117:0
+    113    };
+    114    
+    115    function commaOneLine() {
+ -> 116        inline(), inline(), i#nline();
+ => 117    |}
+    118    
+    119    function commaMultiLine() {
+    120        inline(),
+
+INSERTING AT: 119:0
+PAUSES AT: 120:4
+    116        inline(), inline(), inline();
+    117    }
+    118    
+ -> 119    #function commaMultiLine() {
+ => 120        |inline(),
+    121        inline(),
+    122        inline();
+    123    }
+
+INSERTING AT: 120:5
+PAUSES AT: 121:4
+    117    }
+    118    
+    119    function commaMultiLine() {
+ -> 120        i#nline(),
+ => 121        |inline(),
+    122        inline();
+    123    }
+    124    
+
+INSERTING AT: 121:5
+PAUSES AT: 122:4
+    118    
+    119    function commaMultiLine() {
+    120        inline(),
+ -> 121        i#nline(),
+ => 122        |inline();
+    123    }
+    124    
+    125    function returnOneLine() {
+
+INSERTING AT: 122:5
+PAUSES AT: 123:0
+    119    function commaMultiLine() {
+    120        inline(),
+    121        inline(),
+ -> 122        i#nline();
+ => 123    |}
+    124    
+    125    function returnOneLine() {
+    126        return inline(), inline(), inline();
+
+INSERTING AT: 125:0
+PAUSES AT: 126:4
+    122        inline();
+    123    }
+    124    
+ -> 125    #function returnOneLine() {
+ => 126        |return inline(), inline(), inline();
+    127    }
+    128    
+    129    function returnMultiLine() {
+
+INSERTING AT: 126:5
+PAUSES AT: 126:11
+    123    }
+    124    
+    125    function returnOneLine() {
+-=> 126        r#eturn |inline(), inline(), inline();
+    127    }
+    128    
+    129    function returnMultiLine() {
+
+INSERTING AT: 126:12
+PAUSES AT: 126:21
+    123    }
+    124    
+    125    function returnOneLine() {
+-=> 126        return i#nline(), |inline(), inline();
+    127    }
+    128    
+    129    function returnMultiLine() {
+
+INSERTING AT: 126:22
+PAUSES AT: 126:31
+    123    }
+    124    
+    125    function returnOneLine() {
+-=> 126        return inline(), i#nline(), |inline();
+    127    }
+    128    
+    129    function returnMultiLine() {
+
+INSERTING AT: 126:32
+PAUSES AT: 127:0
+    123    }
+    124    
+    125    function returnOneLine() {
+ -> 126        return inline(), inline(), i#nline();
+ => 127    |}
+    128    
+    129    function returnMultiLine() {
+    130        return inline(),
+
+INSERTING AT: 129:0
+PAUSES AT: 130:4
+    126        return inline(), inline(), inline();
+    127    }
+    128    
+ -> 129    #function returnMultiLine() {
+ => 130        |return inline(),
+    131            inline(),
+    132            inline();
+    133    }
+
+INSERTING AT: 130:5
+PAUSES AT: 130:11
+    127    }
+    128    
+    129    function returnMultiLine() {
+-=> 130        r#eturn |inline(),
+    131            inline(),
+    132            inline();
+    133    }
+
+INSERTING AT: 130:12
+PAUSES AT: 131:8
+    127    }
+    128    
+    129    function returnMultiLine() {
+ -> 130        return i#nline(),
+ => 131            |inline(),
+    132            inline();
+    133    }
+    134    
+
+INSERTING AT: 131:9
+PAUSES AT: 132:8
+    128    
+    129    function returnMultiLine() {
+    130        return inline(),
+ -> 131            i#nline(),
+ => 132            |inline();
+    133    }
+    134    
+
+INSERTING AT: 132:9
+PAUSES AT: 133:0
+    129    function returnMultiLine() {
+    130        return inline(),
+    131            inline(),
+ -> 132            i#nline();
+ => 133    |}
+    134    
 
 
 -- Running test case: Debugger.resolvedBreakpoint.dumpAllLocations.Unicode

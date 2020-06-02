@@ -57,7 +57,7 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
         this.contentBrowser.navigationBar.insertNavigationItem(this._recordButton, 0);
         this.contentBrowser.navigationBar.insertNavigationItem(this._continueButton, 1);
 
-        if (WI.FPSInstrument.supported()) {
+        if (WI.sharedApp.isWebDebuggable()) {
             let timelinesNavigationItem = new WI.RadioButtonNavigationItem(WI.TimelineOverview.ViewMode.Timelines, WI.UIString("Events"));
             let renderingFramesNavigationItem = new WI.RadioButtonNavigationItem(WI.TimelineOverview.ViewMode.RenderingFrames, WI.UIString("Frames"));
 
@@ -345,8 +345,7 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
         WI.memoryManager.disable();
         WI.heapManager.disable();
 
-        if (WI.FPSInstrument.supported())
-            this.contentBrowser.navigationBar.removeEventListener(null, null, this);
+        this.contentBrowser.navigationBar.removeEventListener(null, null, this);
 
         WI.timelineManager.removeEventListener(null, null, this);
         WI.notifications.removeEventListener(null, null, this);
@@ -395,9 +394,6 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
         }
 
         let selectedTimelineViewIdentifier = cookie[WI.TimelineTabContentView.SelectedTimelineViewIdentifierCookieKey];
-        if (selectedTimelineViewIdentifier === WI.TimelineRecord.Type.RenderingFrame && !WI.FPSInstrument.supported())
-            selectedTimelineViewIdentifier = null;
-
         this._showTimelineViewForType(selectedTimelineViewIdentifier);
 
         super.restoreFromCookie(cookie);

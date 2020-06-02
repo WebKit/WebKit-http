@@ -49,6 +49,7 @@
 #include "WebImage.h"
 #include "WebRenderLayer.h"
 #include "WebRenderObject.h"
+#include <wtf/CheckedArithmetic.h>
 
 #if PLATFORM(COCOA)
 #include "ObjCObjectGraph.h"
@@ -340,9 +341,14 @@ bool UserData::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
 
     switch (type) {
     case API::Object::Type::Array: {
-        uint64_t size;
-        if (!decoder.decode(size))
+        uint64_t decodedSize;
+        if (!decoder.decode(decodedSize))
             return false;
+
+        if (!isInBounds<size_t>(decodedSize))
+            return false;
+
+        auto size = static_cast<size_t>(decodedSize);
 
         Vector<RefPtr<API::Object>> elements;
         for (size_t i = 0; i < size; ++i) {
@@ -363,10 +369,11 @@ bool UserData::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
         break;
 
     case API::Object::Type::CertificateInfo: {
-        WebCore::CertificateInfo certificateInfo;
-        if (!decoder.decode(certificateInfo))
+        Optional<WebCore::CertificateInfo> certificateInfo;
+        decoder >> certificateInfo;
+        if (!certificateInfo)
             return false;
-        result = WebCertificateInfo::create(certificateInfo);
+        result = WebCertificateInfo::create(*certificateInfo);
         break;
     }
 
@@ -376,9 +383,14 @@ bool UserData::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
         break;
 
     case API::Object::Type::Dictionary: {
-        uint64_t size;
-        if (!decoder.decode(size))
+        uint64_t decodedSize;
+        if (!decoder.decode(decodedSize))
             return false;
+
+        if (!isInBounds<size_t>(decodedSize))
+            return false;
+
+        auto size = static_cast<size_t>(decodedSize);
 
         API::Dictionary::MapType map;
         for (size_t i = 0; i < size; ++i) {

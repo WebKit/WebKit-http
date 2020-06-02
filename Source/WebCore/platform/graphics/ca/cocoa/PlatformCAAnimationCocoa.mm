@@ -31,11 +31,12 @@
 #import "TimingFunction.h"
 #import <QuartzCore/QuartzCore.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplicitBeginTimeFlag";
+constexpr NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplicitBeginTimeFlag";
 
 bool hasExplicitBeginTime(CAAnimation *animation)
 {
@@ -362,8 +363,7 @@ void PlatformCAAnimationCocoa::setAdditive(bool value)
 
 PlatformCAAnimation::ValueFunctionType PlatformCAAnimationCocoa::valueFunction() const
 {
-    CAValueFunction* vf = [m_animation valueFunction];
-    return fromCAValueFunctionType([vf name]);
+    return fromCAValueFunctionType([[m_animation valueFunction] name]);
 }
 
 void PlatformCAAnimationCocoa::setValueFunction(ValueFunctionType value)
@@ -375,14 +375,13 @@ void PlatformCAAnimationCocoa::setFromValue(float value)
 {
     if (!isBasicAnimation())
         return;
-    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:[NSNumber numberWithDouble:value]];
+    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:@(value)];
 }
 
 void PlatformCAAnimationCocoa::setFromValue(const TransformationMatrix& value)
 {
     if (!isBasicAnimation())
         return;
-
     [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:[NSValue valueWithCATransform3D:value]];
 }
 
@@ -390,32 +389,20 @@ void PlatformCAAnimationCocoa::setFromValue(const FloatPoint3D& value)
 {
     if (!isBasicAnimation())
         return;
-
-    NSArray* array = [NSArray arrayWithObjects:
-        [NSNumber numberWithDouble:value.x()],
-        [NSNumber numberWithDouble:value.y()],
-        [NSNumber numberWithDouble:value.z()],
-        nil];
-    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:array];
+    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:@[ @(value.x()), @(value.y()), @(value.z()) ]];
 }
 
 void PlatformCAAnimationCocoa::setFromValue(const Color& value)
 {
     if (!isBasicAnimation())
         return;
-
-    NSArray* array = [NSArray arrayWithObjects:
-        [NSNumber numberWithDouble:value.red()],
-        [NSNumber numberWithDouble:value.green()],
-        [NSNumber numberWithDouble:value.blue()],
-        [NSNumber numberWithDouble:value.alpha()],
-        nil];
-    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:array];
+    auto [r, g, b, a] = value.toSRGBASimpleColorLossy();
+    [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:@[@(r), @(g), @(b), @(a)]];
 }
 
 void PlatformCAAnimationCocoa::setFromValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
-    RetainPtr<id> value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
+    auto value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
     [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:value.get()];
 }
 
@@ -423,8 +410,7 @@ void PlatformCAAnimationCocoa::copyFromValueFrom(const PlatformCAAnimation& valu
 {
     if (!isBasicAnimation() || !value.isBasicAnimation())
         return;
-
-    CABasicAnimation* otherAnimation = static_cast<CABasicAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
+    auto otherAnimation = static_cast<CABasicAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
     [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:[otherAnimation fromValue]];
 }
 
@@ -432,14 +418,13 @@ void PlatformCAAnimationCocoa::setToValue(float value)
 {
     if (!isBasicAnimation())
         return;
-    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:[NSNumber numberWithDouble:value]];
+    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:@(value)];
 }
 
 void PlatformCAAnimationCocoa::setToValue(const TransformationMatrix& value)
 {
     if (!isBasicAnimation())
         return;
-
     [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:[NSValue valueWithCATransform3D:value]];
 }
 
@@ -447,32 +432,20 @@ void PlatformCAAnimationCocoa::setToValue(const FloatPoint3D& value)
 {
     if (!isBasicAnimation())
         return;
-
-    NSArray* array = [NSArray arrayWithObjects:
-        [NSNumber numberWithDouble:value.x()],
-        [NSNumber numberWithDouble:value.y()],
-        [NSNumber numberWithDouble:value.z()],
-        nil];
-    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:array];
+    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:@[ @(value.x()), @(value.y()), @(value.z()) ]];
 }
 
 void PlatformCAAnimationCocoa::setToValue(const Color& value)
 {
     if (!isBasicAnimation())
         return;
-
-    NSArray* array = [NSArray arrayWithObjects:
-        [NSNumber numberWithDouble:value.red()],
-        [NSNumber numberWithDouble:value.green()],
-        [NSNumber numberWithDouble:value.blue()],
-        [NSNumber numberWithDouble:value.alpha()],
-        nil];
-    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:array];
+    auto [r, g, b, a] = value.toSRGBASimpleColorLossy();
+    [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:@[@(r), @(g), @(b), @(a)]];
 }
 
 void PlatformCAAnimationCocoa::setToValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
-    RetainPtr<id> value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
+    auto value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
     [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:value.get()];
 }
 
@@ -481,7 +454,7 @@ void PlatformCAAnimationCocoa::copyToValueFrom(const PlatformCAAnimation& value)
     if (!isBasicAnimation() || !value.isBasicAnimation())
         return;
 
-    CABasicAnimation* otherAnimation = static_cast<CABasicAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
+    auto otherAnimation = static_cast<CABasicAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
     [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:[otherAnimation toValue]];
 }
 
@@ -492,10 +465,9 @@ void PlatformCAAnimationCocoa::setValues(const Vector<float>& value)
     if (animationType() != Keyframe)
         return;
 
-    NSMutableArray* array = [NSMutableArray array];
-    for (size_t i = 0; i < value.size(); ++i)
-        [array addObject:[NSNumber numberWithDouble:value[i]]];
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:createNSArray(value, [] (float number) {
+        return @(number);
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::setValues(const Vector<TransformationMatrix>& value)
@@ -503,12 +475,9 @@ void PlatformCAAnimationCocoa::setValues(const Vector<TransformationMatrix>& val
     if (animationType() != Keyframe)
         return;
 
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < value.size(); ++i)
-        [array addObject:[NSValue valueWithCATransform3D:value[i]]];
-
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:createNSArray(value, [] (auto& matrix) {
+        return [NSValue valueWithCATransform3D:matrix];
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::setValues(const Vector<FloatPoint3D>& value)
@@ -516,17 +485,9 @@ void PlatformCAAnimationCocoa::setValues(const Vector<FloatPoint3D>& value)
     if (animationType() != Keyframe)
         return;
 
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < value.size(); ++i) {
-        NSArray* object = [NSArray arrayWithObjects:
-            [NSNumber numberWithDouble:value[i].x()],
-            [NSNumber numberWithDouble:value[i].y()],
-            [NSNumber numberWithDouble:value[i].z()],
-            nil];
-        [array addObject:object];
-    }
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:createNSArray(value, [] (auto& point) {
+        return @[@(point.x()), @(point.y()), @(point.z())];
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::setValues(const Vector<Color>& value)
@@ -534,18 +495,10 @@ void PlatformCAAnimationCocoa::setValues(const Vector<Color>& value)
     if (animationType() != Keyframe)
         return;
 
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < value.size(); ++i) {
-        NSArray* object = [NSArray arrayWithObjects:
-            [NSNumber numberWithDouble:value[i].red()],
-            [NSNumber numberWithDouble:value[i].green()],
-            [NSNumber numberWithDouble:value[i].blue()],
-            [NSNumber numberWithDouble:value[i].alpha()],
-            nil];
-        [array addObject:object];
-    }
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:createNSArray(value, [] (auto& color) {
+        auto [r, g, b, a] = color.toSRGBASimpleColorLossy();
+        return @[@(r), @(g), @(b), @(a)];
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::setValues(const Vector<RefPtr<FilterOperation>>& values, int internalFilterPropertyIndex)
@@ -553,13 +506,9 @@ void PlatformCAAnimationCocoa::setValues(const Vector<RefPtr<FilterOperation>>& 
     if (animationType() != Keyframe)
         return;
 
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < values.size(); ++i) {
-        RetainPtr<id> value = PlatformCAFilters::filterValueForOperation(values[i].get(), internalFilterPropertyIndex);
-        [array addObject:value.get()];
-    }
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:createNSArray(values, [&] (auto& value) {
+        return PlatformCAFilters::filterValueForOperation(value.get(), internalFilterPropertyIndex);
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::copyValuesFrom(const PlatformCAAnimation& value)
@@ -567,39 +516,33 @@ void PlatformCAAnimationCocoa::copyValuesFrom(const PlatformCAAnimation& value)
     if (animationType() != Keyframe || value.animationType() != Keyframe)
         return;
 
-    CAKeyframeAnimation* otherAnimation = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
+    auto otherAnimation = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
     [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:[otherAnimation values]];
 }
 
 void PlatformCAAnimationCocoa::setKeyTimes(const Vector<float>& value)
 {
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < value.size(); ++i)
-        [array addObject:[NSNumber numberWithFloat:value[i]]];
-
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setKeyTimes:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setKeyTimes:createNSArray(value, [] (float time) {
+        return @(time);
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::copyKeyTimesFrom(const PlatformCAAnimation& value)
 {
-    CAKeyframeAnimation* other = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
+    auto other = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
     [static_cast<CAKeyframeAnimation*>(m_animation.get()) setKeyTimes:[other keyTimes]];
 }
 
 void PlatformCAAnimationCocoa::setTimingFunctions(const Vector<const TimingFunction*>& value, bool reverse)
 {
-    NSMutableArray* array = [NSMutableArray array];
-
-    for (size_t i = 0; i < value.size(); ++i)
-        [array addObject:toCAMediaTimingFunction(value[i], reverse)];
-
-    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setTimingFunctions:array];
+    [static_cast<CAKeyframeAnimation*>(m_animation.get()) setTimingFunctions:createNSArray(value, [&] (auto& function) {
+        return toCAMediaTimingFunction(function, reverse);
+    }).get()];
 }
 
 void PlatformCAAnimationCocoa::copyTimingFunctionsFrom(const PlatformCAAnimation& value)
 {
-    CAKeyframeAnimation* other = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
+    auto other = static_cast<CAKeyframeAnimation*>(downcast<PlatformCAAnimationCocoa>(value).m_animation.get());
     [static_cast<CAKeyframeAnimation*>(m_animation.get()) setTimingFunctions:[other timingFunctions]];
 }
 

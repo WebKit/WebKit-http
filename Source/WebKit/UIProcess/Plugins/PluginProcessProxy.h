@@ -33,6 +33,8 @@
 #include "PluginProcess.h"
 #include "PluginProcessAttributes.h"
 #include "ProcessLauncher.h"
+#include "ProcessThrottler.h"
+#include "ProcessThrottlerClient.h"
 #include "WebProcessProxyMessagesReplies.h"
 #include <wtf/Deque.h>
 
@@ -61,7 +63,7 @@ int pluginProcessLatencyQOS();
 int pluginProcessThroughputQOS();
 #endif
 
-class PluginProcessProxy final : public AuxiliaryProcessProxy, public ThreadSafeRefCounted<PluginProcessProxy> {
+class PluginProcessProxy final : public AuxiliaryProcessProxy, public ThreadSafeRefCounted<PluginProcessProxy>, private ProcessThrottlerClient {
 public:
     static Ref<PluginProcessProxy> create(PluginProcessManager*, const PluginProcessAttributes&, uint64_t pluginProcessToken);
     ~PluginProcessProxy();
@@ -87,6 +89,8 @@ public:
     static bool scanPlugin(const String& pluginPath, RawPluginMetaData& result);
 #endif
 
+    ProcessThrottler& throttler() final { return m_throttler; }
+
 private:
     PluginProcessProxy(PluginProcessManager*, const PluginProcessAttributes&, uint64_t pluginProcessToken);
 
@@ -99,12 +103,17 @@ private:
 
     void pluginProcessCrashedOrFailedToLaunch();
 
+    // ProcessThrottlerClient
+    void sendPrepareToSuspend(IsSuspensionImminent, CompletionHandler<void()>&& completionHandler) final { completionHandler(); }
+    void sendProcessDidResume() final { }
+    ASCIILiteral clientName() const final { return "PluginProcess"_s; }
+
     // IPC::Connection::Client
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     void didClose(IPC::Connection&) override;
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::MessageName) override;
 
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
@@ -136,6 +145,8 @@ private:
 #endif
 
     void platformInitializePluginProcess(PluginProcessCreationParameters& parameters);
+
+    ProcessThrottler m_throttler;
 
     // The plug-in host process manager.
     PluginProcessManager* m_pluginProcessManager;

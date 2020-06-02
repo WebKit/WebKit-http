@@ -24,23 +24,18 @@
 #include "Completion.h"
 
 #include "BytecodeCacheError.h"
-#include "CallFrame.h"
 #include "CatchScope.h"
 #include "CodeCache.h"
-#include "CodeProfiling.h"
 #include "Exception.h"
 #include "IdentifierInlines.h"
 #include "Interpreter.h"
-#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSInternalPromise.h"
 #include "JSLock.h"
 #include "JSModuleLoader.h"
-#include "JSModuleRecord.h"
 #include "JSWithScope.h"
 #include "ModuleAnalyzer.h"
 #include "Parser.h"
-#include "ProgramExecutable.h"
 #include "ScriptProfilingScope.h"
 
 namespace JSC {
@@ -138,11 +133,9 @@ JSValue evaluate(JSGlobalObject* globalObject, const SourceCode& source, JSValue
     RELEASE_ASSERT(vm.atomStringTable() == Thread::current().atomStringTable());
     RELEASE_ASSERT(!vm.isCollectorBusyOnCurrentThread());
 
-    CodeProfiling profile(source);
-
     if (!thisValue || thisValue.isUndefinedOrNull())
         thisValue = globalObject;
-    JSObject* thisObj = jsCast<JSObject*>(thisValue.toThis(globalObject, NotStrictMode));
+    JSObject* thisObj = jsCast<JSObject*>(thisValue.toThis(globalObject, ECMAMode::sloppy()));
     JSValue result = vm.interpreter->executeProgram(source, globalObject, thisObj);
 
     if (scope.exception()) {

@@ -60,6 +60,7 @@
 #include <pal/system/Sound.h>
 #include <wtf/JSONValues.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/persistence/PersistentDecoder.h>
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
@@ -335,6 +336,8 @@ String InspectorFrontendHost::backendCommandsURL() const
 static String debuggableTypeToString(DebuggableType debuggableType)
 {
     switch (debuggableType) {
+    case DebuggableType::ITML:
+        return "itml"_s;
     case DebuggableType::JavaScript:
         return "javascript"_s;
     case DebuggableType::Page:
@@ -574,15 +577,16 @@ bool InspectorFrontendHost::showCertificate(const String& serializedCertificate)
     if (!base64Decode(serializedCertificate, data))
         return false;
 
-    CertificateInfo certificateInfo;
     WTF::Persistence::Decoder decoder(data.data(), data.size());
-    if (!decoder.decode(certificateInfo))
+    Optional<CertificateInfo> certificateInfo;
+    decoder >> certificateInfo;
+    if (!certificateInfo)
         return false;
 
-    if (certificateInfo.isEmpty())
+    if (certificateInfo->isEmpty())
         return false;
 
-    m_client->showCertificate(certificateInfo);
+    m_client->showCertificate(*certificateInfo);
     return true;
 }
 

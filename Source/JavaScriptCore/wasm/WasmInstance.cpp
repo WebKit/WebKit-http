@@ -28,8 +28,7 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCInlines.h"
-#include "JSWebAssemblyHelpers.h"
+#include "JSCJSValueInlines.h"
 #include "JSWebAssemblyInstance.h"
 #include "Register.h"
 #include "WasmModuleInformation.h"
@@ -108,7 +107,7 @@ JSValue Instance::getFunctionWrapper(unsigned i) const
 void Instance::setFunctionWrapper(unsigned i, JSValue value)
 {
     ASSERT(m_owner);
-    ASSERT(value.isFunction(owner<JSWebAssemblyInstance>()->vm()));
+    ASSERT(value.isCallable(owner<JSWebAssemblyInstance>()->vm()));
     ASSERT(!m_functionWrappers.contains(i));
     auto locker = holdLock(owner<JSWebAssemblyInstance>()->cellLock());
     m_functionWrappers.set(i, WriteBarrier<Unknown>(owner<JSWebAssemblyInstance>()->vm(), owner<JSWebAssemblyInstance>(), value));

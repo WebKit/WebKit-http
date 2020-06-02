@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -219,13 +219,13 @@ void WebProcessProxy::unblockAccessibilityServerIfNeeded()
     if (!canSendMessage())
         return;
 
-    SandboxExtension::Handle handle;
+    SandboxExtension::HandleArray handleArray;
 #if PLATFORM(IOS_FAMILY)
-    if (!SandboxExtension::createHandleForMachLookup("com.apple.iphone.axserver-systemwide", connection() ? connection()->getAuditToken() : WTF::nullopt, handle))
-        return;
+    handleArray = SandboxExtension::createHandlesForMachLookup({ "com.apple.iphone.axserver-systemwide"_s, "com.apple.frontboard.systemappservices"_s }, connection() ? connection()->getAuditToken() : WTF::nullopt);
+    ASSERT(handleArray.size() == 2);
 #endif
 
-    send(Messages::WebProcess::UnblockAccessibilityServer(handle), 0);
+    send(Messages::WebProcess::UnblockServicesRequiredByAccessibility(handleArray), 0);
     m_hasSentMessageToUnblockAccessibilityServer = true;
 }
 
@@ -239,11 +239,10 @@ void WebProcessProxy::unblockPreferenceServiceIfNeeded()
     if (!canSendMessage())
         return;
 
-    SandboxExtension::Handle handle;
-    if (!SandboxExtension::createHandleForMachLookup("com.apple.cfprefsd.daemon", connection() ? connection()->getAuditToken() : WTF::nullopt, handle))
-        return;
-
-    send(Messages::WebProcess::UnblockPreferenceService(handle), 0);
+    auto handleArray = SandboxExtension::createHandlesForMachLookup({ "com.apple.cfprefsd.agent"_s, "com.apple.cfprefsd.daemon"_s }, connection() ? connection()->getAuditToken() : WTF::nullopt);
+    ASSERT(handleArray.size() == 2);
+    
+    send(Messages::WebProcess::UnblockPreferenceService(WTFMove(handleArray)), 0);
     m_hasSentMessageToUnblockPreferenceService = true;
 }
 #endif

@@ -45,6 +45,7 @@
 #include "RuntimeEnabledFeatures.h"
 #include "TableFormattingContext.h"
 #include "TableFormattingState.h"
+#include "TableWrapperBlockFormattingContext.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -99,18 +100,17 @@ void LayoutContext::layoutFormattingContextSubtree(const ContainerBox& formattin
     auto& displayBox = layoutState().displayBoxForLayoutBox(formattingContextRoot);
 
     if (formattingContextRoot.hasInFlowOrFloatingChild()) {
-        auto horizontalConstraints = HorizontalConstraints { displayBox.contentBoxLeft(), displayBox.contentBoxWidth() };
-        auto verticalConstraints = VerticalConstraints { displayBox.contentBoxTop(), { } };
-        formattingContext->layoutInFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
+        auto constraintsForInFlowContent = FormattingContext::ConstraintsForInFlowContent { { displayBox.contentBoxLeft(), displayBox.contentBoxWidth() }, { displayBox.contentBoxTop(), { } } };
+        formattingContext->layoutInFlowContent(invalidationState, constraintsForInFlowContent);
     }
 
     // FIXME: layoutFormattingContextSubtree() does not perform layout on the root, rather it lays out the root's content.
     // It constructs an FC for descendant boxes and runs layout on them. The formattingContextRoot is laid out in the FC in which it lives (parent formatting context).
     // It also means that the formattingContextRoot has to have a valid/clean geometry at this point.
     {
-        auto horizontalConstraints = OutOfFlowHorizontalConstraints { HorizontalConstraints { displayBox.paddingBoxLeft(), displayBox.paddingBoxWidth() }, displayBox.contentBoxWidth() };
-        auto verticalConstraints = VerticalConstraints { displayBox.paddingBoxTop(), displayBox.paddingBoxHeight() };
-        formattingContext->layoutOutOfFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
+        auto constraints = FormattingContext::ConstraintsForOutOfFlowContent { { displayBox.paddingBoxLeft(), displayBox.paddingBoxWidth() },
+            { displayBox.paddingBoxTop(), displayBox.paddingBoxHeight() }, displayBox.contentBoxWidth() };
+        formattingContext->layoutOutOfFlowContent(invalidationState, constraints);
     }
 }
 
@@ -125,6 +125,8 @@ std::unique_ptr<FormattingContext> LayoutContext::createFormattingContext(const 
     if (formattingContextRoot.establishesBlockFormattingContext()) {
         ASSERT(!formattingContextRoot.establishesInlineFormattingContext());
         auto& blockFormattingState = layoutState.ensureBlockFormattingState(formattingContextRoot);
+        if (formattingContextRoot.isTableWrapperBox())
+            return makeUnique<TableWrapperBlockFormattingContext>(formattingContextRoot, blockFormattingState);
         return makeUnique<BlockFormattingContext>(formattingContextRoot, blockFormattingState);
     }
 

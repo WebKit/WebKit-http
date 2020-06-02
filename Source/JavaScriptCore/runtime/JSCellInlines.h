@@ -204,9 +204,9 @@ inline bool JSCell::isString() const
     return m_type == StringType;
 }
 
-inline bool JSCell::isBigInt() const
+inline bool JSCell::isHeapBigInt() const
 {
-    return m_type == BigIntType;
+    return m_type == HeapBigIntType;
 }
 
 inline bool JSCell::isSymbol() const
@@ -229,36 +229,18 @@ inline bool JSCell::isProxy() const
     return m_type == ImpureProxyType || m_type == PureForwardingProxyType || m_type == ProxyObjectType;
 }
 
-ALWAYS_INLINE bool JSCell::isFunction(VM& vm)
+ALWAYS_INLINE bool JSCell::isCallable(VM& vm)
 {
     if (type() == JSFunctionType)
         return true;
-    if (inlineTypeFlags() & OverridesGetCallData) {
-        CallData ignoredCallData;
-        return methodTable(vm)->getCallData(this, ignoredCallData) != CallType::None;
-    }
+    if (inlineTypeFlags() & OverridesGetCallData)
+        return methodTable(vm)->getCallData(this).type != CallData::Type::None;
     return false;
-}
-
-inline bool JSCell::isCallable(VM& vm, CallType& callType, CallData& callData)
-{
-    if (type() != JSFunctionType && !(inlineTypeFlags() & OverridesGetCallData))
-        return false;
-    callType = methodTable(vm)->getCallData(this, callData);
-    return callType != CallType::None;
 }
 
 inline bool JSCell::isConstructor(VM& vm)
 {
-    ConstructType constructType;
-    ConstructData constructData;
-    return isConstructor(vm, constructType, constructData);
-}
-
-inline bool JSCell::isConstructor(VM& vm, ConstructType& constructType, ConstructData& constructData)
-{
-    constructType = methodTable(vm)->getConstructData(this, constructData);
-    return constructType != ConstructType::None;
+    return methodTable(vm)->getConstructData(this).type != CallData::Type::None;
 }
 
 inline bool JSCell::isAPIValueWrapper() const
@@ -340,7 +322,7 @@ inline bool JSCell::toBoolean(JSGlobalObject* globalObject) const
 {
     if (isString())
         return static_cast<const JSString*>(this)->toBoolean();
-    if (isBigInt())
+    if (isHeapBigInt())
         return static_cast<const JSBigInt*>(this)->toBoolean();
     return !structure(getVM(globalObject))->masqueradesAsUndefined(globalObject);
 }
@@ -348,12 +330,12 @@ inline bool JSCell::toBoolean(JSGlobalObject* globalObject) const
 inline TriState JSCell::pureToBoolean() const
 {
     if (isString())
-        return static_cast<const JSString*>(this)->toBoolean() ? TrueTriState : FalseTriState;
-    if (isBigInt())
-        return static_cast<const JSBigInt*>(this)->toBoolean() ? TrueTriState : FalseTriState;
+        return static_cast<const JSString*>(this)->toBoolean() ? TriState::True : TriState::False;
+    if (isHeapBigInt())
+        return static_cast<const JSBigInt*>(this)->toBoolean() ? TriState::True : TriState::False;
     if (isSymbol())
-        return TrueTriState;
-    return MixedTriState;
+        return TriState::True;
+    return TriState::Indeterminate;
 }
 
 inline void JSCellLock::lock()

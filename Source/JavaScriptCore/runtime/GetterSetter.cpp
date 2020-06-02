@@ -23,10 +23,8 @@
 #include "config.h"
 #include "GetterSetter.h"
 
-#include "Error.h"
 #include "Exception.h"
-#include "JSObject.h"
-#include "JSCInlines.h"
+#include "JSObjectInlines.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
@@ -55,9 +53,8 @@ JSValue callGetter(JSGlobalObject* globalObject, JSValue base, JSValue getterSet
 
     JSObject* getter = jsCast<GetterSetter*>(getterSetter)->getter();
 
-    CallData callData;
-    CallType callType = getter->methodTable(vm)->getCallData(getter, callData);
-    RELEASE_AND_RETURN(scope, call(globalObject, getter, callType, callData, base, ArgList()));
+    auto callData = getCallData(vm, getter);
+    RELEASE_AND_RETURN(scope, call(globalObject, getter, callData, base, ArgList()));
 }
 
 bool callSetter(JSGlobalObject* globalObject, JSValue base, JSValue getterSetter, JSValue value, ECMAMode ecmaMode)
@@ -68,7 +65,7 @@ bool callSetter(JSGlobalObject* globalObject, JSValue base, JSValue getterSetter
     GetterSetter* getterSetterObj = jsCast<GetterSetter*>(getterSetter);
 
     if (getterSetterObj->isSetterNull())
-        return typeError(globalObject, scope, ecmaMode == StrictMode, ReadonlyPropertyWriteError);
+        return typeError(globalObject, scope, ecmaMode.isStrict(), ReadonlyPropertyWriteError);
 
     JSObject* setter = getterSetterObj->setter();
 
@@ -76,10 +73,9 @@ bool callSetter(JSGlobalObject* globalObject, JSValue base, JSValue getterSetter
     args.append(value);
     ASSERT(!args.hasOverflowed());
 
-    CallData callData;
-    CallType callType = setter->methodTable(vm)->getCallData(setter, callData);
+    auto callData = getCallData(vm, setter);
     scope.release();
-    call(globalObject, setter, callType, callData, base, args);
+    call(globalObject, setter, callData, base, args);
     return true;
 }
 

@@ -136,10 +136,6 @@ void LayerTreeHost::layerFlushTimerFired()
     if (m_isSuspended || m_isWaitingForRenderer)
         return;
 
-    m_coordinator.syncDisplayState();
-    m_webPage.updateRendering();
-    m_webPage.flushPendingEditorStateUpdate();
-
     if (!m_coordinator.rootCompositingLayer())
         return;
 
@@ -338,12 +334,10 @@ void LayerTreeHost::deviceOrPageScaleFactorChanged()
     m_compositor->setScaleFactor(m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor());
 }
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<DisplayRefreshMonitor> LayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
     return m_compositor->displayRefreshMonitor(displayID);
 }
-#endif
 
 void LayerTreeHost::didFlushRootLayer(const FloatRect& visibleContentRect)
 {

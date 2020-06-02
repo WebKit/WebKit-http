@@ -100,7 +100,7 @@ const RenderElement& SVGRenderSupport::localToParentTransform(const RenderElemen
     return parent;
 }
 
-void SVGRenderSupport::mapLocalToContainer(const RenderElement& renderer, const RenderLayerModelObject* repaintContainer, TransformState& transformState, bool* wasFixed)
+void SVGRenderSupport::mapLocalToContainer(const RenderElement& renderer, const RenderLayerModelObject* ancestorContainer, TransformState& transformState, bool* wasFixed)
 {
     AffineTransform transform;
     auto& parent = localToParentTransform(renderer, transform);
@@ -108,7 +108,7 @@ void SVGRenderSupport::mapLocalToContainer(const RenderElement& renderer, const 
     transformState.applyTransform(transform);
 
     MapCoordinatesFlags mode = UseTransforms;
-    parent.mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
+    parent.mapLocalToContainer(ancestorContainer, transformState, mode, wasFixed);
 }
 
 const RenderElement* SVGRenderSupport::pushMappingToContainer(const RenderElement& renderer, const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap)
@@ -407,6 +407,9 @@ void SVGRenderSupport::clipContextToCSSClippingArea(GraphicsContext& context, co
 
 bool SVGRenderSupport::pointInClippingArea(const RenderElement& renderer, const FloatPoint& point)
 {
+    if (SVGHitTestCycleDetectionScope::isVisiting(renderer))
+        return false;
+
     ClipPathOperation* clipPathOperation = renderer.style().clipPath();
     if (is<ShapeClipPathOperation>(clipPathOperation) || is<BoxClipPathOperation>(clipPathOperation))
         return isPointInCSSClippingArea(renderer, point);
@@ -505,5 +508,34 @@ void SVGRenderSupport::updateMaskedAncestorShouldIsolateBlending(const RenderEle
 }
 
 #endif
+
+SVGHitTestCycleDetectionScope::SVGHitTestCycleDetectionScope(const RenderElement& element)
+{
+    m_element = makeWeakPtr(&element);
+    auto result = visitedElements().add(*m_element);
+    ASSERT_UNUSED(result, result.isNewEntry);
+}
+
+SVGHitTestCycleDetectionScope::~SVGHitTestCycleDetectionScope()
+{
+    bool result = visitedElements().remove(*m_element);
+    ASSERT_UNUSED(result, result);
+}
+
+WeakHashSet<RenderElement>& SVGHitTestCycleDetectionScope::visitedElements()
+{
+    static NeverDestroyed<WeakHashSet<RenderElement>> s_visitedElements;
+    return s_visitedElements;
+}
+
+bool SVGHitTestCycleDetectionScope::isEmpty()
+{
+    return visitedElements().computesEmpty();
+}
+
+bool SVGHitTestCycleDetectionScope::isVisiting(const RenderElement& element)
+{
+    return visitedElements().contains(element);
+}
 
 }

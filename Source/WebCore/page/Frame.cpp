@@ -103,6 +103,7 @@
 #include "npruntime_impl.h"
 #include "runtime_root.h"
 #include <JavaScriptCore/RegularExpression.h>
+#include <wtf/HexNumber.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -155,8 +156,6 @@ Frame::Frame(Page& page, HTMLFrameOwnerElement* ownerElement, UniqueRef<FrameLoa
     , m_navigationScheduler(makeUniqueRef<NavigationScheduler>(*this))
     , m_ownerElement(ownerElement)
     , m_script(makeUniqueRef<ScriptController>(*this))
-    , m_editor(makeUniqueRef<Editor>(*this))
-    , m_selection(makeUniqueRef<FrameSelection>(this))
     , m_animationController(makeUniqueRef<CSSAnimationController>(*this))
     , m_pageZoomFactor(parentPageZoomFactor(this))
     , m_textZoomFactor(parentTextZoomFactor(this))
@@ -233,7 +232,7 @@ void Frame::setView(RefPtr<FrameView>&& view)
     // notified. If we wait until the view is destroyed, then things won't be hooked up enough for
     // these calls to work.
     if (!view && m_doc && m_doc->backForwardCacheState() != Document::InBackForwardCache)
-        m_doc->prepareForDestruction();
+        m_doc->willBeRemovedFromFrame();
     
     if (m_view)
         m_view->layoutContext().unscheduleLayout();
@@ -278,7 +277,7 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
 #endif
 
     if (m_doc && m_doc->backForwardCacheState() != Document::InBackForwardCache)
-        m_doc->prepareForDestruction();
+        m_doc->willBeRemovedFromFrame();
 
     m_doc = newDocument.copyRef();
     ASSERT(!m_doc || m_doc->domWindow());
@@ -302,6 +301,27 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
     InspectorInstrumentation::frameDocumentUpdated(*this);
 
     m_documentIsBeingReplaced = false;
+}
+
+void Frame::invalidateContentEventRegionsIfNeeded()
+{
+    if (!m_page || !m_doc || !m_doc->renderView())
+        return;
+    bool hasTouchActionElements = false;
+    bool hasEditableElements = false;
+#if ENABLE(TOUCH_ACTION_REGIONS)
+    hasTouchActionElements = m_doc->mayHaveElementsWithNonAutoTouchAction();
+#endif
+#if ENABLE(EDITABLE_REGION)
+    hasEditableElements = m_doc->mayHaveEditableElements();
+#endif
+    // FIXME: This needs to look at wheel event handlers too.
+    if (!hasTouchActionElements && !hasEditableElements)
+        return;
+    if (!m_doc->renderView()->compositor().viewNeedsToInvalidateEventRegionOfEnclosingCompositingLayerForRepaint())
+        return;
+    if (m_ownerElement)
+        m_ownerElement->document().invalidateEventRegionsForFrame(*m_ownerElement);
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -520,7 +540,13 @@ bool Frame::requestDOMPasteAccess()
     if (m_settings->javaScriptCanAccessClipboard() && m_settings->DOMPasteAllowed())
         return true;
 
-    if (!m_settings->domPasteAccessRequestsEnabled() || !m_doc)
+    if (!m_doc)
+        return false;
+
+    if (editor().isPastingFromMenuOrKeyBinding())
+        return true;
+
+    if (!m_settings->domPasteAccessRequestsEnabled())
         return false;
 
     auto gestureToken = UserGestureIndicator::currentUserGesture();
@@ -533,7 +559,7 @@ bool Frame::requestDOMPasteAccess()
     case DOMPasteAccessPolicy::Denied:
         return false;
     case DOMPasteAccessPolicy::NotRequestedYet: {
-        auto* client = m_editor->client();
+        auto* client = editor().client();
         if (!client)
             return false;
 
@@ -619,25 +645,31 @@ void Frame::injectUserScripts(UserScriptInjectionTime injectionTime)
     if (loader().stateMachine().creatingInitialEmptyDocument() && !settings().shouldInjectUserScriptsInInitialEmptyDocument())
         return;
 
-    m_page->userContentProvider().forEachUserScript([this, protectedThis = makeRef(*this), injectionTime](DOMWrapperWorld& world, const UserScript& script) {
-        if (script.injectionTime() == injectionTime)
-            injectUserScriptImmediately(world, script);
+    bool pageWasNotified = m_page->hasBeenNotifiedToInjectUserScripts();
+    m_page->userContentProvider().forEachUserScript([this, protectedThis = makeRef(*this), injectionTime, pageWasNotified] (DOMWrapperWorld& world, const UserScript& script) {
+        if (script.injectionTime() == injectionTime) {
+            if (script.waitForNotificationBeforeInjecting() == WaitForNotificationBeforeInjecting::Yes && !pageWasNotified)
+                m_page->addUserScriptAwaitingNotification(world, script);
+            else
+                injectUserScriptImmediately(world, script);
+        }
     });
 }
 
 void Frame::injectUserScriptImmediately(DOMWrapperWorld& world, const UserScript& script)
 {
-    if (loader().client().hasNavigatedAwayFromAppBoundDomain() && !loader().client().needsInAppBrowserPrivacyQuirks()) {
+    if (loader().client().shouldEnableInAppBrowserPrivacyProtections()) {
         if (auto* document = this->document())
             document->addConsoleMessage(MessageSource::Security, MessageLevel::Warning, "Ignoring user script injection for non-app bound domain."_s);
         RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "injectUserScriptImmediately: Ignoring user script injection for non app-bound domain");
         return;
     }
+    loader().client().notifyPageOfAppBoundBehavior();
 
     auto* document = this->document();
     if (!document)
         return;
-    if (script.injectedFrames() == InjectInTopFrameOnly && !isMainFrame())
+    if (script.injectedFrames() == UserContentInjectedFrames::InjectInTopFrameOnly && !isMainFrame())
         return;
     if (!UserContentURLPattern::matchesPatterns(document->url(), script.whitelist(), script.blacklist()))
         return;
@@ -694,10 +726,10 @@ void Frame::clearTimers(FrameView *view, Document *document)
     if (view) {
         view->layoutContext().unscheduleLayout();
         if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
-            if (auto* timeline = document->existingTimeline())
-                timeline->suspendAnimations();
+            if (auto* timelines = document->timelinesController())
+                timelines->suspendAnimations();
         } else
-            view->frame().animation().suspendAnimationsForDocument(document);
+            view->frame().legacyAnimation().suspendAnimationsForDocument(document);
         view->frame().eventHandler().stopAutoscrollTimer();
     }
 }
@@ -911,7 +943,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
     if (!document)
         return;
 
-    m_editor->dismissCorrectionPanelAsIgnored();
+    editor().dismissCorrectionPanelAsIgnored();
 
     // Respect SVGs zoomAndPan="disabled" property in standalone SVG documents.
     // FIXME: How to handle compound documents + zoomAndPan="disabled"? Needs SVG WG clarification.
@@ -989,10 +1021,10 @@ void Frame::resumeActiveDOMObjectsAndAnimations()
     // Frame::clearTimers() suspended animations and pending relayouts.
 
     if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
-        if (auto* timeline = m_doc->existingTimeline())
-            timeline->resumeAnimations();
+        if (auto* timelines = m_doc->timelinesController())
+            timelines->resumeAnimations();
     } else
-        animation().resumeAnimationsForDocument(m_doc.get());
+        legacyAnimation().resumeAnimationsForDocument(m_doc.get());
     if (m_view)
         m_view->layoutContext().scheduleLayout();
 }
@@ -1053,9 +1085,23 @@ void Frame::selfOnlyDeref()
     deref();
 }
 
+String Frame::debugDescription() const
+{
+    StringBuilder builder;
+
+    builder.append("Frame 0x"_s, hex(reinterpret_cast<uintptr_t>(this), Lowercase));
+    if (isMainFrame())
+        builder.append(" (main frame)"_s);
+
+    if (auto document = this->document())
+        builder.append(' ', document->documentURI());
+    
+    return builder.toString();
+}
+
 TextStream& operator<<(TextStream& ts, const Frame& frame)
 {
-    ts << "Frame " << &frame << " view " << frame.view() << " (is main frame " << frame.isMainFrame() << ") " << (frame.document() ? frame.document()->documentURI() : emptyString());
+    ts << frame.debugDescription();
     return ts;
 }
 

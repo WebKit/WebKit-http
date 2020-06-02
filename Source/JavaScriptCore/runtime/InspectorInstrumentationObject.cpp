@@ -27,7 +27,6 @@
 #include "InspectorInstrumentationObject.h"
 
 #include "JSCInlines.h"
-#include "Lookup.h"
 #include <wtf/DataLog.h>
 
 namespace JSC {

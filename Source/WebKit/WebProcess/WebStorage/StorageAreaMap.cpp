@@ -95,7 +95,7 @@ void StorageAreaMap::setItem(Frame* sourceFrame, StorageAreaImpl* sourceArea, co
     m_pendingValueChanges.add(key);
 
     if (m_mapID)
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::SetItem(*m_mapID, sourceArea->identifier(), m_currentSeed, key, value, sourceFrame->document()->url()), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::SetItem(*m_mapID, sourceArea->identifier(), m_currentSeed, key, value, sourceFrame->document()->url().string()), 0);
     else
         RELEASE_LOG_ERROR(Storage, "StorageAreaMap::setItem failed because storage map ID is invalid");
 }
@@ -114,7 +114,7 @@ void StorageAreaMap::removeItem(WebCore::Frame* sourceFrame, StorageAreaImpl* so
     m_pendingValueChanges.add(key);
 
     if (m_mapID)
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::RemoveItem(*m_mapID, sourceArea->identifier(), m_currentSeed, key, sourceFrame->document()->url()), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::RemoveItem(*m_mapID, sourceArea->identifier(), m_currentSeed, key, sourceFrame->document()->url().string()), 0);
     else
         RELEASE_LOG_ERROR(Storage, "StorageAreaMap::removeItem failed because storage map ID is invalid");
 }
@@ -129,7 +129,7 @@ void StorageAreaMap::clear(WebCore::Frame* sourceFrame, StorageAreaImpl* sourceA
     m_map = StorageMap::create(m_quotaInBytes);
 
     if (m_mapID)
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::Clear(*m_mapID, sourceArea->identifier(), m_currentSeed, sourceFrame->document()->url()), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::StorageManagerSet::Clear(*m_mapID, sourceArea->identifier(), m_currentSeed, sourceFrame->document()->url().string()), 0);
     else
         RELEASE_LOG_ERROR(Storage, "StorageAreaMap::clear failed because storage map ID is invalid");
 }
@@ -276,14 +276,28 @@ void StorageAreaMap::clearCache()
     resetValues();
 }
 
-static Vector<RefPtr<Frame>> framesForEventDispatching(Page& page, SecurityOrigin& origin, const Optional<StorageAreaImplIdentifier>& storageAreaImplID)
+static Vector<RefPtr<Frame>> framesForEventDispatching(Page& page, SecurityOrigin& origin, StorageType storageType, const Optional<StorageAreaImplIdentifier>& storageAreaImplID)
 {
     Vector<RefPtr<Frame>> frames;
     page.forEachDocument([&](auto& document) {
         if (!document.securityOrigin().equal(&origin))
             return;
+
+        auto* window = document.domWindow();
+        if (!window)
+            return;
         
-        auto* storage = document.domWindow() ? document.domWindow()->optionalSessionStorage() : nullptr;
+        Storage* storage = nullptr;
+        switch (storageType) {
+        case StorageType::Session:
+            storage = window->optionalSessionStorage();
+            break;
+        case StorageType::Local:
+        case StorageType::TransientLocal:
+            storage = window->optionalLocalStorage();
+            break;
+        }
+
         if (!storage)
             return;
         
@@ -311,7 +325,7 @@ void StorageAreaMap::dispatchSessionStorageEvent(const Optional<StorageAreaImplI
     if (!page)
         return;
 
-    auto frames = framesForEventDispatching(*page, m_securityOrigin, storageAreaImplID);
+    auto frames = framesForEventDispatching(*page, m_securityOrigin, StorageType::Session, storageAreaImplID);
     StorageEventDispatcher::dispatchSessionStorageEventsToFrames(*page, frames, key, oldValue, newValue, urlString, m_securityOrigin->data());
 }
 
@@ -324,7 +338,7 @@ void StorageAreaMap::dispatchLocalStorageEvent(const Optional<StorageAreaImplIde
     // Namespace IDs for local storage namespaces are equivalent to web page group IDs.
     auto& pageGroup = *WebProcess::singleton().webPageGroup(m_namespace.pageGroupID())->corePageGroup();
     for (auto* page : pageGroup.pages())
-        frames.appendVector(framesForEventDispatching(*page, m_securityOrigin, storageAreaImplID));
+        frames.appendVector(framesForEventDispatching(*page, m_securityOrigin, StorageType::Local, storageAreaImplID));
 
     StorageEventDispatcher::dispatchLocalStorageEventsToFrames(pageGroup, frames, key, oldValue, newValue, urlString, m_securityOrigin->data());
 }

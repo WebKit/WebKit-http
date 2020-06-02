@@ -1,3 +1,430 @@
+2020-05-29  Keith Rollin  <krollin@apple.com>
+
+        Revert switch to XCBuild
+        https://bugs.webkit.org/show_bug.cgi?id=212530
+        <rdar://problem/63764632>
+
+        Unreviewed build fix.
+
+        Bug 209890 enabled the use of XCBuild by default. Since then, some
+        build issues have shown up. While addressing them, temporarily turn
+        off the use of XCBuild by default.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE.xcconfig:
+
+2020-05-27  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Unreviewed build fix. Check the value of XCODE_VERSION_ACTUAL rather
+        than XCODE_VERSION_MAJOR when determining whether to use the XCBuild
+        or non-XCBuild method of running header post-processing scripts.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+
+2020-05-26  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE.xcconfig:
+
+2020-05-22  Kenneth Russell  <kbr@chromium.org>
+
+        [ANGLE - iOS] webgl/1.0.3/conformance/extensions/ext-sRGB.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=212277
+
+        Reviewed by Dean Jackson.
+
+        Properly translate GL_EXT_sRGB enums to ES 3.0 enums when
+        GL_EXT_sRGB is not supported.
+
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::GetNativeInternalFormat):
+        (rx::nativegl::GetNativeFormat):
+
+2020-05-22  Kenneth Russell  <kbr@chromium.org>
+
+        [ANGLE - iOS] fast/canvas/webgl/webgl-depth-texture.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=212271
+
+        Reviewed by Dean Jackson.
+
+        Use ES 3.0 sized internal formats for unsized depth/stencil
+        textures when the OES_depth_texture extension is unavailable - as
+        is the case in iOS's ES 3.0 driver.
+
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::GetNativeInternalFormat):
+
+2020-05-21  Dean Jackson  <dino@apple.com>
+
+        PVRTC compressed textures are failing with ANGLE backend
+        https://bugs.webkit.org/show_bug.cgi?id=212240
+        <rdar://problem/63517385>
+
+        Reviewed by Ken Russell (representing ANGLE).
+
+        The values used for the PVRTC formats were incorrect.
+
+        * src/libANGLE/formatutils.cpp:
+        (gl::BuildInternalFormatInfoMap):
+
+2020-05-21  Kenneth Russell  <kbr@chromium.org>
+
+        Roll ANGLE to 2020-05-21
+        https://bugs.webkit.org/show_bug.cgi?id=212228
+
+        Reviewed by Dean Jackson.
+
+        Roll ANGLE to 96a80283cc0fe604d03c0bc0b3f9eb100edd22f9 in the
+        upstream repository using jdarpinian's excellent update-angle.sh
+        script.
+
+        Manually undo the fix from Bug 210992, which was fixed differently
+        upstream.
+
+2020-05-21  Kenneth Russell  <kbr@chromium.org>
+
+        EXT_color_buffer_half_float not exposed on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=212181
+
+        Reviewed by Dean Jackson.
+
+        Remove OES_texture_half_float requirement for advertising
+        EXT_color_buffer_half_float in ANGLE. This is implicit in ES 3.0.
+
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::BuildInternalFormatInfoMap):
+
+2020-05-20  Kenneth Russell  <kbr@chromium.org>
+
+        OES_texture_half_float_linear unavailable on WebGL 1.0 on iOS with ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=212170
+
+        Reviewed by Dean Jackson.
+
+        Now that FP16 luminance/alpha texture formats are correctly
+        emulated on ES 3.0, advertise them as filterable.
+
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::BuildInternalFormatInfoMap):
+
+2020-05-20  Kenneth Russell  <kbr@chromium.org>
+
+        OES_texture_float / OES_texture_half_float unavailable in WebGL 1.0 on iOS Simulator with ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=210524
+
+        Reviewed by Dean Jackson.
+
+        Emulate LUMINANCE, ALPHA and LUMINANCE_ALPHA floating-point
+        textures on top of RED / RG textures when the underlying
+        OES_texture_float/half_float OpenGL ES extensions are unavailable.
+
+        This makes the conformance/extensions/oes-texture{-half}-float*
+        tests run and pass in the iOS Simulator.
+
+        This change is being reviewed upstream in the ANGLE repository and
+        is only being uploaded here for testing purposes. It will be
+        rolled in with the next ANGLE update.
+
+        * src/libANGLE/renderer/gl/TextureGL.cpp:
+        (rx::TextureGL::setSwizzle):
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::BuildInternalFormatInfoMap):
+        (rx::nativegl::IsLUMAFormat):
+        (rx::nativegl::EmulateLUMAFormat):
+        (rx::nativegl::EmulateLUMA):
+        (rx::nativegl::GetNativeInternalFormat):
+        (rx::nativegl::GetNativeFormat):
+        (rx::nativegl::GetNativeType):
+        (rx::nativegl::GetTexImageFormat):
+        (rx::nativegl::GetTexSubImageFormat):
+
+2020-05-18  James Darpinian  <jdarpinian@chromium.org>
+
+        Enable regenerateStructNames workaround on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=212056
+
+        Reviewed by Dean Jackson.
+
+        The WebGL conformance test conformance/glsl/misc/shader-struct-scope.html
+        was failing on iOS. The workaround that fixes this test was enabled only on
+        desktop GL, but it's necessary for iOS as well.
+
+        * src/libANGLE/renderer/gl/renderergl_utils.cpp:
+        (rx::nativegl_gl::InitializeFeatures):
+
+2020-05-14  James Darpinian  <jdarpinian@chromium.org>
+
+        REGRESSION (r259589): Google Maps background layer fades out and back in
+        https://bugs.webkit.org/show_bug.cgi?id=210992
+
+        Reviewed by Dean Jackson.
+
+        ANGLE rendering feedback loop detection was incorrect if a texture attached
+        to a framebuffer was also bound to an active texture unit, and then that texture
+        unit became inactive because a sampler uniform was set.
+
+        * src/libANGLE/Context.cpp:
+        (gl::Context::onSamplerUniformChange):
+        * src/libANGLE/State.cpp:
+        (gl::State::setTextureIndexInactive):
+        * src/libANGLE/State.h:
+
+2020-05-14  Kenneth Russell  <kbr@chromium.org>
+
+        Update ANGLE to 2020-03-27
+        https://bugs.webkit.org/show_bug.cgi?id=209689
+
+        Reviewed by Darin Adler.
+
+        Re-applying this patch now that we have a fix for 210992.
+
+        Use update-angle.sh script by James Darpinian to roll ANGLE to
+        commit b387ce9389ede6a4ed3b831ab1b8187927fa295f in
+        https://chromium.googlesource.com/angle/angle .
+
+        changes.diff has been auto-updated with Apple's diffs relative to
+        upstream. No additional manual changes are made in this roll.
+        Long autogenerated file list omitted.
+
+2020-05-08  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/211644>
+
+        Reviewed by Darin Adler.
+
+        * include/vulkan: Removed.
+        * src/android_system_settings: Removed.
+        * third_party/glmark2: Removed.
+        * tools/flex-bison: Removed.
+
+2020-05-07  James Darpinian  <jdarpinian@chromium.org>
+
+        Fix Google Maps rendering corruption in simulator with ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=211398
+
+        glReadPixels call needs to respect the row stride of the IOSurface.
+
+        Reviewed by Alex Christensen.
+
+        * src/libANGLE/renderer/gl/eagl/IOSurfaceSurfaceEAGL.h:
+        * src/libANGLE/renderer/gl/eagl/IOSurfaceSurfaceEAGL.mm:
+        (rx::IOSurfaceSurfaceEAGL::IOSurfaceSurfaceEAGL):
+        (rx::IOSurfaceSurfaceEAGL::releaseTexImage):
+
+2020-05-07  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE to 2020-03-27
+        https://bugs.webkit.org/show_bug.cgi?id=209689
+
+        Reverting r259589. It caused
+        https://bugs.webkit.org/show_bug.cgi?id=210992
+
+2020-05-05  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed, reverting r261176.
+
+        It broke the build
+
+        Reverted changeset:
+
+        "[ANGLE] Declarations should match definitions"
+        https://bugs.webkit.org/show_bug.cgi?id=211410
+        https://trac.webkit.org/changeset/261176
+
+2020-05-05  Jonathan Bedard  <jbedard@apple.com>
+
+        [ANGLE] Declarations should match definitions
+        https://bugs.webkit.org/show_bug.cgi?id=211410
+
+        Reviewed by Alex Christensen.
+
+        * src/libANGLE/renderer/gl/eagl/DisplayEAGL.h: Skip definitions for platforms
+        where class is undefined.
+        * src/libANGLE/renderer/gl/eagl/DisplayEAGL.mm:
+        (rx::DisplayEAGL::generateConfigs): Function is not defined for for MacCatalyst.
+        * src/libANGLE/renderer/gl/eagl/IOSurfaceSurfaceEAGL.h: Skip definitions for platforms
+        where class is undefined.
+        * src/libANGLE/renderer/gl/eagl/IOSurfaceSurfaceEAGL.mm:
+        * src/libANGLE/renderer/gl/eagl/WindowSurfaceEAGL.h: Skip definitions for platforms
+        where class is undefined.
+        * src/libANGLE/renderer/gl/eagl/WindowSurfaceEAGL.mm:
+
+2020-04-28  ChangSeok Oh  <changseok@webkit.org>
+
+        [GTK] Fix build failures for ANGLE_WEBGL after r259589
+        https://bugs.webkit.org/show_bug.cgi?id=211116
+
+        Reviewed by Alex Christensen.
+
+        The ANGLE_WEBGL is broken after ANGLE is updated in r259589. Missing sources
+        should be added to the build target.
+
+        * PlatformGTK.cmake: Add libangle_gl_egl_sources and libangle_gl_egl_dl_sources.
+
+2020-04-27  Dean Jackson  <dino@apple.com>
+
+        Temporarily skip GL_DEPTH_COMPONENT32_OES requirement for depth textures on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=211055
+        <rdar://problem/62410499>
+
+        Reviewed by Darin Adler.
+
+        ANGLE requires GL_DEPTH_COMPONENT32_OES be available in order to expose the
+        depth texture extension. However, this format is not supported on iOS.
+        Temporarily remove this restriction while investigating other bugs.
+
+        This also allows us to see the failing results in
+        fast/canvas/webgl/webgl-depth-texture.html
+        webgl/1.0.3/conformance/extensions/webgl-depth-texture.html
+
+        * src/libANGLE/Caps.cpp:
+        (gl::DetermineDepthTextureANGLESupport):
+        (gl::DetermineDepthTextureOESSupport):
+
+2020-04-25  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Deal with another round of Xcode upgrade checks
+        https://bugs.webkit.org/show_bug.cgi?id=211027
+
+        Reviewed by Alexey Proskuryakov.
+
+        * ANGLE.xcodeproj/project.pbxproj: Bump the upgrade check version.
+        Add a harmless base localization, rename English localization to en,
+        remove Japanese, French, German; this project contains nothing localized.
+
+2020-04-08  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r259708.
+
+        Broke the iOS device Build
+
+        Reverted changeset:
+
+        "Enable the use of XCBuild by default in Apple builds"
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        https://trac.webkit.org/changeset/259708
+
+2020-04-08  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE.xcconfig:
+
+2020-04-06  Kenneth Russell  <kbr@chromium.org>
+
+        Update ANGLE to 2020-03-27
+        https://bugs.webkit.org/show_bug.cgi?id=209689
+
+        Reviewed by Darin Adler.
+
+        Use update-angle.sh script by James Darpinian to roll ANGLE to
+        commit b387ce9389ede6a4ed3b831ab1b8187927fa295f in
+        https://chromium.googlesource.com/angle/angle .
+
+        changes.diff has been auto-updated with Apple's diffs relative to
+        upstream. No additional manual changes are made in this roll.
+        Long autogenerated file list omitted.
+
+2020-04-03  Kenneth Russell  <kbr@chromium.org>
+
+        Fix bugs related to VideoTextureCopierCV and ANGLE roll script
+        https://bugs.webkit.org/show_bug.cgi?id=209943
+
+        Reviewed by Dean Jackson.
+
+        Update the update-angle.sh script to take into account the new
+        procedure for generating ANGLE's commit ID header file. This
+        enables ANGLE rolls into WebKit again.
+
+        * update-angle.sh:
+
+2020-04-03  Keith Rollin  <krollin@apple.com>
+
+        Do not link with OpenGL on Apple platforms
+        https://bugs.webkit.org/show_bug.cgi?id=209946
+        <rdar://problem/61237956>
+
+        Reviewed by Sam Weinig.
+
+        OpenGL is not used in our build of ANGLE. Attempting to link with it
+        causes warnings, which can turn into errors in some cases (in
+        particular, when building with Xcode's "new" build system).
+
+        * ANGLE.xcodeproj/project.pbxproj:
+
+2020-04-03  David Kilzer  <ddkilzer@apple.com>
+
+        [Xcode] Replace ASAN_OTHER_CFLAGS and ASAN_OTHER_CPLUSPLUSFLAGS with $(inherited)
+        <https://webkit.org/b/209963>
+        <rdar://problem/61257504>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/Base.xcconfig:
+        - Remove ASAN_OTHER_CFLAGS, ASAN_OTHER_CPLUSPLUSFLAGS and
+          ASAN_OTHER_LDFLAGS.
+
 2020-03-27  Kenneth Russell  <kbr@chromium.org>
 
         Use ANGLE_robust_client_memory to replace framebuffer/texture validation

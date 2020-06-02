@@ -27,8 +27,6 @@ list(APPEND WebCore_SOURCES
     page/scrolling/nicosia/ScrollingTreePositionedNode.cpp
     page/scrolling/nicosia/ScrollingTreeStickyNode.cpp
 
-    page/scrolling/generic/ScrollingThreadGeneric.cpp
-
     platform/ScrollAnimationKinetic.cpp
     platform/ScrollAnimationSmooth.cpp
     platform/UserAgentQuirks.cpp
@@ -85,4 +83,19 @@ set(WebCore_USER_AGENT_SCRIPTS
 
 list(APPEND WebCore_LIBRARIES
     WPE::libwpe
+)
+
+PLAYSTATION_COPY_SHARED_LIBRARIES(WebCore_CopySharedLibs
+    FILES
+        ${CURL_LIBRARIES}
+        ${Cairo_LIBRARIES}
+        ${EGL_LIBRARIES}
+        ${FREETYPE_LIBRARIES}
+        ${Fontconfig_LIBRARIES}
+        ${HarfBuzz_LIBRARIES}
+        ${JPEG_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${PNG_LIBRARIES}
+        ${WebKitRequirements_LIBRARY}
+        ${WebP_LIBRARIES}
 )

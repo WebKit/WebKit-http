@@ -1609,14 +1609,15 @@ WKDebugOverlayRegions WKPreferencesGetVisibleDebugOverlayRegions(WKPreferencesRe
     return toImpl(preferencesRef)->visibleDebugOverlayRegions();
 }
 
-void WKPreferencesSetIgnoreViewportScalingConstraints(WKPreferencesRef preferencesRef, bool enabled)
+void WKPreferencesSetIgnoreViewportScalingConstraints(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setIgnoreViewportScalingConstraints(enabled);
+    // This preference is no longer supported.
 }
 
-bool WKPreferencesGetIgnoreViewportScalingConstraints(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetIgnoreViewportScalingConstraints(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->ignoreViewportScalingConstraints();
+    // This preference is no longer supported.
+    return false;
 }
 
 void WKPreferencesSetMetaRefreshEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1817,6 +1818,16 @@ void WKPreferencesSetUserTimingEnabled(WKPreferencesRef preferencesRef, bool fla
 bool WKPreferencesGetUserTimingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->userTimingEnabled();
+}
+
+void WKPreferencesSetPaintTimingEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setPaintTimingEnabled(flag);
+}
+
+bool WKPreferencesGetPaintTimingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->paintTimingEnabled();
 }
 
 void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef preferencesRef, bool flag)

@@ -21,12 +21,19 @@ namespace rx
 namespace vk
 {
 class ImageHelper;
+enum class ImageLayout;
 
 using RenderPassAndSerial = ObjectAndSerial<RenderPass>;
 using PipelineAndSerial   = ObjectAndSerial<Pipeline>;
 
 using RefCountedDescriptorSetLayout = RefCounted<DescriptorSetLayout>;
 using RefCountedPipelineLayout      = RefCounted<PipelineLayout>;
+using RefCountedSampler             = RefCounted<Sampler>;
+
+// Helper macro that casts to a bitfield type then verifies no bits were dropped.
+#define SetBitField(lhs, rhs)                                         \
+    lhs = static_cast<typename std::decay<decltype(lhs)>::type>(rhs); \
+    ASSERT(static_cast<decltype(rhs)>(lhs) == (rhs))
 
 // Packed Vk resource descriptions.
 // Most Vk types use many more bits than required to represent the underlying data.
@@ -146,10 +153,12 @@ class AttachmentOpsArray final
     const PackedAttachmentOpsDesc &operator[](size_t index) const;
     PackedAttachmentOpsDesc &operator[](size_t index);
 
-    // Initializes an attachment op with whatever values. Used for compatible RenderPass checks.
-    void initDummyOp(size_t index, VkImageLayout initialLayout, VkImageLayout finalLayout);
     // Initialize an attachment op with all load and store operations.
-    void initWithLoadStore(size_t index, VkImageLayout initialLayout, VkImageLayout finalLayout);
+    void initWithLoadStore(size_t index, ImageLayout initialLayout, ImageLayout finalLayout);
+
+    void setLayouts(size_t index, ImageLayout initialLayout, ImageLayout finalLayout);
+    void setOps(size_t index, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp);
+    void setStencilOps(size_t index, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp);
 
     size_t hash() const;
 
@@ -587,6 +596,58 @@ static_assert(sizeof(PipelineLayoutDesc) ==
                    sizeof(gl::ShaderMap<PackedPushConstantRange>)),
               "Unexpected Size");
 
+// Packed sampler description for the sampler cache.
+class SamplerDesc final
+{
+  public:
+    SamplerDesc();
+    explicit SamplerDesc(const gl::SamplerState &samplerState, bool stencilMode);
+    ~SamplerDesc();
+
+    SamplerDesc(const SamplerDesc &other);
+    SamplerDesc &operator=(const SamplerDesc &rhs);
+
+    void update(const gl::SamplerState &samplerState, bool stencilMode);
+    void reset();
+    angle::Result init(ContextVk *contextVk, vk::Sampler *sampler) const;
+
+    size_t hash() const;
+    bool operator==(const SamplerDesc &other) const;
+
+  private:
+    // 32*4 bits for floating point data.
+    // Note: anisotropy enabled is implicitly determined by maxAnisotropy and caps.
+    float mMipLodBias;
+    float mMaxAnisotropy;
+    float mMinLod;
+    float mMaxLod;
+
+    // 16 bits for modes + states.
+    // 1 bit per filter (only 2 possible values in GL: linear/nearest)
+    uint16_t mMagFilter : 1;
+    uint16_t mMinFilter : 1;
+    uint16_t mMipmapMode : 1;
+
+    // 3 bits per address mode (5 possible values)
+    uint16_t mAddressModeU : 3;
+    uint16_t mAddressModeV : 3;
+    uint16_t mAddressModeW : 3;
+
+    // 1 bit for compare enabled (2 possible values)
+    uint16_t mCompareEnabled : 1;
+
+    // 3 bits for compare op. (8 possible values)
+    uint16_t mCompareOp : 3;
+
+    // Border color and unnormalized coordinates implicitly set to contants.
+
+    // 16 extra bits reserved for future use.
+    uint16_t mReserved;
+};
+
+// Total size: 160 bits == 20 bytes.
+static_assert(sizeof(SamplerDesc) == 20, "Unexpected SamplerDesc size");
+
 // Disable warnings about struct padding.
 ANGLE_DISABLE_STRUCT_PADDING_WARNINGS
 
@@ -715,6 +776,41 @@ class TextureDescriptorDesc
     };
     gl::ActiveTextureArray<TexUnitSerials> mSerials;
 };
+
+// This is IMPLEMENTATION_MAX_DRAW_BUFFERS + 1 for DS attachment
+constexpr size_t kMaxFramebufferAttachments = gl::IMPLEMENTATION_MAX_FRAMEBUFFER_ATTACHMENTS;
+// Color serials are at index [0:gl::IMPLEMENTATION_MAX_DRAW_BUFFERS-1]
+// Depth/stencil index is at gl::IMPLEMENTATION_MAX_DRAW_BUFFERS
+constexpr size_t kFramebufferDescDepthStencilIndex = gl::IMPLEMENTATION_MAX_DRAW_BUFFERS;
+// Struct for AttachmentSerial cache signatures. Includes level/layer for imageView as
+//  well as a unique Serial value for the underlying image
+struct AttachmentSerial
+{
+    uint16_t level;
+    uint16_t layer;
+    uint32_t imageSerial;
+};
+constexpr AttachmentSerial kZeroAttachmentSerial = {0, 0, 0};
+class FramebufferDesc
+{
+  public:
+    FramebufferDesc();
+    ~FramebufferDesc();
+
+    FramebufferDesc(const FramebufferDesc &other);
+    FramebufferDesc &operator=(const FramebufferDesc &other);
+
+    void update(uint32_t index, AttachmentSerial serial);
+    size_t hash() const;
+    void reset();
+
+    bool operator==(const FramebufferDesc &other) const;
+
+    uint32_t attachmentCount() const;
+
+  private:
+    gl::AttachmentArray<AttachmentSerial> mSerials;
+};
 }  // namespace vk
 }  // namespace rx
 
@@ -755,6 +851,18 @@ template <>
 struct hash<rx::vk::TextureDescriptorDesc>
 {
     size_t operator()(const rx::vk::TextureDescriptorDesc &key) const { return key.hash(); }
+};
+
+template <>
+struct hash<rx::vk::FramebufferDesc>
+{
+    size_t operator()(const rx::vk::FramebufferDesc &key) const { return key.hash(); }
+};
+
+template <>
+struct hash<rx::vk::SamplerDesc>
+{
+    size_t operator()(const rx::vk::SamplerDesc &key) const { return key.hash(); }
 };
 }  // namespace std
 
@@ -901,6 +1009,22 @@ class PipelineLayoutCache final : angle::NonCopyable
     std::unordered_map<vk::PipelineLayoutDesc, vk::RefCountedPipelineLayout> mPayload;
 };
 
+class SamplerCache final : angle::NonCopyable
+{
+  public:
+    SamplerCache();
+    ~SamplerCache();
+
+    void destroy(RendererVk *renderer);
+
+    angle::Result getSampler(ContextVk *contextVk,
+                             const vk::SamplerDesc &desc,
+                             vk::BindingPointer<vk::Sampler> *samplerOut);
+
+  private:
+    std::unordered_map<vk::SamplerDesc, vk::RefCountedSampler> mPayload;
+};
+
 // Some descriptor set and pipeline layout constants.
 //
 // The set/binding assignment is done as following:
@@ -933,8 +1057,6 @@ constexpr uint32_t kReservedDriverUniformBindingCount = 1;
 // supported.
 constexpr uint32_t kReservedPerStageDefaultUniformBindingCount = 1;
 constexpr uint32_t kReservedDefaultUniformBindingCount         = 3;
-// Binding index start for transform feedback buffers:
-constexpr uint32_t kXfbBindingIndexStart = kReservedDefaultUniformBindingCount;
 }  // namespace rx
 
 #endif  // LIBANGLE_RENDERER_VULKAN_VK_CACHE_UTILS_H_

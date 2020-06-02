@@ -23,17 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #if PLATFORM(IOS_FAMILY)
 
-#import "IPadUserInterfaceSwizzler.h"
-#import "InstanceMethodSwizzler.h"
 #import "PlatformUtilities.h"
 #import "TestCocoa.h"
 #import "TestInputDelegate.h"
 #import "TestWKWebView.h"
 #import "UIKitSPI.h"
+#import "UserInterfaceSwizzler.h"
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKitLegacy/WebEvent.h>
 #import <cmath>
@@ -695,8 +694,6 @@ TEST(KeyboardInputTests, InsertTextSimulatingKeyboardInput)
     EXPECT_NS_EQUAL((@[@"keydown", @"beforeinput", @"input", @"keyup", @"change"]), [webView objectByEvaluatingJavaScript:@"firedEvents"]);
 }
 
-#if USE(DICTATION_ALTERNATIVES)
-
 TEST(KeyboardInputTests, InsertDictationAlternativesSimulatingKeyboardInput)
 {
     InstanceMethodSwizzler overrideShouldSimulateKeyboardInputOnTextInsertion { NSClassFromString(@"WKContentView"), @selector(_shouldSimulateKeyboardInputOnTextInsertion), reinterpret_cast<IMP>(shouldSimulateKeyboardInputOnTextInsertionOverride) };
@@ -712,8 +709,6 @@ TEST(KeyboardInputTests, InsertDictationAlternativesSimulatingKeyboardInput)
     [[webView textInputContentView] insertText:@"hello" alternatives:@[ @"helo" ] style:UITextAlternativeStyleNone];
     EXPECT_NS_EQUAL((@[@"keydown", @"beforeinput", @"input", @"keyup", @"change"]), [webView objectByEvaluatingJavaScript:@"firedEvents"]);
 }
-
-#endif
 
 } // namespace TestWebKitAPI
 

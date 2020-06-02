@@ -1,3 +1,168 @@
+2020-05-29  Keith Rollin  <krollin@apple.com>
+
+        Revert switch to XCBuild
+        https://bugs.webkit.org/show_bug.cgi?id=212530
+        <rdar://problem/63764632>
+
+        Unreviewed build fix.
+
+        Bug 209890 enabled the use of XCBuild by default. Since then, some
+        build issues have shown up. While addressing them, temporarily turn
+        off the use of XCBuild by default.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2020-05-27  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Unreviewed build fix. Check the value of XCODE_VERSION_ACTUAL rather
+        than XCODE_VERSION_MAJOR when determining whether to use the XCBuild
+        or non-XCBuild method of running header post-processing scripts.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2020-05-26  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2020-05-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin link error
+        https://bugs.webkit.org/show_bug.cgi?id=211843
+
+        Reviewed by Brent Fulgham.
+
+        Make sure uuid.lib comes after WebKitGUID.lib in the list of libraries to link with. Also, add a linker flag
+        to allow multiple definitions of the same symbol when linking WebKit.dll.
+
+        * PlatformWin.cmake:
+
+2020-05-01  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin build
+        https://bugs.webkit.org/show_bug.cgi?id=211324
+
+        Reviewed by Don Olmstead.
+
+        Remove unknown object target and fix link errors.
+
+        * PlatformWin.cmake:
+
+2020-04-25  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Deal with another round of Xcode upgrade checks
+        https://bugs.webkit.org/show_bug.cgi?id=211027
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Bump the upgrade check version.
+
+2020-04-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Classes marked final should not use protected access specifier
+        https://bugs.webkit.org/show_bug.cgi?id=210775
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2020-04-20  Darin Adler  <darin@apple.com>
+
+        Use #import instead of #include in Objective-C and don't use #pragma once
+        https://bugs.webkit.org/show_bug.cgi?id=210724
+
+        Reviewed by David Kilzer.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Removed MemoryMeasure.h/mm.
+
+2020-04-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::WebCore target
+        https://bugs.webkit.org/show_bug.cgi?id=210445
+
+        Reviewed by Michael Catanzaro.
+
+        Use the WebKit::WebCore target within WebKitLegacy.
+
+        * CMakeLists.txt:
+        * PlatformFTW.cmake:
+        * PlatformWin.cmake:
+
+2020-04-08  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r259708.
+
+        Broke the iOS device Build
+
+        Reverted changeset:
+
+        "Enable the use of XCBuild by default in Apple builds"
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        https://trac.webkit.org/changeset/259708
+
+2020-04-08  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
 2020-03-08  Konstantin Tokarev  <annulen@yandex.ru>
 
         [CMake] Some fixes for building Mac port

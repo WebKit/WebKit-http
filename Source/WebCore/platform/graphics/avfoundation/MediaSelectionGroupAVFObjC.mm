@@ -33,11 +33,12 @@
 #import <AVFoundation/AVPlayerItem.h>
 #import <objc/runtime.h>
 #import <wtf/Language.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/WTFString.h>
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
-#include <MediaAccessibility/MediaAccessibility.h>
-#include "MediaAccessibilitySoftLink.h"
+#import <MediaAccessibility/MediaAccessibility.h>
+#import "MediaAccessibilitySoftLink.h"
 #endif
 
 #import <pal/cocoa/AVFoundationSoftLink.h>
@@ -132,10 +133,8 @@ void MediaSelectionGroupAVFObjC::updateOptions(const Vector<String>& characteris
     if (!m_shouldSelectOptionAutomatically)
         return;
 
-    RetainPtr<NSMutableArray> nsLanguages = adoptNS([[NSMutableArray alloc] initWithCapacity:userPreferredLanguages().size()]);
-    for (auto& language : userPreferredLanguages())
-        [nsLanguages addObject:(NSString*)language];
-    NSArray* filteredOptions = [PAL::getAVMediaSelectionGroupClass() mediaSelectionOptionsFromArray:[m_mediaSelectionGroup options] filteredAndSortedAccordingToPreferredLanguages:nsLanguages.get()];
+    NSArray* filteredOptions = [PAL::getAVMediaSelectionGroupClass() mediaSelectionOptionsFromArray:[m_mediaSelectionGroup options]
+        filteredAndSortedAccordingToPreferredLanguages:createNSArray(userPreferredLanguages()).get()];
 
     if (![filteredOptions count] && characteristics.isEmpty())
         return;
@@ -144,11 +143,7 @@ void MediaSelectionGroupAVFObjC::updateOptions(const Vector<String>& characteris
     if (![filteredOptions count])
         filteredOptions = [m_mediaSelectionGroup options];
 
-    RetainPtr<NSMutableArray> nsCharacteristics = adoptNS([[NSMutableArray alloc] initWithCapacity:characteristics.size()]);
-    for (auto& characteristic : characteristics)
-        [nsCharacteristics addObject:(NSString *)characteristic];
-
-    NSArray* optionsWithCharacteristics = [PAL::getAVMediaSelectionGroupClass() mediaSelectionOptionsFromArray:filteredOptions withMediaCharacteristics:nsCharacteristics.get()];
+    NSArray* optionsWithCharacteristics = [PAL::getAVMediaSelectionGroupClass() mediaSelectionOptionsFromArray:filteredOptions withMediaCharacteristics:createNSArray(characteristics).get()];
     if (optionsWithCharacteristics && [optionsWithCharacteristics count])
         filteredOptions = optionsWithCharacteristics;
 

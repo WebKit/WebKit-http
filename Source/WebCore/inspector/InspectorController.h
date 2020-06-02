@@ -91,6 +91,7 @@ public:
     WEBCORE_EXPORT void disconnectAllFrontends();
 
     void inspect(Node*);
+    WEBCORE_EXPORT bool shouldShowOverlay() const;
     WEBCORE_EXPORT void drawHighlight(GraphicsContext&) const;
     WEBCORE_EXPORT void getHighlight(WebCore::Highlight&, InspectorOverlay::CoordinateSystem) const;
     void hideHighlight();
@@ -118,7 +119,7 @@ public:
     Inspector::InspectorFunctionCallHandler functionCallHandler() const override;
     Inspector::InspectorEvaluateHandler evaluateHandler() const override;
     void frontendInitialized() override;
-    Ref<WTF::Stopwatch> executionStopwatch() override;
+    WTF::Stopwatch& executionStopwatch() const final;
     PageScriptDebugServer& scriptDebugServer() override;
     JSC::VM& vm() override;
 

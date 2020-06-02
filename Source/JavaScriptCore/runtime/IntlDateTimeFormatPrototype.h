@@ -26,8 +26,6 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "JSObject.h"
 
 namespace JSC {
@@ -49,13 +47,9 @@ public:
 
     DECLARE_INFO;
 
-protected:
-    void finishCreation(VM&, JSGlobalObject*, Structure*);
-
 private:
     IntlDateTimeFormatPrototype(VM&, Structure*);
+    void finishCreation(VM&);
 };
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

@@ -283,12 +283,10 @@ public:
 
     virtual void didRestoreFromBackForwardCache() = 0;
 
-    virtual void dispatchDidBecomeFrameset(bool) = 0; // Can change due to navigation or DOM modification.
-
     virtual bool canCachePage() const = 0;
     virtual void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&) = 0;
 
-    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer) = 0;
+    virtual RefPtr<Frame> createFrame(const String& name, HTMLFrameOwnerElement&) = 0;
     virtual RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool loadManually) = 0;
     virtual void redirectDataToPlugin(Widget&) = 0;
 
@@ -343,8 +341,8 @@ public:
     // Informs the embedder that a WebGL canvas inside this frame received a lost context
     // notification with the given GL_ARB_robustness guilt/innocence code (see ExtensionsGL.h).
     virtual void didLoseWebGLContext(int) { }
-    virtual WebGLLoadPolicy webGLPolicyForURL(const URL&) const { return WebGLAllowCreation; }
-    virtual WebGLLoadPolicy resolveWebGLPolicyForURL(const URL&) const { return WebGLAllowCreation; }
+    virtual WebGLLoadPolicy webGLPolicyForURL(const URL&) const { return WebGLLoadPolicy::WebGLAllowCreation; }
+    virtual WebGLLoadPolicy resolveWebGLPolicyForURL(const URL&) const { return WebGLLoadPolicy::WebGLAllowCreation; }
 #endif
 
     virtual void completePageTransitionIfNeeded() { }
@@ -381,8 +379,8 @@ public:
 
     virtual AllowsContentJavaScript allowsContentJavaScriptFromMostRecentNavigation() const { return AllowsContentJavaScript::Yes; }
 
-    virtual bool hasNavigatedAwayFromAppBoundDomain() { return false; }
-    virtual bool needsInAppBrowserPrivacyQuirks() const { return false; }
+    virtual bool shouldEnableInAppBrowserPrivacyProtections() const { return false; }
+    virtual void notifyPageOfAppBoundBehavior() { }
 };
 
 } // namespace WebCore

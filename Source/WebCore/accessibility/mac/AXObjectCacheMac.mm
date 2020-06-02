@@ -37,7 +37,7 @@
 #import <pal/spi/mac/HIServicesSPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
-#include <ApplicationServices/ApplicationServicesPriv.h>
+#import <ApplicationServices/ApplicationServicesPriv.h>
 #endif
 
 #ifndef NSAccessibilityLiveRegionChangedNotification
@@ -94,6 +94,30 @@
 
 #ifndef NSAccessibilitySelectedTextMarkerRangeAttribute
 #define NSAccessibilitySelectedTextMarkerRangeAttribute @"AXSelectedTextMarkerRange"
+#endif
+
+#ifndef kAXDraggingSourceDragBeganNotification
+#define kAXDraggingSourceDragBeganNotification CFSTR("AXDraggingSourceDragBegan")
+#endif
+
+#ifndef kAXDraggingSourceDragEndedNotification
+#define kAXDraggingSourceDragEndedNotification CFSTR("AXDraggingSourceDragEnded")
+#endif
+
+#ifndef kAXDraggingDestinationDropAllowedNotification
+#define kAXDraggingDestinationDropAllowedNotification CFSTR("AXDraggingDestinationDropAllowed")
+#endif
+
+#ifndef kAXDraggingDestinationDropNotAllowedNotification
+#define kAXDraggingDestinationDropNotAllowedNotification CFSTR("AXDraggingDestinationDropNotAllowed")
+#endif
+
+#ifndef kAXDraggingDestinationDragAcceptedNotification
+#define kAXDraggingDestinationDragAcceptedNotification CFSTR("AXDraggingDestinationDragAccepted")
+#endif
+
+#ifndef kAXDraggingDestinationDragNotAcceptedNotification
+#define kAXDraggingDestinationDragNotAcceptedNotification CFSTR("AXDraggingDestinationDragNotAccepted")
 #endif
 
 // Very large strings can negatively impact the performance of notifications, so this length is chosen to try to fit an average paragraph or line of text, but not allow strings to be large enough to hurt performance.
@@ -341,6 +365,7 @@ void AXObjectCache::postPlatformNotification(AXCoreObject* obj, AXNotification n
             macNotification = (id)kAXMenuClosedNotification;
             break;
         case AXMenuListItemSelected:
+        case AXMenuListValueChanged:
             macNotification = (id)kAXMenuItemSelectedNotification;
             break;
         case AXPressDidSucceed:
@@ -351,6 +376,21 @@ void AXObjectCache::postPlatformNotification(AXCoreObject* obj, AXNotification n
             break;
         case AXMenuOpened:
             macNotification = (id)kAXMenuOpenedNotification;
+            break;
+        case AXDraggingStarted:
+            macNotification = (id)kAXDraggingSourceDragBeganNotification;
+            break;
+        case AXDraggingEnded:
+            macNotification = (id)kAXDraggingSourceDragEndedNotification;
+            break;
+        case AXDraggingEnteredDropZone:
+            macNotification = (id)kAXDraggingDestinationDropAllowedNotification;
+            break;
+        case AXDraggingDropped:
+            macNotification = (id)kAXDraggingDestinationDragAcceptedNotification;
+            break;
+        case AXDraggingExitedDropZone:
+            macNotification = (id)kAXDraggingDestinationDragNotAcceptedNotification;
             break;
         default:
             return;
@@ -444,7 +484,7 @@ static NSDictionary *textReplacementChangeDictionary(AXCoreObject& object, AXTex
     NSMutableDictionary *change = [[NSMutableDictionary alloc] initWithCapacity:4];
     [change setObject:@(platformEditTypeForWebCoreEditType(type)) forKey:NSAccessibilityTextEditType];
     if (length > AXValueChangeTruncationLength) {
-        [change setObject:[NSNumber numberWithInt:length] forKey:NSAccessibilityTextChangeValueLength];
+        [change setObject:@(length) forKey:NSAccessibilityTextChangeValueLength];
         text = [text substringToIndex:AXValueChangeTruncationLength];
     }
     [change setObject:text forKey:NSAccessibilityTextChangeValue];

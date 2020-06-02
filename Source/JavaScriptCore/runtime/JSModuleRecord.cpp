@@ -27,7 +27,6 @@
 #include "JSModuleRecord.h"
 
 #include "BuiltinNames.h"
-#include "Error.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
@@ -103,7 +102,7 @@ void JSModuleRecord::instantiateDeclarations(JSGlobalObject* globalObject, Modul
     // http://www.ecma-international.org/ecma-262/6.0/#sec-moduledeclarationinstantiation
 
     SymbolTable* symbolTable = moduleProgramExecutable->moduleEnvironmentSymbolTable();
-    JSModuleEnvironment* moduleEnvironment = JSModuleEnvironment::create(vm, globalObject, globalObject, symbolTable, jsTDZValue(), this);
+    JSModuleEnvironment* moduleEnvironment = JSModuleEnvironment::create(vm, globalObject, globalObject->globalLexicalEnvironment(), symbolTable, jsTDZValue(), this);
 
     // http://www.ecma-international.org/ecma-262/6.0/#sec-moduledeclarationinstantiation
     // section 15.2.1.16.4 step 9.

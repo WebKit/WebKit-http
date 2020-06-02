@@ -34,13 +34,8 @@ class SamplerVk : public SamplerImpl
 
     Serial getSerial() const { return mSerial; }
 
-    void onSamplerAccess(vk::ResourceUseList *resourceUseList)
-    {
-        mSampler.onResourceAccess(resourceUseList);
-    }
-
   private:
-    vk::SamplerHelper mSampler;
+    vk::BindingPointer<vk::Sampler> mSampler;
     // The serial is used for cache indexing.
     Serial mSerial;
 };

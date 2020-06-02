@@ -26,7 +26,6 @@
 #include "config.h"
 #include "StructureCache.h"
 
-#include "JSGlobalObject.h"
 #include "JSCInlines.h"
 #include <wtf/Locker.h>
 

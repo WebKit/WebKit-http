@@ -27,24 +27,17 @@
 #include "config.h"
 #include "IntlDateTimeFormatPrototype.h"
 
-#if ENABLE(INTL)
-
 #include "BuiltinNames.h"
 #include "DateConstructor.h"
-#include "Error.h"
 #include "IntlDateTimeFormat.h"
-#include "IntlObject.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
-#include "JSObjectInlines.h"
 #include <wtf/DateMath.h>
 
 namespace JSC {
 
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(JSGlobalObject*, CallFrame*);
-#if JSC_ICU_HAS_UFIELDPOSITER
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncFormatToParts(JSGlobalObject*, CallFrame*);
-#endif
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncResolvedOptions(JSGlobalObject*, CallFrame*);
 
 }
@@ -58,14 +51,15 @@ const ClassInfo IntlDateTimeFormatPrototype::s_info = { "Object", &Base::s_info,
 /* Source for IntlDateTimeFormatPrototype.lut.h
 @begin dateTimeFormatPrototypeTable
   format           IntlDateTimeFormatPrototypeGetterFormat         DontEnum|Accessor
+  formatToParts    IntlDateTimeFormatPrototypeFuncFormatToParts    DontEnum|Function 1
   resolvedOptions  IntlDateTimeFormatPrototypeFuncResolvedOptions  DontEnum|Function 0
 @end
 */
 
-IntlDateTimeFormatPrototype* IntlDateTimeFormatPrototype::create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
+IntlDateTimeFormatPrototype* IntlDateTimeFormatPrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {
     IntlDateTimeFormatPrototype* object = new (NotNull, allocateCell<IntlDateTimeFormatPrototype>(vm.heap)) IntlDateTimeFormatPrototype(vm, structure);
-    object->finishCreation(vm, globalObject, structure);
+    object->finishCreation(vm);
     return object;
 }
 
@@ -79,17 +73,11 @@ IntlDateTimeFormatPrototype::IntlDateTimeFormatPrototype(VM& vm, Structure* stru
 {
 }
 
-void IntlDateTimeFormatPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, Structure*)
+void IntlDateTimeFormatPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-#if JSC_ICU_HAS_UFIELDPOSITER
-    JSFunction* formatToPartsFunction = JSFunction::create(vm, globalObject, 1, vm.propertyNames->formatToParts.string(), IntlDateTimeFormatPrototypeFuncFormatToParts);
-    putDirectWithoutTransition(vm, vm.propertyNames->formatToParts, formatToPartsFunction, static_cast<unsigned>(PropertyAttribute::DontEnum));
-#else
-    UNUSED_PARAM(globalObject);
-#endif
-
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "Object"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    ASSERT(inherits(vm, info()));
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatFuncFormatDateTime(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -152,7 +140,6 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(JSGlobalObj
     return JSValue::encode(boundFormat);
 }
 
-#if JSC_ICU_HAS_UFIELDPOSITER
 EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncFormatToParts(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     VM& vm = globalObject->vm();
@@ -177,7 +164,6 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncFormatToParts(JSGlob
 
     RELEASE_AND_RETURN(scope, JSValue::encode(dateTimeFormat->formatToParts(globalObject, value)));
 }
-#endif
 
 EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncResolvedOptions(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
@@ -202,5 +188,3 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncResolvedOptions(JSGl
 }
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

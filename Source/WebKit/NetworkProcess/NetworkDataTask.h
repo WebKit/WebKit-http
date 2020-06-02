@@ -72,6 +72,8 @@ public:
 
     virtual bool shouldCaptureExtraNetworkLoadMetrics() const { return false; }
 
+    virtual void didNegotiateModernTLS(const WebCore::AuthenticationChallenge&) { }
+
     void didCompleteWithError(const WebCore::ResourceError& error)
     {
         WebCore::NetworkLoadMetrics emptyMetrics;
@@ -147,6 +149,9 @@ protected:
     };
     void failureTimerFired();
     void scheduleFailure(FailureType);
+
+    bool isThirdPartyRequest(const WebCore::ResourceRequest&) const;
+    void restrictRequestReferrerToOriginIfNeeded(WebCore::ResourceRequest&);
 
     FailureType m_scheduledFailureType { NoFailure };
     WebCore::Timer m_failureTimer;

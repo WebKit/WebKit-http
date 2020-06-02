@@ -317,12 +317,6 @@ void RenderThemeIOS::setContentSizeCategory(const String& contentSizeCategory)
     _contentSizeCategory() = contentSizeCategory;
 }
 
-const Color& RenderThemeIOS::shadowColor() const
-{
-    static NeverDestroyed<Color> color(0.0f, 0.0f, 0.0f, 0.7f);
-    return color;
-}
-
 FloatRect RenderThemeIOS::addRoundedBorderClip(const RenderObject& box, GraphicsContext& context, const IntRect& rect)
 {
     // To fix inner border bleeding issues <rdar://problem/9812507>, we clip to the outer border and assert that
@@ -387,7 +381,7 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
 
     if (checked || indeterminate) {
         auto border = box.style().getRoundedBorderFor(rect);
-        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color(0.0f, 0.0f, 0.0f, 0.8f));
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, 0.8f));
 
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         auto width = clip.width();
@@ -423,10 +417,10 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
         }
 
         lineWidth = std::max<float>(lineWidth, 1);
-        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, Color { 0.0f, 0.0f, 0.0f, 0.7f });
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, 0.7f));
 
         lineWidth = std::max<float>(std::min(width, height) * thicknessRatio, 1);
-        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, Color { 1.0f, 1.0f, 1.0f, 240 / 255.0f });
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, makeSimpleColorFromFloats(1.0f, 1.0f, 1.0f, 240 / 255.0f));
     } else {
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         auto width = clip.width();
@@ -484,7 +478,7 @@ bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintI
 
     if (isChecked(box)) {
         auto border = box.style().getRoundedBorderFor(rect);
-        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color(0.0f, 0.0f, 0.0f, 0.8f));
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, 0.8f));
 
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
@@ -496,8 +490,9 @@ bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintI
 
         clip.inflateX(-clip.width() * InnerInverseRatio);
         clip.inflateY(-clip.height() * InnerInverseRatio);
-
-        paintInfo.context().drawRaisedEllipse(clip, Color::white, shadowColor());
+        
+        constexpr auto shadowColor = makeSimpleColor(0, 0, 0, 0.7f * 255);
+        paintInfo.context().drawRaisedEllipse(clip, Color::white, shadowColor);
 
         FloatSize radius(clip.width() / 2.0f, clip.height() / 2.0f);
         paintInfo.context().clipRoundedRect(FloatRoundedRect(clip, radius, radius, radius, radius));
@@ -563,7 +558,8 @@ static void applyCommonButtonPaddingToStyle(RenderStyle& style, const Element& e
 {
     Document& document = element.document();
     auto emSize = CSSPrimitiveValue::create(0.5, CSSUnitType::CSS_EMS);
-    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, document.renderStyle(), document.renderView(), document.frame()->pageZoomFactor()));
+    // We don't need this element's parent style to calculate `em` units, so it's okay to pass nullptr for it here.
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, document.renderStyle(), nullptr, document.renderView(), document.frame()->pageZoomFactor()));
     style.setPaddingBox(LengthBox(0, pixels, 0, pixels));
 }
 
@@ -730,7 +726,7 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         FloatRect ellipse(buttonClip.x() + (buttonClip.width() - count * (size + padding) + padding) / 2.0, buttonClip.maxY() - 10.0, size, size);
 
         for (int i = 0; i < count; ++i) {
-            paintInfo.context().drawRaisedEllipse(ellipse, Color::white, Color(0.0f, 0.0f, 0.0f, 0.5f));
+            paintInfo.context().drawRaisedEllipse(ellipse, Color::white, makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, 0.5f));
             ellipse.move(size + padding, 0);
         }
     }  else {
@@ -750,8 +746,8 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         };
 
         float opacity = isReadOnlyControl(box) ? 0.2 : 0.5;
-        paintInfo.context().setStrokeColor(Color(0.0f, 0.0f, 0.0f, opacity));
-        paintInfo.context().setFillColor(Color(0.0f, 0.0f, 0.0f, opacity));
+        paintInfo.context().setStrokeColor(makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, opacity));
+        paintInfo.context().setFillColor(makeSimpleColorFromFloats(0.0f, 0.0f, 0.0f, opacity));
         paintInfo.context().drawPath(Path::polygonPathFromPoints(shadow));
 
         paintInfo.context().setStrokeColor(Color::white);
@@ -839,9 +835,9 @@ bool RenderThemeIOS::paintSliderTrack(const RenderObject& box, const PaintInfo& 
 
         CGContextRef cgContext = paintInfo.context().platformContext();
         if (readonly)
-            paintInfo.context().setStrokeColor(Color(178, 178, 178));
+            paintInfo.context().setStrokeColor(makeSimpleColor(178, 178, 178));
         else
-            paintInfo.context().setStrokeColor(Color(76, 76, 76));
+            paintInfo.context().setStrokeColor(makeSimpleColor(76, 76, 76));
 
         RetainPtr<CGMutablePathRef> roundedRectPath = adoptCF(CGPathCreateMutable());
         CGPathAddRoundedRect(roundedRectPath.get(), 0, trackClip, cornerWidth, cornerHeight);
@@ -918,13 +914,13 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     const float verticalRenderingPosition = rect.y() + verticalOffset;
     auto strokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-    strokeGradient->addColorStop(0.0, Color(0x8d, 0x8d, 0x8d));
-    strokeGradient->addColorStop(0.45, Color(0xee, 0xee, 0xee));
-    strokeGradient->addColorStop(0.55, Color(0xee, 0xee, 0xee));
-    strokeGradient->addColorStop(1.0, Color(0x8d, 0x8d, 0x8d));
+    strokeGradient->addColorStop(0.0, makeSimpleColor(0x8d, 0x8d, 0x8d));
+    strokeGradient->addColorStop(0.45, makeSimpleColor(0xee, 0xee, 0xee));
+    strokeGradient->addColorStop(0.55, makeSimpleColor(0xee, 0xee, 0xee));
+    strokeGradient->addColorStop(1.0, makeSimpleColor(0x8d, 0x8d, 0x8d));
     context.setStrokeGradient(WTFMove(strokeGradient));
 
-    context.setFillColor(Color(255, 255, 255));
+    context.setFillColor(Color::black);
 
     Path trackPath;
     FloatRect trackRect(rect.x() + 0.25, verticalRenderingPosition + 0.25, rect.width() - 0.5, progressBarHeight - 0.5);
@@ -938,8 +934,8 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     float upperGradientHeight = progressBarHeight / 2.;
     auto upperGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + upperGradientHeight - 1.5) });
-    upperGradient->addColorStop(0.0, Color(133, 133, 133, 188));
-    upperGradient->addColorStop(1.0, Color(18, 18, 18, 51));
+    upperGradient->addColorStop(0.0, makeSimpleColor(133, 133, 133, 188));
+    upperGradient->addColorStop(1.0, makeSimpleColor(18, 18, 18, 51));
     context.setFillGradient(WTFMove(upperGradient));
 
     context.fillRect(FloatRect(rect.x(), verticalRenderingPosition, rect.width(), upperGradientHeight));
@@ -950,18 +946,18 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
         double position = clampTo(renderProgress.position(), 0.0, 1.0);
         double barWidth = position * rect.width();
         auto barGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-        barGradient->addColorStop(0.0, Color(195, 217, 247));
-        barGradient->addColorStop(0.45, Color(118, 164, 228));
-        barGradient->addColorStop(0.49, Color(118, 164, 228));
-        barGradient->addColorStop(0.51, Color(36, 114, 210));
-        barGradient->addColorStop(0.55, Color(36, 114, 210));
-        barGradient->addColorStop(1.0, Color(57, 142, 244));
+        barGradient->addColorStop(0.0, makeSimpleColor(195, 217, 247));
+        barGradient->addColorStop(0.45, makeSimpleColor(118, 164, 228));
+        barGradient->addColorStop(0.49, makeSimpleColor(118, 164, 228));
+        barGradient->addColorStop(0.51, makeSimpleColor(36, 114, 210));
+        barGradient->addColorStop(0.55, makeSimpleColor(36, 114, 210));
+        barGradient->addColorStop(1.0, makeSimpleColor(57, 142, 244));
         context.setFillGradient(WTFMove(barGradient));
 
         auto barStrokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-        barStrokeGradient->addColorStop(0.0, Color(95, 107, 183));
-        barStrokeGradient->addColorStop(0.5, Color(66, 106, 174, 240));
-        barStrokeGradient->addColorStop(1.0, Color(38, 104, 166));
+        barStrokeGradient->addColorStop(0.0, makeSimpleColor(95, 107, 183));
+        barStrokeGradient->addColorStop(0.5, makeSimpleColor(66, 106, 174, 240));
+        barStrokeGradient->addColorStop(1.0, makeSimpleColor(38, 104, 166));
         context.setStrokeGradient(WTFMove(barStrokeGradient));
 
         Path barPath;
@@ -1023,10 +1019,10 @@ void RenderThemeIOS::adjustButtonStyle(RenderStyle& style, const Element* elemen
 
     // Set padding: 0 1.0em; on buttons.
     // CSSPrimitiveValue::computeLengthInt only needs the element's style to calculate em lengths.
-    // Since the element might not be in a document, just pass nullptr for the root element style
-    // and the render view.
+    // Since the element might not be in a document, just pass nullptr for the root element style,
+    // the parent element style, and the render view.
     auto emSize = CSSPrimitiveValue::create(1.0, CSSUnitType::CSS_EMS);
-    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, nullptr, nullptr, 1.0, false));
+    int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, nullptr, nullptr, nullptr, 1.0, WTF::nullopt));
     style.setPaddingBox(LengthBox(0, pixels, 0, pixels));
 
     if (!element)
@@ -1092,7 +1088,7 @@ bool RenderThemeIOS::paintFileUploadIconDecorations(const RenderObject&, const R
         thumbnailRect.contract(kMultipleThumbnailShrinkSize, kMultipleThumbnailShrinkSize);
 
         // Background picture frame and simple background icon with a gradient matching the button.
-        Color backgroundImageColor = Color(buttonRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor).rgb());
+        Color backgroundImageColor = buttonRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
         paintInfo.context().fillRoundedRect(FloatRoundedRect(thumbnailPictureFrameRect, cornerSize, cornerSize, cornerSize, cornerSize), pictureFrameColor);
         paintInfo.context().fillRect(thumbnailRect, backgroundImageColor);
         {
@@ -1553,7 +1549,7 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
             auto it = globalCSSValueToSystemColorMap().find(CSSValueKey { cssValueID, useDarkAppearance, useElevatedUserInterfaceLevel });
             if (it == globalCSSValueToSystemColorMap().end())
                 return RenderTheme::systemColor(cssValueID, options);
-            return Color(it->value.rgb(), Color::Semantic);
+            return it->value.semanticColor();
         }
         auto color = systemColorFromCSSValueID(cssValueID, useDarkAppearance, useElevatedUserInterfaceLevel);
         if (color)
@@ -1567,10 +1563,10 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
 const CGSize attachmentSize = { 160, 119 };
 
 const CGFloat attachmentBorderRadius = 16;
-static Color attachmentBorderColor() { return Color(204, 204, 204); }
+constexpr SimpleColor attachmentBorderColor = makeSimpleColor(204, 204, 204);
 static CGFloat attachmentBorderThickness = 1;
 
-static Color attachmentProgressColor() { return Color(222, 222, 222); }
+constexpr SimpleColor attachmentProgressColor = makeSimpleColor(222, 222, 222);
 const CGFloat attachmentProgressBorderThickness = 3;
 
 const CGFloat attachmentProgressSize = 36;
@@ -1618,6 +1614,7 @@ struct RenderAttachmentInfo {
     float progress;
 
     RetainPtr<UIImage> icon;
+    RefPtr<Image> thumbnailIcon;
 
     int baseline { 0 };
 
@@ -1802,8 +1799,11 @@ RenderAttachmentInfo::RenderAttachmentInfo(const RenderAttachment& attachment)
     if (action.isEmpty() && !hasProgress) {
         FloatSize iconSize;
         icon = iconForAttachment(attachment, iconSize);
-        if (icon) {
-            iconRect = FloatRect(FloatPoint((attachmentRect.width() / 2) - (iconSize.width() / 2), 0), iconSize);
+        thumbnailIcon = attachment.attachmentElement().thumbnail();
+        
+        if (thumbnailIcon || icon) {
+            auto visibleIconSize = thumbnailIcon ? FloatSize(attachmentIconSize, attachmentIconSize) : iconSize;
+            iconRect = FloatRect(FloatPoint((attachmentRect.width() / 2) - (visibleIconSize.width() / 2), 0), visibleIconSize);
             yOffset += iconRect.height() + attachmentItemMargin;
         }
     } else
@@ -1838,11 +1838,13 @@ int RenderThemeIOS::attachmentBaseline(const RenderAttachment& attachment) const
 
 static void paintAttachmentIcon(GraphicsContext& context, RenderAttachmentInfo& info)
 {
-    if (!info.icon)
-        return;
-
-    auto iconImage = BitmapImage::create([info.icon CGImage]);
-    context.drawImage(iconImage.get(), info.iconRect);
+    RefPtr<Image> iconImage;
+    if (info.thumbnailIcon)
+        iconImage = info.thumbnailIcon;
+    else if (info.icon)
+        iconImage = BitmapImage::create([info.icon CGImage]);
+    
+    context.drawImage(*iconImage, info.iconRect);
 }
 
 static void paintAttachmentText(GraphicsContext& context, RenderAttachmentInfo& info)
@@ -1863,8 +1865,8 @@ static void paintAttachmentProgress(GraphicsContext& context, RenderAttachmentIn
     GraphicsContextStateSaver saver(context);
 
     context.setStrokeThickness(attachmentProgressBorderThickness);
-    context.setStrokeColor(attachmentProgressColor());
-    context.setFillColor(attachmentProgressColor());
+    context.setStrokeColor(attachmentProgressColor);
+    context.setFillColor(attachmentProgressColor);
     context.strokeEllipse(info.progressRect);
 
     FloatPoint center = info.progressRect.center();
@@ -1889,7 +1891,7 @@ static Path attachmentBorderPath(RenderAttachmentInfo& info)
 
 static void paintAttachmentBorder(GraphicsContext& context, Path& borderPath)
 {
-    context.setStrokeColor(attachmentBorderColor());
+    context.setStrokeColor(attachmentBorderColor);
     context.setStrokeThickness(attachmentBorderThickness);
     context.strokePath(borderPath);
 }
@@ -1918,7 +1920,7 @@ bool RenderThemeIOS::paintAttachment(const RenderObject& renderer, const PaintIn
 
     if (info.hasProgress)
         paintAttachmentProgress(context, info);
-    else if (info.icon)
+    else if (info.icon || info.thumbnailIcon)
         paintAttachmentIcon(context, info);
 
     paintAttachmentText(context, info);
@@ -2017,7 +2019,7 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
     // Draw a drop shadow around the circle.
     // Use the GraphicsContext function, because it calculates the blur radius in context space,
     // rather than screen space.
-    Color shadowColor = Color { 0.f, 0.f, 0.f, 0.1f };
+    auto shadowColor = makeSimpleColorFromFloats(0.f, 0.f, 0.f, 0.1f);
     graphicsContext.setShadow(FloatSize { }, 16, shadowColor);
 
     // The circle must have an alpha channel value of 1 for the shadow color to appear.

@@ -40,30 +40,27 @@ WebSelectionServiceController::WebSelectionServiceController(WebView *webView)
 {
 }
 
-void WebSelectionServiceController::handleSelectionServiceClick(WebCore::FrameSelection& selection, const Vector<String>& telephoneNumbers, const WebCore::IntPoint& point)
+void WebSelectionServiceController::handleSelectionServiceClick(WebCore::FrameSelection& selection, const Vector<String>& /*telephoneNumbers*/, const WebCore::IntPoint& point)
 {
     Page* page = [m_webView page];
     if (!page)
         return;
 
-    RefPtr<Range> range = selection.selection().firstRange();
+    auto range = selection.selection().firstRange();
     if (!range)
         return;
 
-    RetainPtr<NSAttributedString> attributedSelection = attributedStringFromRange(*range);
+    auto attributedSelection = attributedString(*range).string;
     if (!attributedSelection)
         return;
 
-    NSArray *items = @[ attributedSelection.get() ];
-
+    auto items = @[ attributedSelection.get() ];
     bool isEditable = selection.selection().isContentEditable();
-    
+
     m_sharingServicePickerController = adoptNS([[WebSharingServicePickerController alloc] initWithItems:items includeEditorServices:isEditable client:this style:NSSharingServicePickerStyleTextSelection]);
 
-    RetainPtr<NSMenu> menu = adoptNS([[m_sharingServicePickerController menu] copy]);
-
+    auto menu = adoptNS([[m_sharingServicePickerController menu] copy]);
     [menu setShowsStateColumn:YES];
-
     [menu popUpMenuPositioningItem:nil atLocation:[m_webView convertPoint:point toView:nil] inView:m_webView];
 }
 

@@ -35,6 +35,8 @@ public:
     virtual ~OESTextureHalfFloat();
 
     ExtensionName getName() const override;
+
+    static bool supported(const WebGLRenderingContextBase&);
 };
 
 } // namespace WebCore

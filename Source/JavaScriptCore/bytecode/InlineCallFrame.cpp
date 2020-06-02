@@ -26,9 +26,8 @@
 #include "config.h"
 #include "InlineCallFrame.h"
 
-#include "CallFrame.h"
 #include "CodeBlock.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 
 namespace JSC {
 
@@ -67,7 +66,7 @@ void InlineCallFrame::dumpBriefFunctionInformation(PrintStream& out) const
 void InlineCallFrame::dumpInContext(PrintStream& out, DumpContext* context) const
 {
     out.print(briefFunctionInformation(), ":<", RawPointer(baselineCodeBlock.get()));
-    if (isStrictMode())
+    if (isInStrictContext())
         out.print(" (StrictMode)");
     out.print(", ", directCaller.bytecodeIndex(), ", ", static_cast<Kind>(kind));
     if (isClosureCall)
@@ -82,7 +81,7 @@ void InlineCallFrame::dumpInContext(PrintStream& out, DumpContext* context) cons
 
 void InlineCallFrame::dump(PrintStream& out) const
 {
-    dumpInContext(out, 0);
+    dumpInContext(out, nullptr);
 }
 
 } // namespace JSC

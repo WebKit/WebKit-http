@@ -69,7 +69,7 @@ SOFT_LINK_CLASS(MapKit, MKPlacemark)
 }
 @end
 
-#define USES_MODERN_ATTRIBUTED_STRING_CONVERSION ((PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || PLATFORM(MAC))
+#define USES_MODERN_ATTRIBUTED_STRING_CONVERSION (!PLATFORM(WATCHOS) && !PLATFORM(APPLETV))
 
 @interface AttachmentUpdateObserver : NSObject <WKUIDelegatePrivate>
 @property (nonatomic, readonly) NSArray *inserted;
@@ -1154,7 +1154,7 @@ TEST(WKAttachmentTests, InsertAndRemoveDuplicateAttachment)
         observer.expectAttachmentUpdates(@[ ], @[ originalAttachment.get() ]);
     }
     [webView selectAll:nil];
-    [webView _executeEditCommand:@"Copy" argument:nil completion:nil];
+    [webView _synchronouslyExecuteEditCommand:@"Copy" argument:nil];
     [webView evaluateJavaScript:@"getSelection().collapseToEnd()" completionHandler:nil];
     {
         ObserveAttachmentUpdatesForScope observer(webView.get());
@@ -1196,7 +1196,7 @@ TEST(WKAttachmentTests, InsertDuplicateAttachmentAndUpdateData)
         observer.expectAttachmentUpdates(@[ ], @[ originalAttachment.get() ]);
     }
     [webView selectAll:nil];
-    [webView _executeEditCommand:@"Copy" argument:nil completion:nil];
+    [webView _synchronouslyExecuteEditCommand:@"Copy" argument:nil];
     [webView evaluateJavaScript:@"getSelection().collapseToEnd()" completionHandler:nil];
     {
         ObserveAttachmentUpdatesForScope observer(webView.get());
@@ -1470,13 +1470,13 @@ TEST(WKAttachmentTests, CustomFileWrapperSubclass)
     [configuration _setAttachmentElementEnabled:YES];
     RetainPtr<NSException> exception;
     @try {
-        [configuration _setAttachmentFileWrapperClass:[NSArray self]];
+        [configuration _setAttachmentFileWrapperClass:[NSArray class]];
     } @catch(NSException *caught) {
         exception = caught;
     }
     EXPECT_TRUE(exception);
 
-    [configuration _setAttachmentFileWrapperClass:[FileWrapper self]];
+    [configuration _setAttachmentFileWrapperClass:[FileWrapper class]];
 
     auto webView = webViewForTestingAttachments(CGSizeZero, configuration.get());
 
@@ -1486,7 +1486,7 @@ TEST(WKAttachmentTests, CustomFileWrapperSubclass)
     NSArray<_WKAttachment *> * insertedAttachments = observer.observer().inserted;
 
     EXPECT_EQ(1U, insertedAttachments.count);
-    EXPECT_EQ([FileWrapper self], [insertedAttachments.firstObject.info.fileWrapper class]);
+    EXPECT_EQ([FileWrapper class], [insertedAttachments.firstObject.info.fileWrapper class]);
 }
 
 // FIXME: Remove this version guard once rdar://51752593 is resolved.
@@ -1566,6 +1566,37 @@ TEST(WKAttachmentTests, SetFileWrapperForPDFImageAttachment)
 #pragma mark - Platform-specific tests
 
 #if PLATFORM(MAC)
+
+TEST(WKAttachmentTestsMac, DraggingAttachmentBackedImagePreservesRangedSelection)
+{
+    platformCopyPNG();
+
+    RetainPtr<_WKAttachment> attachment;
+    auto webView = webViewForTestingAttachments(NSMakeSize(250, 250));
+    {
+        ObserveAttachmentUpdatesForScope observer(webView.get());
+        [webView _synchronouslyExecuteEditCommand:@"Paste" argument:nil];
+        EXPECT_EQ(1U, observer.observer().inserted.count);
+        attachment = observer.observer().inserted[0];
+    }
+
+    [webView waitForImageElementSizeToBecome:CGSizeMake(215, 174)];
+
+    [webView mouseEnterAtPoint:CGPointMake(125, 125)];
+    [webView mouseMoveToPoint:CGPointMake(125, 125) withFlags:0];
+    [webView mouseDownAtPoint:CGPointMake(125, 125) simulatePressure:NO];
+    [webView waitForPendingMouseEvents];
+
+    [webView mouseDragToPoint:CGPointMake(150, 150)];
+    [webView mouseDragToPoint:CGPointMake(200, 150)];
+    [webView waitForPendingMouseEvents];
+
+    [webView mouseUpAtPoint:CGPointMake(200, 150)];
+    [webView waitForPendingMouseEvents];
+
+    EXPECT_WK_STREQ("Range", [webView stringByEvaluatingJavaScript:@"getSelection().type"]);
+    EXPECT_TRUE([[webView objectByEvaluatingJavaScript:@"getSelection().containsNode(document.querySelector('img'))"] boolValue]);
+}
 
 TEST(WKAttachmentTestsMac, InsertPastedFileURLsAsAttachments)
 {
@@ -1716,7 +1747,7 @@ TEST(WKAttachmentTestsIOS, TargetedPreviewsWhenDroppingImages)
     [secondItem setSuggestedName:@"apple"];
 
     [simulator setDropAnimationTiming:DropAnimationShouldFinishBeforeHandlingDrop];
-    [simulator setExternalItemProviders:[NSArray arrayWithObjects:firstItem.get(), secondItem.get(), nil] defaultDropPreviews:[NSArray arrayWithObjects:firstPreview.get(), secondPreview.get(), nil]];
+    [simulator setExternalItemProviders:@[firstItem.get(), secondItem.get()] defaultDropPreviews:@[firstPreview.get(), secondPreview.get()]];
     [simulator runFrom:CGPointMake(0, 0) to:CGPointMake(450, 450)];
 
     EXPECT_EQ([simulator delayedDropPreviews].count, 2U);
@@ -1755,7 +1786,7 @@ TEST(WKAttachmentTestsIOS, TargetedPreviewIsClippedWhenDroppingTallImage)
     [item setSuggestedName:@"green"];
 
     [simulator setDropAnimationTiming:DropAnimationShouldFinishBeforeHandlingDrop];
-    [simulator setExternalItemProviders:[NSArray arrayWithObject:item.get()] defaultDropPreviews:[NSArray arrayWithObject:preview.get()]];
+    [simulator setExternalItemProviders:@[item.get()] defaultDropPreviews:@[preview.get()]];
     [simulator runFrom:CGPointMake(0, 0) to:CGPointMake(350, 350)];
 
     EXPECT_EQ([simulator delayedDropPreviews].count, 1U);
@@ -2151,6 +2182,48 @@ TEST(WKAttachmentTestsIOS, InsertDroppedImageWithNonImageFileExtension)
         EXPECT_WK_STREQ("image.hello", info.name);
         [webView expectElementCount:1 querySelector:@"IMG"];
     });
+}
+
+TEST(WKAttachmentTestsIOS, CopyAttachmentUsingElementAction)
+{
+    UIPasteboard.generalPasteboard.items = @[ ];
+
+    auto webView = webViewForTestingAttachments();
+    [webView _setEditable:YES];
+    [webView synchronouslyLoadHTMLString:@"<body></body><script>document.body.focus();</script>"];
+
+    auto document = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:testPDFData()]);
+    [document setPreferredFilename:@"hello.pdf"];
+
+    auto attachment = retainPtr([webView synchronouslyInsertAttachmentWithFileWrapper:document.get() contentType:(__bridge NSString *)kUTTypePDF]);
+    NSString *identifier = [webView stringByEvaluatingJavaScript:@"document.querySelector('attachment').uniqueIdentifier"];
+    EXPECT_WK_STREQ(identifier, [attachment uniqueIdentifier]);
+
+    // Ensure that we can hit-test to the attachment element when simulating a context menu element by adding a click event handler.
+    [webView objectByEvaluatingJavaScript:@"document.querySelector('attachment').addEventListener('click', () => { })"];
+    [webView _setEditable:NO];
+
+    [webView _simulateElementAction:_WKElementActionTypeCopy atLocation:CGPointMake(20, 20)];
+
+    // It takes two IPC round trips between the UI process and web process until the pasteboard data is written,
+    // since we first need to hit-test to discover the activated element, and then use the activated element to
+    // simulate the "copy" action.
+    [webView waitForNextPresentationUpdate];
+    [webView waitForNextPresentationUpdate];
+
+    NSArray<NSItemProvider *> *itemProviders = UIPasteboard.generalPasteboard.itemProviders;
+    EXPECT_EQ(1U, itemProviders.count);
+
+    NSItemProvider *itemProvider = itemProviders.firstObject;
+    EXPECT_EQ(UIPreferredPresentationStyleAttachment, itemProvider.preferredPresentationStyle);
+    EXPECT_WK_STREQ("hello.pdf", itemProvider.suggestedName);
+
+    __block bool done = false;
+    [itemProvider loadDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypePDF completionHandler:^(NSData *data, NSError *) {
+        EXPECT_TRUE([[document serializedRepresentation] isEqualToData:data]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
 }
 
 #if HAVE(PENCILKIT)

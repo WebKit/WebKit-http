@@ -43,14 +43,12 @@ public:
 
 private:
     RealtimeIncomingVideoSourceCocoa(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&, String&&);
-    void processNewSample(CMSampleBufferRef, unsigned, unsigned, MediaSample::VideoRotation);
     RetainPtr<CVPixelBufferRef> pixelBufferFromVideoFrame(const webrtc::VideoFrame&);
     CVPixelBufferPoolRef pixelBufferPool(size_t width, size_t height);
 
     // rtc::VideoSinkInterface
     void OnFrame(const webrtc::VideoFrame&) final;
 
-    RetainPtr<CMSampleBufferRef> m_buffer;
     RetainPtr<CVPixelBufferRef> m_blackFrame;
     int m_blackFrameWidth { 0 };
     int m_blackFrameHeight { 0 };

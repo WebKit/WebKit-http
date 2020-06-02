@@ -120,7 +120,10 @@ enum {
 #endif
     PROP_WEBSITE_DATA_MANAGER,
 #if PLATFORM(GTK)
-    PROP_PSON_ENABLED
+    PROP_PSON_ENABLED,
+#if !USE(GTK4)
+    PROP_USE_SYSYEM_APPEARANCE_FOR_SCROLLBARS
+#endif
 #endif
 };
 
@@ -204,6 +207,9 @@ struct _WebKitWebContextPrivate {
     bool clientsDetached;
 #if PLATFORM(GTK)
     bool psonEnabled;
+#if !USE(GTK4)
+    bool useSystemAppearanceForScrollbars;
+#endif
 #endif
 
     GRefPtr<WebKitFaviconDatabase> faviconDatabase;
@@ -333,6 +339,11 @@ static void webkitWebContextGetProperty(GObject* object, guint propID, GValue* v
     case PROP_PSON_ENABLED:
         g_value_set_boolean(value, context->priv->psonEnabled);
         break;
+#if !USE(GTK4)
+    case PROP_USE_SYSYEM_APPEARANCE_FOR_SCROLLBARS:
+        g_value_set_boolean(value, webkit_web_context_get_use_system_appearance_for_scrollbars(context));
+        break;
+#endif
 #endif
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propID, paramSpec);
@@ -358,6 +369,11 @@ static void webkitWebContextSetProperty(GObject* object, guint propID, const GVa
     case PROP_PSON_ENABLED:
         context->priv->psonEnabled = g_value_get_boolean(value);
         break;
+#if !USE(GTK4)
+    case PROP_USE_SYSYEM_APPEARANCE_FOR_SCROLLBARS:
+        webkit_web_context_set_use_system_appearance_for_scrollbars(context, g_value_get_boolean(value));
+        break;
+#endif
 #endif
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propID, paramSpec);
@@ -377,13 +393,16 @@ static void webkitWebContextConstructed(GObject* object)
     configuration.setInjectedBundlePath(FileSystem::stringFromFileSystemRepresentation(bundleFilename.get()));
 #if PLATFORM(GTK)
     configuration.setProcessSwapsOnNavigation(priv->psonEnabled);
+#if !USE(GTK4)
+    configuration.setUseSystemAppearanceForScrollbars(priv->useSystemAppearanceForScrollbars);
+#endif
 #endif
 
     if (!priv->websiteDataManager)
         priv->websiteDataManager = adoptGRef(webkit_website_data_manager_new("local-storage-directory", priv->localStorageDirectory.data(), nullptr));
 
     if (!webkit_website_data_manager_is_ephemeral(priv->websiteDataManager.get()))
-        WebKit::LegacyGlobalSettings::singleton().setHSTSStorageDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_hsts_cache_directory(priv->websiteDataManager.get())));
+        configuration.setHSTSStorageDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_hsts_cache_directory(priv->websiteDataManager.get())));
 
     priv->processPool = WebProcessPool::create(configuration);
     priv->processPool->setPrimaryDataStore(webkitWebsiteDataManagerGetDataStore(priv->websiteDataManager.get()));
@@ -519,6 +538,29 @@ static void webkit_web_context_class_init(WebKitWebContextClass* webContextClass
             _("Whether swap Web processes on cross-site navigations is enabled"),
             FALSE,
             static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
+
+#if !USE(GTK4)
+    /**
+     * WebKitWebContext:use-system-appearance-for-scrollbars:
+     *
+     * Whether to use system appearance for rendering scrollbars.
+     *
+     * This is enabled by default for backwards compatibility, but it's only
+     * recommened to use when the application includes other widgets to ensure
+     * consistency, or when consistency with other applications is required too.
+     *
+     * Since: 2.30
+     */
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_USE_SYSYEM_APPEARANCE_FOR_SCROLLBARS,
+        g_param_spec_boolean(
+            "use-system-appearance-for-scrollbars",
+            _("Use system appearance for scrollbars"),
+            _("Whether to use system appearance for rendering scrollbars"),
+            TRUE,
+            static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT)));
+#endif
 #endif
 
     /**
@@ -1232,12 +1274,12 @@ void webkit_web_context_register_uri_scheme(WebKitWebContext* context, const cha
     g_return_if_fail(callback);
 
     // List from Source/WTF/URLParser.cpp, enum Scheme.
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "ws"));
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "wss"));
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "file"));
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "ftp"));
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "http"));
-    g_return_if_fail(!g_ascii_strcasecmp(scheme, "https"));
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "ws") != 0);
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "wss") != 0);
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "file") != 0);
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "ftp") != 0);
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "http") != 0);
+    g_return_if_fail(g_ascii_strcasecmp(scheme, "https") != 0);
 
     auto handler = WebKitURISchemeHandler::create(context, callback, userData, destroyNotify);
     auto addResult = context->priv->uriSchemeHandlers.set(String::fromUTF8(scheme), WTFMove(handler));
@@ -1762,6 +1804,51 @@ void webkit_web_context_send_message_to_all_extensions(WebKitWebContext* context
     for (auto& process : context->priv->processPool->processes())
         process->send(Messages::WebProcess::SendMessageToWebExtension(webkitUserMessageGetMessage(message)), 0);
 }
+
+#if PLATFORM(GTK) && !USE(GTK4)
+/**
+ * webkit_web_context_set_use_system_appearance_for_scrollbars:
+ * @context: a #WebKitWebContext
+ * @enabled: value to set
+ *
+ * Set the #WebKitWebContext:use-system-appearance-for-scrollbars property.
+ *
+ * Since: 2.30
+ */
+void webkit_web_context_set_use_system_appearance_for_scrollbars(WebKitWebContext* context, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+
+    if (context->priv->useSystemAppearanceForScrollbars == enabled)
+        return;
+
+    context->priv->useSystemAppearanceForScrollbars = enabled;
+    g_object_notify(G_OBJECT(context), "use-system-appearance-for-scrollbars");
+
+    if (!context->priv->processPool)
+        return;
+
+    context->priv->processPool->configuration().setUseSystemAppearanceForScrollbars(enabled);
+    context->priv->processPool->sendToAllProcesses(Messages::WebProcess::SetUseSystemAppearanceForScrollbars(enabled));
+}
+
+/**
+ * webkit_web_context_get_use_system_appearance_for_scrollbars:
+ * @context: a #WebKitWebContext
+ *
+ * Get the #WebKitWebContext:use-system-appearance-for-scrollbars property.
+ *
+ * Returns: %TRUE if scrollbars are rendering using the system appearance, or %FALSE otherwise
+ *
+ * Since: 2.30
+ */
+gboolean webkit_web_context_get_use_system_appearance_for_scrollbars(WebKitWebContext* context)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), TRUE);
+
+    return context->priv->useSystemAppearanceForScrollbars;
+}
+#endif
 
 void webkitWebContextInitializeNotificationPermissions(WebKitWebContext* context)
 {

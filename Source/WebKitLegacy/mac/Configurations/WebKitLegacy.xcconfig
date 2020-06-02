@@ -28,7 +28,7 @@
 
 EXCLUDED_SOURCE_FILE_NAMES = $(EXCLUDED_SOURCE_FILE_NAMES_$(WK_COCOA_TOUCH));
 EXCLUDED_SOURCE_FILE_NAMES_cocoatouch = *.defs *.xib *.pdf *.tiff OutlookQuirksUserScript.js PopupMenuMac.* SearchPopupMenuMac.* WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebInspectorClient.* WebJavaScriptTextInputPanel.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebStringTruncator.* WebTextCompletionController.*;
-EXCLUDED_SOURCE_FILE_NAMES_ = *IOS.mm MemoryMeasure.h WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationCoreLocationProvider.h WebGeolocationPrivate.h WebGeolocationProviderIOS.h WebMIMETypeRegistry.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h WebSelectionRect.h WebUIKitDelegate.h WebUIKitSupport.h WebVisiblePosition.h DOMHTMLTextAreaElementPrivate.h DOMUIKitExtensions.h;
+EXCLUDED_SOURCE_FILE_NAMES_ = *IOS.mm WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationCoreLocationProvider.h WebGeolocationPrivate.h WebGeolocationProviderIOS.h WebMIMETypeRegistry.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h WebSelectionRect.h WebUIKitDelegate.h WebUIKitSupport.h WebVisiblePosition.h DOMHTMLTextAreaElementPrivate.h DOMUIKitExtensions.h;
 
 EXPORTED_SYMBOLS_FILE = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/WebKitLegacy.generated.exp;
 
@@ -49,7 +49,7 @@ OTHER_CFLAGS_COCOA_TOUCH_NO = -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Framew
 OTHER_CPLUSPLUSFLAGS = $(inherited) $(OTHER_CFLAGS_COCOA_TOUCH);
 
 GCC_PREFIX_HEADER = mac/WebKitPrefix.h;
-GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) BUILDING_WEBKIT U_HIDE_DEPRECATED_API U_DISABLE_RENAMING=1 U_SHOW_CPLUSPLUS_API=0 FRAMEWORK_NAME=WebKitLegacy $(inherited);
+GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) BUILDING_WEBKIT FRAMEWORK_NAME=WebKitLegacy $(inherited);
 
 WEBKITADDITIONS_HEADER_SEARCH_PATHS = $(BUILT_PRODUCTS_DIR)/usr/local/include/WebKitAdditions $(SDKROOT)/usr/local/include/WebKitAdditions;
 LIBWEBRTC_HEADER_SEARCH_PATHS = $(BUILT_PRODUCTS_DIR)/usr/local/include/webrtc $(SDKROOT)/usr/local/include/webrtc;
@@ -67,7 +67,10 @@ DYLIB_INSTALL_NAME_BASE[sdk=iphone*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 
 INSTALLHDRS_COPY_PHASE = YES;
 INSTALLHDRS_SCRIPT_PHASE = YES;
-APPLY_RULES_IN_COPY_HEADERS = $(USE_NEW_BUILD_SYSTEM);
+APPLY_RULES_IN_COPY_HEADERS = $(WK_APPLY_RULES_IN_COPY_HEADERS_$(USE_NEW_BUILD_SYSTEM));
+WK_APPLY_RULES_IN_COPY_HEADERS_ = NO;
+WK_APPLY_RULES_IN_COPY_HEADERS_NO = NO;
+WK_APPLY_RULES_IN_COPY_HEADERS_YES = YES;
 PRODUCT_NAME = WebKitLegacy;
 PRODUCT_BUNDLE_IDENTIFIER = com.apple.$(PRODUCT_NAME:rfc1034identifier);
 UMBRELLA_FRAMEWORKS_DIR = $(PRODUCTION_FRAMEWORKS_DIR)/WebKit.framework/Versions/A/Frameworks;

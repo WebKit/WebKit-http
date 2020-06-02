@@ -66,6 +66,7 @@
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/TextBreakIterator.h>
 #include <wtf/unicode/CharacterNames.h>
+#include <wtf/unicode/icu/ICUHelpers.h>
 
 #if !UCONFIG_NO_COLLATION
 #include <unicode/usearch.h>
@@ -1134,7 +1135,7 @@ SimplifiedBackwardsTextIterator::SimplifiedBackwardsTextIterator(const SimpleRan
     if (!endNode->isCharacterDataNode()) {
         if (endOffset > 0 && endOffset <= endNode->countChildNodes()) {
             endNode = endNode->traverseToChildAt(endOffset - 1);
-            endOffset = lastOffsetInNode(endNode);
+            endOffset = endNode->length();
         }
     }
 
@@ -1830,21 +1831,12 @@ static inline bool containsKanaLetters(const String& pattern)
 static void normalizeCharacters(const UChar* characters, unsigned length, Vector<UChar>& buffer)
 {
     UErrorCode status = U_ZERO_ERROR;
-    const UNormalizer2* normalizer = unorm2_getNFCInstance(&status);
+    auto* normalizer = unorm2_getNFCInstance(&status);
     ASSERT(U_SUCCESS(status));
 
-    buffer.resize(length);
+    buffer.reserveCapacity(length);
 
-    auto normalizedLength = unorm2_normalize(normalizer, characters, length, buffer.data(), length, &status);
-    ASSERT(U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR);
-
-    buffer.resize(normalizedLength);
-
-    if (U_SUCCESS(status))
-        return;
-
-    status = U_ZERO_ERROR;
-    unorm2_normalize(normalizer, characters, length, buffer.data(), length, &status);
+    status = callBufferProducingFunction(unorm2_normalize, normalizer, characters, length, buffer);
     ASSERT(U_SUCCESS(status));
 }
 

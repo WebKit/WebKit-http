@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,9 +36,19 @@
 #import <wtf/HashCountedSet.h>
 #import <wtf/ListHashSet.h>
 #import <wtf/URL.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/StringHash.h>
 
 namespace WebCore {
+
+static bool canWritePasteboardType(const String& type)
+{
+    auto cfString = type.createCFString();
+    if (UTTypeIsDeclared(cfString.get()) || UTTypeIsDynamic(cfString.get()))
+        return true;
+
+    return [(__bridge NSString *)cfString.get() lengthOfBytesUsingEncoding:NSString.defaultCStringEncoding];
+}
 
 PlatformPasteboard::PlatformPasteboard(const String& pasteboardName)
     : m_pasteboard([NSPasteboard pasteboardWithName:pasteboardName])
@@ -48,10 +58,7 @@ PlatformPasteboard::PlatformPasteboard(const String& pasteboardName)
 
 void PlatformPasteboard::getTypes(Vector<String>& types)
 {
-    NSArray *pasteboardTypes = [m_pasteboard.get() types];
-
-    for (NSUInteger i = 0; i < [pasteboardTypes count]; i++)
-        types.append([pasteboardTypes objectAtIndex:i]);
+    types = makeVector<String>([m_pasteboard.get() types]);
 }
 
 RefPtr<SharedBuffer> PlatformPasteboard::bufferForType(const String& pasteboardType)
@@ -86,13 +93,12 @@ int PlatformPasteboard::numberOfFiles() const
 
 void PlatformPasteboard::getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType) const
 {
-    NSArray* paths = [m_pasteboard.get() propertyListForType:pasteboardType];
+    id paths = [m_pasteboard.get() propertyListForType:pasteboardType];
     if ([paths isKindOfClass:[NSString class]]) {
         pathnames.append((NSString *)paths);
         return;
     }
-    for (NSUInteger i = 0; i < [paths count]; i++)
-        pathnames.append([paths objectAtIndex:i]);
+    pathnames = makeVector<String>(paths);
 }
 
 static bool pasteboardMayContainFilePaths(NSPasteboard *pasteboard)
@@ -308,27 +314,23 @@ int64_t PlatformPasteboard::copy(const String& fromPasteboard)
 
 int64_t PlatformPasteboard::addTypes(const Vector<String>& pasteboardTypes)
 {
-    RetainPtr<NSMutableArray> types = adoptNS([[NSMutableArray alloc] init]);
-    for (size_t i = 0; i < pasteboardTypes.size(); ++i)
-        [types.get() addObject:pasteboardTypes[i]];
-
-    return [m_pasteboard.get() addTypes:types.get() owner:nil];
+    return [m_pasteboard.get() addTypes:createNSArray(pasteboardTypes).get() owner:nil];
 }
 
 int64_t PlatformPasteboard::setTypes(const Vector<String>& pasteboardTypes)
 {
-    if (pasteboardTypes.isEmpty())
-        return [m_pasteboard declareTypes:@[] owner:nil];
-
-    RetainPtr<NSMutableArray> types = adoptNS([[NSMutableArray alloc] init]);
-    for (size_t i = 0; i < pasteboardTypes.size(); ++i)
-        [types.get() addObject:pasteboardTypes[i]];
-
-    return [m_pasteboard.get() declareTypes:types.get() owner:nil];
+    for (auto& pasteboardType : pasteboardTypes) {
+        if (!canWritePasteboardType(pasteboardType))
+            return [m_pasteboard declareTypes:@[] owner:nil];
+    }
+    return [m_pasteboard declareTypes:createNSArray(pasteboardTypes).get() owner:nil];
 }
 
 int64_t PlatformPasteboard::setBufferForType(SharedBuffer* buffer, const String& pasteboardType)
 {
+    if (!canWritePasteboardType(pasteboardType))
+        return 0;
+
     BOOL didWriteData = [m_pasteboard setData:buffer ? buffer->createNSData().get() : nil forType:pasteboardType];
     if (!didWriteData)
         return 0;
@@ -359,6 +361,9 @@ int64_t PlatformPasteboard::setColor(const Color& color)
 
 int64_t PlatformPasteboard::setStringForType(const String& string, const String& pasteboardType)
 {
+    if (!canWritePasteboardType(pasteboardType))
+        return 0;
+
     BOOL didWriteData;
 
     if (pasteboardType == String(legacyURLPasteboardType())) {
@@ -501,11 +506,10 @@ int64_t PlatformPasteboard::write(const Vector<PasteboardCustomData>& itemData)
     if (itemData.size() == 1)
         return write(itemData.first());
 
-    auto platformItems = adoptNS([[NSMutableArray alloc] initWithCapacity:itemData.size()]);
-    for (auto& data : itemData)
-        [platformItems addObject:createPasteboardItem(data).get()];
     [m_pasteboard clearContents];
-    [m_pasteboard writeObjects:platformItems.get()];
+    [m_pasteboard writeObjects:createNSArray(itemData, [] (auto& data) {
+        return createPasteboardItem(data);
+    }).get()];
     return [m_pasteboard changeCount];
 }
 

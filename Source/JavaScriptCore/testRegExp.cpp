@@ -23,22 +23,12 @@
 
 #include "InitializeThreading.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
 #include "YarrFlags.h"
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wtf/Vector.h>
 #include <wtf/text/StringBuilder.h>
-
-#if !OS(WINDOWS)
-#include <unistd.h>
-#endif
-
-#if HAVE(SYS_TIME_H)
-#include <sys/time.h>
-#endif
 
 #if COMPILER(MSVC)
 #include <crtdbg.h>
@@ -103,9 +93,6 @@ struct RegExpTest {
 };
 
 class GlobalObject final : public JSGlobalObject {
-private:
-    GlobalObject(VM&, Structure*, const Vector<String>& arguments);
-
 public:
     using Base = JSGlobalObject;
 
@@ -121,10 +108,12 @@ public:
 
     static Structure* createStructure(VM& vm, JSValue prototype)
     {
-        return Structure::create(vm, 0, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
+        return Structure::create(vm, nullptr, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
     }
 
-protected:
+private:
+    GlobalObject(VM&, Structure*, const Vector<String>& arguments);
+
     void finishCreation(VM& vm, const Vector<String>& arguments)
     {
         Base::finishCreation(vm);
@@ -188,12 +177,12 @@ int main(int argc, char** argv)
     return res;
 }
 
-static bool testOneRegExp(VM& vm, RegExp* regexp, RegExpTest* regExpTest, bool verbose, unsigned int lineNumber)
+static bool testOneRegExp(JSGlobalObject* globalObject, RegExp* regexp, RegExpTest* regExpTest, bool verbose, unsigned lineNumber)
 {
     bool result = true;
     Vector<int> outVector;
     outVector.resize(regExpTest->expectVector.size());
-    int matchResult = regexp->match(vm, regExpTest->subject, regExpTest->offset, outVector);
+    int matchResult = regexp->match(globalObject, regExpTest->subject, regExpTest->offset, outVector);
 
     if (matchResult != regExpTest->result) {
         result = false;
@@ -321,12 +310,12 @@ static RegExp* parseRegExpLine(VM& vm, char* line, int lineLength, const char** 
     StringBuilder pattern;
 
     if (line[0] != '/')
-        return 0;
+        return nullptr;
 
     int i = scanString(line + 1, lineLength - 1, pattern, '/') + 1;
 
     if ((i >= lineLength) || (line[i] != '/'))
-        return 0;
+        return nullptr;
 
     ++i;
 
@@ -350,19 +339,19 @@ static RegExpTest* parseTestLine(char* line, int lineLength)
     StringBuilder subjectString;
     
     if ((line[0] != ' ') || (line[1] != '"'))
-        return 0;
+        return nullptr;
 
     int i = scanString(line + 2, lineLength - 2, subjectString, '"') + 2;
 
     if ((i >= (lineLength - 2)) || (line[i] != '"') || (line[i+1] != ',') || (line[i+2] != ' '))
-        return 0;
+        return nullptr;
 
     i += 3;
     
     int offset;
     
     if (sscanf(line + i, "%d, ", &offset) != 1)
-        return 0;
+        return nullptr;
 
     while (line[i] && line[i] != ' ')
         ++i;
@@ -372,7 +361,7 @@ static RegExpTest* parseTestLine(char* line, int lineLength)
     int matchResult;
     
     if (sscanf(line + i, "%d, ", &matchResult) != 1)
-        return 0;
+        return nullptr;
     
     while (line[i] && line[i] != ' ')
         ++i;
@@ -380,7 +369,7 @@ static RegExpTest* parseTestLine(char* line, int lineLength)
     ++i;
     
     if (line[i++] != '(')
-        return 0;
+        return nullptr;
 
     int start, end;
     
@@ -393,7 +382,7 @@ static RegExpTest* parseTestLine(char* line, int lineLength)
     while (line[i] && line[i] != ')') {
         if (sscanf(line + i, "%d, %d", &start, &end) != 2) {
             delete result;
-            return 0;
+            return nullptr;
         }
 
         result->expectVector.append(start);
@@ -409,7 +398,7 @@ static RegExpTest* parseTestLine(char* line, int lineLength)
             break;
         if (!line[i] || (line[i] != ',')) {
             delete result;
-            return 0;
+            return nullptr;
         }
         i++;
     }
@@ -437,9 +426,9 @@ static bool runFromFiles(GlobalObject* globalObject, const Vector<String>& files
             continue;
         }
             
-        RegExp* regexp = 0;
+        RegExp* regexp = nullptr;
         size_t lineLength = 0;
-        char* linePtr = 0;
+        char* linePtr = nullptr;
         unsigned int lineNumber = 0;
         const char* regexpError = nullptr;
 
@@ -465,7 +454,7 @@ static bool runFromFiles(GlobalObject* globalObject, const Vector<String>& files
                 
                 if (regexp && regExpTest) {
                     ++tests;
-                    if (!testOneRegExp(vm, regexp, regExpTest, verbose, lineNumber)) {
+                    if (!testOneRegExp(globalObject, regexp, regExpTest, verbose, lineNumber)) {
                         failures++;
                         printf("Failure on line %u\n", lineNumber);
                     }
@@ -475,7 +464,7 @@ static bool runFromFiles(GlobalObject* globalObject, const Vector<String>& files
                     delete regExpTest;
             } else if (linePtr[0] == '-') {
                 tests++;
-                regexp = 0; // Reset the live regexp to avoid confusing other subsequent tests
+                regexp = nullptr; // Reset the live regexp to avoid confusing other subsequent tests
                 bool successfullyParsed = parseRegExpLine(vm, linePtr + 1, lineLength - 1, &regexpError);
                 if (successfullyParsed) {
                     failures++;

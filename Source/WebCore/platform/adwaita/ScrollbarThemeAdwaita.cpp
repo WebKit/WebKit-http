@@ -40,15 +40,16 @@ static const unsigned scrollbarSize = 13;
 static const unsigned hoveredScrollbarBorderSize = 1;
 static const unsigned thumbBorderSize = 1;
 static const unsigned overlayThumbSize = 5;
+static const unsigned minimumThumbSize = 40;
 static const unsigned thumbSize = 6;
 static const double scrollbarOpacity = 0.8;
-static const Color scrollbarBackgroundColor = makeRGB(252, 252, 252);
-static const Color scrollbarBorderColor = makeRGB(220, 223, 227);
-static const Color overlayThumbBorderColor = makeRGBA(255, 255, 255, 100);
-static const Color overlayThumbColor = makeRGBA(46, 52, 54, 100);
-static const Color thumbHoveredColor = makeRGB(86, 91, 92);
-static const Color thumbPressedColor = makeRGB(27, 106, 203);
-static const Color thumbColor = makeRGB(126, 129, 130);
+static const Color scrollbarBackgroundColor = makeSimpleColor(252, 252, 252);
+static const Color scrollbarBorderColor = makeSimpleColor(220, 223, 227);
+static const Color overlayThumbBorderColor = makeSimpleColor(255, 255, 255, 100);
+static const Color overlayThumbColor = makeSimpleColor(46, 52, 54, 100);
+static const Color thumbHoveredColor = makeSimpleColor(86, 91, 92);
+static const Color thumbPressedColor = makeSimpleColor(27, 106, 203);
+static const Color thumbColor = makeSimpleColor(126, 129, 130);
 
 bool ScrollbarThemeAdwaita::usesOverlayScrollbars() const
 {
@@ -67,7 +68,7 @@ int ScrollbarThemeAdwaita::scrollbarThickness(ScrollbarControlSize, ScrollbarExp
 
 int ScrollbarThemeAdwaita::minimumThumbLength(Scrollbar&)
 {
-    return 0;
+    return minimumThumbSize;
 }
 
 bool ScrollbarThemeAdwaita::hasButtons(Scrollbar&)
@@ -220,10 +221,12 @@ ScrollbarButtonPressAction ScrollbarThemeAdwaita::handleMousePressEvent(Scrollba
     return ScrollbarButtonPressAction::None;
 }
 
+#if !PLATFORM(GTK) || USE(GTK4)
 ScrollbarTheme& ScrollbarTheme::nativeTheme()
 {
     static ScrollbarThemeAdwaita theme;
     return theme;
 }
+#endif
 
 } // namespace WebCore

@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <wtf/Forward.h>
+
 #if PLATFORM(GTK)
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED true
 #else
@@ -220,7 +222,9 @@
 #define DEFAULT_PROCESS_SWAP_ON_CROSS_SITE_NAVIGATION_ENABLED false
 #endif
 
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(WATCHOS)
+// FIXME: Seems like this should be HAVE(CG_CONTEXT_DRAW_CONIC_GRADIENT).
+// FIXME: Can we change tvOS to be like the other Cocoa platforms?
+#if PLATFORM(COCOA) && !PLATFORM(APPLETV)
 #define DEFAULT_CONIC_GRADIENT_ENABLED true
 #else
 #define DEFAULT_CONIC_GRADIENT_ENABLED false
@@ -234,11 +238,15 @@
 #define DEFAULT_DATALIST_ELEMENT_ENABLED true
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 #define DEFAULT_CUSTOM_PASTEBOARD_DATA_ENABLED true
-#define DEFAULT_ASYNC_CLIPBOARD_API_ENABLED true
 #else
 #define DEFAULT_CUSTOM_PASTEBOARD_DATA_ENABLED false
+#endif
+
+#if PLATFORM(COCOA)
+#define DEFAULT_ASYNC_CLIPBOARD_API_ENABLED true
+#else
 #define DEFAULT_ASYNC_CLIPBOARD_API_ENABLED false
 #endif
 
@@ -287,6 +295,10 @@
 #endif
 
 namespace WebKit {
+
+#if PLATFORM(COCOA) && HAVE(SYSTEM_FEATURE_FLAGS)
+bool isFeatureFlagEnabled(const String&);
+#endif
 
 bool defaultPassiveTouchListenersAsDefaultOnDocument();
 bool defaultCSSOMViewScrollingAPIEnabled();

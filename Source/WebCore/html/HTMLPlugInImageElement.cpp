@@ -163,7 +163,7 @@ bool HTMLPlugInImageElement::canLoadURL(const String& relativeURL) const
 // Note that unlike HTMLFrameElementBase::canLoadURL this uses SecurityOrigin::canAccess.
 bool HTMLPlugInImageElement::canLoadURL(const URL& completeURL) const
 {
-    if (WTF::protocolIsJavaScript(completeURL)) {
+    if (completeURL.protocolIsJavaScript()) {
         RefPtr<Document> contentDocument = this->contentDocument();
         if (contentDocument && !document().securityOrigin().canAccess(contentDocument->securityOrigin()))
             return false;
@@ -412,18 +412,17 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
         scope.clearException();
         return;
     }
-    JSC::CallData callData;
-    auto callType = overlay->methodTable(vm)->getCallData(overlay, callData);
-    if (callType == JSC::CallType::None)
+    auto callData = JSC::getCallData(vm, overlay);
+    if (callData.type == JSC::CallData::Type::None)
         return;
 
-    call(&lexicalGlobalObject, overlay, callType, callData, &globalObject, argList);
+    call(&lexicalGlobalObject, overlay, callData, &globalObject, argList);
     scope.clearException();
 }
 
 bool HTMLPlugInImageElement::partOfSnapshotOverlay(const EventTarget* target) const
 {
-    static NeverDestroyed<AtomString> selector(".snapshot-overlay", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> selector(".snapshot-overlay", AtomString::ConstructFromLiteral);
     auto shadow = userAgentShadowRoot();
     if (!shadow)
         return false;

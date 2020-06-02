@@ -75,10 +75,12 @@ WebSocketChannel::WebSocketChannel(Document& document, WebSocketChannelClient& c
     , m_messageQueue(createMessageQueue(document, *this))
     , m_inspector(document)
 {
+    WebProcess::singleton().webSocketChannelManager().addChannel(*this);
 }
 
 WebSocketChannel::~WebSocketChannel()
 {
+    WebProcess::singleton().webSocketChannelManager().removeChannel(*this);
 }
 
 IPC::Connection* WebSocketChannel::messageSenderConnection() const
@@ -124,7 +126,7 @@ bool WebSocketChannel::increaseBufferedAmount(size_t byteLength)
     if (!byteLength)
         return true;
 
-    Checked<size_t, RecordOverflow> checkedNewBufferedAmount = m_bufferedAmount;
+    CheckedSize checkedNewBufferedAmount = m_bufferedAmount;
     checkedNewBufferedAmount += byteLength;
     if (UNLIKELY(checkedNewBufferedAmount.hasOverflowed())) {
         fail("Failed to send WebSocket frame: buffer has no more space");

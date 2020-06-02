@@ -317,20 +317,42 @@ bool checkAndSet(T& left, U right)
 }
 
 template<typename T>
-bool findBitInWord(T word, size_t& index, size_t endIndex, bool value)
+inline unsigned ctz(T value); // Clients will also need to #include MathExtras.h
+
+template<typename T>
+bool findBitInWord(T word, size_t& startOrResultIndex, size_t endIndex, bool value)
 {
     static_assert(std::is_unsigned<T>::value, "Type used in findBitInWord must be unsigned");
-    
+
+    constexpr size_t bitsInWord = sizeof(word) * 8;
+    ASSERT_UNUSED(bitsInWord, startOrResultIndex <= bitsInWord && endIndex <= bitsInWord);
+
+    size_t index = startOrResultIndex;
     word >>= index;
-    
+
+#if COMPILER(GCC_COMPATIBLE) && (CPU(X86_64) || CPU(ARM64))
+    // We should only use ctz() when we know that ctz() is implementated using
+    // a fast hardware instruction. Otherwise, this will actually result in
+    // worse performance.
+
+    word ^= (static_cast<T>(value) - 1);
+    index += ctz(word);
+    if (index < endIndex) {
+        startOrResultIndex = index;
+        return true;
+    }
+#else
     while (index < endIndex) {
-        if ((word & 1) == static_cast<T>(value))
+        if ((word & 1) == static_cast<T>(value)) {
+            startOrResultIndex = index;
             return true;
+        }
         index++;
         word >>= 1;
     }
-    
-    index = endIndex;
+#endif
+
+    startOrResultIndex = endIndex;
     return false;
 }
 
@@ -489,6 +511,19 @@ ALWAYS_INLINE decltype(auto) makeUniqueWithoutFastMallocCheck(Args&&... args)
     return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
+template <typename ResultType, size_t... Is, typename ...Args>
+constexpr auto constructFixedSizeArrayWithArgumentsImpl(std::index_sequence<Is...>, Args&&... args) -> std::array<ResultType, sizeof...(Is)>
+{
+    return { ((void)Is, ResultType { std::forward<Args>(args)... })... };
+}
+
+// Construct an std::array with N elements of ResultType, passing Args to each of the N constructors.
+template<typename ResultType, size_t N, typename ...Args>
+constexpr auto constructFixedSizeArrayWithArguments(Args&&... args) -> decltype(auto)
+{
+    auto tuple = std::make_index_sequence<N>();
+    return constructFixedSizeArrayWithArgumentsImpl<ResultType>(tuple, std::forward<Args>(args)...);
+}
 
 } // namespace WTF
 
@@ -514,3 +549,4 @@ using WTF::safeCast;
 using WTF::tryBinarySearch;
 using WTF::makeUnique;
 using WTF::makeUniqueWithoutFastMallocCheck;
+using WTF::constructFixedSizeArrayWithArguments;

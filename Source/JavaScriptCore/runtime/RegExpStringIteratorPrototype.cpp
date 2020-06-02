@@ -27,14 +27,8 @@
 #include "config.h"
 #include "RegExpStringIteratorPrototype.h"
 
-#include "IteratorOperations.h"
 #include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
-#include "JSGlobalObject.h"
-#include "ObjectConstructor.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
@@ -44,8 +38,8 @@ void RegExpStringIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globa
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "RegExp String Iterator"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, regExpStringIteratorPrototypeNextCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 } // namespace JSC

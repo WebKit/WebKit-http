@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,9 +41,10 @@
 #include "MethodOfGettingAValueProfile.h"
 #include <wtf/BitVector.h>
 #include <wtf/HashMap.h>
-#include <wtf/Vector.h>
+#include <wtf/StackCheck.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StdUnorderedMap.h>
+#include <wtf/Vector.h>
 
 namespace WTF {
 template <typename T> class SingleRootGraph;
@@ -158,10 +159,10 @@ private:
 //
 // The order may be significant for nodes with side-effects (property accesses, value conversions).
 // Nodes that are 'dead' remain in the vector with refCount 0.
-class Graph : public virtual Scannable {
+class Graph final : public virtual Scannable {
 public:
     Graph(VM&, Plan&);
-    ~Graph();
+    ~Graph() final;
     
     void changeChild(Edge& edge, Node* newNode)
     {
@@ -244,6 +245,17 @@ public:
     void convertToConstant(Node* node, FrozenValue* value);
     void convertToConstant(Node* node, JSValue value);
     void convertToStrongConstant(Node* node, JSValue value);
+
+    // Use this to produce a value you know won't be accessed but the compiler
+    // might think is live. For exmaple, in our op_iterator_next parsing
+    // value VirtualRegister is only read if we are not "done". Because the
+    // done control flow is not in the op_iterator_next bytecode this is not
+    // obvious to the compiler.
+    // FIXME: This isn't quite a true bottom value. For example, any object
+    // speculation will now be Object|Other as this returns null. We should
+    // fix this when we can allocate on the Compiler thread.
+    // https://bugs.webkit.org/show_bug.cgi?id=210627
+    FrozenValue* bottomValueMatchingSpeculation(SpeculatedType);
     
     RegisteredStructure registerStructure(Structure* structure)
     {
@@ -255,14 +267,14 @@ public:
     void assertIsRegistered(Structure* structure);
     
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
-    void dump(PrintStream& = WTF::dataFile(), DumpContext* = 0);
+    void dump(PrintStream& = WTF::dataFile(), DumpContext* = nullptr);
 
     bool terminalsAreValid();
     
     enum PhiNodeDumpMode { DumpLivePhisOnly, DumpAllPhis };
     void dumpBlockHeader(PrintStream&, const char* prefix, BasicBlock*, PhiNodeDumpMode, DumpContext*);
     void dump(PrintStream&, Edge);
-    void dump(PrintStream&, const char* prefix, Node*, DumpContext* = 0);
+    void dump(PrintStream&, const char* prefix, Node*, DumpContext* = nullptr);
     static int amountOfNodeWhiteSpace(Node*);
     static void printNodeWhiteSpace(PrintStream&, Node*);
 
@@ -399,6 +411,26 @@ public:
             && !hasExitSite(node, Int52Overflow);
     }
 
+#if USE(BIGINT32)
+    bool binaryArithShouldSpeculateBigInt32(Node* node, PredictionPass pass)
+    {
+        if (!node->canSpeculateBigInt32(pass))
+            return false;
+        if (hasExitSite(node, BigInt32Overflow))
+            return false;
+        return Node::shouldSpeculateBigInt32(node->child1().node(), node->child2().node());
+    }
+
+    bool unaryArithShouldSpeculateBigInt32(Node* node, PredictionPass pass)
+    {
+        if (!node->canSpeculateBigInt32(pass))
+            return false;
+        if (hasExitSite(node, BigInt32Overflow))
+            return false;
+        return node->child1()->shouldSpeculateBigInt32();
+    }
+#endif
+
     bool canOptimizeStringObjectAccess(const CodeOrigin&);
 
     bool getRegExpPrototypeProperty(JSObject* regExpPrototype, Structure* regExpPrototypeStructure, UniquedStringImpl* uid, JSValue& returnJSValue);
@@ -441,7 +473,7 @@ public:
     JSObject* globalThisObjectFor(CodeOrigin codeOrigin)
     {
         JSGlobalObject* object = globalObjectFor(codeOrigin);
-        return jsCast<JSObject*>(object->methodTable(m_vm)->toThis(object, object, NotStrictMode));
+        return jsCast<JSObject*>(object->methodTable(m_vm)->toThis(object, object, ECMAMode::sloppy()));
     }
     
     ScriptExecutable* executableFor(InlineCallFrame* inlineCallFrame)
@@ -467,18 +499,6 @@ public:
     CodeBlock* baselineCodeBlockFor(const CodeOrigin& codeOrigin)
     {
         return baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, m_profiledBlock);
-    }
-    
-    bool isStrictModeFor(CodeOrigin codeOrigin)
-    {
-        if (!codeOrigin.inlineCallFrame())
-            return m_codeBlock->isStrictMode();
-        return codeOrigin.inlineCallFrame()->isStrictMode();
-    }
-    
-    ECMAMode ecmaModeFor(CodeOrigin codeOrigin)
-    {
-        return isStrictModeFor(codeOrigin) ? StrictMode : NotStrictMode;
     }
     
     bool masqueradesAsUndefinedWatchpointIsStillValid(const CodeOrigin& codeOrigin)
@@ -957,10 +977,7 @@ public:
         for (unsigned argument = block(0)->variablesAtHead.numberOfArguments(); argument--;)
             functor(virtualRegisterForArgumentIncludingThis(argument));
     }
-    
-    BytecodeKills& killsFor(CodeBlock*);
-    BytecodeKills& killsFor(InlineCallFrame*);
-    
+
     static unsigned parameterSlotsForArgCount(unsigned);
     
     unsigned frameRegisterCount();
@@ -984,7 +1001,7 @@ public:
     
     void registerFrozenValues();
     
-    void visitChildren(SlotVisitor&) override;
+    void visitChildren(SlotVisitor&) final;
     
     void logAssertionFailure(
         std::nullptr_t, const char* file, int line, const char* function,
@@ -1046,11 +1063,12 @@ public:
     Prefix& prefix() { return m_prefix; }
     void nextPhase() { m_prefix.phaseNumber++; }
 
+    StackCheck m_stackChecker;
     VM& m_vm;
     Plan& m_plan;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
-    
+
     Vector<RefPtr<BasicBlock>, 8> m_blocks;
     Vector<BasicBlock*, 1> m_roots;
     Vector<Edge, 16> m_varArgChildren;
@@ -1100,6 +1118,7 @@ public:
     Bag<SwitchData> m_switchData;
     Bag<MultiGetByOffsetData> m_multiGetByOffsetData;
     Bag<MultiPutByOffsetData> m_multiPutByOffsetData;
+    Bag<MultiDeleteByOffsetData> m_multiDeleteByOffsetData;
     Bag<MatchStructureData> m_matchStructureData;
     Bag<ObjectMaterializationData> m_objectMaterializationData;
     Bag<CallVarargsData> m_callVarargsData;
@@ -1110,7 +1129,6 @@ public:
     Bag<BitVector> m_bitVectors;
     Vector<InlineVariableData, 4> m_inlineVariableData;
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
-    HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
     HashSet<std::pair<JSObject*, PropertyOffset>> m_safeToLoad;
     Vector<Ref<Snippet>> m_domJITSnippets;
     std::unique_ptr<CPSDominators> m_cpsDominators;

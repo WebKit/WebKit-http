@@ -66,7 +66,7 @@ bool RemoteMediaResource::didPassAccessControlCheck() const
     return m_didPassAccessControlCheck;
 }
 
-void RemoteMediaResource::responseReceived(const ResourceResponse& response, bool didPassAccessControlCheck, CompletionHandler<void(PolicyChecker::ShouldContinue)>&& completionHandler)
+void RemoteMediaResource::responseReceived(const ResourceResponse& response, bool didPassAccessControlCheck, CompletionHandler<void(ShouldContinuePolicyCheck)>&& completionHandler)
 {
     if (!m_client)
         return;
@@ -74,7 +74,7 @@ void RemoteMediaResource::responseReceived(const ResourceResponse& response, boo
     m_didPassAccessControlCheck = didPassAccessControlCheck;
     m_client->responseReceived(*this, response, [protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](auto shouldContinue) mutable {
         ASSERT(isMainThread());
-        if (shouldContinue == PolicyChecker::ShouldContinue::No)
+        if (shouldContinue == ShouldContinuePolicyCheck::No)
             protectedThis->stop();
 
         completionHandler(shouldContinue);
@@ -112,10 +112,10 @@ void RemoteMediaResource::loadFailed(const ResourceError& error)
         m_client->loadFailed(*this, error);
 }
 
-void RemoteMediaResource::loadFinished()
+void RemoteMediaResource::loadFinished(const NetworkLoadMetrics& metrics)
 {
     if (m_client)
-        m_client->loadFinished(*this);
+        m_client->loadFinished(*this, metrics);
 }
 
 } // namespace WebKit

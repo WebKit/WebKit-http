@@ -48,6 +48,11 @@ AuxiliaryProcessProxy::~AuxiliaryProcessProxy()
         m_processLauncher->invalidate();
         m_processLauncher = nullptr;
     }
+    auto pendingMessages = WTFMove(m_pendingMessages);
+    for (auto& pendingMessage : pendingMessages) {
+        if (pendingMessage.asyncReplyInfo)
+            pendingMessage.asyncReplyInfo->first(nullptr);
+    }
 }
 
 void AuxiliaryProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -145,8 +150,15 @@ bool AuxiliaryProcessProxy::wasTerminated() const
 #endif
 }
 
-bool AuxiliaryProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, OptionSet<IPC::SendOption> sendOptions, Optional<std::pair<CompletionHandler<void(IPC::Decoder*)>, uint64_t>>&& asyncReplyInfo)
+bool AuxiliaryProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, OptionSet<IPC::SendOption> sendOptions, Optional<std::pair<CompletionHandler<void(IPC::Decoder*)>, uint64_t>>&& asyncReplyInfo, ShouldStartProcessThrottlerActivity shouldStartProcessThrottlerActivity)
 {
+    if (asyncReplyInfo && canSendMessage() && shouldStartProcessThrottlerActivity == ShouldStartProcessThrottlerActivity::Yes) {
+        auto completionHandler = std::exchange(asyncReplyInfo->first, nullptr);
+        asyncReplyInfo->first = [activity = throttler().backgroundActivity(ASCIILiteral::null()), completionHandler = WTFMove(completionHandler)](IPC::Decoder* decoder) mutable {
+            completionHandler(decoder);
+        };
+    }
+
     switch (state()) {
     case State::Launching:
         // If we're waiting for the child process to launch, we need to stash away the messages so we can send them once we have a connection.
@@ -154,18 +166,17 @@ bool AuxiliaryProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, O
         return true;
 
     case State::Running:
-        if (connection()->sendMessage(WTFMove(encoder), sendOptions)) {
-            if (asyncReplyInfo)
-                IPC::addAsyncReplyHandler(*connection(), asyncReplyInfo->second, WTFMove(asyncReplyInfo->first));
+        if (asyncReplyInfo)
+            IPC::addAsyncReplyHandler(*connection(), asyncReplyInfo->second, std::exchange(asyncReplyInfo->first, nullptr));
+        if (connection()->sendMessage(WTFMove(encoder), sendOptions))
             return true;
-        }
         break;
 
     case State::Terminated:
         break;
     }
 
-    if (asyncReplyInfo) {
+    if (asyncReplyInfo && asyncReplyInfo->first) {
         RunLoop::current().dispatch([completionHandler = WTFMove(asyncReplyInfo->first)]() mutable {
             completionHandler(nullptr);
         });
@@ -174,22 +185,22 @@ bool AuxiliaryProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, O
     return false;
 }
 
-void AuxiliaryProcessProxy::addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& messageReceiver)
+void AuxiliaryProcessProxy::addMessageReceiver(IPC::ReceiverName messageReceiverName, IPC::MessageReceiver& messageReceiver)
 {
     m_messageReceiverMap.addMessageReceiver(messageReceiverName, messageReceiver);
 }
 
-void AuxiliaryProcessProxy::addMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID, IPC::MessageReceiver& messageReceiver)
+void AuxiliaryProcessProxy::addMessageReceiver(IPC::ReceiverName messageReceiverName, uint64_t destinationID, IPC::MessageReceiver& messageReceiver)
 {
     m_messageReceiverMap.addMessageReceiver(messageReceiverName, destinationID, messageReceiver);
 }
 
-void AuxiliaryProcessProxy::removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID)
+void AuxiliaryProcessProxy::removeMessageReceiver(IPC::ReceiverName messageReceiverName, uint64_t destinationID)
 {
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName, destinationID);
 }
 
-void AuxiliaryProcessProxy::removeMessageReceiver(IPC::StringReference messageReceiverName)
+void AuxiliaryProcessProxy::removeMessageReceiver(IPC::ReceiverName messageReceiverName)
 {
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
 }
@@ -274,9 +285,9 @@ void AuxiliaryProcessProxy::connectionWillOpen(IPC::Connection&)
 {
 }
 
-void AuxiliaryProcessProxy::logInvalidMessage(IPC::Connection& connection, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+void AuxiliaryProcessProxy::logInvalidMessage(IPC::Connection& connection, IPC::MessageName messageName)
 {
-    RELEASE_LOG_FAULT(IPC, "Received an invalid message '%" PUBLIC_LOG_STRING "::%" PUBLIC_LOG_STRING "' from the %" PUBLIC_LOG_STRING " process.", messageReceiverName.toString().data(), messageName.toString().data(), processName().characters());
+    RELEASE_LOG_FAULT(IPC, "Received an invalid message '%" PUBLIC_LOG_STRING "' from the %" PUBLIC_LOG_STRING " process.", description(messageName), processName().characters());
 }
 
 } // namespace WebKit

@@ -28,7 +28,7 @@ function of(/* items... */)
     "use strict";
 
     var length = arguments.length;
-    var array = @isConstructor(this) ? new this(length) : @newArrayWithSize(length);
+    var array = this !== @Array && @isConstructor(this) ? new this(length) : @newArrayWithSize(length);
     for (var k = 0; k < length; ++k)
         @putByValDirect(array, k, arguments[k]);
     array.length = length;
@@ -38,8 +38,6 @@ function of(/* items... */)
 function from(items /*, mapFn, thisArg */)
 {
     "use strict";
-
-    var thisObj = this;
 
     var mapFn = @argument(1);
 
@@ -55,11 +53,11 @@ function from(items /*, mapFn, thisArg */)
     var arrayLike = @toObject(items, "Array.from requires an array-like object - not null or undefined");
 
     var iteratorMethod = items.@@iterator;
-    if (iteratorMethod != null) {
+    if (!@isUndefinedOrNull(iteratorMethod)) {
         if (typeof iteratorMethod !== "function")
             @throwTypeError("Array.from requires that the property of the first argument, items[Symbol.iterator], when exists, be a function");
 
-        var result = @isConstructor(thisObj) ? new thisObj() : [];
+        var result = this !== @Array && @isConstructor(this) ? new this() : [];
 
         var k = 0;
         var iterator = iteratorMethod.@call(items);
@@ -71,6 +69,8 @@ function from(items /*, mapFn, thisArg */)
         wrapper.@@iterator = function() { return iterator; };
 
         for (var value of wrapper) {
+            if (k >= @MAX_SAFE_INTEGER)
+                @throwTypeError("Length exceeded the maximum array length");
             if (mapFn)
                 @putByValDirect(result, k, thisArg === @undefined ? mapFn(value, k) : mapFn.@call(thisArg, value, k));
             else
@@ -84,7 +84,7 @@ function from(items /*, mapFn, thisArg */)
 
     var arrayLikeLength = @toLength(arrayLike.length);
 
-    var result = @isConstructor(thisObj) ? new thisObj(arrayLikeLength) : @newArrayWithSize(arrayLikeLength);
+    var result = this !== @Array && @isConstructor(this) ? new this(arrayLikeLength) : @newArrayWithSize(arrayLikeLength);
 
     var k = 0;
     while (k < arrayLikeLength) {

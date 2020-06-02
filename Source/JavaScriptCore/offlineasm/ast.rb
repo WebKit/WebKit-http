@@ -31,7 +31,7 @@ require "config"
 #
 # node.children -> Returns an array of immediate children.
 #
-# node.descendents -> Returns an array of all strict descendants (children
+# node.descendants -> Returns an array of all strict descendants (children
 #     and children of children, transitively).
 #
 # node.flatten -> Returns an array containing the strict descendants and
@@ -917,7 +917,11 @@ class Instruction < Node
         @operands = operands
         @annotation = annotation
     end
-    
+
+    def cloneWithNewOperands(newOperands)
+        Instruction.new(self.codeOrigin, self.opcode, newOperands, self.annotation)
+    end
+
     def children
         operands
     end

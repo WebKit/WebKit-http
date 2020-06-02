@@ -68,6 +68,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/indexeddb/server/UniqueIDBDatabaseConnection.h
     Modules/indexeddb/server/UniqueIDBDatabaseTransaction.h
 
+    Modules/indexeddb/shared/IndexKey.h
     Modules/indexeddb/shared/IDBCursorInfo.h
     Modules/indexeddb/shared/IDBCursorRecord.h
     Modules/indexeddb/shared/IDBDatabaseInfo.h
@@ -163,6 +164,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/websockets/WebSocketFrame.h
     Modules/websockets/WebSocketHandshake.h
 
+    accessibility/AXLogger.h
     accessibility/AXObjectCache.h
     accessibility/AXTextStateChangeIntent.h
     accessibility/AccessibilityListBox.h
@@ -179,6 +181,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     animation/CSSPropertyBlendingClient.h
     animation/CompositeOperation.h
+    animation/DocumentTimelinesController.h
     animation/EffectTiming.h
     animation/FillMode.h
     animation/GetAnimationsOptions.h
@@ -492,6 +495,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     editing/CompositionHighlight.h
     editing/CompositionUnderline.h
     editing/DictationAlternative.h
+    editing/DictationContext.h
     editing/DictionaryPopupInfo.h
     editing/EditAction.h
     editing/Editing.h
@@ -648,8 +652,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     html/StepRange.h
     html/TimeRanges.h
     html/TypeAhead.h
+    html/URLDecomposition.h
     html/URLRegistry.h
-    html/URLUtils.h
     html/ValidityState.h
     html/VoidCallback.h
 
@@ -838,6 +842,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/PrintContext.h
     page/ProcessWarming.h
     page/Quirks.h
+    page/ReducedResolutionSeconds.h
     page/RemoteDOMWindow.h
     page/RemoteFrame.h
     page/RenderingUpdateScheduler.h
@@ -905,6 +910,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/scrolling/ScrollingTree.h
     page/scrolling/ScrollingTreeFrameHostingNode.h
     page/scrolling/ScrollingTreeFrameScrollingNode.h
+    page/scrolling/ScrollingTreeGestureState.h
+    page/scrolling/ScrollingTreeLatchingController.h
     page/scrolling/ScrollingTreeNode.h
     page/scrolling/ScrollingTreeOverflowScrollingNode.h
     page/scrolling/ScrollingTreeScrollingNode.h
@@ -1068,11 +1075,15 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     platform/graphics/AlphaPremultiplication.h
     platform/graphics/ANGLEWebKitBridge.h
+    platform/graphics/AnimationFrameRate.h
     platform/graphics/AudioTrackPrivate.h
     platform/graphics/BitmapImage.h
     platform/graphics/Color.h
+    platform/graphics/ColorComponents.h
     platform/graphics/ColorHash.h
+    platform/graphics/ColorMatrix.h
     platform/graphics/ColorSpace.h
+    platform/graphics/ColorUtilities.h
     platform/graphics/ComplexTextController.h
     platform/graphics/ConcreteImageBuffer.h
     platform/graphics/DashArray.h
@@ -1157,6 +1168,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/MediaPlayer.h
     platform/graphics/MediaPlayerEnums.h
     platform/graphics/MediaPlayerPrivate.h
+    platform/graphics/MediaUsageInfo.h
     platform/graphics/NativeImage.h
     platform/graphics/OpenGLESShims.h
     platform/graphics/OpenGLShims.h
@@ -1174,6 +1186,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/RemoteVideoSample.h
     platform/graphics/RenderingMode.h
     platform/graphics/RoundedRect.h
+    platform/graphics/SimpleColor.h
     platform/graphics/StringTruncator.h
     platform/graphics/TabSize.h
     platform/graphics/TextRun.h
@@ -1293,6 +1306,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/network/ResourceRequestBase.h
     platform/network/ResourceResponseBase.h
     platform/network/SameSiteInfo.h
+    platform/network/ShouldRelaxThirdPartyCookieBlocking.h
     platform/network/SocketStreamError.h
     platform/network/SocketStreamHandle.h
     platform/network/SocketStreamHandleClient.h
@@ -1306,6 +1320,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/sql/SQLiteDatabaseTrackerClient.h
     platform/sql/SQLiteFileSystem.h
     platform/sql/SQLiteStatement.h
+    platform/sql/SQLiteStatementAutoResetScope.h
     platform/sql/SQLiteTransaction.h
 
     platform/text/BidiContext.h
@@ -1410,7 +1425,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/style/BorderData.h
     rendering/style/BorderValue.h
     rendering/style/CounterDirectives.h
-    rendering/style/DataRef.h
     rendering/style/FillLayer.h
     rendering/style/GapLength.h
     rendering/style/GridArea.h
@@ -1465,6 +1479,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     style/StyleChange.h
     style/StyleScope.h
+    style/StyleUpdate.h
     style/StyleValidity.h
 
     svg/SVGLengthContext.h

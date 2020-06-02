@@ -28,10 +28,10 @@
 #pragma once
 
 #include "APIPageConfiguration.h"
-#include "DragAndDropHandler.h"
 #include "GestureController.h"
 #include "InputMethodState.h"
 #include "SameDocumentNavigationType.h"
+#include "ShareableBitmap.h"
 #include "ViewGestureController.h"
 #include "ViewSnapshotStore.h"
 #include "WebContextMenuProxyGtk.h"
@@ -39,6 +39,8 @@
 #include "WebKitInputMethodContext.h"
 #include "WebKitWebViewBase.h"
 #include "WebPageProxy.h"
+#include <WebCore/DragActions.h>
+#include <WebCore/SelectionData.h>
 #include <wtf/Optional.h>
 
 WebKitWebViewBase* webkitWebViewBaseCreate(const API::PageConfiguration&);
@@ -68,6 +70,7 @@ bool webkitWebViewBaseIsInWindow(WebKitWebViewBase*);
 
 void webkitWebViewBaseAddDialog(WebKitWebViewBase*, GtkWidget*);
 void webkitWebViewBaseAddWebInspector(WebKitWebViewBase*, GtkWidget* inspector, WebKit::AttachmentSide);
+void webkitWebViewBaseRemoveWebInspector(WebKitWebViewBase*, GtkWidget*);
 void webkitWebViewBaseResetClickCounter(WebKitWebViewBase*);
 void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase*, const WebKit::LayerTreeContext&);
 void webkitWebViewBaseUpdateAcceleratedCompositingMode(WebKitWebViewBase*, const WebKit::LayerTreeContext&);
@@ -79,15 +82,19 @@ void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase*);
 void webkitWebViewBasePageClosed(WebKitWebViewBase*);
 
 #if ENABLE(DRAG_SUPPORT)
-WebKit::DragAndDropHandler& webkitWebViewBaseDragAndDropHandler(WebKitWebViewBase*);
+void webkitWebViewBaseStartDrag(WebKitWebViewBase*, WebCore::SelectionData&&, WebCore::DragOperation, RefPtr<WebKit::ShareableBitmap>&&);
+void webkitWebViewBaseDidPerformDragControllerAction(WebKitWebViewBase*);
 #endif
 
+#if !USE(GTK4)
 WebKit::GestureController& webkitWebViewBaseGestureController(WebKitWebViewBase*);
+#endif
 
 RefPtr<WebKit::ViewSnapshot> webkitWebViewBaseTakeViewSnapshot(WebKitWebViewBase*, Optional<WebCore::IntRect>&&);
-
 void webkitWebViewBaseSetEnableBackForwardNavigationGesture(WebKitWebViewBase*, bool enabled);
+#if !USE(GTK4)
 WebKit::ViewGestureController* webkitWebViewBaseViewGestureController(WebKitWebViewBase*);
+#endif
 
 bool webkitWebViewBaseBeginBackSwipeForTesting(WebKitWebViewBase*);
 bool webkitWebViewBaseCompleteBackSwipeForTesting(WebKitWebViewBase*);

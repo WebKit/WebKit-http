@@ -53,11 +53,9 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
-protected:
-    void finishCreation(VM&, JSGlobalObject*, ObjectPrototype*);
-
 private:
     ObjectConstructor(VM&, Structure*);
+    void finishCreation(VM&, JSGlobalObject*, ObjectPrototype*);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(ObjectConstructor, InternalFunction);
 
@@ -91,30 +89,26 @@ inline JSObject* constructObject(JSGlobalObject* globalObject, JSValue arg)
     return arg.toObject(globalObject);
 }
 
-// Section 6.2.4.4 of the ES6 specification.
-// https://tc39.github.io/ecma262/#sec-frompropertydescriptor
+// https://tc39.es/ecma262/#sec-frompropertydescriptor
 inline JSObject* constructObjectFromPropertyDescriptor(JSGlobalObject* globalObject, const PropertyDescriptor& descriptor)
 {
     VM& vm = getVM(globalObject);
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    JSObject* description = constructEmptyObject(globalObject);
-    RETURN_IF_EXCEPTION(scope, nullptr);
+    JSObject* result = constructEmptyObject(globalObject);
 
-    if (!descriptor.isAccessorDescriptor()) {
-        description->putDirect(vm, vm.propertyNames->value, descriptor.value() ? descriptor.value() : jsUndefined(), 0);
-        description->putDirect(vm, vm.propertyNames->writable, jsBoolean(descriptor.writable()), 0);
-    } else {
-        ASSERT(descriptor.getter() || descriptor.setter());
-        if (descriptor.getter())
-            description->putDirect(vm, vm.propertyNames->get, descriptor.getter(), 0);
-        if (descriptor.setter())
-            description->putDirect(vm, vm.propertyNames->set, descriptor.setter(), 0);
-    }
-    
-    description->putDirect(vm, vm.propertyNames->enumerable, jsBoolean(descriptor.enumerable()), 0);
-    description->putDirect(vm, vm.propertyNames->configurable, jsBoolean(descriptor.configurable()), 0);
+    if (descriptor.value())
+        result->putDirect(vm, vm.propertyNames->value, descriptor.value());
+    if (descriptor.writablePresent())
+        result->putDirect(vm, vm.propertyNames->writable, jsBoolean(descriptor.writable()));
+    if (descriptor.getterPresent())
+        result->putDirect(vm, vm.propertyNames->get, descriptor.getter());
+    if (descriptor.setterPresent())
+        result->putDirect(vm, vm.propertyNames->set, descriptor.setter());
+    if (descriptor.enumerablePresent())
+        result->putDirect(vm, vm.propertyNames->enumerable, jsBoolean(descriptor.enumerable()));
+    if (descriptor.configurablePresent())
+        result->putDirect(vm, vm.propertyNames->configurable, jsBoolean(descriptor.configurable()));
 
-    return description;
+    return result;
 }
 
 
@@ -124,5 +118,7 @@ JSValue objectConstructorGetOwnPropertyDescriptor(JSGlobalObject*, JSObject*, co
 JSValue objectConstructorGetOwnPropertyDescriptors(JSGlobalObject*, JSObject*);
 JSArray* ownPropertyKeys(JSGlobalObject*, JSObject*, PropertyNameMode, DontEnumPropertiesMode);
 bool toPropertyDescriptor(JSGlobalObject*, JSValue, PropertyDescriptor&);
+
+EncodedJSValue JSC_HOST_CALL objectConstructorIs(JSGlobalObject*, CallFrame*);
 
 } // namespace JSC

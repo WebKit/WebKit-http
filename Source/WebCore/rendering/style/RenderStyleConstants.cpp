@@ -69,12 +69,9 @@ TextStream& operator<<(TextStream& ts, ApplePayButtonType playState)
     case ApplePayButtonType::Buy: ts << "buy"; break;
     case ApplePayButtonType::SetUp: ts << "setup"; break;
     case ApplePayButtonType::Donate: ts << "donate"; break;
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case ApplePayButtonType::CheckOut: ts << "checkout"; break;
     case ApplePayButtonType::Book: ts << "book"; break;
     case ApplePayButtonType::Subscribe: ts << "subscribe"; break;
-#endif
-
     }
     return ts;
 }
@@ -458,6 +455,15 @@ TextStream& operator<<(TextStream& ts, EmptyCell emptyCell)
     switch (emptyCell) {
     case EmptyCell::Show: ts << "show"; break;
     case EmptyCell::Hide: ts << "hide"; break;
+    }
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, EventListenerRegionType listenerType)
+{
+    switch (listenerType) {
+    case EventListenerRegionType::Wheel: ts << "wheel"; break;
+    case EventListenerRegionType::NonPassiveWheel: ts << "active wheel"; break;
     }
     return ts;
 }

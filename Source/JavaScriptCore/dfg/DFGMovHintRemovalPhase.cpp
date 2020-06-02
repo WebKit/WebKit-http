@@ -28,14 +28,12 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "BytecodeLivenessAnalysisInlines.h"
 #include "DFGEpoch.h"
 #include "DFGForAllKills.h"
 #include "DFGGraph.h"
-#include "DFGInsertionSet.h"
 #include "DFGMayExit.h"
 #include "DFGPhase.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include "OperandsInlines.h"
 
 namespace JSC { namespace DFG {

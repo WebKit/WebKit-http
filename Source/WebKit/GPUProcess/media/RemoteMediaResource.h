@@ -31,6 +31,10 @@
 #include <WebCore/PlatformMediaResourceLoader.h>
 #include <wtf/WeakPtr.h>
 
+namespace WebCore {
+class NetworkLoadMetrics;
+}
+
 namespace WebKit {
 
 class RemoteMediaPlayerProxy;
@@ -48,13 +52,13 @@ public:
     void stop() final;
     bool didPassAccessControlCheck() const final;
 
-    void responseReceived(const WebCore::ResourceResponse&, bool, CompletionHandler<void(WebCore::PolicyChecker::ShouldContinue)>&&);
+    void responseReceived(const WebCore::ResourceResponse&, bool, CompletionHandler<void(WebCore::ShouldContinuePolicyCheck)>&&);
     void redirectReceived(WebCore::ResourceRequest&&, const WebCore::ResourceResponse&, CompletionHandler<void(WebCore::ResourceRequest&&)>&&);
     void dataSent(uint64_t, uint64_t);
     void dataReceived(const char*, int64_t);
     void accessControlCheckFailed(const WebCore::ResourceError&);
     void loadFailed(const WebCore::ResourceError&);
-    void loadFinished();
+    void loadFinished(const WebCore::NetworkLoadMetrics&);
 
 private:
     RemoteMediaResource(RemoteMediaResourceManager&, RemoteMediaPlayerProxy&, RemoteMediaResourceIdentifier);

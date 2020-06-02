@@ -135,63 +135,64 @@ void InsertListCommand::doApply()
     auto& listTag = (m_type == Type::OrderedList) ? olTag : ulTag;
     if (endingSelection().isRange()) {
         VisibleSelection selection = selectionForParagraphIteration(endingSelection());
-        ASSERT(selection.isRange());
-        VisiblePosition startOfSelection = selection.visibleStart();
-        VisiblePosition endOfSelection = selection.visibleEnd();
-        VisiblePosition startOfLastParagraph = startOfParagraph(endOfSelection, CanSkipOverEditingBoundary);
+        if (selection.isRange()) {
+            VisiblePosition startOfSelection = selection.visibleStart();
+            VisiblePosition endOfSelection = selection.visibleEnd();
+            VisiblePosition startOfLastParagraph = startOfParagraph(endOfSelection, CanSkipOverEditingBoundary);
 
-        if (startOfParagraph(startOfSelection, CanSkipOverEditingBoundary) != startOfLastParagraph) {
-            bool forceCreateList = !selectionHasListOfType(selection, listTag);
+            if (startOfLastParagraph.isNotNull() && startOfParagraph(startOfSelection, CanSkipOverEditingBoundary) != startOfLastParagraph) {
+                bool forceCreateList = !selectionHasListOfType(selection, listTag);
 
-            RefPtr<Range> currentSelection = endingSelection().firstRange();
-            VisiblePosition startOfCurrentParagraph = startOfSelection;
-            while (!inSameParagraph(startOfCurrentParagraph, startOfLastParagraph, CanCrossEditingBoundary)) {
-                // doApply() may operate on and remove the last paragraph of the selection from the document 
-                // if it's in the same list item as startOfCurrentParagraph.  Return early to avoid an 
-                // infinite loop and because there is no more work to be done.
-                // FIXME(<rdar://problem/5983974>): The endingSelection() may be incorrect here.  Compute 
-                // the new location of endOfSelection and use it as the end of the new selection.
-                if (!startOfLastParagraph.deepEquivalent().anchorNode()->isConnected())
-                    return;
-                setEndingSelection(startOfCurrentParagraph);
-
-                // Save and restore endOfSelection and startOfLastParagraph when necessary
-                // since moveParagraph and movePragraphWithClones can remove nodes.
-                // FIXME: This is an inefficient way to keep selection alive because indexForVisiblePosition walks from
-                // the beginning of the document to the endOfSelection everytime this code is executed.
-                // But not using index is hard because there are so many ways we can lose selection inside doApplyForSingleParagraph.
-                RefPtr<ContainerNode> scope;
-                int indexForEndOfSelection = indexForVisiblePosition(endOfSelection, scope);
-                doApplyForSingleParagraph(forceCreateList, listTag, currentSelection.get());
-                if (endOfSelection.isNull() || endOfSelection.isOrphan() || startOfLastParagraph.isNull() || startOfLastParagraph.isOrphan()) {
-                    endOfSelection = visiblePositionForIndex(indexForEndOfSelection, scope.get());
-                    // If endOfSelection is null, then some contents have been deleted from the document.
-                    // This should never happen and if it did, exit early immediately because we've lost the loop invariant.
-                    ASSERT(endOfSelection.isNotNull());
-                    if (endOfSelection.isNull())
+                auto currentSelection = createLiveRange(endingSelection().firstRange());
+                VisiblePosition startOfCurrentParagraph = startOfSelection;
+                while (startOfCurrentParagraph.isNotNull() && !inSameParagraph(startOfCurrentParagraph, startOfLastParagraph, CanCrossEditingBoundary)) {
+                    // doApply() may operate on and remove the last paragraph of the selection from the document
+                    // if it's in the same list item as startOfCurrentParagraph. Return early to avoid an
+                    // infinite loop and because there is no more work to be done.
+                    // FIXME(<rdar://problem/5983974>): The endingSelection() may be incorrect here. Compute
+                    // the new location of endOfSelection and use it as the end of the new selection.
+                    if (!startOfLastParagraph.deepEquivalent().anchorNode()->isConnected())
                         return;
-                    startOfLastParagraph = startOfParagraph(endOfSelection, CanSkipOverEditingBoundary);
+                    setEndingSelection(startOfCurrentParagraph);
+
+                    // Save and restore endOfSelection and startOfLastParagraph when necessary
+                    // since moveParagraph and movePragraphWithClones can remove nodes.
+                    // FIXME: This is an inefficient way to keep selection alive because indexForVisiblePosition walks from
+                    // the beginning of the document to the endOfSelection everytime this code is executed.
+                    // But not using index is hard because there are so many ways we can lose selection inside doApplyForSingleParagraph.
+                    RefPtr<ContainerNode> scope;
+                    int indexForEndOfSelection = indexForVisiblePosition(endOfSelection, scope);
+                    doApplyForSingleParagraph(forceCreateList, listTag, currentSelection.get());
+                    if (endOfSelection.isNull() || endOfSelection.isOrphan() || startOfLastParagraph.isNull() || startOfLastParagraph.isOrphan()) {
+                        endOfSelection = visiblePositionForIndex(indexForEndOfSelection, scope.get());
+                        // If endOfSelection is null, then some contents have been deleted from the document.
+                        // This should never happen and if it did, exit early immediately because we've lost the loop invariant.
+                        ASSERT(endOfSelection.isNotNull());
+                        if (endOfSelection.isNull())
+                            return;
+                        startOfLastParagraph = startOfParagraph(endOfSelection, CanSkipOverEditingBoundary);
+                    }
+
+                    // Fetch the start of the selection after moving the first paragraph,
+                    // because moving the paragraph will invalidate the original start.
+                    // We'll use the new start to restore the original selection after
+                    // we modified all selected paragraphs.
+                    if (startOfCurrentParagraph == startOfSelection)
+                        startOfSelection = endingSelection().visibleStart();
+
+                    startOfCurrentParagraph = startOfNextParagraph(endingSelection().visibleStart());
                 }
-
-                // Fetch the start of the selection after moving the first paragraph,
-                // because moving the paragraph will invalidate the original start.  
-                // We'll use the new start to restore the original selection after 
-                // we modified all selected paragraphs.
-                if (startOfCurrentParagraph == startOfSelection)
-                    startOfSelection = endingSelection().visibleStart();
-
-                startOfCurrentParagraph = startOfNextParagraph(endingSelection().visibleStart());
+                setEndingSelection(endOfSelection);
+                doApplyForSingleParagraph(forceCreateList, listTag, currentSelection.get());
+                // Fetch the end of the selection, for the reason mentioned above.
+                endOfSelection = endingSelection().visibleEnd();
+                setEndingSelection(VisibleSelection(startOfSelection, endOfSelection, endingSelection().isDirectional()));
+                return;
             }
-            setEndingSelection(endOfSelection);
-            doApplyForSingleParagraph(forceCreateList, listTag, currentSelection.get());
-            // Fetch the end of the selection, for the reason mentioned above.
-            endOfSelection = endingSelection().visibleEnd();
-            setEndingSelection(VisibleSelection(startOfSelection, endOfSelection, endingSelection().isDirectional()));
-            return;
         }
     }
 
-    doApplyForSingleParagraph(false, listTag, endingSelection().firstRange().get());
+    doApplyForSingleParagraph(false, listTag, createLiveRange(endingSelection().firstRange()).get());
 }
 
 EditAction InsertListCommand::editingAction() const
@@ -212,7 +213,7 @@ void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const HT
         RefPtr<HTMLElement> listNode = enclosingList(listChildNode);
         if (!listNode) {
             RefPtr<HTMLElement> listElement = fixOrphanedListChild(*listChildNode);
-            if (!listElement)
+            if (!listElement || !listElement->isConnected())
                 return;
 
             listNode = mergeWithNeighboringLists(*listElement);
@@ -255,7 +256,7 @@ void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const HT
             if (rangeStartIsInList && newList)
                 currentSelection->setStart(*newList, 0);
             if (rangeEndIsInList && newList)
-                currentSelection->setEnd(*newList, lastOffsetInNode(newList.get()));
+                currentSelection->setEnd(*newList, newList->length());
 
             setEndingSelection(VisiblePosition(firstPositionInNode(newList.get())));
 

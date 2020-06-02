@@ -29,6 +29,7 @@
 
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaUsageInfo.h"
 #include "PlatformMediaSession.h"
 #include "SuccessOr.h"
 #include "Timer.h"
@@ -57,7 +58,7 @@ class MediaElementSession final : public PlatformMediaSession
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit MediaElementSession(HTMLMediaElement&);
-    virtual ~MediaElementSession() = default;
+    virtual ~MediaElementSession();
 
     void registerWithDocument(Document&);
     void unregisterWithDocument(Document&);
@@ -159,6 +160,9 @@ public:
 
     Optional<NowPlayingInfo> nowPlayingInfo() const final;
 
+    WEBCORE_EXPORT void updateMediaUsageIfChanged() final;
+    Optional<MediaUsageInfo> mediaUsageInfo() const { return m_mediaUsageInfo; }
+
 #if !RELEASE_LOG_DISABLED
     const void* logIdentifier() const final { return m_logIdentifier; }
     const char* logClassName() const final { return "MediaElementSession"; }
@@ -185,8 +189,12 @@ private:
     void clientDataBufferingTimerFired();
     void updateClientDataBuffering();
 
+    void addedMediaUsageManagerSessionIfNecessary();
+
     HTMLMediaElement& m_element;
     BehaviorRestrictions m_restrictions;
+
+    Optional<MediaUsageInfo> m_mediaUsageInfo;
 
     bool m_elementIsHiddenUntilVisibleInViewport { false };
     bool m_elementIsHiddenBecauseItWasRemovedFromDOM { false };
@@ -209,6 +217,10 @@ private:
 
 #if !RELEASE_LOG_DISABLED
     const void* m_logIdentifier;
+#endif
+
+#if ENABLE(MEDIA_USAGE)
+    bool m_haveAddedMediaUsageManagerSession { false };
 #endif
 };
 

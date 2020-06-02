@@ -530,6 +530,7 @@ bool TParseContext::checkCanBeLValue(const TSourceLoc &line, const char *op, TIn
         case EvqVertexIn:
         case EvqGeometryIn:
         case EvqFlatIn:
+        case EvqNoPerspectiveIn:
         case EvqSmoothIn:
         case EvqCentroidIn:
             message = "can't modify an input";
@@ -1067,6 +1068,35 @@ bool TParseContext::checkArrayElementIsNotArray(const TSourceLoc &line,
     return true;
 }
 
+// Check for array-of-arrays being used as non-allowed shader inputs/outputs.
+bool TParseContext::checkArrayOfArraysInOut(const TSourceLoc &line,
+                                            const TPublicType &elementType,
+                                            const TType &arrayType)
+{
+    if (arrayType.isArrayOfArrays())
+    {
+        if (elementType.qualifier == EvqVertexOut)
+        {
+            error(line, "vertex shader output cannot be an array of arrays",
+                  TType(elementType).getQualifierString());
+            return false;
+        }
+        if (elementType.qualifier == EvqFragmentIn)
+        {
+            error(line, "fragment shader input cannot be an array of arrays",
+                  TType(elementType).getQualifierString());
+            return false;
+        }
+        if (elementType.qualifier == EvqFragmentOut)
+        {
+            error(line, "fragment shader output cannot be an array of arrays",
+                  TType(elementType).getQualifierString());
+            return false;
+        }
+    }
+    return true;
+}
+
 // Check if this qualified element type can be formed into an array. This is only called when array
 // brackets are associated with an identifier in a declaration, like this:
 //   float a[2];
@@ -1188,6 +1218,36 @@ bool TParseContext::declareVariable(const TSourceLoc &line,
         else
         {
             error(line, "redeclaration of gl_LastFragData with size != gl_MaxDrawBuffers",
+                  identifier);
+            return false;
+        }
+    }
+    else if (type->isArray() && identifier == "gl_ClipDistance")
+    {
+        // gl_ClipDistance can be redeclared with smaller size than gl_MaxClipDistances
+        const TVariable *maxClipDistances = static_cast<const TVariable *>(
+            symbolTable.findBuiltIn(ImmutableString("gl_MaxClipDistances"), mShaderVersion));
+        if (!maxClipDistances)
+        {
+            // Unsupported extension
+            needsReservedCheck = true;
+        }
+        else if (type->isArrayOfArrays())
+        {
+            error(line, "redeclaration of gl_ClipDistance as an array of arrays", identifier);
+            return false;
+        }
+        else if (static_cast<int>(type->getOutermostArraySize()) <=
+                 maxClipDistances->getConstPointer()->getIConst())
+        {
+            if (const TSymbol *builtInSymbol = symbolTable.findBuiltIn(identifier, mShaderVersion))
+            {
+                needsReservedCheck = !checkCanUseExtension(line, builtInSymbol->extension());
+            }
+        }
+        else
+        {
+            error(line, "redeclaration of gl_ClipDistance with size > gl_MaxClipDistances",
                   identifier);
             return false;
         }
@@ -2009,10 +2069,13 @@ bool TParseContext::executeInitializer(const TSourceLoc &line,
         return false;
     }
 
+    bool nonConstGlobalInitializers =
+        IsExtensionEnabled(mDirectiveHandler.extensionBehavior(),
+                           TExtension::EXT_shader_non_constant_global_initializers);
     bool globalInitWarning = false;
     if (symbolTable.atGlobalLevel() &&
         !ValidateGlobalInitializer(initializer, mShaderVersion, sh::IsWebGLBasedSpec(mShaderSpec),
-                                   &globalInitWarning))
+                                   nonConstGlobalInitializers, &globalInitWarning))
     {
         // Error message does not completely match behavior with ESSL 1.00, but
         // we want to steer developers towards only using constant expressions.
@@ -2574,6 +2637,8 @@ TIntermDeclaration *TParseContext::parseSingleArrayDeclaration(
 
     TType *arrayType = new TType(elementType);
     arrayType->makeArrays(arraySizes);
+
+    checkArrayOfArraysInOut(indexLocation, elementType, *arrayType);
 
     checkGeometryShaderInputAndSetArraySize(indexLocation, identifier, arrayType);
 

@@ -36,7 +36,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
 class DisplayRefreshMonitorMac : public DisplayRefreshMonitor {
 public:
@@ -55,18 +55,15 @@ private:
     
     bool hasRequestedRefreshCallback() const override { return m_hasSentMessage; }
 
-    bool m_hasSentMessage { false };
-    unsigned m_observerID;
-    static unsigned m_counterID;
+    DisplayLinkObserverID m_observerID;
     std::unique_ptr<RunLoopObserver> m_runLoopObserver;
+    bool m_hasSentMessage { false };
     bool m_firstCallbackInCurrentRunloop { false };
 };
 
-unsigned DisplayRefreshMonitorMac::m_counterID = 0;
-
 DisplayRefreshMonitorMac::DisplayRefreshMonitorMac(PlatformDisplayID displayID)
     : DisplayRefreshMonitor(displayID)
-    , m_observerID(++m_counterID)
+    , m_observerID(DisplayLinkObserverID::generate())
 {
 }
 
@@ -109,6 +106,6 @@ RefPtr<WebCore::DisplayRefreshMonitor> DrawingArea::createDisplayRefreshMonitor(
 {
     return DisplayRefreshMonitorMac::create(displayID);
 }
-#endif
+#endif // ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
 }

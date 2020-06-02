@@ -701,8 +701,7 @@ void WebFrameLoaderClient::updateGlobalHistory()
         COMPtr<IWebURLResponse> urlResponse(AdoptCOM, WebURLResponse::createInstance(loader->response()));
         COMPtr<IWebURLRequest> urlRequest(AdoptCOM, WebMutableURLRequest::createInstance(loader->originalRequestCopy()));
         
-        COMPtr<IWebNavigationData> navigationData(AdoptCOM, WebNavigationData::createInstance(
-            loader->urlForHistory(), loader->title().string, urlRequest.get(), urlResponse.get(), loader->substituteData().isValid(), loader->clientRedirectSourceForHistory()));
+        COMPtr<IWebNavigationData> navigationData(AdoptCOM, WebNavigationData::createInstance(loader->urlForHistory().string(), loader->title().string, urlRequest.get(), urlResponse.get(), loader->substituteData().isValid(), loader->clientRedirectSourceForHistory()));
 
         historyDelegate->didNavigateWithNavigationData(webView, navigationData.get(), m_webFrame);
         return;
@@ -971,10 +970,6 @@ void WebFrameLoaderClient::didRestoreFromBackForwardCache()
 {
 }
 
-void WebFrameLoaderClient::dispatchDidBecomeFrameset(bool)
-{
-}
-
 String WebFrameLoaderClient::userAgent(const URL& url) const
 {
     return m_webFrame->webView()->userAgentForKURL(url);
@@ -985,8 +980,7 @@ bool WebFrameLoaderClient::canCachePage() const
     return true;
 }
 
-RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer)
+RefPtr<Frame> WebFrameLoaderClient::createFrame(const String& name, HTMLFrameOwnerElement& ownerElement)
 {
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);
@@ -999,12 +993,6 @@ RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& na
     coreFrame->tree().appendChild(*childFrame);
     childFrame->init();
 
-    coreFrame->loader().loadURLIntoChildFrame(url, referrer, childFrame.get());
-
-    // The frame's onload handler may have removed it from the document.
-    if (!childFrame->tree().parent())
-        return nullptr;
-
     return childFrame;
 }
 
@@ -1014,7 +1002,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
 
     if (mimeType.isEmpty()) {
         String decodedPath = decodeURLEscapeSequences(url.path());
-        mimeType = PluginDatabase::installedPlugins()->MIMETypeForExtension(decodedPath.substring(decodedPath.reverseFind('.') + 1));
+        mimeType = PluginDatabase::installedPlugins()->MIMETypeForExtension(StringView { decodedPath }.substring(decodedPath.reverseFind('.') + 1));
     }
 
     if (mimeType.isEmpty())

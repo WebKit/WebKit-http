@@ -26,10 +26,9 @@
 #include "config.h"
 #include "MetadataTable.h"
 
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include "OpcodeInlines.h"
 #include "UnlinkedMetadataTableInlines.h"
-#include <wtf/FastMalloc.h>
 
 namespace JSC {
 

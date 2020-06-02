@@ -331,7 +331,9 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         decidePolicyForResponse,
         unableToImplementPolicy
     };
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     WKBundlePageSetPolicyClient(m_page, &policyClient.base);
+ALLOW_DEPRECATED_DECLARATIONS_END
 
     WKBundlePageUIClientV2 uiClient = {
         { 2, this },
@@ -1410,9 +1412,9 @@ void InjectedBundlePage::unableToImplementPolicy(WKBundlePageRef, WKBundleFrameR
 
 // UI Client Callbacks
 
-void InjectedBundlePage::willAddMessageToConsole(WKBundlePageRef page, WKStringRef message, uint32_t lineNumber, const void *clientInfo)
+void InjectedBundlePage::willAddMessageToConsole(WKBundlePageRef page, WKStringRef message, uint32_t /* lineNumber */, const void *clientInfo)
 {
-    static_cast<InjectedBundlePage*>(const_cast<void*>(clientInfo))->willAddMessageToConsole(message, lineNumber);
+    static_cast<InjectedBundlePage*>(const_cast<void*>(clientInfo))->willAddMessageToConsole(message);
 }
 
 void InjectedBundlePage::willSetStatusbarText(WKBundlePageRef page, WKStringRef statusbarText, const void *clientInfo)
@@ -1465,7 +1467,7 @@ static WTF::String lastFileURLPathComponent(const WTF::String& path)
     return tmpPath;
 }
 
-void InjectedBundlePage::willAddMessageToConsole(WKStringRef message, uint32_t lineNumber)
+void InjectedBundlePage::willAddMessageToConsole(WKStringRef message)
 {
     auto& injectedBundle = InjectedBundle::singleton();
     if (!injectedBundle.isTestRunning())
@@ -1483,11 +1485,6 @@ void InjectedBundlePage::willAddMessageToConsole(WKStringRef message, uint32_t l
 
     StringBuilder stringBuilder;
     stringBuilder.appendLiteral("CONSOLE MESSAGE: ");
-    if (lineNumber) {
-        stringBuilder.appendLiteral("line ");
-        stringBuilder.appendNumber(lineNumber);
-        stringBuilder.appendLiteral(": ");
-    }
     stringBuilder.append(messageString);
     stringBuilder.append('\n');
 

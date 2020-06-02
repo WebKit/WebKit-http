@@ -249,25 +249,50 @@ WI.ContentBrowser = class ContentBrowser extends WI.View
     handlePopulateFindShortcut()
     {
         let currentContentView = this.currentContentView;
-        if (!currentContentView || !currentContentView.supportsSearch)
+        if (!currentContentView?.supportsSearch)
             return;
 
-        let searchQuery = currentContentView.searchQueryWithSelection();
-        if (!searchQuery)
+        if (!WI.updateFindString(currentContentView.searchQueryWithSelection()))
             return;
 
-        this._findBanner.searchQuery = searchQuery;
+        this._findBanner.searchQuery = WI.findString;
 
         currentContentView.performSearch(this._findBanner.searchQuery);
     }
 
-    handleFindNextShortcut()
+    async handleFindNextShortcut()
     {
+        if (!this._findBanner.showing && this._findBanner.searchQuery !== WI.findString) {
+            let searchQuery = WI.findString;
+            this._findBanner.searchQuery = searchQuery;
+
+            let currentContentView = this.currentContentView;
+            if (currentContentView?.supportsSearch) {
+                currentContentView.performSearch(this._findBanner.searchQuery);
+                await currentContentView.awaitEvent(WI.ContentView.Event.NumberOfSearchResultsDidChange);
+                if (this._findBanner.searchQuery !== searchQuery || this.currentContentView !== currentContentView)
+                    return;
+            }
+        }
+
         this.findBannerRevealNextResult(this._findBanner);
     }
 
-    handleFindPreviousShortcut()
+    async handleFindPreviousShortcut()
     {
+        if (!this._findBanner.showing && this._findBanner.searchQuery !== WI.findString) {
+            let searchQuery = WI.findString;
+            this._findBanner.searchQuery = searchQuery;
+
+            let currentContentView = this.currentContentView;
+            if (currentContentView?.supportsSearch) {
+                currentContentView.performSearch(this._findBanner.searchQuery);
+                await currentContentView.awaitEvent(WI.ContentView.Event.NumberOfSearchResultsDidChange);
+                if (this._findBanner.searchQuery !== searchQuery || this.currentContentView !== currentContentView)
+                    return;
+            }
+        }
+
         this.findBannerRevealPreviousResult(this._findBanner);
     }
 

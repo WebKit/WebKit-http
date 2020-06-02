@@ -24,8 +24,13 @@
  */
 
 #import <WebKit/WKWebView.h>
+#import <WebKit/_WKElementAction.h>
 
 #if TARGET_OS_IPHONE
+
+@class _WKTextInputContext;
+@class UIWKDocumentContext;
+@class UIWKDocumentRequest;
 
 @interface WKWebView (WKTestingIOS)
 
@@ -43,8 +48,19 @@
 - (void)dismissFormAccessoryView;
 - (void)_dismissFilePicker;
 - (void)selectFormAccessoryPickerRow:(int)rowIndex;
+- (BOOL)selectFormAccessoryHasCheckedItemAtRow:(long)rowIndex;
+
+- (BOOL)_mayContainEditableElementsInRect:(CGRect)rect;
+- (void)_requestTextInputContextsInRect:(CGRect)rect completionHandler:(void (^)(NSArray<_WKTextInputContext *> *))completionHandler;
+- (void)_focusTextInputContext:(_WKTextInputContext *)context placeCaretAt:(CGPoint)point completionHandler:(void (^)(UIResponder<UITextInput> *))completionHandler;
+- (void)_willBeginTextInteractionInTextInputContext:(_WKTextInputContext *)context;
+- (void)_didFinishTextInteractionInTextInputContext:(_WKTextInputContext *)context;
+- (void)_requestDocumentContext:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
+- (void)_adjustSelectionWithDelta:(NSRange)deltaRange completionHandler:(void (^)(void))completionHandler;
 
 - (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute;
+- (double)timePickerValueHour;
+- (double)timePickerValueMinute;
 
 - (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler;
 
@@ -53,6 +69,7 @@
 - (void)_doAfterResettingSingleTapGesture:(dispatch_block_t)action;
 
 - (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID;
+- (void)_simulateElementAction:(_WKElementActionType)actionType atLocation:(CGPoint)location;
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 - (void)_simulateTextEntered:(NSString *)text;
 
@@ -61,6 +78,8 @@
 - (void)_triggerSystemPreviewActionOnElement:(uint64_t)elementID document:(uint64_t)documentID page:(uint64_t)pageID;
 
 - (void)_setDeviceOrientationUserPermissionHandlerForTesting:(BOOL (^)(void))handler;
+
+- (void)_setDeviceHasAGXCompilerServiceForTesting;
 
 @end
 

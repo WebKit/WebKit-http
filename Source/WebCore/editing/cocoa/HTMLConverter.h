@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,24 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
-OBJC_CLASS NSAttributedString;
+#import "AttributedString.h"
+#import "SimpleRange.h"
 
 namespace WebCore {
 
-class Position;
-class Range;
-class VisibleSelection;
-
-enum class IncludeImagesInAttributedString { Yes, No };
-
-NSAttributedString *attributedStringFromSelection(const VisibleSelection&, NSDictionary** documentAttributes = nullptr);
-WEBCORE_EXPORT NSAttributedString *attributedStringBetweenStartAndEnd(const Position&, const Position&, NSDictionary** documentAttributes = nullptr);
-WEBCORE_EXPORT NSAttributedString *attributedStringFromRange(Range&, NSDictionary** documentAttributes = nullptr);
+WEBCORE_EXPORT AttributedString attributedString(const SimpleRange&);
 
 #if PLATFORM(MAC)
-WEBCORE_EXPORT NSAttributedString *editingAttributedStringFromRange(Range&, IncludeImagesInAttributedString = IncludeImagesInAttributedString::Yes);
+// This alternate implementation of HTML conversion doesn't handle as many advanced features,
+// such as tables, and doesn't produce document attributes, but it does use TextIterator so
+// text offsets will exactly match plain text and other editing machinery.
+// FIXME: This function and the one above should be merged.
+enum class IncludeImages { Yes, No };
+WEBCORE_EXPORT AttributedString editingAttributedString(const SimpleRange&, IncludeImages = IncludeImages::Yes);
 #endif
 
 } // namespace WebCore

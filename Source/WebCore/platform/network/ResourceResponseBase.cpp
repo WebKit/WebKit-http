@@ -194,8 +194,7 @@ ResourceResponse ResourceResponseBase::filter(const ResourceResponse& response, 
     return filteredResponse;
 }
 
-// FIXME: Name does not make it clear this is true for HTTPS!
-bool ResourceResponseBase::isHTTP() const
+bool ResourceResponseBase::isInHTTPFamily() const
 {
     lazyInit(CommonFieldsOnly);
 
@@ -435,8 +434,6 @@ static bool isSafeCrossOriginResponseHeader(HTTPHeaderName name)
         || name == HTTPHeaderName::XContentTypeOptions
         || name == HTTPHeaderName::XDNSPrefetchControl
         || name == HTTPHeaderName::XFrameOptions
-        || name == HTTPHeaderName::XWebKitCSP
-        || name == HTTPHeaderName::XWebKitCSPReportOnly
         || name == HTTPHeaderName::XXSSProtection;
 }
 

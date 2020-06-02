@@ -28,29 +28,37 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#if PLATFORM(COCOA)
+#include "ImageTransferSessionVT.h"
+#endif
+
 namespace WebCore {
 
 RealtimeVideoSource::RealtimeVideoSource(Ref<RealtimeVideoCaptureSource>&& source)
-    : RealtimeVideoCaptureSource(String { source->name() }, String { source->persistentID() }, String { source->deviceIDHashSalt() })
+    : RealtimeMediaSource(Type::Video, String { source->name() }, String { source->persistentID() }, String { source->deviceIDHashSalt() })
     , m_source(WTFMove(source))
 {
     m_source->addObserver(*this);
     m_currentSettings = m_source->settings();
     setSize(m_source->size());
+    setFrameRate(m_source->frameRate());
 }
 
 RealtimeVideoSource::~RealtimeVideoSource()
 {
+    m_source->removeVideoSampleObserver(*this);
     m_source->removeObserver(*this);
 }
 
 void RealtimeVideoSource::startProducingData()
 {
     m_source->start();
+    m_source->addVideoSampleObserver(*this);
 }
 
 void RealtimeVideoSource::stopProducingData()
 {
+    m_source->removeVideoSampleObserver(*this);
     m_source->stop();
 }
 
@@ -142,13 +150,43 @@ void RealtimeVideoSource::sourceStopped()
     });
 }
 
+#if PLATFORM(COCOA)
+RefPtr<MediaSample> RealtimeVideoSource::adaptVideoSample(MediaSample& sample)
+{
+    if (!m_imageTransferSession || m_imageTransferSession->pixelFormat() != sample.videoPixelFormat())
+        m_imageTransferSession = ImageTransferSessionVT::create(sample.videoPixelFormat());
+
+    ASSERT(m_imageTransferSession);
+    if (!m_imageTransferSession)
+        return nullptr;
+
+    auto mediaSample = m_imageTransferSession->convertMediaSample(sample, size());
+    ASSERT(mediaSample);
+
+    return mediaSample;
+}
+#endif
+
 void RealtimeVideoSource::videoSampleAvailable(MediaSample& sample)
 {
-    if (!isProducingData())
+    if (m_frameDecimation > 1 && ++m_frameDecimationCounter % m_frameDecimation)
         return;
 
-    if (auto mediaSample = adaptVideoSample(sample))
-        RealtimeMediaSource::videoSampleAvailable(*mediaSample);
+    m_frameDecimation = static_cast<size_t>(m_source->observedFrameRate() / frameRate());
+    if (!m_frameDecimation)
+        m_frameDecimation = 1;
+
+#if PLATFORM(COCOA)
+    auto size = this->size();
+    if (!size.isEmpty() && size != expandedIntSize(sample.presentationSize())) {
+        if (auto mediaSample = adaptVideoSample(sample)) {
+            RealtimeMediaSource::videoSampleAvailable(*mediaSample);
+            return;
+        }
+    }
+#endif
+
+    RealtimeMediaSource::videoSampleAvailable(sample);
 }
 
 Ref<RealtimeMediaSource> RealtimeVideoSource::clone()

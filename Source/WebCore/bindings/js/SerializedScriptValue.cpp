@@ -56,6 +56,7 @@
 #include "SharedBuffer.h"
 #include "WebCoreJSClientData.h"
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/BigIntObject.h>
 #include <JavaScriptCore/BooleanObject.h>
 #include <JavaScriptCore/CatchScope.h>
 #include <JavaScriptCore/DateInstance.h>
@@ -177,6 +178,8 @@ enum SerializationTag {
 #if ENABLE(OFFSCREEN_CANVAS)
     OffscreenCanvasTransferTag = 46,
 #endif
+    BigIntTag = 47,
+    BigIntObjectTag = 48,
     ErrorTag = 255
 };
 
@@ -343,6 +346,7 @@ static const unsigned StringDataIs8BitFlag = 0x80000000;
  *    | String
  *    | EmptyStringTag
  *    | EmptyStringObjectTag
+ *    | BigInt
  *    | File
  *    | FileList
  *    | ImageData
@@ -382,6 +386,13 @@ static const unsigned StringDataIs8BitFlag = 0x80000000;
  * StringData :-
  *      StringPoolTag <cpIndex:IndexType>
  *      (not (TerminatorTag | StringPoolTag))<is8Bit:uint32_t:1><length:uint32_t:31><characters:CharType{length}> // Added to constant pool when seen, string length 0xFFFFFFFF is disallowed
+ *
+ * BigInt :-
+ *      BigIntTag BigIntData
+ *      BigIntObjectTag BigIntData
+ *
+ * BigIntData :-
+ *      <sign:uint8_t> <lengthInUint64:uint32_t> <contents:uint64_t{lengthInUint64}>
  *
  * File :-
  *    FileTag FileData
@@ -742,13 +753,17 @@ private:
         return JSValue();
     }
 
-    void dumpImmediate(JSValue value)
+    void dumpImmediate(JSValue value, SerializationReturnCode& code)
     {
-        if (value.isNull())
+        if (value.isNull()) {
             write(NullTag);
-        else if (value.isUndefined())
+            return;
+        }
+        if (value.isUndefined()) {
             write(UndefinedTag);
-        else if (value.isNumber()) {
+            return;
+        }
+        if (value.isNumber()) {
             if (value.isInt32()) {
                 if (!value.asInt32())
                     write(ZeroTag);
@@ -762,12 +777,25 @@ private:
                 write(DoubleTag);
                 write(value.asDouble());
             }
-        } else if (value.isBoolean()) {
+            return;
+        }
+        if (value.isBoolean()) {
             if (value.isTrue())
                 write(TrueTag);
             else
                 write(FalseTag);
+            return;
         }
+#if USE(BIGINT32)
+        if (value.isBigInt32()) {
+            write(BigIntTag);
+            dumpBigIntData(value);
+            return;
+        }
+#endif
+
+        // Make any new primitive extension safe by throwing an error.
+        code = SerializationReturnCode::DataCloneError;
     }
 
     void dumpString(const String& string)
@@ -787,6 +815,64 @@ private:
         else {
             write(StringObjectTag);
             write(string);
+        }
+    }
+
+    void dumpBigIntData(JSValue value)
+    {
+        ASSERT(value.isBigInt());
+#if USE(BIGINT32)
+        if (value.isBigInt32()) {
+            dumpBigInt32Data(value.bigInt32AsInt32());
+            return;
+        }
+#endif
+        dumpHeapBigIntData(jsCast<JSBigInt*>(value));
+    }
+
+#if USE(BIGINT32)
+    void dumpBigInt32Data(int32_t integer)
+    {
+        static_assert(sizeof(uint64_t) == sizeof(unsigned long long));
+        write(static_cast<uint8_t>(integer < 0));
+        if (!integer) {
+            write(static_cast<uint32_t>(0)); // Length-in-uint64_t
+            return;
+        }
+        write(static_cast<uint32_t>(1)); // Length-in-uint64_t
+        int64_t value = static_cast<int64_t>(integer);
+        if (value < 0)
+            value = -value;
+        write(static_cast<unsigned long long>(value));
+    }
+#endif
+
+    void dumpHeapBigIntData(JSBigInt* bigInt)
+    {
+        static_assert(sizeof(uint64_t) == sizeof(unsigned long long));
+        write(static_cast<uint8_t>(bigInt->sign()));
+        if constexpr (sizeof(JSBigInt::Digit) == sizeof(uint64_t)) {
+            write(static_cast<uint32_t>(bigInt->length()));
+            for (unsigned index = 0; index < bigInt->length(); ++index)
+                write(static_cast<unsigned long long>(bigInt->digit(index)));
+        } else {
+            ASSERT(sizeof(JSBigInt::Digit) == sizeof(uint32_t));
+            uint32_t lengthInUint64 = bigInt->length() / 2;
+            if (bigInt->length() & 0x1)
+                ++lengthInUint64;
+            write(lengthInUint64);
+            uint64_t value = 0;
+            for (unsigned index = 0; index < bigInt->length(); ++index) {
+                if (!(index & 0x1))
+                    value = bigInt->digit(index);
+                else {
+                    value = (static_cast<uint64_t>(bigInt->digit(index)) << 32) | value;
+                    write(static_cast<unsigned long long>(value));
+                    value = 0;
+                }
+            }
+            if (bigInt->length() & 0x1)
+                write(static_cast<unsigned long long>(value));
         }
     }
 
@@ -982,13 +1068,19 @@ private:
     bool dumpIfTerminal(JSValue value, SerializationReturnCode& code)
     {
         if (!value.isCell()) {
-            dumpImmediate(value);
+            dumpImmediate(value, code);
             return true;
         }
         ASSERT(value.isCell());
 
         if (value.isString()) {
             dumpString(asString(value)->value(m_lexicalGlobalObject));
+            return true;
+        }
+
+        if (value.isHeapBigInt()) {
+            write(BigIntTag);
+            dumpBigIntData(value);
             return true;
         }
 
@@ -1028,6 +1120,15 @@ private:
                 write(numberObject->internalValue().asNumber());
                 return true;
             }
+            if (auto* bigIntObject = jsDynamicCast<BigIntObject*>(vm, obj)) {
+                if (!startObjectInternal(bigIntObject)) // handle duplicates
+                    return true;
+                JSValue bigIntValue = bigIntObject->internalValue();
+                ASSERT(bigIntValue.isBigInt());
+                write(BigIntObjectTag);
+                dumpBigIntData(bigIntValue);
+                return true;
+            }
             if (auto* file = JSFile::toWrapped(vm, obj)) {
                 write(FileTag);
                 write(*file);
@@ -1042,8 +1143,8 @@ private:
             }
             if (auto* blob = JSBlob::toWrapped(vm, obj)) {
                 write(BlobTag);
-                m_blobURLs.append(blob->url());
-                write(blob->url());
+                m_blobURLs.append(blob->url().string());
+                write(blob->url().string());
                 write(blob->type());
                 write(blob->size());
                 return true;
@@ -1344,9 +1445,9 @@ private:
 
     void write(const File& file)
     {
-        m_blobURLs.append(file.url());
+        m_blobURLs.append(file.url().string());
         write(file.path());
-        write(file.url());
+        write(file.url().string());
         write(file.type());
         write(file.name());
         write(static_cast<double>(file.lastModifiedOverride().valueOr(-1)));
@@ -1699,7 +1800,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSMap* inMap = jsCast<JSMap*>(inValue);
                 if (!startMap(inMap))
                     break;
-                JSMapIterator* iterator = JSMapIterator::create(vm, vm.mapIteratorStructure(), inMap, IterationKind::Entries);
+                JSMapIterator* iterator = JSMapIterator::create(vm, m_lexicalGlobalObject->mapIteratorStructure(), inMap, IterationKind::Entries);
                 m_gcBuffer.appendWithCrashOnOverflow(inMap);
                 m_gcBuffer.appendWithCrashOnOverflow(iterator);
                 mapIteratorStack.append(iterator);
@@ -1743,7 +1844,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSSet* inSet = jsCast<JSSet*>(inValue);
                 if (!startSet(inSet))
                     break;
-                JSSetIterator* iterator = JSSetIterator::create(vm, vm.setIteratorStructure(), inSet, IterationKind::Keys);
+                JSSetIterator* iterator = JSSetIterator::create(vm, m_lexicalGlobalObject->setIteratorStructure(), inSet, IterationKind::Keys);
                 m_gcBuffer.appendWithCrashOnOverflow(inSet);
                 m_gcBuffer.appendWithCrashOnOverflow(iterator);
                 setIteratorStack.append(iterator);
@@ -2893,6 +2994,100 @@ private:
         return getJSValue(bitmap);
     }
 
+    JSValue readBigInt()
+    {
+        uint8_t sign = 0;
+        if (!read(sign))
+            return JSValue();
+        uint32_t lengthInUint64 = 0;
+        if (!read(lengthInUint64))
+            return JSValue();
+
+        if (!lengthInUint64) {
+#if USE(BIGINT32)
+            return jsBigInt32(0);
+#else
+            JSBigInt* bigInt = JSBigInt::tryCreateZero(m_lexicalGlobalObject->vm());
+            if (UNLIKELY(!bigInt)) {
+                fail();
+                return JSValue();
+            }
+            m_gcBuffer.appendWithCrashOnOverflow(bigInt);
+            return bigInt;
+#endif
+        }
+
+#if USE(BIGINT32)
+        static_assert(sizeof(JSBigInt::Digit) == sizeof(uint64_t));
+        if (lengthInUint64 == 1) {
+            static_assert(sizeof(unsigned long long) == sizeof(uint64_t));
+            unsigned long long digit64 = 0;
+            if (!read(digit64))
+                return JSValue();
+            if (sign) {
+                if (digit64 <= static_cast<uint64_t>(-static_cast<int64_t>(INT32_MIN)))
+                    return jsBigInt32(static_cast<int32_t>(-static_cast<int64_t>(digit64)));
+            } else {
+                if (digit64 <= INT32_MAX)
+                    return jsBigInt32(static_cast<int32_t>(digit64));
+            }
+            ASSERT(digit64 != 0);
+            JSBigInt* bigInt = JSBigInt::tryCreateWithLength(m_lexicalGlobalObject->vm(), 1);
+            if (!bigInt) {
+                fail();
+                return JSValue();
+            }
+            bigInt->setDigit(0, digit64);
+            bigInt->setSign(sign);
+            bigInt = bigInt->tryRightTrim(m_lexicalGlobalObject->vm());
+            if (!bigInt) {
+                fail();
+                return JSValue();
+            }
+            m_gcBuffer.appendWithCrashOnOverflow(bigInt);
+            return bigInt;
+        }
+#endif
+        JSBigInt* bigInt = nullptr;
+        if constexpr (sizeof(JSBigInt::Digit) == sizeof(uint64_t)) {
+            bigInt = JSBigInt::tryCreateWithLength(m_lexicalGlobalObject->vm(), lengthInUint64);
+            if (!bigInt) {
+                fail();
+                return JSValue();
+            }
+            for (uint32_t index = 0; index < lengthInUint64; ++index) {
+                static_assert(sizeof(unsigned long long) == sizeof(uint64_t));
+                unsigned long long digit64 = 0;
+                if (!read(digit64))
+                    return JSValue();
+                bigInt->setDigit(index, digit64);
+            }
+        } else {
+            ASSERT(sizeof(JSBigInt::Digit) == sizeof(uint32_t));
+            bigInt = JSBigInt::tryCreateWithLength(m_lexicalGlobalObject->vm(), lengthInUint64 * 2);
+            if (!bigInt) {
+                fail();
+                return JSValue();
+            }
+            for (uint32_t index = 0; index < lengthInUint64; ++index) {
+                static_assert(sizeof(unsigned long long) == sizeof(uint64_t));
+                unsigned long long digit64 = 0;
+                if (!read(digit64))
+                    return JSValue();
+                bigInt->setDigit(index * 2, static_cast<uint32_t>(digit64));
+                bigInt->setDigit(index * 2 + 1, static_cast<uint32_t>(digit64 >> 32));
+            }
+        }
+        bigInt->setSign(sign);
+        bigInt = bigInt->tryRightTrim(m_lexicalGlobalObject->vm());
+        if (!bigInt) {
+            fail();
+            return JSValue();
+        }
+        m_gcBuffer.appendWithCrashOnOverflow(bigInt);
+        return bigInt;
+    }
+
     JSValue readTerminal()
     {
         SerializationTag tag = readTag();
@@ -2933,11 +3128,22 @@ private:
                 return JSValue();
             return jsNumber(d);
         }
+        case BigIntTag:
+            return readBigInt();
         case NumberObjectTag: {
             double d;
             if (!read(d))
                 return JSValue();
             NumberObject* obj = constructNumber(m_globalObject, jsNumber(d));
+            m_gcBuffer.appendWithCrashOnOverflow(obj);
+            return obj;
+        }
+        case BigIntObjectTag: {
+            JSValue bigInt = readBigInt();
+            if (!bigInt)
+                return JSValue();
+            ASSERT(bigInt.isBigInt());
+            BigIntObject* obj = BigIntObject::create(m_lexicalGlobalObject->vm(), m_globalObject, bigInt);
             m_gcBuffer.appendWithCrashOnOverflow(obj);
             return obj;
         }

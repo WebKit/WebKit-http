@@ -28,7 +28,8 @@
 
 #include "ArrayBuffer.h"
 #include "JSArrayBuffer.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
+#include "JSGlobalObject.h"
 
 namespace JSC {
 

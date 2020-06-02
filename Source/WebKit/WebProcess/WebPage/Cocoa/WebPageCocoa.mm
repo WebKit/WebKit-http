@@ -26,7 +26,6 @@
 #import "config.h"
 #import "WebPage.h"
 
-#import "AttributedString.h"
 #import "InsertTextOptions.h"
 #import "LoadParameters.h"
 #import "PluginView.h"
@@ -51,7 +50,6 @@
 #import <WebCore/PlatformMediaSessionManager.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderElement.h>
-#import <WebCore/SimpleRange.h>
 
 #if PLATFORM(COCOA)
 
@@ -132,8 +130,7 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
         return dictionaryPopupInfo;
     }
 
-    Vector<FloatQuad> quads;
-    range.absoluteTextQuads(quads);
+    auto quads = RenderObject::absoluteTextQuads(range);
     if (quads.isEmpty()) {
         editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
@@ -147,28 +144,23 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
     dictionaryPopupInfo.options = options;
 
 #if PLATFORM(MAC)
-    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
-    
-    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
-    
+    auto attributedString = editingAttributedString(range, IncludeImages::No).string;
+    auto scaledAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[attributedString string]]);
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    
-    [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
+    [attributedString enumerateAttributesInRange:NSMakeRange(0, [attributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
         RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
-        
         NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
         if (font)
             font = [fontManager convertFont:font toSize:font.pointSize * pageScaleFactor()];
         if (font)
             [scaledAttributes setObject:font forKey:NSFontAttributeName];
-        
-        [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
+        [scaledAttributedString addAttributes:scaledAttributes.get() range:range];
     }];
 #endif // PLATFORM(MAC)
 
-    TextIndicatorOptions indicatorOptions = TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
+    OptionSet<TextIndicatorOption> indicatorOptions { TextIndicatorOption::UseBoundingRectAndPaintAllContentForComplexRanges };
     if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
-        indicatorOptions |= TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+        indicatorOptions.add(TextIndicatorOption::IncludeSnapshotWithSelectionHighlight);
     
     auto textIndicator = TextIndicator::createWithRange(range, indicatorOptions, presentationTransition);
     if (!textIndicator) {
@@ -178,7 +170,7 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
 
     dictionaryPopupInfo.textIndicator = textIndicator->data();
 #if PLATFORM(MAC)
-    dictionaryPopupInfo.attributedString = scaledNSAttributedString;
+    dictionaryPopupInfo.attributedString = scaledAttributedString;
 #elif PLATFORM(MACCATALYST)
     dictionaryPopupInfo.attributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:range.text()]);
 #endif
@@ -230,18 +222,9 @@ WebPaymentCoordinator* WebPage::paymentCoordinator()
 }
 #endif
 
-void WebPage::getContentsAsAttributedString(CompletionHandler<void(const AttributedString&)>&& completionHandler)
+void WebPage::getContentsAsAttributedString(CompletionHandler<void(const WebCore::AttributedString&)>&& completionHandler)
 {
-    auto* documentElement = m_page->mainFrame().document()->documentElement();
-    if (!documentElement) {
-        completionHandler({ });
-        return;
-    }
-
-    NSDictionary* documentAttributes = nil;
-    auto attributedString = attributedStringFromRange(rangeOfContents(*documentElement), &documentAttributes);
-
-    completionHandler({ WTFMove(attributedString), WTFMove(documentAttributes) });
+    completionHandler(attributedString(makeRangeSelectingNodeContents(*m_page->mainFrame().document())));
 }
 
 void WebPage::setRemoteObjectRegistry(WebRemoteObjectRegistry* registry)

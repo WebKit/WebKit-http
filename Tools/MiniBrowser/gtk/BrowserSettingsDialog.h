@@ -29,6 +29,8 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
+#if !GTK_CHECK_VERSION(3, 98, 0)
+
 G_BEGIN_DECLS
 
 #define BROWSER_TYPE_SETTINGS_DIALOG            (browser_settings_dialog_get_type())
@@ -46,5 +48,7 @@ GType browser_settings_dialog_get_type(void);
 GtkWidget* browser_settings_dialog_new(WebKitSettings *settings);
 
 G_END_DECLS
+
+#endif
 
 #endif

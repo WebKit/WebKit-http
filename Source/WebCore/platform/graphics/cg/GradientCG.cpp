@@ -70,11 +70,8 @@ CGGradientRef Gradient::platformGradient()
         if (stop.color.isExtended())
             hasExtendedColors = true;
 
-        float r;
-        float g;
-        float b;
-        float a;
-        stop.color.getRGBA(r, g, b, a);
+        auto [colorSpace, components] = stop.color.colorSpaceAndComponents();
+        auto [r, g, b, a] = components;
         colorComponents.uncheckedAppend(r);
         colorComponents.uncheckedAppend(g);
         colorComponents.uncheckedAppend(b);
@@ -182,7 +179,9 @@ void Gradient::paint(CGContextRef platformContext)
                 CGContextRestoreGState(platformContext);
         },
         [&] (const ConicData& data) {
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(WATCHOS)
+// FIXME: Seems like this should be HAVE(CG_CONTEXT_DRAW_CONIC_GRADIENT).
+// FIXME: Can we change tvOS to be like the other Cocoa platforms?
+#if PLATFORM(COCOA) && !PLATFORM(APPLETV)
             CGContextSaveGState(platformContext);
             CGContextTranslateCTM(platformContext, data.point0.x(), data.point0.y());
             CGContextRotateCTM(platformContext, (CGFloat)-M_PI_2);

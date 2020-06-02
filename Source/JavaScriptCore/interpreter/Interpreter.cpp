@@ -36,63 +36,39 @@
 #include "CatchScope.h"
 #include "CheckpointOSRExitSideState.h"
 #include "CodeBlock.h"
-#include "CodeCache.h"
 #include "DirectArguments.h"
-#include "ExecutableBaseInlines.h"
-#include "Heap.h"
 #include "Debugger.h"
-#include "DebuggerCallFrame.h"
 #include "DirectEvalCodeCache.h"
-#include "ErrorInstance.h"
 #include "EvalCodeBlock.h"
-#include "Exception.h"
-#include "ExceptionHelpers.h"
+#include "ExecutableBaseInlines.h"
 #include "FrameTracers.h"
-#include "FunctionCodeBlock.h"
 #include "InterpreterInlines.h"
 #include "JITCodeInlines.h"
 #include "JSArrayInlines.h"
-#include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSImmutableButterfly.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
 #include "JSString.h"
-#include "JSWithScope.h"
-#include "LLIntCLoop.h"
 #include "LLIntThunks.h"
 #include "LiteralParser.h"
 #include "ModuleProgramCodeBlock.h"
-#include "ObjectPrototype.h"
-#include "Parser.h"
 #include "ProgramCodeBlock.h"
 #include "ProtoCallFrameInlines.h"
-#include "RegExpObject.h"
 #include "Register.h"
 #include "RegisterAtOffsetList.h"
 #include "ScopedArguments.h"
-#include "StackAlignment.h"
 #include "StackFrame.h"
 #include "StackVisitor.h"
 #include "StrictEvalActivation.h"
-#include "StrongInlines.h"
-#include "Symbol.h"
 #include "VMEntryScope.h"
 #include "VMInlines.h"
-#include "VMInspector.h"
 #include "VirtualRegister.h"
-#include <limits.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/StackStats.h>
+#include <wtf/Scope.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/StringPrintStream.h>
-#include <wtf/Threading.h>
 #include <wtf/text/StringBuilder.h>
-
-#if ENABLE(JIT)
-#include "JIT.h"
-#endif
 
 #if ENABLE(WEBASSEMBLY)
 #include "WasmContextInlines.h"
@@ -101,10 +77,14 @@
 
 namespace JSC {
 
-JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame)
+JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame, ECMAMode ecmaMode)
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
 
     if (!callFrame->argumentCount())
         return jsUndefined();
@@ -148,7 +128,7 @@ JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame)
 
     DirectEvalExecutable* eval = callerCodeBlock->directEvalCodeCache().tryGet(programSource, callerCallSiteIndex);
     if (!eval) {
-        if (!callerCodeBlock->isStrictMode()) {
+        if (!ecmaMode.isStrict()) {
             if (programSource.is8Bit()) {
                 LiteralParser<LChar> preparser(globalObject, programSource.characters8(), programSource.length(), NonStrictJSON, callerCodeBlock);
                 if (JSValue parsedObject = preparser.tryLiteralParse())
@@ -165,7 +145,7 @@ JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame)
         
         VariableEnvironment variablesUnderTDZ;
         JSScope::collectClosureVariablesUnderTDZ(callerScopeChain, variablesUnderTDZ);
-        eval = DirectEvalExecutable::create(globalObject, makeSource(programSource, callerCodeBlock->source().provider()->sourceOrigin()), callerCodeBlock->isStrictMode(), derivedContextType, callerUnlinkedCodeBlock->needsClassFieldInitializer(), isArrowFunctionContext, callerCodeBlock->ownerExecutable()->isInsideOrdinaryFunction(), evalContextType, &variablesUnderTDZ);
+        eval = DirectEvalExecutable::create(globalObject, makeSource(programSource, callerCodeBlock->source().provider()->sourceOrigin()), derivedContextType, callerUnlinkedCodeBlock->needsClassFieldInitializer(), isArrowFunctionContext, callerCodeBlock->ownerExecutable()->isInsideOrdinaryFunction(), evalContextType, &variablesUnderTDZ, ecmaMode);
         EXCEPTION_ASSERT(!!scope.exception() == !eval);
         if (!eval)
             return jsUndefined();
@@ -205,7 +185,7 @@ unsigned sizeOfVarargs(JSGlobalObject* globalObject, JSValue arguments, uint32_t
         break;
     case StringType:
     case SymbolType:
-    case BigIntType:
+    case HeapBigIntType:
         throwException(globalObject, scope, createInvalidFunctionApplyParameterError(globalObject,  arguments));
         return 0;
         
@@ -485,7 +465,7 @@ ALWAYS_INLINE static HandlerInfo* findExceptionHandler(StackVisitor& visitor, Co
 class GetCatchHandlerFunctor {
 public:
     GetCatchHandlerFunctor()
-        : m_handler(0)
+        : m_handler(nullptr)
     {
     }
 
@@ -672,6 +652,10 @@ JSValue Interpreter::executeProgram(const SourceCode& source, JSGlobalObject*, J
     JSGlobalObject* globalObject = scope->globalObject(vm);
     JSCallee* globalCallee = globalObject->globalCallee();
 
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
+
     ProgramExecutable* program = ProgramExecutable::create(globalObject, source);
     EXCEPTION_ASSERT(throwScope.exception() || program);
     RETURN_IF_EXCEPTION(throwScope, { });
@@ -780,15 +764,14 @@ JSValue Interpreter::executeProgram(const SourceCode& source, JSGlobalObject*, J
             case JSONPPathEntryTypeCall: {
                 JSValue function = baseObject.get(globalObject, JSONPPath.last().m_pathEntryName);
                 RETURN_IF_EXCEPTION(throwScope, JSValue());
-                CallData callData;
-                CallType callType = getCallData(vm, function, callData);
-                if (callType == CallType::None)
+                auto callData = getCallData(vm, function);
+                if (callData.type == CallData::Type::None)
                     return throwException(globalObject, throwScope, createNotAFunctionError(globalObject, function));
                 MarkedArgumentBuffer jsonArg;
                 jsonArg.append(JSONPValue);
                 ASSERT(!jsonArg.hasOverflowed());
                 JSValue thisValue = JSONPPath.size() == 1 ? jsUndefined() : baseObject;
-                JSONPValue = JSC::call(globalObject, function, callType, callData, thisValue, jsonArg);
+                JSONPValue = JSC::call(globalObject, function, callData, thisValue, jsonArg);
                 RETURN_IF_EXCEPTION(throwScope, JSValue());
                 break;
             }
@@ -857,17 +840,21 @@ failedJSONP:
     return checkedReturn(result);
 }
 
-JSValue Interpreter::executeCall(JSGlobalObject* lexicalGlobalObject, JSObject* function, CallType callType, const CallData& callData, JSValue thisValue, const ArgList& args)
+JSValue Interpreter::executeCall(JSGlobalObject* lexicalGlobalObject, JSObject* function, const CallData& callData, JSValue thisValue, const ArgList& args)
 {
     VM& vm = lexicalGlobalObject->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
 
     throwScope.assertNoException();
     ASSERT(!vm.isCollectorBusyOnCurrentThread());
     if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
-    bool isJSCall = (callType == CallType::JS);
+    bool isJSCall = (callData.type == CallData::Type::JS);
     JSScope* scope = nullptr;
     size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
@@ -877,7 +864,7 @@ JSValue Interpreter::executeCall(JSGlobalObject* lexicalGlobalObject, JSObject* 
         scope = callData.js.scope;
         globalObject = scope->globalObject(vm);
     } else {
-        ASSERT(callType == CallType::Host);
+        ASSERT(callData.type == CallData::Type::Native);
         globalObject = function->globalObject(vm);
     }
 
@@ -929,10 +916,14 @@ JSValue Interpreter::executeCall(JSGlobalObject* lexicalGlobalObject, JSObject* 
     return checkedReturn(result);
 }
 
-JSObject* Interpreter::executeConstruct(JSGlobalObject* lexicalGlobalObject, JSObject* constructor, ConstructType constructType, const ConstructData& constructData, const ArgList& args, JSValue newTarget)
+JSObject* Interpreter::executeConstruct(JSGlobalObject* lexicalGlobalObject, JSObject* constructor, const CallData& constructData, const ArgList& args, JSValue newTarget)
 {
     VM& vm = lexicalGlobalObject->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
 
     throwScope.assertNoException();
     ASSERT(!vm.isCollectorBusyOnCurrentThread());
@@ -943,7 +934,7 @@ JSObject* Interpreter::executeConstruct(JSGlobalObject* lexicalGlobalObject, JSO
         return nullptr;
     }
 
-    bool isJSConstruct = (constructType == ConstructType::JS);
+    bool isJSConstruct = (constructData.type == CallData::Type::JS);
     JSScope* scope = nullptr;
     size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
@@ -953,7 +944,7 @@ JSObject* Interpreter::executeConstruct(JSGlobalObject* lexicalGlobalObject, JSO
         scope = constructData.js.scope;
         globalObject = scope->globalObject(vm);
     } else {
-        ASSERT(constructType == ConstructType::Host);
+        ASSERT(constructData.type == CallData::Type::Native);
         globalObject = constructor->globalObject(vm);
     }
 
@@ -1005,7 +996,7 @@ JSObject* Interpreter::executeConstruct(JSGlobalObject* lexicalGlobalObject, JSO
         }
     }
 
-    RETURN_IF_EXCEPTION(throwScope, 0);
+    RETURN_IF_EXCEPTION(throwScope, nullptr);
     ASSERT(result.isObject());
     return checkedReturn(asObject(result));
 }
@@ -1040,6 +1031,10 @@ JSValue Interpreter::execute(EvalExecutable* eval, JSGlobalObject* lexicalGlobal
     VM& vm = scope->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
+
     ASSERT_UNUSED(lexicalGlobalObject, &vm == &lexicalGlobalObject->vm());
     throwScope.assertNoException();
     ASSERT(!vm.isCollectorBusyOnCurrentThread());
@@ -1057,7 +1052,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, JSGlobalObject* lexicalGlobal
     unsigned numFunctionHoistingCandidates = eval->numFunctionHoistingCandidates();
 
     JSScope* variableObject;
-    if ((numVariables || numTopLevelFunctionDecls) && eval->isStrictMode()) {
+    if ((numVariables || numTopLevelFunctionDecls) && eval->isInStrictContext()) {
         scope = StrictEvalActivation::create(vm, globalObject->strictEvalActivationStructure(), scope);
         variableObject = scope;
     } else {
@@ -1104,7 +1099,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, JSGlobalObject* lexicalGlobal
     UnlinkedEvalCodeBlock* unlinkedCodeBlock = codeBlock->unlinkedEvalCodeBlock();
 
     // We can't declare a "var"/"function" that overwrites a global "let"/"const"/"class" in a sloppy-mode eval.
-    if (variableObject->isGlobalObject() && !eval->isStrictMode() && (numVariables || numTopLevelFunctionDecls)) {
+    if (variableObject->isGlobalObject() && !eval->isInStrictContext() && (numVariables || numTopLevelFunctionDecls)) {
         JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalObject*>(variableObject)->globalLexicalEnvironment();
         for (unsigned i = 0; i < numVariables; ++i) {
             const Identifier& ident = unlinkedCodeBlock->variable(i);
@@ -1128,7 +1123,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, JSGlobalObject* lexicalGlobal
 
     if (numVariables || numTopLevelFunctionDecls || numFunctionHoistingCandidates) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
-        if (variableObject->next() && !eval->isStrictMode())
+        if (variableObject->next() && !eval->isInStrictContext())
             variableObject->globalObject(vm)->varInjectionWatchpoint()->fireAll(vm, "Executed eval, fired VarInjection watchpoint");
 
         for (unsigned i = 0; i < numVariables; ++i) {
@@ -1144,7 +1139,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, JSGlobalObject* lexicalGlobal
             }
         }
         
-        if (eval->isStrictMode()) {
+        if (eval->isInStrictContext()) {
             for (unsigned i = 0; i < numTopLevelFunctionDecls; ++i) {
                 FunctionExecutable* function = codeBlock->functionDecl(i);
                 PutPropertySlot slot(variableObject);
@@ -1218,6 +1213,10 @@ JSValue Interpreter::executeModuleProgram(ModuleProgramExecutable* executable, J
 {
     VM& vm = scope->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    auto clobberizeValidator = makeScopeExit([&] {
+        vm.didEnterVM = true;
+    });
 
     ASSERT_UNUSED(lexicalGlobalObject, &vm == &lexicalGlobalObject->vm());
     throwScope.assertNoException();

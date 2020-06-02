@@ -62,17 +62,13 @@ public:
     NSSet *serializableFileWrapperClasses() const final;
 #endif
 
-#if USE(DICTATION_ALTERNATIVES)
-    uint64_t addDictationAlternatives(const RetainPtr<NSTextAlternatives>&) final;
-    void removeDictationAlternatives(uint64_t dictationContext) final;
-    Vector<String> dictationAlternatives(uint64_t dictationContext) final;
-#endif
+    WebCore::DictationContext addDictationAlternatives(NSTextAlternatives *) final;
+    void removeDictationAlternatives(WebCore::DictationContext) final;
+    Vector<String> dictationAlternatives(WebCore::DictationContext) final;
 
 protected:
     WeakObjCPtr<WKWebView> m_webView;
-#if USE(DICTATION_ALTERNATIVES)
     std::unique_ptr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
-#endif
 };
 
 }

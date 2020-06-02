@@ -89,6 +89,7 @@ NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSess
     , m_thirdPartyCookieBlockingMode(parameters.resourceLoadStatisticsParameters.thirdPartyCookieBlockingMode)
     , m_sameSiteStrictEnforcementEnabled(parameters.resourceLoadStatisticsParameters.sameSiteStrictEnforcementEnabled)
     , m_firstPartyWebsiteDataRemovalMode(parameters.resourceLoadStatisticsParameters.firstPartyWebsiteDataRemovalMode)
+    , m_standaloneApplicationDomain(parameters.resourceLoadStatisticsParameters.standaloneApplicationDomain)
 #endif
     , m_adClickAttribution(makeUniqueRef<AdClickAttributionManager>(networkProcess, parameters.sessionID))
     , m_testSpeedMultiplier(parameters.testSpeedMultiplier)
@@ -134,17 +135,17 @@ NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSess
 NetworkSession::~NetworkSession()
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    destroyResourceLoadStatistics();
+    destroyResourceLoadStatistics([] { });
 #endif
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void NetworkSession::destroyResourceLoadStatistics()
+void NetworkSession::destroyResourceLoadStatistics(CompletionHandler<void()>&& completionHandler)
 {
     if (!m_resourceLoadStatistics)
-        return;
+        return completionHandler();
 
-    m_resourceLoadStatistics->didDestroyNetworkSession();
+    m_resourceLoadStatistics->didDestroyNetworkSession(WTFMove(completionHandler));
     m_resourceLoadStatistics = nullptr;
 }
 #endif
@@ -169,7 +170,7 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
     if (auto* storageSession = networkStorageSession())
         storageSession->setResourceLoadStatisticsEnabled(enable);
     if (!enable) {
-        destroyResourceLoadStatistics();
+        destroyResourceLoadStatistics([] { });
         return;
     }
 
@@ -190,13 +191,16 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
 
 void NetworkSession::recreateResourceLoadStatisticStore(CompletionHandler<void()>&& completionHandler)
 {
-    destroyResourceLoadStatistics();
-    m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics, (m_sessionID.isEphemeral() ? ResourceLoadStatistics::IsEphemeral::Yes : ResourceLoadStatistics::IsEphemeral::No));
-    forwardResourceLoadStatisticsSettings();
-    if (!m_sessionID.isEphemeral())
-        m_resourceLoadStatistics->populateMemoryStoreFromDisk(WTFMove(completionHandler));
-    else
-        completionHandler();
+    destroyResourceLoadStatistics([this, weakThis = makeWeakPtr(*this), completionHandler = WTFMove(completionHandler)] () mutable {
+        if (!weakThis)
+            return completionHandler();
+        m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics, (m_sessionID.isEphemeral() ? ResourceLoadStatistics::IsEphemeral::Yes : ResourceLoadStatistics::IsEphemeral::No));
+        forwardResourceLoadStatisticsSettings();
+        if (!m_sessionID.isEphemeral())
+            m_resourceLoadStatistics->populateMemoryStoreFromDisk(WTFMove(completionHandler));
+        else
+            completionHandler();
+    });
 }
 
 void NetworkSession::forwardResourceLoadStatisticsSettings()
@@ -204,6 +208,7 @@ void NetworkSession::forwardResourceLoadStatisticsSettings()
     m_resourceLoadStatistics->setThirdPartyCookieBlockingMode(m_thirdPartyCookieBlockingMode);
     m_resourceLoadStatistics->setSameSiteStrictEnforcementEnabled(m_sameSiteStrictEnforcementEnabled);
     m_resourceLoadStatistics->setFirstPartyWebsiteDataRemovalMode(m_firstPartyWebsiteDataRemovalMode, [] { });
+    m_resourceLoadStatistics->setStandaloneApplicationDomain(m_standaloneApplicationDomain, [] { });
 }
 
 bool NetworkSession::isResourceLoadStatisticsEnabled() const

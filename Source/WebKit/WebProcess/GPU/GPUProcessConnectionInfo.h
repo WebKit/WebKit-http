@@ -35,7 +35,7 @@ struct GPUProcessConnectionInfo {
     Optional<audit_token_t> auditToken;
 #endif
 
-    IPC::Connection::Identifier identifier()
+    IPC::Connection::Identifier identifier() const
     {
 #if USE(UNIX_DOMAIN_SOCKETS)
         return IPC::Connection::Identifier(connection.fileDescriptor());
@@ -68,7 +68,7 @@ struct GPUProcessConnectionInfo {
 #endif
     }
     
-    static bool decode(IPC::Decoder& decoder, GPUProcessConnectionInfo& info)
+    static WARN_UNUSED_RETURN bool decode(IPC::Decoder& decoder, GPUProcessConnectionInfo& info)
     {
         if (!decoder.decode(info.connection))
             return false;

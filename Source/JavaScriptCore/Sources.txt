@@ -220,6 +220,8 @@ bytecode/DFGExitProfile.cpp
 bytecode/DataFormat.cpp
 bytecode/DeferredCompilationCallback.cpp
 bytecode/DeferredSourceDump.cpp
+bytecode/DeleteByStatus.cpp
+bytecode/DeleteByIdVariant.cpp
 bytecode/DirectEvalCodeCache.cpp
 bytecode/EvalCodeBlock.cpp
 bytecode/ExecutableToCodeBlockEdge.cpp
@@ -675,8 +677,6 @@ llint/LLIntEntrypoint.cpp
 llint/LLIntExceptions.cpp
 llint/LLIntSlowPaths.cpp
 llint/LLIntThunks.cpp
-// FIXME: We can't bundle this file due to a clang bug.
-llint/LowLevelInterpreter.cpp @no-unify
 
 parser/Lexer.cpp
 parser/ModuleAnalyzer.cpp
@@ -706,6 +706,9 @@ profiler/ProfilerProfiledBytecodes.cpp
 profiler/ProfilerUID.cpp
 
 runtime/AbstractModuleRecord.cpp
+runtime/AggregateError.cpp
+runtime/AggregateErrorConstructor.cpp
+runtime/AggregateErrorPrototype.cpp
 runtime/ArgList.cpp
 runtime/ArrayBuffer.cpp
 runtime/ArrayBufferView.cpp
@@ -763,7 +766,8 @@ runtime/DirectEvalExecutable.cpp
 runtime/DisallowVMReentry.cpp
 runtime/DoublePredictionFuzzerAgent.cpp
 runtime/DumpContext.cpp
-runtime/ECMAScriptSpecInternalFunctions.cpp
+runtime/ECMAMode.cpp
+runtime/EnsureStillAliveHere.cpp
 runtime/Error.cpp
 runtime/ErrorConstructor.cpp
 runtime/ErrorHandlingScope.cpp
@@ -807,6 +811,9 @@ runtime/IntlCollatorPrototype.cpp
 runtime/IntlDateTimeFormat.cpp
 runtime/IntlDateTimeFormatConstructor.cpp
 runtime/IntlDateTimeFormatPrototype.cpp
+runtime/IntlLocale.cpp
+runtime/IntlLocaleConstructor.cpp
+runtime/IntlLocalePrototype.cpp
 runtime/IntlNumberFormat.cpp
 runtime/IntlNumberFormatConstructor.cpp
 runtime/IntlNumberFormatPrototype.cpp
@@ -814,6 +821,9 @@ runtime/IntlObject.cpp
 runtime/IntlPluralRules.cpp
 runtime/IntlPluralRulesConstructor.cpp
 runtime/IntlPluralRulesPrototype.cpp
+runtime/IntlRelativeTimeFormat.cpp
+runtime/IntlRelativeTimeFormatConstructor.cpp
+runtime/IntlRelativeTimeFormatPrototype.cpp
 runtime/IteratorOperations.cpp
 runtime/IteratorPrototype.cpp
 runtime/JSArray.cpp
@@ -996,8 +1006,6 @@ runtime/WideningNumberPredictionFuzzerAgent.cpp
 JSCBuiltins.cpp
 
 tools/CellList.cpp
-tools/CodeProfile.cpp
-tools/CodeProfiling.cpp
 tools/CompilerTimingScope.cpp
 tools/FunctionOverrides.cpp
 tools/FunctionWhitelist.cpp

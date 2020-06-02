@@ -112,3 +112,23 @@ var fObj = {
         var x;
     }   
 };
+
+function commaOneLine() {
+    inline(), inline(), inline();
+}
+
+function commaMultiLine() {
+    inline(),
+    inline(),
+    inline();
+}
+
+function returnOneLine() {
+    return inline(), inline(), inline();
+}
+
+function returnMultiLine() {
+    return inline(),
+        inline(),
+        inline();
+}

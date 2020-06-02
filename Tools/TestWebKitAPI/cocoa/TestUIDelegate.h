@@ -23,8 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #import <WebKit/WKUIDelegatePrivate.h>
 
 @interface TestUIDelegate : NSObject <WKUIDelegate>
@@ -33,4 +31,8 @@
 
 - (NSString *)waitForAlert;
 
+@end
+
+@interface WKWebView (TestUIDelegateExtras)
+- (NSString *)_test_waitForAlert;
 @end

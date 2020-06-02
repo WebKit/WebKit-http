@@ -268,6 +268,11 @@ Image* CachedImage::imageForRenderer(const RenderObject* renderer)
     return m_image.get();
 }
 
+bool CachedImage::hasSVGImage() const
+{
+    return m_image && m_image->isSVGImage();
+}
+
 void CachedImage::setContainerContextForClient(const CachedImageClient& client, const LayoutSize& containerSize, float containerZoom, const URL& imageURL)
 {
     if (containerSize.isEmpty())
@@ -434,6 +439,12 @@ void CachedImage::CachedImageObserver::changedInRect(const Image& image, const I
         cachedImage->changedInRect(image, rect);
 }
 
+void CachedImage::CachedImageObserver::scheduleTimedRenderingUpdate(const Image& image)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->scheduleTimedRenderingUpdate(image);
+}
+
 inline void CachedImage::clearImage()
 {
     if (!m_image)
@@ -554,7 +565,7 @@ void CachedImage::updateData(const char* data, unsigned length)
     CachedResource::updateData(data, length);
 }
 
-void CachedImage::finishLoading(SharedBuffer* data)
+void CachedImage::finishLoading(SharedBuffer* data, const NetworkLoadMetrics& metrics)
 {
     m_data = convertedDataIfNeeded(data);
     if (m_data) {
@@ -573,7 +584,7 @@ void CachedImage::finishLoading(SharedBuffer* data)
     }
 
     notifyObservers();
-    CachedResource::finishLoading(data);
+    CachedResource::finishLoading(data, metrics);
 }
 
 void CachedImage::didReplaceSharedBufferContents()
@@ -682,6 +693,16 @@ void CachedImage::changedInRect(const Image& image, const IntRect* rect)
     if (&image != m_image)
         return;
     notifyObservers(rect);
+}
+
+void CachedImage::scheduleTimedRenderingUpdate(const Image& image)
+{
+    if (&image != m_image)
+        return;
+
+    CachedResourceClientWalker<CachedImageClient> walker(m_clients);
+    while (auto* client = walker.next())
+        client->scheduleTimedRenderingUpdate();
 }
 
 bool CachedImage::currentFrameKnownToBeOpaque(const RenderElement* renderer)

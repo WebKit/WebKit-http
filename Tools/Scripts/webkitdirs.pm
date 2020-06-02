@@ -42,6 +42,7 @@ use File::Path qw(make_path mkpath rmtree);
 use File::Spec;
 use File::Temp qw(tempdir);
 use File::stat;
+use JSON::PP;
 use List::Util;
 use POSIX;
 use Time::HiRes qw(usleep);
@@ -70,17 +71,12 @@ BEGIN {
        &debugSafari
        &executableProductDir
        &extractNonHostConfiguration
-       &findOrCreateSimulatorForIOSDevice
-       &iosSimulatorDeviceByName
        &iosVersion
        &nmPath
        &passedConfiguration
        &prependToEnvironmentVariableList
        &printHelpAndExitForRunAndDebugWebKitAppIfNeeded
        &productDir
-       &quitIOSSimulator
-       &relaunchIOSSimulator
-       &restartIOSSimulatorDevice
        &runIOSWebKitApp
        &runMacWebKitApp
        &safariPath
@@ -93,12 +89,10 @@ BEGIN {
        &sharedCommandLineOptionsUsage
        &shouldUseFlatpak
        &runInFlatpak
-       &shutDownIOSSimulatorDevice
        &sourceDir
        &willUseIOSDeviceSDK
        &willUseIOSSimulatorSDK
        DO_NOT_USE_OPEN_COMMAND
-       SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT
        USE_OPEN_COMMAND
    );
    %EXPORT_TAGS = ( );
@@ -125,8 +119,8 @@ use constant {
 
 use constant USE_OPEN_COMMAND => 1; # Used in runMacWebKitApp().
 use constant DO_NOT_USE_OPEN_COMMAND => 2;
-use constant SIMULATOR_DEVICE_STATE_SHUTDOWN => "1";
-use constant SIMULATOR_DEVICE_STATE_BOOTED => "3";
+use constant SIMULATOR_DEVICE_STATE_SHUTDOWN => "Shutdown";
+use constant SIMULATOR_DEVICE_STATE_BOOTED => "Booted";
 use constant SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT  => "For WebKit Development";
 
 # See table "Certificate types and names" on <https://developer.apple.com/library/ios/documentation/IDEs/Conceptual/AppDistributionGuide/MaintainingCertificates/MaintainingCertificates.html#//apple_ref/doc/uid/TP40012582-CH31-SW41>.
@@ -145,6 +139,7 @@ my $baseProductDir;
 my @baseProductDirOption;
 my $configuration;
 my $xcodeSDK;
+my $simulatorIdiom;
 my $configurationForVisualStudio;
 my $configurationProductDir;
 my $sourceDir;
@@ -524,7 +519,8 @@ sub argumentsForConfiguration()
     push(@args, '--debug') if ($configuration =~ "^Debug");
     push(@args, '--release') if ($configuration =~ "^Release");
     push(@args, '--ios-device') if (defined $xcodeSDK && $xcodeSDK =~ /^iphoneos/);
-    push(@args, '--ios-simulator') if (defined $xcodeSDK && $xcodeSDK =~ /^iphonesimulator/);
+    push(@args, '--ios-simulator') if (defined $xcodeSDK && $xcodeSDK =~ /^iphonesimulator/ && $simulatorIdiom eq "iPhone");
+    push(@args, '--ipad-simulator') if (defined $xcodeSDK && $xcodeSDK =~ /^iphonesimulator/ && $simulatorIdiom eq "iPad");
     push(@args, '--maccatalyst') if (defined $xcodeSDK && $xcodeSDK =~ /^maccatalyst/);
     push(@args, '--32-bit') if ($architecture eq "x86" and !isWin64());
     push(@args, '--64-bit') if (isWin64());
@@ -600,6 +596,11 @@ sub determineXcodeSDK
     }
     if (checkForArgumentAndRemoveFromARGV("--simulator") || checkForArgumentAndRemoveFromARGV("--ios-simulator")) {
         $xcodeSDK ||= 'iphonesimulator';
+        $simulatorIdiom = 'iPhone';
+    }
+    if (checkForArgumentAndRemoveFromARGV("--ipad-simulator")) {
+        $xcodeSDK ||= 'iphonesimulator';
+        $simulatorIdiom = 'iPad';
     }
     if (checkForArgumentAndRemoveFromARGV("--tvos-device")) {
         $xcodeSDK ||=  "appletvos";
@@ -762,7 +763,11 @@ sub determineConfigurationProductDir
         if (usesPerConfigurationBuildDirectory()) {
             $configurationProductDir = "$baseProductDir";
         } else {
-            $configurationProductDir = "$baseProductDir/$configuration";
+            if (shouldUseFlatpak()) {
+                $configurationProductDir = "$baseProductDir/$portName/$configuration";
+            } else {
+                $configurationProductDir = "$baseProductDir/$configuration";
+            }
             $configurationProductDir .= "-" . xcodeSDKPlatformName() if isEmbeddedWebKit() || isMacCatalystWebKit();
         }
     }
@@ -919,7 +924,6 @@ sub XcodeOptions
     die "cannot enable both ASAN and Coverage at this time\n" if $coverageIsEnabled && $asanIsEnabled;
 
     if (willUseIOSDeviceSDK() || willUseWatchDeviceSDK() || willUseAppleTVDeviceSDK()) {
-        push @options, "-IDEProvisioningProfileSupportRelaxed=YES";
         push @options, "ENABLE_BITCODE=NO";
         if (hasIOSDevelopmentCertificate()) {
             # FIXME: May match more than one installed development certificate.
@@ -958,11 +962,8 @@ sub XcodeStaticAnalyzerOption()
 
 sub canUseXCBuild()
 {
-    # if (`xcodebuild -version | grep "Build version"` =~ /Build version (\d+)([a-zA-Z])(\d+)([a-zA-Z]?)/) {
-    #     return $1 >= 11;
-    # }
-
-    return 0;
+    determineXcodeVersion();
+    return (eval "v$xcodeVersion" ge v11.4)
 }
 
 my $passedConfiguration;
@@ -1096,7 +1097,20 @@ sub builtDylibPathForName
 
     if (isGtk()) {
         my $extension = isDarwin() ? ".dylib" : ".so";
-        return "$configurationProductDir/lib/libwebkit2gtk-4.0" . $extension;
+        my @apiVersions = ("4.0", "5.0");
+        for my $apiVersion (@apiVersions) {
+            my $libraryPath;
+            if ($libraryName eq "JavaScriptCore") {
+                $libraryPath = "$configurationProductDir/lib/libjavascriptcoregtk-$apiVersion$extension";
+            } else {
+                $libraryPath = "$configurationProductDir/lib/libwebkit2gtk-$apiVersion$extension";
+            }
+            if (-e $libraryPath) {
+                return $libraryPath;
+            }
+        }
+
+        return "";
     }
     if (isHaiku()) {
         if (isWK2()) {
@@ -1526,27 +1540,35 @@ sub isAppleWinWebKit()
     return portName() eq AppleWin;
 }
 
-sub iOSSimulatorDevicesPath
+sub simulatorDeviceFromJSON
 {
-    return "$ENV{HOME}/Library/Developer/CoreSimulator/Devices";
+    my $runtime = shift;
+    my $jsonDevice = shift;
+
+    return {
+        "UDID" => $jsonDevice->{udid},
+        "name" => $jsonDevice->{name},
+        "runtime" => $runtime,
+        "state" => $jsonDevice->{state},
+        "deviceType" => $jsonDevice->{deviceTypeIdentifier}
+    };
 }
 
 sub iOSSimulatorDevices
 {
-    eval "require Foundation";
-    my $devicesPath = iOSSimulatorDevicesPath();
-    opendir(DEVICES, $devicesPath);
-    my @udids = grep {
-        $_ =~ m/^[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}$/;
-    } readdir(DEVICES);
-    close(DEVICES);
+    my $output = `xcrun simctl list devices --json`;
+    my $runtimes = decode_json($output)->{devices};
+    if (!$runtimes) {
+        die "No simulator devices found";
+    }
 
-    # FIXME: We should parse the device.plist file ourself and map the dictionary keys in it to known
-    #        dictionary keys so as to decouple our representation of the plist from the actual structure
-    #        of the plist, which may change.
-    my @devices = map {
-        Foundation::perlRefFromObjectRef(NSDictionary->dictionaryWithContentsOfFile_("$devicesPath/$_/device.plist"));
-    } @udids;
+    my @devices = ();
+    while ((my $runtime, my $devicesForRuntime) = each %$runtimes) {
+        foreach my $jsonDevice (@$devicesForRuntime) {
+            next if $jsonDevice->{availabilityError};
+            push @devices, simulatorDeviceFromJSON($runtime, $jsonDevice);
+        }
+    }
 
     return @devices;
 }
@@ -1560,18 +1582,12 @@ sub createiOSSimulatorDevice
     my $created = system("xcrun", "--sdk", "iphonesimulator", "simctl", "create", $name, $deviceTypeId, $runtimeId) == 0;
     die "Couldn't create simulator device: $name $deviceTypeId $runtimeId" if not $created;
 
-    system("xcrun", "--sdk", "iphonesimulator", "simctl", "list");
-
-    print "Waiting for device to be created ...\n";
-    sleep 5;
-    for (my $tries = 0; $tries < 5; $tries++){
-        my @devices = iOSSimulatorDevices();
-        foreach my $device (@devices) {
-            return $device if $device->{name} eq $name and $device->{deviceType} eq $deviceTypeId and $device->{runtime} eq $runtimeId;
-        }
-        sleep 5;
+    my @devices = iOSSimulatorDevices();
+    foreach my $device (@devices) {
+        return $device if $device->{name} eq $name and $device->{deviceType} eq $deviceTypeId and $device->{runtime} eq $runtimeId;
     }
-    die "Device $name $deviceTypeId $runtimeId wasn't found in " . iOSSimulatorDevicesPath();
+
+    die "Device $name $deviceTypeId $runtimeId wasn't found";
 }
 
 sub willUseIOSDeviceSDK()
@@ -2075,7 +2091,12 @@ sub getJhbuildPath()
 
 sub getUserFlatpakPath()
 {
-    my @flatpakPath = File::Spec->splitdir(baseProductDir());
+    my $productDir = baseProductDir();
+    if (isGit() && isGitBranchBuild() && gitBranch()) {
+        my $branch = gitBranch();
+        $productDir =~ s/$branch//;
+    }
+    my @flatpakPath = File::Spec->splitdir($productDir);
     push(@flatpakPath, "UserFlatpak");
     return File::Spec->catdir(@flatpakPath);
 }
@@ -2593,6 +2614,10 @@ Options specific to macOS:
   --lang=LANGUAGE                   Use a specific language instead of system language.
                                     This accepts a language name (German) or a language code (de, ar, pt_BR, etc).
   --locale=LOCALE                   Use a specific locale instead of the system region.
+
+Options specific to iOS:
+  --iphone-simulator                Run the app in an iPhone Simulator
+  --ipad-simulator                  Run the app in an iPad Simulator
 EOF
 
     exit(1);
@@ -2656,13 +2681,13 @@ sub setupIOSWebKitEnvironment($)
 
 sub iosSimulatorApplicationsPath()
 {
-    # FIXME: We should ask simctl for this information, instead of guessing from available runtimes.
-    my $runtimePath = File::Spec->catdir(sdkPlatformDirectory("iphoneos"), "Library", "Developer", "CoreSimulator", "Profiles", "Runtimes");
-    opendir(RUNTIMES, $runtimePath);
-    my @runtimes = grep {/.*\.simruntime/} readdir(RUNTIMES);
-    close(RUNTIMES);
-    my $sult = File::Spec->catdir($runtimePath, @runtimes ? $runtimes[0] : "iOS.simruntime", "Contents", "Resources", "RuntimeRoot", "Applications");
-    return $sult;
+    my $output = `xcrun simctl list runtimes iOS --json`;
+    my $runtimes = decode_json($output)->{runtimes};
+    if (!$runtimes) {
+        die "No iOS simulator runtimes found";
+    }
+    my $runtimePath = @$runtimes[0]->{runtimeRoot};
+    return File::Spec->catdir($runtimePath, "Applications");
 }
 
 sub installedMobileSafariBundle()
@@ -2727,6 +2752,8 @@ sub waitUntilProcessNotRunning($)
 sub shutDownIOSSimulatorDevice($)
 {
     my ($simulatorDevice) = @_;
+
+    return if $simulatorDevice->{state} eq SIMULATOR_DEVICE_STATE_SHUTDOWN;
     system("xcrun --sdk iphonesimulator simctl shutdown $simulatorDevice->{UDID} > /dev/null 2>&1");
 }
 
@@ -2741,34 +2768,16 @@ sub restartIOSSimulatorDevice($)
 sub relaunchIOSSimulator($)
 {
     my ($simulatedDevice) = @_;
-    quitIOSSimulator($simulatedDevice->{UDID});
+    shutDownIOSSimulatorDevice($simulatedDevice);
 
-    # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
     chomp(my $developerDirectory = $ENV{DEVELOPER_DIR} || `xcode-select --print-path`); 
-    my $iosSimulatorPath = File::Spec->catfile($developerDirectory, "Applications", "Simulator.app"); 
+    my $iosSimulatorPath = File::Spec->catfile($developerDirectory, "Applications", "Simulator.app");
+    # Simulator.app needs to be running before the simulator is booted to have it visible.
     system("open", "-a", $iosSimulatorPath, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorPath: $!"; 
+    system("xcrun", "simctl", "boot", $simulatedDevice->{UDID}) == 0 or die "Failed to boot simulator $simulatedDevice->{UDID}: $!"; 
 
     waitUntilIOSSimulatorDeviceIsInState($simulatedDevice->{UDID}, SIMULATOR_DEVICE_STATE_BOOTED);
     waitUntilProcessNotRunning("com.apple.datamigrator");
-}
-
-sub quitIOSSimulator(;$)
-{
-    my ($waitForShutdownOfSimulatedDeviceUDID) = @_;
-    # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
-    if (exitStatus(system {"osascript"} "osascript", "-e", 'tell application id "com.apple.iphonesimulator" to quit')) {
-        # osascript returns a non-zero exit status if Simulator.app is not registered in LaunchServices.
-        return;
-    }
-
-    if (!defined($waitForShutdownOfSimulatedDeviceUDID)) {
-        return;
-    }
-    # FIXME: We assume that $waitForShutdownOfSimulatedDeviceUDID was not booted using the simctl command line tool.
-    #        Otherwise we will spin indefinitely since quiting the iOS Simulator will not shutdown this device. We
-    #        should add a maximum time limit to wait for a device to shutdown and either return an error or die()
-    #        on expiration of the time limit.
-    waitUntilIOSSimulatorDeviceIsInState($waitForShutdownOfSimulatedDeviceUDID, SIMULATOR_DEVICE_STATE_SHUTDOWN);
 }
 
 sub iosSimulatorDeviceByName($)
@@ -2787,15 +2796,16 @@ sub iosSimulatorDeviceByName($)
 sub iosSimulatorDeviceByUDID($)
 {
     my ($simulatedDeviceUDID) = @_;
-    my $devicePlistPath = File::Spec->catfile(iOSSimulatorDevicesPath(), $simulatedDeviceUDID, "device.plist");
-    if (!-f $devicePlistPath) {
-        return;
+
+    my $output = `xcrun simctl list devices $simulatedDeviceUDID --json`;
+    my $runtimes = decode_json($output)->{devices};
+
+    while ((my $runtime, my $devicesForRuntime) = each %$runtimes) {
+        next if not @$devicesForRuntime;
+        die "Multiple devices found for UDID $simulatedDeviceUDID: $output" if scalar(@$devicesForRuntime) > 1;
+        return simulatorDeviceFromJSON($runtime, @$devicesForRuntime[0]);        
     }
-    # FIXME: We should parse the device.plist file ourself and map the dictionary keys in it to known
-    #        dictionary keys so as to decouple our representation of the plist from the actual structure
-    #        of the plist, which may change.
-    eval "require Foundation";
-    return Foundation::perlRefFromObjectRef(NSDictionary->dictionaryWithContentsOfFile_($devicePlistPath));
+    return undef;
 }
 
 sub iosSimulatorRuntime()
@@ -2817,8 +2827,14 @@ sub findOrCreateSimulatorForIOSDevice($)
     my ($simulatorNameSuffix) = @_;
     my $simulatorName;
     my $simulatorDeviceType;
-    $simulatorName = "iPhone SE " . $simulatorNameSuffix;
-    $simulatorDeviceType = "com.apple.CoreSimulator.SimDeviceType.iPhone-SE";
+
+    if ($simulatorIdiom eq "iPad") {
+        $simulatorName = "iPad Pro " . $simulatorNameSuffix;
+        $simulatorDeviceType = "com.apple.CoreSimulator.SimDeviceType.iPad-Pro--9-7-inch-";
+    } else {
+        $simulatorName = "iPhone SE " . $simulatorNameSuffix;
+        $simulatorDeviceType = "com.apple.CoreSimulator.SimDeviceType.iPhone-SE";
+    }
 
     my $simulatedDevice = iosSimulatorDeviceByName($simulatorName);
     return $simulatedDevice if $simulatedDevice;
@@ -2885,7 +2901,7 @@ sub runIOSWebKitAppInSimulator($;$)
             # was previously overwritten with a custom built version of the app.
             # FIXME: Only restore the system-installed version of the app instead of erasing all contents and settings.
             print "Quitting iOS Simulator...\n";
-            quitIOSSimulator($simulatedDeviceUDID);
+            shutDownIOSSimulatorDevice($simulatedDevice);
             print "Erasing contents and settings for simulator device \"$simulatedDevice->{name}\".\n";
             exitStatus(system("xcrun", "--sdk", "iphonesimulator", "simctl", "erase", $simulatedDeviceUDID)) == 0 or die;
         }

@@ -39,7 +39,6 @@
 #import "DumpRenderTreePasteboard.h"
 #import "WebCoreTestSupport.h"
 #import <WebKit/DOMPrivate.h>
-#import <WebKit/WebKit.h>
 #import <WebKit/WebViewPrivate.h>
 #import <functional>
 #import <wtf/RetainPtr.h>
@@ -254,7 +253,7 @@ static NSDraggingSession *drt_WebHTMLView_beginDraggingSessionWithItemsEventSour
             || aSelector == @selector(mouseScrollByX:andY:)
             || aSelector == @selector(mouseScrollByX:andY:withWheel:andMomentumPhases:)
             || aSelector == @selector(continuousMouseScrollByX:andY:)
-            || aSelector == @selector(monitorWheelEvents)
+            || aSelector == @selector(monitorWheelEventsWithOptions:)
             || aSelector == @selector(callAfterScrollingCompletes:)
 #if PLATFORM(MAC)
             || aSelector == @selector(beginDragWithFiles:)
@@ -319,7 +318,7 @@ static NSDraggingSession *drt_WebHTMLView_beginDraggingSessionWithItemsEventSour
         return @"continuousMouseScrollBy";
     if (aSelector == @selector(scalePageBy:atX:andY:))
         return @"scalePageBy";
-    if (aSelector == @selector(monitorWheelEvents))
+    if (aSelector == @selector(monitorWheelEventsWithOptions:))
         return @"monitorWheelEvents";
     if (aSelector == @selector(callAfterScrollingCompletes:))
         return @"callAfterScrollingCompletes";
@@ -440,7 +439,7 @@ static NSEventType eventTypeForMouseButtonAndAction(int button, MouseAction acti
     assert([jsFilePaths isKindOfClass:[WebScriptObject class]]);
 
     NSPasteboard *pboard = [NSPasteboard pasteboardWithUniqueName];
-    [pboard declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
+    [pboard declareTypes:@[NSFilenamesPboardType] owner:nil];
 
     NSURL *currentTestURL = [NSURL URLWithString:[[mainFrame webView] mainFrameURL]];
 
@@ -1388,7 +1387,7 @@ static NSUInteger swizzledEventPressedMouseButtons()
     
 }
 
-- (void)monitorWheelEvents
+- (void)monitorWheelEventsWithOptions:(WebScriptObject*)options
 {
 #if PLATFORM(MAC)
     WebCore::Frame* frame = [[mainFrame webView] _mainCoreFrame];
@@ -1397,7 +1396,17 @@ static NSUInteger swizzledEventPressedMouseButtons()
 
     _sentWheelPhaseEndOrCancel = NO;
     _sentMomentumPhaseEnd = NO;
-    WebCoreTestSupport::monitorWheelEvents(*frame);
+
+    bool resetLatching = true;
+
+    if (![options isKindOfClass:[WebUndefined class]]) {
+        if (id resetLatchingValue = [options valueForKey:@"resetLatching"]) {
+            if ([resetLatchingValue isKindOfClass:[NSNumber class]])
+                resetLatching = [resetLatchingValue boolValue];
+        }
+    }
+
+    WebCoreTestSupport::monitorWheelEvents(*frame, resetLatching);
 #endif
 }
 
@@ -1493,8 +1502,8 @@ static NSUInteger swizzledEventPressedMouseButtons()
 
     for (SyntheticTouch *currTouch in touches) {
         [touchLocations addObject:[NSValue valueWithCGPoint:currTouch.location]];
-        [touchIdentifiers addObject:[NSNumber numberWithUnsignedInt:currTouch.identifier]];
-        [touchPhases addObject:[NSNumber numberWithUnsignedInt:currTouch.phase]];
+        [touchIdentifiers addObject:@(currTouch.identifier)];
+        [touchPhases addObject:@(currTouch.phase)];
 
         if ((currTouch.phase == UITouchPhaseEnded) || (currTouch.phase == UITouchPhaseCancelled))
             continue;

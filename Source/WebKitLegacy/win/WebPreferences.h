@@ -33,11 +33,7 @@
 class WebPreferences final : public IWebPreferences, public IWebPreferencesPrivate8 {
 public:
     static WebPreferences* createInstance();
-protected:
-    WebPreferences();
-    ~WebPreferences();
 
-public:
     // IUnknown
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject);
     virtual ULONG STDMETHODCALLTYPE AddRef();
@@ -299,6 +295,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setWebAnimationsCompositeOperationsEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE webAnimationsMutableTimelinesEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setWebAnimationsMutableTimelinesEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE CSSCustomPropertiesAndValuesEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCSSCustomPropertiesAndValuesEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE aspectRatioOfImgFromWidthAndHeightEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setAspectRatioOfImgFromWidthAndHeightEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE webSQLEnabled(_Out_ BOOL*);
@@ -334,7 +332,10 @@ public:
 
     HRESULT postPreferencesChangesNotification();
 
-protected:
+private:
+    WebPreferences();
+    ~WebPreferences();
+
 #if USE(CF)
     void setValueForKey(CFStringRef key, CFPropertyListRef value);
     RetainPtr<CFPropertyListRef> valueForKey(CFStringRef key);
@@ -360,7 +361,6 @@ protected:
     void copyWebKitPreferencesToCFPreferences(CFDictionaryRef);
 #endif
 
-protected:
     ULONG m_refCount { 0 };
     WebCore::BString m_identifier;
     bool m_autoSaves { false };

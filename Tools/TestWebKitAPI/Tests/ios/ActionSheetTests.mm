@@ -29,12 +29,12 @@
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 
 #import "ClassMethodSwizzler.h"
-#import "IPadUserInterfaceSwizzler.h"
 #import "PlatformUtilities.h"
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
 #import "TestWKWebViewController.h"
 #import "UIKitSPI.h"
+#import "UserInterfaceSwizzler.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/WKWebViewPrivateForTesting.h>
@@ -152,9 +152,19 @@ TEST(ActionSheetTests, ImageMapDoesNotDestroySelection)
     EXPECT_WK_STREQ("Hello world", [webView stringByEvaluatingJavaScript:@"getSelection().toString()"]);
 }
 
+static UIView *swizzledResizableSnapshotViewFromRect(id, SEL, CGRect rect, BOOL, UIEdgeInsets)
+{
+    return [[[UIView alloc] initWithFrame:CGRectMake(0, 0, rect.size.width, rect.size.height)] autorelease];
+}
+
 TEST(ActionSheetTests, DataDetectorsLinkIsNotPresentedAsALink)
 {
     IPadUserInterfaceSwizzler iPadUserInterface;
+    InstanceMethodSwizzler snapshotViewSwizzler {
+        UIView.class,
+        @selector(resizableSnapshotViewFromRect:afterScreenUpdates:withCapInsets:),
+        reinterpret_cast<IMP>(swizzledResizableSnapshotViewFromRect)
+    };
 
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 1024, 768)]);
     auto observer = adoptNS([[ActionSheetObserver alloc] init]);

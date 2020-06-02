@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TestInvocation_h
-#define TestInvocation_h
+#pragma once
 
 #include "JSWrappable.h"
 #include "TestOptions.h"
@@ -53,17 +52,17 @@ public:
 
     void setIsPixelTest(const std::string& expectedPixelHash);
 
-    void setCustomTimeout(WTF::Seconds duration) { m_timeout = duration; }
+    void setCustomTimeout(Seconds duration) { m_timeout = duration; }
     void setDumpJSConsoleLogInStdErr(bool value) { m_dumpJSConsoleLogInStdErr = value; }
 
-    WTF::Seconds shortTimeout() const;
+    Seconds shortTimeout() const;
 
     void invoke();
     void didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
     WKRetainPtr<WKTypeRef> didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
 
     static void dumpWebProcessUnresponsiveness(const char* errorMessage);
-    void outputText(const WTF::String&);
+    void outputText(const String&);
 
     void didBeginSwipe();
     void willEndSwipe();
@@ -84,16 +83,17 @@ public:
     void didSetPrevalentResourceForDebugMode();
     void didSetLastSeen();
     void didMergeStatistic();
+    void didSetExpiredStatistic();
     void didSetPrevalentResource();
     void didSetVeryPrevalentResource();
     void didSetHasHadUserInteraction();
-    void didReceiveAllStorageAccessEntries(Vector<String>& domains);
+    void didReceiveAllStorageAccessEntries(Vector<String>&& domains);
     void didReceiveLoadedThirdPartyDomains(Vector<String>&& domains);
-    void didReceiveWebViewCategory(String&);
-    void didSetInAppBrowserPrivacyEnabled();
 
     void didRemoveAllSessionCredentials();
-    
+
+    void didSetAppBoundDomains();
+
     void dumpResourceLoadStatistics();
 
     bool canOpenWindows() const { return m_canOpenWindows; }
@@ -138,12 +138,12 @@ private:
     const TestOptions m_options;
     
     WKRetainPtr<WKURLRef> m_url;
-    WTF::String m_urlString;
+    String m_urlString;
     RunLoop::Timer<TestInvocation> m_waitToDumpWatchdogTimer;
 
     std::string m_expectedPixelHash;
 
-    WTF::Seconds m_timeout;
+    Seconds m_timeout;
     bool m_dumpJSConsoleLogInStdErr { false };
 
     // Invocation state
@@ -173,5 +173,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // TestInvocation_h

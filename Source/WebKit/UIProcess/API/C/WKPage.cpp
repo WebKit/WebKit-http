@@ -390,7 +390,7 @@ WKFrameRef WKPageGetFocusedFrame(WKPageRef pageRef)
 
 WKFrameRef WKPageGetFrameSetLargestFrame(WKPageRef pageRef)
 {
-    return toAPI(toImpl(pageRef)->frameSetLargestFrame());
+    return nullptr;
 }
 
 uint64_t WKPageGetRenderTreeSize(WKPageRef page)
@@ -2495,7 +2495,7 @@ void WKPageSetPageStateClient(WKPageRef page, WKPageStateClientBase* client)
 
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)
 {
-    toImpl(pageRef)->runJavaScriptInMainFrame({ toImpl(scriptRef)->string(), false, WTF::nullopt, true }, [context, callback](API::SerializedScriptValue* returnValue, Optional<WebCore::ExceptionDetails>, CallbackBase::Error error) {
+    toImpl(pageRef)->runJavaScriptInMainFrame({ toImpl(scriptRef)->string(), URL { }, false, WTF::nullopt, true }, [context, callback](API::SerializedScriptValue* returnValue, Optional<WebCore::ExceptionDetails>, CallbackBase::Error error) {
         callback(toAPI(returnValue), (error != CallbackBase::Error::None) ? toAPI(API::Error::create().ptr()) : 0, context);
     });
 }
@@ -2968,5 +2968,29 @@ WK_EXPORT bool WKPageIsMockRealtimeMediaSourceCenterEnabled(WKPageRef)
     return MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled();
 #else
     return false;
+#endif
+}
+
+void WKPageLoadedThirdPartyDomains(WKPageRef page, WKPageLoadedThirdPartyDomainsFunction callback, void* callbackContext)
+{
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    toImpl(page)->loadedThirdPartyDomains([callbackContext, callback](Vector<RegistrableDomain>&& domains) {
+        Vector<RefPtr<API::Object>> apiDomains = WTF::map(domains, [](auto& domain) {
+            return RefPtr<API::Object>(API::String::create(WTFMove(domain.string())));
+        });
+        callback(toAPI(API::Array::create(WTFMove(apiDomains)).ptr()), callbackContext);
+    });
+#else
+    UNUSED_PARAM(page);
+    callback(nullptr, callbackContext);
+#endif
+}
+
+void WKPageClearLoadedThirdPartyDomains(WKPageRef page)
+{
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    toImpl(page)->clearLoadedThirdPartyDomains();
+#else
+    UNUSED_PARAM(page);
 #endif
 }

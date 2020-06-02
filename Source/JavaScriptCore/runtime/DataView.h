@@ -30,23 +30,20 @@
 
 namespace JSC {
 
-class DataView : public ArrayBufferView {
-protected:
-    DataView(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned byteLength);
-    
+class DataView final : public ArrayBufferView {
 public:
     JS_EXPORT_PRIVATE static Ref<DataView> create(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
     static Ref<DataView> create(RefPtr<ArrayBuffer>&&);
     
-    TypedArrayType getType() const override
+    TypedArrayType getType() const final
     {
         return TypeDataView;
     }
 
-    JSArrayBufferView* wrap(JSGlobalObject*, JSGlobalObject*) override;
+    JSArrayBufferView* wrap(JSGlobalObject*, JSGlobalObject*) final;
     
     template<typename T>
-    T get(unsigned offset, bool littleEndian, bool* status = 0)
+    T get(unsigned offset, bool littleEndian, bool* status = nullptr)
     {
         if (status) {
             if (offset + sizeof(T) > byteLength()) {
@@ -62,7 +59,7 @@ public:
     }
     
     template<typename T>
-    T read(unsigned& offset, bool littleEndian, bool* status = 0)
+    T read(unsigned& offset, bool littleEndian, bool* status = nullptr)
     {
         T result = this->template get<T>(offset, littleEndian, status);
         if (!status || *status)
@@ -71,7 +68,7 @@ public:
     }
     
     template<typename T>
-    void set(unsigned offset, T value, bool littleEndian, bool* status = 0)
+    void set(unsigned offset, T value, bool littleEndian, bool* status = nullptr)
     {
         if (status) {
             if (offset + sizeof(T) > byteLength()) {
@@ -84,6 +81,9 @@ public:
         *reinterpret_cast<T*>(static_cast<uint8_t*>(m_baseAddress.get(byteLength())) + offset) =
             flipBytesIfLittleEndian(value, littleEndian);
     }
+
+private:
+    DataView(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned byteLength);
 };
 
 } // namespace JSC

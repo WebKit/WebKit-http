@@ -63,25 +63,25 @@ public:
     WTF::String host() const
     {
         parseURLIfNecessary();
-        return m_parsedURL->isValid() ? m_parsedURL->host().toString() : WTF::String();
+        return m_parsedURL->host().toString();
     }
 
     WTF::String protocol() const
     {
         parseURLIfNecessary();
-        return m_parsedURL->isValid() ? m_parsedURL->protocol().toString() : WTF::String();
+        return m_parsedURL->protocol().toString();
     }
 
     WTF::String path() const
     {
         parseURLIfNecessary();
-        return m_parsedURL->isValid() ? m_parsedURL->path().toString() : WTF::String();
+        return m_parsedURL->path().toString();
     }
 
     WTF::String lastPathComponent() const
     {
         parseURLIfNecessary();
-        return m_parsedURL->isValid() ? m_parsedURL->lastPathComponent() : WTF::String();
+        return m_parsedURL->lastPathComponent().toString();
     }
 
     void encode(IPC::Encoder& encoder) const
@@ -89,7 +89,7 @@ public:
         encoder << m_string;
     }
 
-    static bool decode(IPC::Decoder& decoder, RefPtr<Object>& result)
+    static WARN_UNUSED_RETURN bool decode(IPC::Decoder& decoder, RefPtr<Object>& result)
     {
         WTF::String string;
         if (!decoder.decode(string))

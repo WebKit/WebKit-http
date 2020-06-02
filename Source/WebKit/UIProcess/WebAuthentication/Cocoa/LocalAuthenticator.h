@@ -54,6 +54,8 @@ public:
         return adoptRef(*new LocalAuthenticator(WTFMove(connection)));
     }
 
+    static void clearAllCredentials();
+
 private:
     explicit LocalAuthenticator(UniqueRef<LocalConnection>&&);
 
@@ -68,12 +70,12 @@ private:
 
     void receiveException(WebCore::ExceptionData&&, WebAuthenticationStatus = WebAuthenticationStatus::LAError) const;
     void deleteDuplicateCredential() const;
+    bool validateUserVerification(LocalConnection::UserVerification) const;
 
     State m_state { State::Init };
     UniqueRef<LocalConnection> m_connection;
-    // FIXME(183534): Combine these two.
-    HashSet<Ref<WebCore::AuthenticatorAssertionResponse>> m_assertionResponses;
     Vector<Ref<WebCore::AuthenticatorAssertionResponse>> m_existingCredentials;
+    RetainPtr<NSData> m_provisionalCredentialId;
 };
 
 } // namespace WebKit

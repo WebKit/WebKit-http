@@ -77,7 +77,8 @@ MediaControlTextTrackContainerElement::MediaControlTextTrackContainerElement(Doc
     : HTMLDivElement(divTag, document)
     , m_mediaElement(makeWeakPtr(&element))
 {
-    setPseudo(AtomString("-webkit-media-text-track-container", AtomString::ConstructFromLiteral));
+    static MainThreadNeverDestroyed<const AtomString> webkitMediaTextTrackContainerName("-webkit-media-text-track-container", AtomString::ConstructFromLiteral);
+    setPseudo(webkitMediaTextTrackContainerName);
 }
 
 RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

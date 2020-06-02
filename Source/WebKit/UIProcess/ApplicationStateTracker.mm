@@ -30,6 +30,7 @@
 
 #import "AssertionServicesSPI.h"
 #import "Logging.h"
+#import "RunningBoardServicesSPI.h"
 #import "SandboxUtilities.h"
 #import "UIKitSPI.h"
 #import <wtf/ObjCRuntimeExtras.h>
@@ -61,18 +62,6 @@ ApplicationType applicationType(UIWindow *window)
         return ApplicationType::ViewService;
 
     return ApplicationType::Application;
-}
-
-static bool isBackgroundState(BKSApplicationState state)
-{
-    switch (state) {
-    case BKSApplicationStateBackgroundRunning:
-    case BKSApplicationStateBackgroundTaskSuspended:
-        return true;
-
-    default:
-        return false;
-    }
 }
 
 ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackgroundSelector, SEL didFinishSnapshottingAfterEnteringBackgroundSelector, SEL willEnterForegroundSelector, SEL willBeginSnapshotSequenceSelector, SEL didCompleteSnapshotSequenceSelector)
@@ -108,7 +97,6 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
 
     switch (applicationType(window)) {
     case ApplicationType::Application: {
-#if HAVE(UISCENE)
         m_isInBackground = window.windowScene.activationState == UISceneActivationStateBackground || window.windowScene.activationState == UISceneActivationStateUnattached;
         RELEASE_LOG(ViewState, "%p - ApplicationStateTracker::ApplicationStateTracker(): m_isInBackground: %d", this, m_isInBackground);
 
@@ -133,20 +121,6 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
         m_didCompleteSnapshotSequenceObserver = [notificationCenter addObserverForName:_UISceneDidCompleteSystemSnapshotSequence object:nil queue:nil usingBlock:[this](NSNotification *notification) {
             didCompleteSnapshotSequence();
         }];
-#else
-        m_isInBackground = application.applicationState == UIApplicationStateBackground;
-        RELEASE_LOG(ViewState, "%p - ApplicationStateTracker::ApplicationStateTracker(): m_isInBackground: %d", this, m_isInBackground);
-
-        m_didEnterBackgroundObserver = [notificationCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
-            RELEASE_LOG(ViewState, "%p - ApplicationStateTracker: UIApplicationDidEnterBackground", this);
-            applicationDidEnterBackground();
-        }];
-
-        m_willEnterForegroundObserver = [notificationCenter addObserverForName:UIApplicationWillEnterForegroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
-            RELEASE_LOG(ViewState, "%p - ApplicationStateTracker: UIApplicationWillEnterForeground", this);
-            applicationWillEnterForeground();
-        }];
-#endif
         break;
     }
 
@@ -168,9 +142,7 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
         pid_t applicationPID = serviceViewController._hostProcessIdentifier;
         ASSERT(applicationPID);
 
-        auto applicationStateMonitor = adoptNS([[BKSApplicationStateMonitor alloc] init]);
-        m_isInBackground = isBackgroundState([applicationStateMonitor mostElevatedApplicationStateForPID:applicationPID]);
-        [applicationStateMonitor invalidate];
+        m_isInBackground = !isApplicationForeground(applicationPID);
 
         // Workaround for <rdar://problem/34028921>. If the host application is StoreKitUIService then it is also a ViewService
         // and is always in the background. We need to treat StoreKitUIService as foreground for the purpose of process suspension
@@ -194,22 +166,44 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
     }
 }
 
+bool isApplicationForeground(pid_t pid)
+{
+    RBSProcessIdentifier *processIdentifier = [RBSProcessIdentifier identifierWithPid:pid];
+    if (!processIdentifier) {
+        RELEASE_LOG_ERROR(ProcessSuspension, "isApplicationForeground: Failed to construct RBSProcessIdentifier from PID %d", pid);
+        // We assume foreground when unable to determine state to maintain pre-existing behavior and to avoid
+        // not rendering anything when we fail.
+        return true;
+    }
+
+    NSError *error = nil;
+    RBSProcessHandle *processHandle = [RBSProcessHandle handleForIdentifier:processIdentifier error:&error];
+    if (!processHandle) {
+        RELEASE_LOG_ERROR(ProcessSuspension, "isApplicationForeground: Failed to get RBSProcessHandle for process with PID %d, error: %{public}@", pid, error);
+        // We assume foreground when unable to determine state to maintain pre-existing behavior and to avoid
+        // not rendering anything when we fail.
+        return true;
+    }
+
+    RBSProcessState *state = processHandle.currentState;
+    if (state.taskState != RBSTaskStateRunningScheduled) {
+        RELEASE_LOG_ERROR(ProcessSuspension, "isApplicationForeground: Process with PID %d is not running", pid);
+        return false;
+    }
+
+    return [[state endowmentNamespaces] containsObject:@"com.apple.frontboard.visibility"];
+}
+
 ApplicationStateTracker::~ApplicationStateTracker()
 {
     RELEASE_LOG(ViewState, "%p - ~ApplicationStateTracker", this);
-    if (m_applicationStateMonitor) {
-        [m_applicationStateMonitor invalidate];
-        return;
-    }
 
     NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
     [notificationCenter removeObserver:m_didEnterBackgroundObserver];
     [notificationCenter removeObserver:m_didFinishSnapshottingAfterEnteringBackgroundObserver];
     [notificationCenter removeObserver:m_willEnterForegroundObserver];
-#if HAVE(UISCENE)
     [notificationCenter removeObserver:m_willBeginSnapshotSequenceObserver];
     [notificationCenter removeObserver:m_didCompleteSnapshotSequenceObserver];
-#endif
 }
 
 void ApplicationStateTracker::applicationDidEnterBackground()

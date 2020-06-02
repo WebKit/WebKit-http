@@ -214,15 +214,14 @@ my @options = ();
 if (isAppleCocoaWebKit()) {
     push @options, XcodeOptions();
 
-    if (not defined $xcbuild) {
-        $xcbuild = canUseXCBuild();
-    }
-
-    if ($xcbuild) {
+    # Temporarily disable default use of XCBuild until issues with it are ironed out.
+    #if ((not defined $xcbuild or $xcbuild) and canUseXCBuild()) {
+    if ($xcbuild and canUseXCBuild()) {
         push @options, "-UseNewBuildSystem=YES";
         push @options, "USE_NEW_BUILD_SYSTEM=YES";
     } else {
         push @options, "-UseNewBuildSystem=NO";
+        push @options, "USE_NEW_BUILD_SYSTEM=NO";
     }
 
     sub option($$)

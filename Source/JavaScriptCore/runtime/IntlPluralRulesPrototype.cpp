@@ -27,12 +27,8 @@
 #include "config.h"
 #include "IntlPluralRulesPrototype.h"
 
-#if ENABLE(INTL)
-
-#include "Error.h"
 #include "IntlPluralRules.h"
 #include "JSCInlines.h"
-#include "JSObjectInlines.h"
 
 namespace JSC {
 
@@ -57,7 +53,7 @@ const ClassInfo IntlPluralRulesPrototype::s_info = { "Object", &Base::s_info, &p
 IntlPluralRulesPrototype* IntlPluralRulesPrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {
     IntlPluralRulesPrototype* object = new (NotNull, allocateCell<IntlPluralRulesPrototype>(vm.heap)) IntlPluralRulesPrototype(vm, structure);
-    object->finishCreation(vm, structure);
+    object->finishCreation(vm);
     return object;
 }
 
@@ -71,11 +67,11 @@ IntlPluralRulesPrototype::IntlPluralRulesPrototype(VM& vm, Structure* structure)
 {
 }
 
-void IntlPluralRulesPrototype::finishCreation(VM& vm, Structure*)
+void IntlPluralRulesPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsNontrivialString(vm, "Object"_s), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    ASSERT(inherits(vm, info()));
+    JSC_TO_STRING_TAG_WITHOUT_TRANSITION();
 }
 
 EncodedJSValue JSC_HOST_CALL IntlPluralRulesPrototypeFuncSelect(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -112,5 +108,3 @@ EncodedJSValue JSC_HOST_CALL IntlPluralRulesPrototypeFuncResolvedOptions(JSGloba
 }
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

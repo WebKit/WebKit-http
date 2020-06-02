@@ -68,7 +68,7 @@ bool HTMLOptGroupElement::isFocusable() const
 
 const AtomString& HTMLOptGroupElement::formControlType() const
 {
-    static NeverDestroyed<const AtomString> optgroup("optgroup", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> optgroup("optgroup", AtomString::ConstructFromLiteral);
     return optgroup;
 }
 
@@ -112,12 +112,13 @@ HTMLSelectElement* HTMLOptGroupElement::ownerSelectElement() const
     return const_cast<HTMLSelectElement*>(ancestorsOfType<HTMLSelectElement>(*this).first());
 }
 
-void HTMLOptGroupElement::accessKeyAction(bool)
+bool HTMLOptGroupElement::accessKeyAction(bool)
 {
     RefPtr<HTMLSelectElement> select = ownerSelectElement();
     // send to the parent to bring focus to the list box
     if (select && !select->focused())
-        select->accessKeyAction(false);
+        return select->accessKeyAction(false);
+    return false;
 }
 
 } // namespace

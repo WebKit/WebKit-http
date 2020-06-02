@@ -78,6 +78,16 @@ function onAddIceCandidateError(error)
     assert_unreached();
 }
 
+async function renegotiate(pc1, pc2)
+{
+    let d = await pc1.createOffer();
+    await pc1.setLocalDescription(d);
+    await pc2.setRemoteDescription(d);
+    d = await pc2.createAnswer();
+    await pc1.setRemoteDescription(d);
+    await pc2.setLocalDescription(d);
+}
+
 function analyseAudio(stream, duration, context)
 {
     return new Promise((resolve, reject) => {
@@ -224,4 +234,46 @@ async function getTypedStats(connection, type)
             stats = statItem;
     });
     return stats;
+}
+
+function getReceivedTrackStats(connection)
+{
+    return connection.getStats().then((report) => {
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === "track") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
+async function computeFrameRate(stream, video)
+{
+    if (window.internals) {
+        internals.observeMediaStreamTrack(stream.getVideoTracks()[0]);
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
+        return internals.trackVideoSampleCount;
+    }
+
+    let connection;
+    video.srcObject = await new Promise((resolve, reject) => {
+        createConnections((firstConnection) => {
+            firstConnection.addTrack(stream.getVideoTracks()[0], stream);
+        }, (secondConnection) => {
+            connection = secondConnection;
+            secondConnection.ontrack = (trackEvent) => {
+                resolve(trackEvent.streams[0]);
+            };
+        });
+        setTimeout(() => reject("Test timed out"), 5000);
+    });
+
+    await video.play();
+
+    const stats1 = await getReceivedTrackStats(connection);
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    const stats2 = await getReceivedTrackStats(connection);
+    return (stats2.framesReceived - stats1.framesReceived) * 1000 / (stats2.timestamp - stats1.timestamp);
 }

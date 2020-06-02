@@ -1,8 +1,8 @@
 {
     "domain": "DOMStorage",
     "description": "Query and modify DOM storage.",
-    "debuggableTypes": ["page", "web-page"],
-    "targetTypes": ["page"],
+    "debuggableTypes": ["itml", "page", "web-page"],
+    "targetTypes": ["itml", "page"],
     "types": [
         {
             "id": "StorageId",
@@ -51,6 +51,13 @@
             "parameters": [
                 { "name": "storageId", "$ref": "StorageId" },
                 { "name": "key", "type": "string" }
+            ]
+        },
+        {
+            "name": "clearDOMStorageItems",
+            "targetTypes": ["page"],
+            "parameters": [
+                { "name": "storageId", "$ref": "StorageId" }
             ]
         }
     ],

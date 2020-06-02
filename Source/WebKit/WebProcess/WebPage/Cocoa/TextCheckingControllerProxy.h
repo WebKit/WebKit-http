@@ -27,7 +27,6 @@
 
 #if ENABLE(PLATFORM_DRIVEN_TEXT_CHECKING)
 
-#include "AttributedString.h"
 #include "Connection.h"
 #include "EditingRange.h"
 #include "MessageReceiver.h"
@@ -40,6 +39,7 @@ class Encoder;
 
 namespace WebCore {
 class VisiblePosition;
+struct AttributedString;
 }
 
 namespace WebKit {
@@ -52,7 +52,7 @@ public:
     TextCheckingControllerProxy(WebPage&);
     ~TextCheckingControllerProxy();
 
-    static AttributedString annotatedSubstringBetweenPositions(const WebCore::VisiblePosition&, const WebCore::VisiblePosition&);
+    static WebCore::AttributedString annotatedSubstringBetweenPositions(const WebCore::VisiblePosition&, const WebCore::VisiblePosition&);
 
 private:
     // IPC::MessageReceiver
@@ -65,7 +65,7 @@ private:
     Optional<RangeAndOffset> rangeAndOffsetRelativeToSelection(int64_t offset, uint64_t length);
 
     // Message handlers.
-    void replaceRelativeToSelection(const AttributedString&, int64_t selectionOffset, uint64_t length, uint64_t relativeReplacementLocation, uint64_t relativeReplacementLength);
+    void replaceRelativeToSelection(const WebCore::AttributedString&, int64_t selectionOffset, uint64_t length, uint64_t relativeReplacementLocation, uint64_t relativeReplacementLength);
     void removeAnnotationRelativeToSelection(const String& annotationName, int64_t selectionOffset, uint64_t length);
 
     WebPage& m_page;

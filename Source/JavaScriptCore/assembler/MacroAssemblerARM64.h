@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,6 +44,8 @@ public:
     
     static constexpr RegisterID dataTempRegister = ARM64Registers::ip0;
     static constexpr RegisterID memoryTempRegister = ARM64Registers::ip1;
+
+    static constexpr RegisterID InvalidGPRReg = ARM64Registers::InvalidGPRReg;
 
     RegisterID scratchRegister()
     {
@@ -417,7 +419,16 @@ public:
 
     void and64(TrustedImmPtr imm, RegisterID dest)
     {
-        LogicalImmediate logicalImm = LogicalImmediate::create64(reinterpret_cast<uint64_t>(imm.m_value));
+        intptr_t value = imm.asIntptr();
+        if constexpr (sizeof(void*) == sizeof(uint64_t))
+            and64(TrustedImm64(value), dest);
+        else
+            and64(TrustedImm32(static_cast<int32_t>(value)), dest);
+    }
+
+    void and64(TrustedImm64 imm, RegisterID dest)
+    {
+        LogicalImmediate logicalImm = LogicalImmediate::create64(bitwise_cast<uint64_t>(imm.m_value));
 
         if (logicalImm.isValid()) {
             m_assembler.and_<64>(dest, dest, logicalImm);
@@ -427,7 +438,32 @@ public:
         move(imm, getCachedDataTempRegisterIDAndInvalidate());
         m_assembler.and_<64>(dest, dest, dataTempRegister);
     }
-    
+
+    void clearBit64(RegisterID bitToClear, RegisterID dest, RegisterID scratchForMask = InvalidGPRReg)
+    {
+        if (scratchForMask == InvalidGPRReg)
+            scratchForMask = scratchRegister();
+
+        move(TrustedImm32(1), scratchForMask);
+        lshift64(bitToClear, scratchForMask);
+        clearBits64WithMask(scratchForMask, dest);
+    }
+
+    enum class ClearBitsAttributes {
+        OKToClobberMask,
+        MustPreserveMask
+    };
+
+    void clearBits64WithMask(RegisterID mask, RegisterID dest, ClearBitsAttributes = ClearBitsAttributes::OKToClobberMask)
+    {
+        clearBits64WithMask(dest, mask, dest);
+    }
+
+    void clearBits64WithMask(RegisterID src, RegisterID mask, RegisterID dest, ClearBitsAttributes = ClearBitsAttributes::OKToClobberMask)
+    {
+        m_assembler.bic<64>(dest, src, mask);
+    }
+
     void countLeadingZeros32(RegisterID src, RegisterID dest)
     {
         m_assembler.clz<32>(dest, src);
@@ -450,6 +486,18 @@ public:
         // Arm does not have a count trailing zeros only a count leading zeros.
         m_assembler.rbit<64>(dest, src);
         m_assembler.clz<64>(dest, dest);
+    }
+
+    void countTrailingZeros64WithoutNullCheck(RegisterID src, RegisterID dest)
+    {
+#if ASSERT_ENABLED
+        Jump notZero = branchTest64(NonZero, src);
+        abortWithReason(MacroAssemblerOops, __LINE__);
+        notZero.link(this);
+#endif
+        // Arm did not need an explicit null check to begin with. So, we can do
+        // exactly the same thing as in countTrailingZeros64().
+        countTrailingZeros64(src, dest);
     }
 
     void byteSwap16(RegisterID dst)
@@ -684,6 +732,20 @@ public:
         load32(address, getCachedDataTempRegisterIDAndInvalidate());
         or32(imm, dataTempRegister, dataTempRegister);
         store32(dataTempRegister, address);
+    }
+
+    void or8(TrustedImm32 imm, AbsoluteAddress address)
+    {
+        LogicalImmediate logicalImm = LogicalImmediate::create32(imm.m_value);
+        if (logicalImm.isValid()) {
+            load8(address.m_ptr, getCachedDataTempRegisterIDAndInvalidate());
+            m_assembler.orr<32>(dataTempRegister, dataTempRegister, logicalImm);
+            store8(dataTempRegister, address.m_ptr);
+        } else {
+            load8(address.m_ptr, getCachedMemoryTempRegisterIDAndInvalidate());
+            or32(imm, memoryTempRegister, getCachedDataTempRegisterIDAndInvalidate());
+            store8(dataTempRegister, address.m_ptr);
+        }
     }
 
     void or64(RegisterID src, RegisterID dest)
@@ -1603,7 +1665,7 @@ public:
         m_assembler.strb(src, address.base, memoryTempRegister);
     }
 
-    void store8(RegisterID src, void* address)
+    void store8(RegisterID src, const void* address)
     {
         move(TrustedImmPtr(address), getCachedMemoryTempRegisterIDAndInvalidate());
         m_assembler.strb(src, memoryTempRegister, 0);
@@ -1618,7 +1680,7 @@ public:
         m_assembler.strb(src, address.base, memoryTempRegister);
     }
 
-    void store8(TrustedImm32 imm, void* address)
+    void store8(TrustedImm32 imm, const void* address)
     {
         TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
         if (!imm8.m_value) {
@@ -2033,7 +2095,7 @@ public:
                 // next csel has all arguments equal to elseCase.
                 // If the compare is ordered, dest is unchanged and NE decides
                 // what value to set.
-                m_assembler.csel<datasize>(thenCase, elseCase, thenCase, Assembler::ConditionNE);
+                m_assembler.csel<datasize>(thenCase, elseCase, thenCase, Assembler::ConditionVS);
                 m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
             } else {
                 move(elseCase, dest);

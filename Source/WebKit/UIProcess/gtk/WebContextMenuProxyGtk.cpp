@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2020 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,96 @@ static const char* gContextMenuItemGroup = "webkitContextMenu";
 namespace WebKit {
 using namespace WebCore;
 
+#if USE(GTK4)
+const char* WebContextMenuProxyGtk::widgetDismissedSignal = "closed";
+
+static GtkWidget* createMenuWidget(GtkWidget* webView)
+{
+    auto* widget = gtk_popover_menu_new_from_model(nullptr);
+    gtk_popover_set_has_arrow(GTK_POPOVER(widget), FALSE);
+    gtk_popover_set_position(GTK_POPOVER(widget), GTK_POS_BOTTOM);
+    gtk_widget_set_parent(widget, webView);
+    return widget;
+}
+
+static inline void popupMenuWidget(GtkWidget* widget, const GdkEvent*, const GdkRectangle& target)
+{
+    gtk_popover_set_pointing_to(GTK_POPOVER(widget), &target);
+    gtk_popover_popup(GTK_POPOVER(widget));
+}
+
+static inline void popdownMenuWidget(GtkWidget* widget)
+{
+    gtk_popover_popdown(GTK_POPOVER(widget));
+}
+
+static inline bool menuWidgetHasItems(GtkWidget* widget)
+{
+    return g_menu_model_get_n_items(gtk_popover_menu_get_menu_model(GTK_POPOVER_MENU(widget)));
+}
+
+static inline void bindModelToMenuWidget(GtkWidget* widget, GMenuModel* model)
+{
+    gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(widget), model);
+}
+
+static inline void destroyMenuWidget(GtkWidget* widget)
+{
+    gtk_widget_unparent(widget);
+}
+#else
+const char* WebContextMenuProxyGtk::widgetDismissedSignal = "deactivate";
+
+static GtkWidget* createMenuWidget(GtkWidget* webView)
+{
+    auto* widget = gtk_menu_new();
+    gtk_menu_attach_to_widget(GTK_MENU(widget), webView, nullptr);
+    return widget;
+}
+
+static void popupMenuWidget(GtkWidget* widget, const GdkEvent* triggerEvent, const GdkRectangle& target)
+{
+    GUniquePtr<GdkEvent> keyEvent;
+    auto* window = gtk_widget_get_window(gtk_menu_get_attach_widget(GTK_MENU(widget)));
+    if (!triggerEvent) {
+        // When the context menu is requested using the keyboard, there is no
+        // triggerEvent: use a fake event for the “Menu” key being released.
+        keyEvent.reset(gdk_event_new(GDK_KEY_RELEASE));
+        gdk_event_set_device(keyEvent.get(), gdk_seat_get_keyboard(gdk_display_get_default_seat(gdk_window_get_display(window))));
+        auto* event = reinterpret_cast<GdkEventKey*>(keyEvent.get());
+        event->window = window;
+        // Take a ref of the GdkWindow when creating the GdkEvent, since the event will unref it on destroy.
+        g_object_ref(window);
+        event->time = GDK_CURRENT_TIME;
+        event->keyval = GDK_KEY_Menu;
+        triggerEvent = keyEvent.get();
+    };
+    gtk_menu_popup_at_rect(GTK_MENU(widget), window, &target, GDK_GRAVITY_SOUTH_WEST, GDK_GRAVITY_NORTH_WEST, triggerEvent);
+}
+
+static inline void popdownMenuWidget(GtkWidget* widget)
+{
+    gtk_menu_popdown(GTK_MENU(widget));
+}
+
+static inline bool menuWidgetHasItems(GtkWidget* widget)
+{
+    unsigned childCount = 0;
+    gtk_container_foreach(GTK_CONTAINER(widget), [](GtkWidget*, gpointer data) { (*static_cast<unsigned*>(data))++; }, &childCount);
+    return childCount > 0;
+}
+
+static inline void bindModelToMenuWidget(GtkWidget* widget, GMenuModel* model)
+{
+    gtk_menu_shell_bind_model(GTK_MENU_SHELL(widget), model, nullptr, TRUE);
+}
+
+static inline void destroyMenuWidget(GtkWidget* widget)
+{
+    gtk_widget_destroy(widget);
+}
+#endif // USE(GTK4)
+
 static void contextMenuItemActivatedCallback(GAction* action, GVariant*, WebPageProxy* page)
 {
     auto* stateType = g_action_get_state_type(action);
@@ -67,13 +157,13 @@ void WebContextMenuProxyGtk::append(GMenu* menu, const WebContextMenuItemGlib& m
     GRefPtr<GMenuItem> gMenuItem;
     GAction* action = menuItem.gAction();
     ASSERT(action);
-    g_action_map_add_action(G_ACTION_MAP(gtk_widget_get_action_group(GTK_WIDGET(m_menu), gContextMenuItemGroup)), action);
+    g_action_map_add_action(G_ACTION_MAP(m_actionGroup.get()), action);
 
     switch (menuItem.type()) {
     case ActionType:
     case CheckableActionType: {
-        GUniquePtr<char> actionName(g_strdup_printf("%s.%s", gContextMenuItemGroup, g_action_get_name(action)));
         gMenuItem = adoptGRef(g_menu_item_new(menuItem.title().utf8().data(), nullptr));
+        GUniquePtr<char> actionName(g_strdup_printf("%s.%s", gContextMenuItemGroup, g_action_get_name(action)));
         g_menu_item_set_action_and_target_value(gMenuItem.get(), actionName.get(), menuItem.gActionTarget());
 
         if (menuItem.action() < ContextMenuItemBaseApplicationTag) {
@@ -128,7 +218,7 @@ Vector<WebContextMenuItemGlib> WebContextMenuProxyGtk::populateSubMenu(const Web
 void WebContextMenuProxyGtk::populate(const Vector<WebContextMenuItemGlib>& items)
 {
     GRefPtr<GMenu> menu = buildMenu(items);
-    gtk_menu_shell_bind_model(GTK_MENU_SHELL(m_menu), G_MENU_MODEL(menu.get()), nullptr, TRUE);
+    bindModelToMenuWidget(m_menu, G_MENU_MODEL(menu.get()));
 }
 
 void WebContextMenuProxyGtk::populate(const Vector<Ref<WebContextMenuItem>>& items)
@@ -156,7 +246,7 @@ void WebContextMenuProxyGtk::populate(const Vector<Ref<WebContextMenuItem>>& ite
         }
         }
     }
-    gtk_menu_shell_bind_model(GTK_MENU_SHELL(m_menu), G_MENU_MODEL(menu.get()), nullptr, TRUE);
+    bindModelToMenuWidget(m_menu, G_MENU_MODEL(menu.get()));
 }
 
 void WebContextMenuProxyGtk::show()
@@ -175,58 +265,35 @@ void WebContextMenuProxyGtk::showContextMenuWithItems(Vector<Ref<WebContextMenuI
     if (!items.isEmpty())
         populate(items);
 
-    unsigned childCount = 0;
-    gtk_container_foreach(GTK_CONTAINER(m_menu), [](GtkWidget*, gpointer data) { (*static_cast<unsigned*>(data))++; }, &childCount);
-    if (!childCount)
+    if (!menuWidgetHasItems(m_menu))
         return;
 
-    m_popupPosition = convertWidgetPointToScreenPoint(m_webView, m_context.menuLocation());
-
-    // Display menu initiated by right click (mouse button pressed = 3).
     NativeWebMouseEvent* mouseEvent = m_page->currentlyProcessedMouseDownEvent();
-    const GdkEvent* event = mouseEvent ? mouseEvent->nativeEvent() : 0;
-    gtk_menu_attach_to_widget(m_menu, GTK_WIDGET(m_webView), nullptr);
-    gtk_menu_popup(m_menu, nullptr, nullptr, reinterpret_cast<GtkMenuPositionFunc>(menuPositionFunction), this, event ? event->button.button : 3, event ? event->button.time : GDK_CURRENT_TIME);
+    const GdkEvent* event = mouseEvent ? mouseEvent->nativeEvent() : nullptr;
+    const GdkRectangle rect = { m_context.menuLocation().x(), m_context.menuLocation().y(), 1, 1 };
+    popupMenuWidget(m_menu, event, rect);
 }
 
 WebContextMenuProxyGtk::WebContextMenuProxyGtk(GtkWidget* webView, WebPageProxy& page, ContextMenuContextData&& context, const UserData& userData)
     : WebContextMenuProxy(WTFMove(context), userData)
     , m_webView(webView)
     , m_page(&page)
-    , m_menu(GTK_MENU(gtk_menu_new()))
+    , m_menu(createMenuWidget(m_webView))
 {
-    GRefPtr<GSimpleActionGroup> group = adoptGRef(g_simple_action_group_new());
-    gtk_widget_insert_action_group(GTK_WIDGET(m_menu), gContextMenuItemGroup, G_ACTION_GROUP(group.get()));
+    gtk_widget_insert_action_group(GTK_WIDGET(m_menu), gContextMenuItemGroup, G_ACTION_GROUP(m_actionGroup.get()));
     webkitWebViewBaseSetActiveContextMenuProxy(WEBKIT_WEB_VIEW_BASE(m_webView), this);
 }
 
 WebContextMenuProxyGtk::~WebContextMenuProxyGtk()
 {
-    gtk_menu_popdown(m_menu);
+    popdownMenuWidget(m_menu);
 
     for (auto& handler : m_signalHandlers)
         g_signal_handler_disconnect(handler.value, handler.key);
     m_signalHandlers.clear();
 
     gtk_widget_insert_action_group(GTK_WIDGET(m_menu), gContextMenuItemGroup, nullptr);
-    gtk_widget_destroy(GTK_WIDGET(m_menu));
-}
-
-void WebContextMenuProxyGtk::menuPositionFunction(GtkMenu* menu, gint* x, gint* y, gboolean* pushIn, WebContextMenuProxyGtk* popupMenu)
-{
-    GtkRequisition menuSize;
-    gtk_widget_get_preferred_size(GTK_WIDGET(menu), &menuSize, 0);
-
-    GdkScreen* screen = gtk_widget_get_screen(popupMenu->m_webView);
-    *x = popupMenu->m_popupPosition.x();
-    if ((*x + menuSize.width) >= gdk_screen_get_width(screen))
-        *x -= menuSize.width;
-
-    *y = popupMenu->m_popupPosition.y();
-    if ((*y + menuSize.height) >= gdk_screen_get_height(screen))
-        *y -= menuSize.height;
-
-    *pushIn = FALSE;
+    destroyMenuWidget(m_menu);
 }
 
 } // namespace WebKit

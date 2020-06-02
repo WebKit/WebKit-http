@@ -78,7 +78,7 @@ function installDependenciesWithApt {
         libjpeg-dev \
         libfile-copy-recursive-perl \
         libopenjp2-7-dev \
-        $(aptIfElse libpng-dev libpng12-dev) \
+        libpng-dev \
         libseccomp-dev \
         libsqlite3-dev \
         libsystemd-dev \
@@ -149,9 +149,18 @@ function installDependenciesWithApt {
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
         git-svn \
+        python3-secretstorage \
         subversion"
 
     apt-get install $packages
+
+    # Ubuntu Bionic doesn't ship pipenv. So fallback to the pip3 install path.
+    if apt-cache show pipenv &>/dev/null; then
+        apt-get install pipenv
+    else
+        apt-get install -y python3-pip
+        pip3 install pipenv
+    fi
 }
 
 function installDependenciesWithPacman {
@@ -222,7 +231,8 @@ function installDependenciesWithPacman {
 
     # These are dependencies necessary for building with the Flatpak SDK.
     packages="$packages \
-        flatpak"
+        flatpak \
+        python-pipenv"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
@@ -254,6 +264,7 @@ function installDependenciesWithPacman {
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
+        python-secretstorage \
         svn"
     pacman -S --needed $packages
 
@@ -339,7 +350,8 @@ function installDependenciesWithDnf {
 
     # These are dependencies necessary for building with the Flatpak SDK.
     packages="$packages \
-        flatpak"
+        flatpak \
+        pipenv"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
@@ -375,6 +387,7 @@ function installDependenciesWithDnf {
     # These are dependencies necessary for using webkit-patch
     packages="$packages
         git-svn \
+        python3-secretstorage \
         subversion"
 
     dnf install $packages

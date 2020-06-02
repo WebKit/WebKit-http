@@ -551,6 +551,12 @@
     "imported/w3c/web-platform-tests/dom/events/Event-dispatch-on-disabled-elements.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/dom/events/scrolling/scrollend-event-fired-for-programmatic-scroll.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/dom/nodes/Document-characterSet-normalization.html": [
         "slow"
     ],
@@ -1388,12 +1394,6 @@
     "imported/w3c/web-platform-tests/html/dom/idlharness.https.html": [
         "slow"
     ],
-    "imported/w3c/web-platform-tests/html/dom/interfaces.html": [
-        "slow"
-    ],
-    "imported/w3c/web-platform-tests/html/dom/interfaces.https.html": [
-        "slow"
-    ],
     "imported/w3c/web-platform-tests/html/dom/reflection-embedded.html": [
         "slow"
     ],
@@ -2097,6 +2097,12 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/web-animations/timing-model/timelines/update-and-send-events.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/test-analyser-minimum.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/test-analyser-output.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/webrtc/RTCDTMFSender-ontonechange-long.html": [

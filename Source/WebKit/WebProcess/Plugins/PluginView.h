@@ -173,7 +173,7 @@ private:
 
     // WebCore::Widget
     void setFrameRect(const WebCore::IntRect&) override;
-    void paint(WebCore::GraphicsContext&, const WebCore::IntRect&, WebCore::Widget::SecurityOriginPaintPolicy) override;
+    void paint(WebCore::GraphicsContext&, const WebCore::IntRect&, WebCore::Widget::SecurityOriginPaintPolicy, WebCore::EventRegionContext*) override;
     void invalidateRect(const WebCore::IntRect&) override;
     void setFocus(bool) override;
     void frameRectsChanged() override;
@@ -226,7 +226,7 @@ private:
     bool artificialPluginInitializationDelayEnabled() const override;
     void protectPluginFromDestruction() override;
     void unprotectPluginFromDestruction() override;
-#if PLATFORM(X11)
+#if PLATFORM(X11) && ENABLE(NETSCAPE_PLUGIN_API)
     uint64_t createPluginContainer() override;
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID) override;
     void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID) override;

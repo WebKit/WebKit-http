@@ -26,9 +26,11 @@
 #include "config.h"
 #include "ObjectInitializationScope.h"
 
-#include "JSCInlines.h"
+#include "HeapInlines.h"
+#include "JSCJSValueInlines.h"
+#include "JSCellInlines.h"
 #include "JSObject.h"
-#include "Operations.h"
+#include "Scribble.h"
 
 namespace JSC {
 

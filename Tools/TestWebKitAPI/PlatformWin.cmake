@@ -41,15 +41,16 @@ list(APPEND TestWebCore_SOURCES
 list(APPEND TestWebCore_DEFINITIONS ${webcore_DEFINITIONS})
 
 list(APPEND TestWebCore_LIBRARIES
+    $<TARGET_OBJECTS:WebCore>
     Crypt32
     D2d1
     Dwrite
-    dxguid
     Iphlpapi
     Psapi
     Shlwapi
     Usp10
     WindowsCodecs
+    dxguid
 )
 
 if (${WTF_PLATFORM_WIN_CAIRO})
@@ -124,9 +125,6 @@ endif ()
 
 # TestWebKit
 if (ENABLE_WEBKIT)
-    add_dependencies(TestWebKitAPIBase WebKitFrameworkHeaders)
-    add_dependencies(TestWebKitAPIInjectedBundle WebKitFrameworkHeaders)
-
     target_sources(TestWebKitAPIInjectedBundle PRIVATE
         win/PlatformUtilitiesWin.cpp
         win/UtilitiesWin.cpp
@@ -147,10 +145,6 @@ if (ENABLE_WEBKIT)
     endif ()
 
     list(APPEND TestWebKit_DEFINITIONS ${webcore_DEFINITIONS})
-
-    list(APPEND TestWebKit_DEPENDENCIES
-        WebKitFrameworkHeaders
-    )
 
     WEBKIT_WRAP_EXECUTABLE(TestWebKit
         SOURCES ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp

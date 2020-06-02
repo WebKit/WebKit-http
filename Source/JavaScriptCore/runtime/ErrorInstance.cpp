@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2020 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -23,8 +23,8 @@
 
 #include "CodeBlock.h"
 #include "InlineCallFrame.h"
+#include "IntegrityInlines.h"
 #include "Interpreter.h"
-#include "JSScope.h"
 #include "JSCInlines.h"
 #include "ParseInt.h"
 #include "StackFrame.h"
@@ -109,10 +109,14 @@ static void appendSourceToError(JSGlobalObject* globalObject, CallFrame* callFra
 
 }
 
-void ErrorInstance::finishCreation(JSGlobalObject* globalObject, VM& vm, const String& message, bool useCurrentFrame)
+void ErrorInstance::finishCreation(VM& vm, JSGlobalObject* globalObject, const String& message, SourceAppender appender, RuntimeType type, bool useCurrentFrame)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+
+    m_sourceAppender = appender;
+    m_runtimeTypeForCause = type;
+
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(vm, message), static_cast<unsigned>(PropertyAttribute::DontEnum));
 
@@ -139,6 +143,7 @@ String ErrorInstance::sanitizedToString(JSGlobalObject* globalObject)
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
+    Integrity::auditStructureID(vm, structureID());
 
     JSValue nameValue;
     auto namePropertName = vm.propertyNames->name;
@@ -303,6 +308,11 @@ bool ErrorInstance::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, P
     ErrorInstance* thisObject = jsCast<ErrorInstance*>(cell);
     thisObject->materializeErrorInfoIfNeeded(vm, propertyName);
     return Base::deleteProperty(thisObject, globalObject, propertyName, slot);
+}
+
+String ErrorInstance::toStringName(const JSObject*, JSGlobalObject*)
+{
+    return "Error"_s;
 }
 
 } // namespace JSC

@@ -102,12 +102,12 @@ WEBCORE_PRIVATE_HEADERS_DIR_Production = $(PRODUCTION_FRAMEWORKS_DIR)/WebCore.fr
 WEBCORE_PRIVATE_HEADERS_DIR_engineering = $(BUILT_PRODUCTS_DIR)/WebCore.framework/PrivateHeaders;
 
 AD_HOC_CODE_SIGNING_ALLOWED = YES;
+CODE_SIGN_IDENTITY = -;
 
 SUPPORTED_PLATFORMS = iphoneos iphonesimulator macosx appletvos appletvsimulator watchos watchsimulator;
 
-OTHER_CFLAGS = $(ASAN_OTHER_CFLAGS) -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders;
-OTHER_CPLUSPLUSFLAGS = $(ASAN_OTHER_CPLUSPLUSFLAGS) -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders;
-OTHER_LDFLAGS = $(ASAN_OTHER_LDFLAGS);
+OTHER_CFLAGS = $(inherited) -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders;
+OTHER_CPLUSPLUSFLAGS = $(inherited) -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders;
 
 WEBKIT_FRAMEWORK_RESOURCES_PATH = WebKit.framework;
 WEBKIT_FRAMEWORK_RESOURCES_PATH[sdk=macosx*] = WebKit.framework/Versions/A/Resources;

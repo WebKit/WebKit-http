@@ -157,7 +157,7 @@ bool Thread::establishHandle(NewThreadContext* data, Optional<size_t> stackSize)
 {
     unsigned threadIdentifier = 0;
     unsigned initFlag = stackSize ? STACK_SIZE_PARAM_IS_A_RESERVATION : 0;
-    HANDLE threadHandle = reinterpret_cast<HANDLE>(_beginthreadex(0, stackSize.valueOr(0), wtfThreadEntryPoint, data, initFlag, &threadIdentifier));
+    HANDLE threadHandle = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, stackSize.valueOr(0), wtfThreadEntryPoint, data, initFlag, &threadIdentifier));
     if (!threadHandle) {
         LOG_ERROR("Failed to create thread at entry point %p with data %p: %ld", wtfThreadEntryPoint, data, errno);
         return false;
@@ -267,6 +267,12 @@ void Thread::establishPlatformSpecificHandle(HANDLE handle, ThreadIdentifier thr
 struct Thread::ThreadHolder {
     ~ThreadHolder()
     {
+        // The thread_local object of the main thread is destructed
+        // after Windows terminates other threads. If the terminated
+        // thread was holding a mutex, trying to lock the mutex causes
+        // deadlock.
+        if (isMainThread())
+            return;
         if (thread) {
             thread->specificStorage().destroySlots();
             thread->didExit();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016, 2018 Igalia S.L.
+ * Copyright (C) 2016, 2018, 2020 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,50 +51,84 @@ static const int s_memoryPresurePercentageThresholdCritical = 95;
 // cgroups.7: The usual place for such mounts is under a tmpfs(5)
 // filesystem mounted at /sys/fs/cgroup.
 static const char* s_cgroupMemoryPath = "/sys/fs/cgroup/%s/%s/%s";
-static const char* s_cgroupController = "/proc/self/cgroup";
+
+// /proc filesystems are directly maintained by the kernel.
+// On open the kernel will provide the process a static copy of the data if the
+// data in question is dynamically changing.
+static const char* s_procMeminfo = "/proc/meminfo";
+static const char* s_procZoneinfo = "/proc/zoneinfo";
+static const char* s_procSelfCgroup = "/proc/self/cgroup";
 static const unsigned maxCgroupPath = 4096; // PATH_MAX = 4096 from (Linux) include/uapi/linux/limits.h
 
-static size_t lowWatermarkPages()
+#define CGROUP_NAME_BUFFER_SIZE 40
+#define MEMINFO_TOKEN_BUFFER_SIZE 50
+#define STRINGIFY_EXPANDED(val) #val
+#define STRINGIFY(val) STRINGIFY_EXPANDED(val)
+#define ZONEINFO_TOKEN_BUFFER_SIZE 128
+
+// The lowWatermark is the sum of the low watermarks across all zones as the
+// MemAvailable info was implemented in /proc/meminfo since version 3.14 of the
+// kernel (added by commit 34e431b0a, source git.kernel.org):
+//
+// MemAvailable: An estimate of how much memory is available for starting new
+//               applications, without swapping. Calculated from MemFree,
+//               SReclaimable, the size of the file LRU lists, and the low
+//               watermarks in each zone.
+//               The estimate takes into account that the system needs some
+//               page cache to function well, and that not all reclaimable
+//               slab will be reclaimable, due to items being in use. The
+//               impact of those factors will vary from system to system.
+//
+// The fscanf() reads the input stream file until the argument list passed as
+// parameters is successfully filled.
+//
+// In our immplemetation the `while (!feof(zoneInfoFile))` loop follows the next
+// logic:
+//
+// - the first `fscanf(zoneInfoFile, " Node %*u, zone %...[^\n]\n", buffer);`
+//   iterates the `Node` sections.
+// - Then, when we found a Normal node, we start to read each single
+//   `fscanf(zoneInfoFile, "%...s", buffer);` until find a `low` token.
+// - We read the next token which is the actual `low` value and we add it to the
+//   `sumLow` summation.
+//
+// The second fscanf() reads tokens one by one because the format of each row is
+// not homogeneous (2, 3 or 6 values):
+//
+//   Node 0, zone   Normal
+//     pages free     27303
+//           min      20500
+//           low      24089
+//           high     27678
+//           spanned  3414016
+//           present  3414016
+//           managed  3337293
+//           protection: (0, 0, 0, 0, 0)
+static size_t lowWatermarkPages(FILE* zoneInfoFile)
 {
-    FILE* file = fopen("/proc/zoneinfo", "r");
-    if (!file)
+    size_t low = 0;
+    size_t sumLow = 0;
+    char buffer[ZONEINFO_TOKEN_BUFFER_SIZE + 1];
+    bool inNormalZone = false;
+
+    if (!zoneInfoFile || fseek(zoneInfoFile, 0, SEEK_SET))
         return notSet;
 
-    size_t low = 0;
-    bool inZone = false;
-    bool foundLow = false;
-    char buffer[128];
-    while (char* line = fgets(buffer, 128, file)) {
-        if (!strncmp(line, "Node", 4)) {
-            inZone = true;
-            foundLow = false;
-            continue;
-        }
-
-        char* token = strtok(line, " ");
-        if (!token)
-            continue;
-
-        if (!strcmp(token, "low")) {
-            if (!inZone || foundLow) {
-                low = notSet;
-                break;
+    while (!feof(zoneInfoFile)) {
+        int r;
+        r = fscanf(zoneInfoFile, " Node %*u, zone %" STRINGIFY(ZONEINFO_TOKEN_BUFFER_SIZE) "[^\n]\n", buffer);
+        if (r == 2 && !strcmp(buffer, "Normal"))
+            inNormalZone = true;
+        r = fscanf(zoneInfoFile, "%" STRINGIFY(ZONEINFO_TOKEN_BUFFER_SIZE) "s", buffer);
+        if (r == 1 && inNormalZone && !strcmp(buffer, "low")) {
+            r = fscanf(zoneInfoFile, "%zu", &low);
+            if (r == 1) {
+                sumLow += low;
+                continue;
             }
-            token = strtok(nullptr, " ");
-            if (!token) {
-                low = notSet;
-                break;
-            }
-            bool ok = true;
-            auto value = toIntegralType<size_t>(token, strlen(token), &ok);
-            if (ok)
-                low += value;
-            foundLow = true;
         }
     }
-    fclose(file);
-
-    return low;
+    return sumLow;
 }
 
 static inline size_t systemPageSize()
@@ -108,12 +142,12 @@ static inline size_t systemPageSize()
 // If MemAvailable was not present in /proc/meminfo, because it's an old kernel version,
 // we can do the same calculation with the information we have from meminfo and the low watermaks.
 // See https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-static size_t calculateMemoryAvailable(size_t memoryFree, size_t activeFile, size_t inactiveFile, size_t slabReclaimable)
+static size_t calculateMemoryAvailable(size_t memoryFree, size_t activeFile, size_t inactiveFile, size_t slabReclaimable, FILE* zoneInfoFile)
 {
     if (memoryFree == notSet || activeFile == notSet || inactiveFile == notSet || slabReclaimable == notSet)
         return notSet;
 
-    size_t lowWatermark = lowWatermarkPages();
+    size_t lowWatermark = lowWatermarkPages(zoneInfoFile);
     if (lowWatermark == notSet)
         return notSet;
 
@@ -136,75 +170,14 @@ static size_t calculateMemoryAvailable(size_t memoryFree, size_t activeFile, siz
     return memoryAvailable;
 }
 
-
-size_t getCgroupFileValue(CString cgroupControllerName, CString cgroupControllerPath, CString cgroupFileName)
+FILE* getCgroupFile(CString cgroupControllerName, CString cgroupControllerPath, CString cgroupFileName)
 {
-    char buffer[128];
     char cgroupPath[maxCgroupPath];
-    char* token;
-    FILE* file;
-    bool ok = true;
-
     snprintf(cgroupPath, maxCgroupPath, s_cgroupMemoryPath, cgroupControllerName.data(), cgroupControllerPath.data(), cgroupFileName.data());
-    file = fopen(cgroupPath, "r");
-    if (file) {
-        token = fgets(buffer, 128, file);
-        fclose(file);
-        size_t value = toIntegralType<size_t>(token, strlen(token), &ok);
-        if (!ok)
-            value = notSet;
-        return value;
-    }
-    return notSet;
-}
-
-size_t getMemoryTotalWithCgroup(CString memoryControllerName)
-{
-    size_t value = notSet;
-
-    // Check memory limits in cgroupV2
-    value = getCgroupFileValue("/", memoryControllerName, CString("memory.memsw.max"));
-    if (value != notSet)
-        return value;
-
-    value = getCgroupFileValue("/", memoryControllerName, CString("memory.max"));
-    size_t valueHigh = getCgroupFileValue("/", memoryControllerName, CString("memory.high"));
-    if (value != notSet && valueHigh != notSet) {
-        value = std::min(value, valueHigh);
-        return value;
-    }
-    if (valueHigh != notSet)
-        return valueHigh;
-    if (value != notSet)
-        return value;
-
-    // Check memory limits in cgroupV1
-    value = getCgroupFileValue("memory", memoryControllerName, CString("memory.memsw.limit_in_bytes"));
-    if (value != notSet)
-        return value;
-
-    value = getCgroupFileValue("memory", memoryControllerName, CString("memory.limit_in_bytes"));
-    if (value != notSet)
-        return value;
-
-    return value;
-}
-
-static size_t getMemoryUsageWithCgroup(CString memoryControllerName)
-{
-    size_t value = notSet;
-
-    // Check memory limits in cgroupV2
-    value = getCgroupFileValue("/", memoryControllerName, CString("memory.current"));
-    if (value != notSet)
-        return value;
-
-    // Check memory limits in cgroupV1
-    value = getCgroupFileValue("memory", memoryControllerName, CString("memory.usage_in_bytes"));
-    if (value != notSet)
-        return value;
-
-    return notSet;
+    FILE* file = fopen(cgroupPath, "r");
+    if (file)
+        setbuf(file, nullptr);
+    return file;
 }
 
 // This file describes control groups to which the process with
@@ -227,107 +200,63 @@ static size_t getMemoryUsageWithCgroup(CString memoryControllerName)
 // 2:cpuset:/
 // 1:name=systemd:/user.slice/user-1000.slice/user@1000.service/gnome-terminal-server.service
 // 0::/user.slice/user-1000.slice/user@1000.service/gnome-terminal-server.service
-static CString getCgroupControllerPath(const char* controllerName)
+static CString getCgroupControllerPath(FILE* cgroupControllerFile, const char* controllerName)
 {
-    CString memoryControllerPath;
-    FILE* file = fopen(s_cgroupController, "r");
-    if (!file)
+    CString cgroupMemoryControllerPath;
+    if (!cgroupControllerFile || fseek(cgroupControllerFile, 0, SEEK_SET))
         return CString();
 
-    char buffer[maxCgroupPath];
-    while (char* line = fgets(buffer, maxCgroupPath, file)) {
-        char* token = strtok(line, "\n");
-        if (!token)
-            break;
-
-        token = strtok(token, ":");
-        token = strtok(nullptr, ":");
-        if (!strcmp(token, controllerName)) {
-            token = strtok(nullptr, ":");
-            memoryControllerPath = CString(token);
-            fclose(file);
-            return memoryControllerPath;
+    while (!feof(cgroupControllerFile)) {
+        char name[CGROUP_NAME_BUFFER_SIZE + 1];
+        char path[maxCgroupPath + 1];
+        int scanResult = fscanf(cgroupControllerFile, "%*u:%" STRINGIFY(CGROUP_NAME_BUFFER_SIZE) "[^:]:%" STRINGIFY(PATH_MAX) "[^\n]", name, path);
+        if (scanResult != 2)
+            return CString();
+        if (!strcmp(name, controllerName)) {
+            return CString(path);
         }
-        if (!strncmp(token, "name=systemd", 12)) {
-            token = strtok(nullptr, ":");
-            memoryControllerPath = CString(token);
-        }
+        if (!strcmp(name, "name=systemd"))
+            cgroupMemoryControllerPath = CString(path);
     }
-    fclose(file);
-    return memoryControllerPath;
+    return cgroupMemoryControllerPath;
 }
 
 
-static int systemMemoryUsedAsPercentage()
+static int systemMemoryUsedAsPercentage(FILE* memInfoFile, FILE* zoneInfoFile, CGroupMemoryController* memoryController)
 {
-    FILE* file = fopen("/proc/meminfo", "r");
-    if (!file)
+    if (!memInfoFile || fseek(memInfoFile, 0, SEEK_SET))
         return -1;
 
     size_t memoryAvailable, memoryTotal, memoryFree, activeFile, inactiveFile, slabReclaimable;
     memoryAvailable = memoryTotal = memoryFree = activeFile = inactiveFile = slabReclaimable = notSet;
-    char buffer[128];
-    while (char* line = fgets(buffer, 128, file)) {
-        char* token = strtok(line, " ");
-        bool ok = true;
-        if (!token)
-            break;
 
-        if (!strcmp(token, "MemAvailable:")) {
-            if ((token = strtok(nullptr, " "))) {
-                memoryAvailable = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    memoryAvailable = notSet;
-                if (memoryTotal != notSet)
-                    break;
-            }
-        } else if (!strcmp(token, "MemTotal:")) {
-            if ((token = strtok(nullptr, " "))) {
-                memoryTotal = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    memoryTotal = notSet;
-            } else
-                break;
-        } else if (!strcmp(token, "MemFree:")) {
-            if ((token = strtok(nullptr, " "))) {
-                memoryFree = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    memoryFree = notSet;
-            } else
-                break;
-        } else if (!strcmp(token, "Active(file):")) {
-            if ((token = strtok(nullptr, " "))) {
-                activeFile = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    activeFile = notSet;
-            } else
-                break;
-        } else if (!strcmp(token, "Inactive(file):")) {
-            if ((token = strtok(nullptr, " "))) {
-                inactiveFile = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    inactiveFile = notSet;
-            } else
-                break;
-        } else if (!strcmp(token, "SReclaimable:")) {
-            if ((token = strtok(nullptr, " "))) {
-                slabReclaimable = toIntegralType<size_t>(token, strlen(token), &ok);
-                if (!ok)
-                    slabReclaimable = notSet;
-            } else
-                break;
-        }
+    while (!feof(memInfoFile)) {
+        char token[MEMINFO_TOKEN_BUFFER_SIZE + 1] = { 0 };
+        size_t amount;
+        if (fscanf(memInfoFile, "%" STRINGIFY(MEMINFO_TOKEN_BUFFER_SIZE) "s%zukB", token, &amount) != 2)
+            continue;
+        if (!strcmp(token, "MemTotal:"))
+            memoryTotal = amount;
+        else if (!strcmp(token, "MemFree:"))
+            memoryFree = amount;
+        else if (!strcmp(token, "MemAvailable:"))
+            memoryAvailable = amount;
+        else if (!strcmp(token, "Active(file):"))
+            activeFile = amount;
+        else if (!strcmp(token, "Inactive(file):"))
+            inactiveFile = amount;
+        else if (!strcmp(token, "SReclaimable:"))
+            slabReclaimable = amount;
 
         if (memoryTotal != notSet && memoryFree != notSet && activeFile != notSet && inactiveFile != notSet && slabReclaimable != notSet)
             break;
     }
-    fclose(file);
 
     if (!memoryTotal || memoryTotal == notSet)
         return -1;
 
     if (memoryAvailable == notSet) {
-        memoryAvailable = calculateMemoryAvailable(memoryFree, activeFile, inactiveFile, slabReclaimable);
+        memoryAvailable = calculateMemoryAvailable(memoryFree, activeFile, inactiveFile, slabReclaimable, zoneInfoFile);
         if (memoryAvailable == notSet)
             return -1;
     }
@@ -336,10 +265,9 @@ static int systemMemoryUsedAsPercentage()
         return -1;
 
     int memoryUsagePercentage = ((memoryTotal - memoryAvailable) * 100) / memoryTotal;
-    CString memoryControllerPath = getCgroupControllerPath("memory");
-    if (!memoryControllerPath.isNull()) {
-        memoryTotal = getMemoryTotalWithCgroup(memoryControllerPath);
-        size_t memoryUsage = getMemoryUsageWithCgroup(memoryControllerPath);
+    if (memoryController->isActive()) {
+        memoryTotal = memoryController->getMemoryTotalWithCgroup();
+        size_t memoryUsage = memoryController->getMemoryUsageWithCgroup();
         if (memoryTotal != notSet && memoryUsage != notSet) {
             int memoryUsagePercentageWithCgroup = 100 * ((float) memoryUsage / (float) memoryTotal);
             if (memoryUsagePercentageWithCgroup > memoryUsagePercentage)
@@ -369,6 +297,29 @@ MemoryPressureMonitor& MemoryPressureMonitor::singleton()
     return memoryMonitor;
 }
 
+struct FileHandleDeleter {
+    void operator()(FILE* f) { fclose(f); }
+};
+
+using FileHandle = std::unique_ptr<FILE, FileHandleDeleter>;
+
+static bool tryOpeningForUnbufferedReading(FileHandle& handle, const char* filePath)
+{
+    // Check whether the file handle is already valid.
+    if (handle)
+        return true;
+
+    // Else, try opening it and disable buffering after opening.
+    if (auto* f = fopen(filePath, "r")) {
+        setbuf(f, nullptr);
+        handle.reset(f);
+        return true;
+    }
+
+    // Could not produce a valid handle.
+    return false;
+}
+
 void MemoryPressureMonitor::start()
 {
     if (m_started)
@@ -377,14 +328,27 @@ void MemoryPressureMonitor::start()
     m_started = true;
 
     Thread::create("MemoryPressureMonitor", [] {
+        FileHandle memInfoFile, zoneInfoFile, cgroupControllerFile;
+        CGroupMemoryController memoryController = CGroupMemoryController();
         Seconds pollInterval = s_maxPollingInterval;
         while (true) {
             sleep(pollInterval);
 
-            int usedPercentage = systemMemoryUsedAsPercentage();
+            // Cannot operate without this one, retry opening on the next iteration after sleeping.
+            if (!tryOpeningForUnbufferedReading(memInfoFile, s_procMeminfo))
+                continue;
+
+            // The monitor can work without these two, but it will be more precise if thy are eventually opened: keep trying.
+            tryOpeningForUnbufferedReading(zoneInfoFile, s_procZoneinfo);
+            tryOpeningForUnbufferedReading(cgroupControllerFile, s_procSelfCgroup);
+
+            CString cgroupMemoryControllerPath = getCgroupControllerPath(cgroupControllerFile.get(), "memory");
+            memoryController.setMemoryControllerPath(cgroupMemoryControllerPath);
+            int usedPercentage = systemMemoryUsedAsPercentage(memInfoFile.get(), zoneInfoFile.get(), &memoryController);
             if (usedPercentage == -1) {
                 WTFLogAlways("Failed to get the memory usage");
-                break;
+                pollInterval = s_maxPollingInterval;
+                continue;
             }
 
             if (usedPercentage >= s_memoryPresurePercentageThreshold) {
@@ -397,6 +361,98 @@ void MemoryPressureMonitor::start()
     })->detach();
 }
 
+void CGroupMemoryController::setMemoryControllerPath(CString memoryControllerPath)
+{
+    if (memoryControllerPath == m_cgroupMemoryControllerPath)
+        return;
+
+    m_cgroupMemoryControllerPath = memoryControllerPath;
+    disposeMemoryController();
+
+    m_cgroupV2MemoryCurrentFile = getCgroupFile("/", memoryControllerPath, CString("memory.current"));
+    m_cgroupV2MemoryMemswMaxFile = getCgroupFile("/", memoryControllerPath, CString("memory.memsw.max"));
+    m_cgroupV2MemoryMaxFile = getCgroupFile("/", memoryControllerPath, CString("memory.max"));
+    m_cgroupV2MemoryHighFile = getCgroupFile("/", memoryControllerPath, CString("memory.high"));
+
+    m_cgroupMemoryMemswLimitInBytesFile = getCgroupFile("memory", memoryControllerPath, CString("memory.memsw.limit_in_bytes"));
+    m_cgroupMemoryLimitInBytesFile = getCgroupFile("memory", memoryControllerPath, CString("memory.limit_in_bytes"));
+    m_cgroupMemoryUsageInBytesFile = getCgroupFile("memory", memoryControllerPath, CString("memory.usage_in_bytes"));
+}
+
+void CGroupMemoryController::disposeMemoryController()
+{
+    if (m_cgroupMemoryMemswLimitInBytesFile)
+        fclose(m_cgroupMemoryMemswLimitInBytesFile);
+    if (m_cgroupMemoryLimitInBytesFile)
+        fclose(m_cgroupMemoryLimitInBytesFile);
+    if (m_cgroupMemoryUsageInBytesFile)
+        fclose(m_cgroupMemoryUsageInBytesFile);
+
+    if (m_cgroupV2MemoryMemswMaxFile)
+        fclose(m_cgroupV2MemoryMemswMaxFile);
+    if (m_cgroupV2MemoryMaxFile)
+        fclose(m_cgroupV2MemoryMaxFile);
+    if (m_cgroupV2MemoryHighFile)
+        fclose(m_cgroupV2MemoryHighFile);
+}
+
+size_t CGroupMemoryController::getCgroupFileValue(FILE *file)
+{
+    if (!file || fseek(file, 0, SEEK_SET))
+        return notSet;
+
+    size_t value;
+    return (fscanf(file, "%zu", &value) == 1) ? value : notSet;
+}
+
+size_t CGroupMemoryController::getMemoryTotalWithCgroup()
+{
+    size_t value = notSet;
+
+    // Check memory limits in cgroupV2
+    value = getCgroupFileValue(m_cgroupV2MemoryMemswMaxFile);
+    if (value != notSet)
+        return value;
+
+    value = getCgroupFileValue(m_cgroupV2MemoryMaxFile);
+    size_t valueHigh = getCgroupFileValue(m_cgroupV2MemoryHighFile);
+    if (value != notSet && valueHigh != notSet) {
+        value = std::min(value, valueHigh);
+        return value;
+    }
+    if (valueHigh != notSet)
+        return valueHigh;
+    if (value != notSet)
+        return value;
+
+    // Check memory limits in cgroupV1
+    value = getCgroupFileValue(m_cgroupMemoryMemswLimitInBytesFile);
+    if (value != notSet)
+        return value;
+
+    value = getCgroupFileValue(m_cgroupMemoryLimitInBytesFile);
+    if (value != notSet)
+        return value;
+
+    return value;
+}
+
+size_t CGroupMemoryController::getMemoryUsageWithCgroup()
+{
+    size_t value = notSet;
+
+    // Check memory limits in cgroupV2
+    value = getCgroupFileValue(m_cgroupV2MemoryCurrentFile);
+    if (value != notSet)
+        return value;
+
+    // Check memory limits in cgroupV1
+    value = getCgroupFileValue(m_cgroupMemoryUsageInBytesFile);
+    if (value != notSet)
+        return value;
+
+    return notSet;
+}
 
 } // namespace WebKit
 

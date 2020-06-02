@@ -75,7 +75,7 @@ typedef struct _CARenderContext CARenderContext;
 - (void)setFencePort:(mach_port_t)port;
 - (void)setFencePort:(mach_port_t)port commitHandler:(void(^)(void))block;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
 + (void)setAllowsCGSConnections:(BOOL)flag;
 #endif
 
@@ -167,22 +167,8 @@ WTF_EXTERN_C_BEGIN
 // FIXME: Declare these functions even when USE(APPLE_INTERNAL_SDK) is true once we can fix <rdar://problem/26584828> in a better way.
 #if !USE(APPLE_INTERNAL_SDK)
 void CARenderServerCaptureLayerWithTransform(mach_port_t, uint32_t clientId, uint64_t layerId, uint32_t slotId, int32_t ox, int32_t oy, const CATransform3D*);
-
-#if HAVE(IOSURFACE)
 void CARenderServerRenderLayerWithTransform(mach_port_t server_port, uint32_t client_id, uint64_t layer_id, IOSurfaceRef, int32_t ox, int32_t oy, const CATransform3D*);
 void CARenderServerRenderDisplayLayerWithTransformAndTimeOffset(mach_port_t, CFStringRef display_name, uint32_t client_id, uint64_t layer_id, IOSurfaceRef, int32_t ox, int32_t oy, const CATransform3D*, CFTimeInterval);
-#else
-typedef struct CARenderServerBuffer* CARenderServerBufferRef;
-CARenderServerBufferRef CARenderServerCreateBuffer(size_t, size_t);
-void CARenderServerDestroyBuffer(CARenderServerBufferRef);
-size_t CARenderServerGetBufferWidth(CARenderServerBufferRef);
-size_t CARenderServerGetBufferHeight(CARenderServerBufferRef);
-size_t CARenderServerGetBufferRowBytes(CARenderServerBufferRef);
-uint8_t* CARenderServerGetBufferData(CARenderServerBufferRef);
-size_t CARenderServerGetBufferDataSize(CARenderServerBufferRef);
-
-bool CARenderServerRenderLayerWithTransform(mach_port_t, uint32_t client_id, uint64_t layer_id, CARenderServerBufferRef, int32_t ox, int32_t oy, const CATransform3D*);
-#endif
 #endif // USE(APPLE_INTERNAL_SDK)
 
 typedef struct _CAMachPort *CAMachPortRef;

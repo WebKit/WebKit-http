@@ -26,33 +26,29 @@
 #import "config.h"
 #import "AlternativeTextUIController.h"
 
-#if USE(DICTATION_ALTERNATIVES)
-
-#import <WebCore/FloatRect.h>
+#import "FloatRect.h"
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if USE(APPKIT)
 #import <AppKit/NSSpellChecker.h>
 #import <AppKit/NSTextAlternatives.h>
 #import <AppKit/NSView.h>
-#elif PLATFORM(IOS_FAMILY)
+#endif
+
+#if PLATFORM(IOS_FAMILY)
 #import <pal/spi/ios/UIKitSPI.h>
 #endif
 
 namespace WebCore {
 
-uint64_t AlternativeTextUIController::addAlternatives(const RetainPtr<NSTextAlternatives>& alternatives)
+DictationContext AlternativeTextUIController::addAlternatives(NSTextAlternatives *alternatives)
 {
     return m_contextController.addAlternatives(alternatives);
 }
 
-Vector<String> AlternativeTextUIController::alternativesForContext(uint64_t context)
+Vector<String> AlternativeTextUIController::alternativesForContext(DictationContext context)
 {
-    NSTextAlternatives *textAlternatives = m_contextController.alternativesForContext(context);
-    Vector<String> alternativeStrings;
-    alternativeStrings.reserveInitialCapacity(textAlternatives.alternativeStrings.count);
-    for (NSString *string in textAlternatives.alternativeStrings)
-        alternativeStrings.uncheckedAppend(string);
-    return alternativeStrings;
+    return makeVector<String>(m_contextController.alternativesForContext(context).alternativeStrings);
 }
 
 void AlternativeTextUIController::clear()
@@ -60,9 +56,10 @@ void AlternativeTextUIController::clear()
     return m_contextController.clear();
 }
 
-void AlternativeTextUIController::showAlternatives(NSView *view, const FloatRect& boundingBoxOfPrimaryString, uint64_t context, AcceptanceHandler acceptanceHandler)
-{
 #if USE(APPKIT)
+
+void AlternativeTextUIController::showAlternatives(NSView *view, const FloatRect& boundingBoxOfPrimaryString, DictationContext context, AcceptanceHandler acceptanceHandler)
+{
     dismissAlternatives();
     if (!view)
         return;
@@ -79,17 +76,9 @@ void AlternativeTextUIController::showAlternatives(NSView *view, const FloatRect
             acceptanceHandler(acceptedString);
         }
     }];
-#else
-    UNUSED_PARAM(view);
-    UNUSED_PARAM(boundingBoxOfPrimaryString);
-    UNUSED_PARAM(context);
-    UNUSED_PARAM(acceptanceHandler);
-#endif
 }
 
-#if USE(APPKIT)
-
-void AlternativeTextUIController::handleAcceptedAlternative(NSString *acceptedAlternative, uint64_t context, NSTextAlternatives *alternatives)
+void AlternativeTextUIController::handleAcceptedAlternative(NSString *acceptedAlternative, DictationContext context, NSTextAlternatives *alternatives)
 {
     [alternatives noteSelectedAlternativeString:acceptedAlternative];
     m_contextController.removeAlternativesForContext(context);
@@ -104,11 +93,9 @@ void AlternativeTextUIController::dismissAlternatives()
 
 #endif
 
-void AlternativeTextUIController::removeAlternatives(uint64_t context)
+void AlternativeTextUIController::removeAlternatives(DictationContext context)
 {
     m_contextController.removeAlternativesForContext(context);
 }
 
 } // namespace WebCore
-
-#endif // USE(DICTATION_ALTERNATIVES)

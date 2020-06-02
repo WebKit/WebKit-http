@@ -21,6 +21,7 @@
 #include "WebKitColor.h"
 
 #include "WebKitColorPrivate.h"
+#include <WebCore/CSSParser.h>
 
 /**
  * SECTION: WebKitColor
@@ -74,7 +75,7 @@ G_DEFINE_BOXED_TYPE(WebKitColor, webkit_color, webkit_color_copy, webkit_color_f
 
 const WebCore::Color webkitColorToWebCoreColor(WebKitColor* color)
 {
-    return WebCore::Color(static_cast<float>(color->red), static_cast<float>(color->green),
+    return WebCore::makeSimpleColorFromFloats(static_cast<float>(color->red), static_cast<float>(color->green),
         static_cast<float>(color->blue), static_cast<float>(color->alpha));
 }
 
@@ -82,8 +83,7 @@ void webkitColorFillFromWebCoreColor(const WebCore::Color& webCoreColor, WebKitC
 {
     RELEASE_ASSERT(webCoreColor.isValid());
 
-    double r, g, b, a;
-    webCoreColor.getRGBA(r, g, b, a);
+    auto [r, g, b, a] = webCoreColor.toSRGBAComponentsLossy();
     color->red = r;
     color->green = g;
     color->blue = b;
@@ -109,7 +109,7 @@ gboolean webkit_color_parse(WebKitColor* color, const gchar* colorString)
     g_return_val_if_fail(color, FALSE);
     g_return_val_if_fail(colorString, FALSE);
 
-    auto webCoreColor = WebCore::Color(colorString);
+    auto webCoreColor = WebCore::CSSParser::parseColor({ colorString });
     if (!webCoreColor.isValid())
         return FALSE;
 

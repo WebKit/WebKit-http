@@ -131,22 +131,26 @@ void RTCSocketFactory::resume()
     });
 }
 
+void LibWebRTCProvider::startedNetworkThread()
+{
+    WebProcess::singleton().libWebRTCNetwork().setAsActive();
+}
+
 std::unique_ptr<LibWebRTCProvider::SuspendableSocketFactory> LibWebRTCProvider::createSocketFactory(String&& userAgent)
 {
     return makeUnique<RTCSocketFactory>(WTFMove(userAgent));
 }
 
 #if PLATFORM(COCOA)
+
 std::unique_ptr<webrtc::VideoDecoderFactory> LibWebRTCProvider::createDecoderFactory()
 {
-#if ENABLE(GPU_PROCESS)
-    // We only support efficient sending of video frames with IOSURFACE
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if ENABLE(GPU_PROCESS) && !PLATFORM(MACCATALYST)
     LibWebRTCCodecs::setCallbacks(RuntimeEnabledFeatures::sharedFeatures().webRTCPlatformCodecsInGPUProcessEnabled());
-#endif
 #endif
     return LibWebRTCProviderCocoa::createDecoderFactory();
 }
+
 #endif
 
 } // namespace WebKit

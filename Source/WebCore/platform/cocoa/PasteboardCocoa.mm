@@ -23,19 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "Pasteboard.h"
+#import "config.h"
+#import "Pasteboard.h"
 
-#include "LegacyNSPasteboardTypes.h"
-#include "PasteboardStrategy.h"
-#include "PlatformStrategies.h"
-#include "SharedBuffer.h"
-#include <ImageIO/ImageIO.h>
-#include <wtf/ListHashSet.h>
-#include <wtf/text/StringHash.h>
+#import "LegacyNSPasteboardTypes.h"
+#import "PasteboardStrategy.h"
+#import "PlatformStrategies.h"
+#import "SharedBuffer.h"
+#import <ImageIO/ImageIO.h>
+#import <wtf/ListHashSet.h>
+#import <wtf/text/StringHash.h>
 
 #if PLATFORM(IOS_FAMILY)
-#include <MobileCoreServices/MobileCoreServices.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 #endif
 
 namespace WebCore {
@@ -215,33 +215,44 @@ static Ref<SharedBuffer> convertTIFFToPNG(SharedBuffer& tiffBuffer)
 }
 #endif
 
-void Pasteboard::read(PasteboardFileReader& reader)
+void Pasteboard::read(PasteboardFileReader& reader, Optional<size_t> itemIndex)
 {
-    auto filenames = readFilePaths();
-    if (!filenames.isEmpty()) {
-        for (auto& filename : filenames)
-            reader.readFilename(filename);
+    if (!itemIndex) {
+        auto filenames = readFilePaths();
+        if (!filenames.isEmpty()) {
+            for (auto& filename : filenames)
+                reader.readFilename(filename);
+            return;
+        }
+    }
+
+    auto readBufferAtIndex = [&](const PasteboardItemInfo& info, size_t itemIndex) {
+        for (auto cocoaType : info.platformTypesByFidelity) {
+            auto imageType = cocoaTypeToImageType(cocoaType);
+            auto* mimeType = imageTypeToMIMEType(imageType);
+            if (!mimeType || !reader.shouldReadBuffer(mimeType))
+                continue;
+            auto buffer = readBuffer(itemIndex, cocoaType);
+#if PLATFORM(MAC)
+            if (buffer && imageType == ImageType::TIFF)
+                buffer = convertTIFFToPNG(buffer.releaseNonNull());
+#endif
+            if (buffer) {
+                reader.readBuffer(imageTypeToFakeFilename(imageType), mimeType, buffer.releaseNonNull());
+                break;
+            }
+        }
+    };
+
+    if (itemIndex) {
+        if (auto info = pasteboardItemInfo(*itemIndex))
+            readBufferAtIndex(*info, *itemIndex);
         return;
     }
 
-    auto cocoaTypes = readTypesWithSecurityCheck();
-    HashSet<const char*> existingMIMEs;
-    for (auto& cocoaType : cocoaTypes) {
-        auto imageType = cocoaTypeToImageType(cocoaType);
-        const char* mimeType = imageTypeToMIMEType(imageType);
-        if (!mimeType)
-            continue;
-        if (existingMIMEs.contains(mimeType))
-            continue;
-        auto buffer = readBufferForTypeWithSecurityCheck(cocoaType);
-#if PLATFORM(MAC)
-        if (buffer && imageType == ImageType::TIFF)
-            buffer = convertTIFFToPNG(buffer.releaseNonNull());
-#endif
-        if (!buffer)
-            continue;
-        existingMIMEs.add(mimeType);
-        reader.readBuffer(imageTypeToFakeFilename(imageType), mimeType, buffer.releaseNonNull());
+    if (auto allInfo = allPasteboardItemInfo()) {
+        for (size_t itemIndex = 0; itemIndex < allInfo->size(); ++itemIndex)
+            readBufferAtIndex(allInfo->at(itemIndex), itemIndex);
     }
 }
 

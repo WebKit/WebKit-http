@@ -1,17 +1,16 @@
-CONSOLE MESSAGE: line 18: MainFrameView: mouseEnteredContentArea
-CONSOLE MESSAGE: line 18: MainFrameView: mouseMovedInContentArea
-CONSOLE MESSAGE: line 20: MainFrameView: mouseEnteredVerticalScrollbar
-CONSOLE MESSAGE: line 20: FrameView: mouseEnteredContentArea
-CONSOLE MESSAGE: line 20: MainFrameView: mouseMovedInContentArea
-CONSOLE MESSAGE: line 21: MainFrameView: mouseIsDownInVerticalScrollbar
-CONSOLE MESSAGE: line 22: MainFrameView: mouseIsUpInVerticalScrollbar
-CONSOLE MESSAGE: line 23: MainFrameView: mouseExitedVerticalScrollbar
-CONSOLE MESSAGE: line 23: FrameView: mouseExitedContentArea
-CONSOLE MESSAGE: line 23: MainFrameView: mouseMovedInContentArea
-PASS successfullyParsed is true
-
-TEST COMPLETE
+CONSOLE MESSAGE: MainFrameView: mouseEnteredContentArea
+CONSOLE MESSAGE: MainFrameView: mouseEnteredVerticalScrollbar
+CONSOLE MESSAGE: MainFrameView: mouseMovedInContentArea
+CONSOLE MESSAGE: FrameView: mouseEnteredContentArea
+CONSOLE MESSAGE: MainFrameView: mouseIsDownInVerticalScrollbar
+CONSOLE MESSAGE: MainFrameView: mouseIsUpInVerticalScrollbar
+CONSOLE MESSAGE: MainFrameView: mouseExitedVerticalScrollbar
+CONSOLE MESSAGE: FrameView: mouseExitedContentArea
+CONSOLE MESSAGE: MainFrameView: mouseMovedInContentArea
 Test for https://bugs.webkit.org/show_bug.cgi?id=165056.
 
 
+PASS successfullyParsed is true
+
+TEST COMPLETE
 

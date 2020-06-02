@@ -140,6 +140,7 @@ _unit_test_config = {}
 
 _NO_CONFIG_H_PATH_PATTERNS = [
     '^Source/bmalloc/',
+    '^Source/WebKitLegacy/',
 ]
 
 _EXPORT_MACRO_SPEC = {
@@ -498,7 +499,7 @@ def create_skeleton_parameters(all_parameters):
 
 
 def find_parameter_name_index(skeleton_parameter):
-    """Determines where the parametere name starts given the skeleton parameter."""
+    """Determines where the parameter name starts given the skeleton parameter."""
     # The first space from the right in the simplified parameter is where the parameter
     # name starts unless the first space is before any content in the simplified parameter.
     before_name_index = skeleton_parameter.rstrip().rfind(' ')
@@ -590,6 +591,25 @@ class _FunctionState(object):
         elided = self._clean_lines.elided
         start_modifiers = _rfind_in_lines(r';|\{|\}|((private|public|protected):)|(#.*)', elided, self.parameter_start_position, Position(0, 0))
         return SingleLineView(elided, start_modifiers, self.function_name_start_position).single_line.strip()
+
+    def post_modifiers(self):
+        """Returns the modifiers after the function declaration such as attributes."""
+        elided = self._clean_lines.elided
+        return SingleLineView(elided, self.parameter_end_position, self.body_start_position).single_line.strip()
+
+    def attributes_after_definition(self, attribute_regex):
+        return re.findall(attribute_regex, self.post_modifiers())
+
+    def has_attribute(self, attribute_regex):
+        regex = r'\b{attribute_regex}\b'.format(attribute_regex=attribute_regex)
+        return bool(search(regex, self.modifiers_and_return_type())) or bool(search(regex, self.post_modifiers()))
+
+    def has_return_type(self, return_type_regex):
+        regex = r'\b{return_type_regex}$'.format(return_type_regex=return_type_regex)
+        return bool(search(regex, self.modifiers_and_return_type()))
+
+    def is_static(self):
+        return bool(search(r'\bstatic\b', self.modifiers_and_return_type()))
 
     def is_virtual(self):
         return bool(search(r'\bvirtual\b', self.modifiers_and_return_type()))
@@ -1757,6 +1777,8 @@ def _check_parameter_name_against_text(parameter, text, error):
     # case insensitive while still retaining word breaks. (This ensures that
     # 'elate' doesn't look like it is duplicating of 'NateLate'.)
     canonical_parameter_name = parameter.lower_with_underscores_name()
+    if canonical_parameter_name == "]":
+        return True  # Work around a bug parsing some Objective-C code.
 
     # Appends "object" to all text to catch variables that did the same (but only
     # do this when the parameter name is more than a single character to avoid
@@ -1795,6 +1817,23 @@ def check_function_definition(filename, file_extension, clean_lines, line_number
     """
     if line_number != function_state.body_start_position.row:
         return
+
+    # Check for decode() functions that don't have WARN_UNUSED_RETURN attribute.
+    function_name = function_state.current_function.split('..')[-1]
+    if function_name.startswith('decode') or function_name.startswith('platformDecode'):
+        if file_extension == 'h' or (function_state.is_static() or function_state.is_declaration):
+            if function_state.has_return_type('(auto|bool)'):
+                if not function_state.has_attribute('WARN_UNUSED_RETURN'):
+                    error(line_number, 'security/missing_warn_unused_return', 5,
+                          'decode() function returning a value is missing WARN_UNUSED_RETURN attribute')
+
+    attributes = function_state.attributes_after_definition(r'(\bWARN_[0-9A-Z_]+\b|__attribute__\(\(__[a-z_]+__\)\))')
+    if len(attributes) > 0:
+        attribute_text = ', '.join(attributes)
+        plural = 's' if len(attributes) > 1 else ''
+        error(line_number, 'readability/function', 5,
+              'Function attribute{plural} ({attributes}) should appear before the function definition'.
+              format(attributes=attribute_text, plural=plural))
 
     parameter_list = function_state.parameter_list()
     for parameter in parameter_list:
@@ -2434,6 +2473,30 @@ def check_max_min_macros(clean_lines, line_number, file_state, error):
           % (max_min_macro_lower, max_min_macro_lower, max_min_macro))
 
 
+def check_wtf_checked_size(clean_lines, line_number, file_state, error):
+    """Looks for use of 'Checked<size_t, RecordOverflow>' which should be replaced with 'CheckedSize'.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      file_state: A _FileState instance which maintains information about
+                  the state of things in the file.
+      error: The function to call with any errors found.
+    """
+
+    if file_state.is_c_or_objective_c():
+        return
+
+    line = clean_lines.elided[line_number]
+
+    using_checked_size_record_overflow = search(r'\bChecked\s*<\s*size_t,\s*RecordOverflow\s*>\s*(\b|\()', line)
+    if not using_checked_size_record_overflow:
+        return
+
+    error(line_number, 'runtime/wtf_checked_size', 5,
+          "Use 'CheckedSize' instead of 'Checked<size_t, RecordOverflow>'.")
+
+
 def check_wtf_move(clean_lines, line_number, file_state, error):
     """Looks for use of 'std::move()' which should be replaced with 'WTFMove()'.
 
@@ -2503,6 +2566,28 @@ def check_wtf_make_unique(clean_lines, line_number, file_state, error):
     else:
         error(line_number, 'runtime/wtf_make_unique', 4,
               "Use 'WTF::makeUnique<{typename}>' instead of 'std::make_unique<{typename}>'.".format(typename=typename))
+
+
+def check_wtf_never_destroyed(clean_lines, line_number, file_state, error):
+    """Looks for use of 'NeverDestroyed<Lock/Condition>' which should be replaced with 'Lock/Condition'.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      file_state: A _FileState instance which maintains information about
+                  the state of things in the file.
+      error: The function to call with any errors found.
+    """
+
+    line = clean_lines.elided[line_number]  # Get rid of comments and strings.
+
+    using_wtf_never_destroyed_search = search(r'\b(?:Lazy)?NeverDestroyed\s*<([^(>]+)>', line)  # LazyNeverDestroyed is also caught.
+    if not using_wtf_never_destroyed_search:
+        return
+
+    typename = using_wtf_never_destroyed_search.group(1).strip()
+    if search(r'(Lock|Condition)', typename):
+        error(line_number, 'runtime/wtf_never_destroyed', 4, "Use 'static Lock/Condition' instead of 'NeverDestroyed<Lock/Condition>'.")
 
 
 def check_lock_guard(clean_lines, line_number, file_state, error):
@@ -3082,9 +3167,11 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_using_std(clean_lines, line_number, file_state, error)
     check_using_namespace(clean_lines, line_number, file_extension, error)
     check_max_min_macros(clean_lines, line_number, file_state, error)
+    check_wtf_checked_size(clean_lines, line_number, file_state, error)
     check_wtf_move(clean_lines, line_number, file_state, error)
     check_wtf_optional(clean_lines, line_number, file_state, error)
     check_wtf_make_unique(clean_lines, line_number, file_state, error)
+    check_wtf_never_destroyed(clean_lines, line_number, file_state, error)
     check_lock_guard(clean_lines, line_number, file_state, error)
     check_ctype_functions(clean_lines, line_number, file_state, error)
     check_switch_indentation(clean_lines, line_number, error)
@@ -3185,6 +3272,8 @@ def _classify_include(filename, include, is_system, include_state):
     # If we haven't encountered a primary header, then be lenient in checking.
     if not include_state.visited_primary_section():
         if target_base.find(include_base) != -1:
+            return _PRIMARY_HEADER
+        if include_base in ['{}Internal'.format(target_base), '{}Private'.format(target_base)]:
             return _PRIMARY_HEADER
 
     # If we already encountered a primary header, perform a strict comparison.
@@ -3636,13 +3725,15 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
         protector_name = ref_check.group('protector_name')
         protected_name = ref_check.group('protected_name')
         cap_protected_name = protected_name[0].upper() + protected_name[1:]
-        expected_protector_name = 'protected' + cap_protected_name
-        if protected_name == 'this' and protector_name != 'protectedThis':
-            error(line_number, 'readability/naming/protected', 4, "\'" + protector_name + "\' is incorrectly named. It should be named \'protectedThis\'.")
-        elif protector_name == expected_protector_name or protector_name == 'protector':
-            return
-        else:
-            error(line_number, 'readability/naming/protected', 4, "\'" + protector_name + "\' is incorrectly named. It should be named \'protector\' or \'" + expected_protector_name + "\'.")
+        # Ignore function declarations where cap_protected_name == protected_name indicates a type name.
+        if cap_protected_name != protected_name:
+            expected_protector_name = 'protected' + cap_protected_name
+            if protected_name == 'this' and protector_name != 'protectedThis':
+                error(line_number, 'readability/naming/protected', 4, "\'" + protector_name + "\' is incorrectly named. It should be named \'protectedThis\'.")
+            elif protector_name == expected_protector_name or protector_name == 'protector':
+                return
+            else:
+                error(line_number, 'readability/naming/protected', 4, "\'" + protector_name + "\' is incorrectly named. It should be named \'protector\' or \'" + expected_protector_name + "\'.")
 
     # Basically, a declaration is a type name followed by whitespaces
     # followed by an identifier. The type name can be complicated
@@ -4261,10 +4352,13 @@ class CppChecker(object):
         'runtime/threadsafe_fn',
         'runtime/unsigned',
         'runtime/virtual',
+        'runtime/wtf_checked_size',
         'runtime/wtf_optional',
         'runtime/wtf_make_unique',
         'runtime/wtf_move',
+        'runtime/wtf_never_destroyed',
         'security/assertion',
+        'security/missing_warn_unused_return',
         'security/printf',
         'security/temp_file',
         'softlink/framework',

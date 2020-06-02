@@ -73,13 +73,42 @@ namespace WebCore {
 
 static const char* packedDepthStencilExtensionName = "GL_OES_packed_depth_stencil";
 
+namespace {
+
+class ScopedResetBufferBinding {
+    WTF_MAKE_NONCOPYABLE(ScopedResetBufferBinding);
+public:
+    ScopedResetBufferBinding(bool shouldDoWork, GLenum bindingPointQuery, GLenum bindingPoint)
+        : m_bindingPointQuery(bindingPointQuery)
+        , m_bindingPoint(bindingPoint)
+    {
+        if (shouldDoWork)
+            gl::GetIntegerv(m_bindingPointQuery, &m_bindingValue);
+        if (m_bindingValue)
+            gl::BindBuffer(m_bindingPoint, 0);
+    }
+
+    ~ScopedResetBufferBinding()
+    {
+        if (m_bindingValue)
+            gl::BindBuffer(m_bindingPoint, m_bindingValue);
+    }
+
+private:
+    GLint m_bindingPointQuery { 0 };
+    GLint m_bindingPoint { 0 };
+    GLint m_bindingValue { 0 };
+};
+
+} // namespace anonymous
+
 void GraphicsContextGLOpenGL::releaseShaderCompiler()
 {
     makeContextCurrent();
     notImplemented();
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
 static void wipeAlphaChannelFromPixels(int width, int height, unsigned char* pixels)
 {
     // We can assume this doesn't overflow because the calling functions
@@ -116,7 +145,7 @@ void GraphicsContextGLOpenGL::readPixelsAndConvertToBGRAIfNecessary(int x, int y
         std::swap(pixels[i], pixels[i + 2]);
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
     if (!contextAttributes().alpha)
         wipeAlphaChannelFromPixels(width, height, pixels);
 #endif
@@ -191,7 +220,23 @@ bool GraphicsContextGLOpenGL::reshapeFBOs(const IntSize& size)
 #if PLATFORM(COCOA)
     allocateIOSurfaceBackingStore(IntSize(width, height));
     updateFramebufferTextureBackingStoreFromLayer();
-    gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GraphicsContextGL::IOSurfaceTextureTarget, m_texture, 0);
+    if (m_preserveDrawingBufferTexture) {
+        // The context requires the use of an intermediate texture in order to implement
+        // preserveDrawingBuffer:true without antialiasing.
+        GLint texture2DBinding = 0;
+        gl::GetIntegerv(GL_TEXTURE_BINDING_2D, &texture2DBinding);
+        gl::BindTexture(GL_TEXTURE_2D, m_preserveDrawingBufferTexture);
+        // Note that any pixel unpack buffer was unbound earlier, in reshape().
+        gl::TexImage2D(GL_TEXTURE_2D, 0, colorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+        // m_fbo is bound at this point.
+        gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_preserveDrawingBufferTexture, 0);
+        gl::BindTexture(GL_TEXTURE_2D, texture2DBinding);
+        // Attach m_texture to m_preserveDrawingBufferFBO for later blitting.
+        gl::BindFramebuffer(GL_FRAMEBUFFER, m_preserveDrawingBufferFBO);
+        gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GraphicsContextGL::IOSurfaceTextureTarget, m_texture, 0);
+        gl::BindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    } else
+        gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GraphicsContextGL::IOSurfaceTextureTarget, m_texture, 0);
 #elif PLATFORM(GTK)
     gl::BindTexture(GL_TEXTURE_RECTANGLE_ANGLE, m_texture);
     gl::TexImage2D(GL_TEXTURE_RECTANGLE_ANGLE, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
@@ -254,8 +299,13 @@ void GraphicsContextGLOpenGL::resolveMultisamplingIfNecessary(const IntRect& rec
     TemporaryANGLESetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryANGLESetting scopedDither(GL_DITHER, GL_FALSE);
 
-    GLint boundFrameBuffer;
-    gl::GetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFrameBuffer);
+    GLint boundFrameBuffer = 0;
+    GLint boundReadFrameBuffer = 0;
+    if (m_isForWebGL2) {
+        gl::GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &boundFrameBuffer);
+        gl::GetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &boundReadFrameBuffer);
+    } else
+        gl::GetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFrameBuffer);
     gl::BindFramebuffer(GL_READ_FRAMEBUFFER_ANGLE, m_multisampleFBO);
     gl::BindFramebuffer(GL_DRAW_FRAMEBUFFER_ANGLE, m_fbo);
 
@@ -267,7 +317,11 @@ void GraphicsContextGLOpenGL::resolveMultisamplingIfNecessary(const IntRect& rec
         resolveRect = IntRect(0, 0, m_currentWidth, m_currentHeight);
 
     gl::BlitFramebufferANGLE(resolveRect.x(), resolveRect.y(), resolveRect.maxX(), resolveRect.maxY(), resolveRect.x(), resolveRect.y(), resolveRect.maxX(), resolveRect.maxY(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    gl::BindFramebuffer(GL_FRAMEBUFFER, boundFrameBuffer);
+    if (m_isForWebGL2) {
+        gl::BindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFrameBuffer);
+        gl::BindFramebuffer(GL_READ_FRAMEBUFFER, boundReadFrameBuffer);
+    } else
+        gl::BindFramebuffer(GL_FRAMEBUFFER, boundFrameBuffer);
 }
 
 void GraphicsContextGLOpenGL::renderbufferStorage(GCGLenum target, GCGLenum internalformat, GCGLsizei width, GCGLsizei height)
@@ -311,33 +365,8 @@ void GraphicsContextGLOpenGL::getIntegerv(GCGLenum pname, GCGLint* value)
 
 void GraphicsContextGLOpenGL::getShaderPrecisionFormat(GCGLenum shaderType, GCGLenum precisionType, GCGLint* range, GCGLint* precision)
 {
-    UNUSED_PARAM(shaderType);
-    ASSERT(range);
-    ASSERT(precision);
-
     makeContextCurrent();
-
-    switch (precisionType) {
-    case GraphicsContextGL::LOW_INT:
-    case GraphicsContextGL::MEDIUM_INT:
-    case GraphicsContextGL::HIGH_INT:
-        // These values are for a 32-bit twos-complement integer format.
-        range[0] = 31;
-        range[1] = 30;
-        precision[0] = 0;
-        break;
-    case GraphicsContextGL::LOW_FLOAT:
-    case GraphicsContextGL::MEDIUM_FLOAT:
-    case GraphicsContextGL::HIGH_FLOAT:
-        // These values are for an IEEE single-precision floating-point format.
-        range[0] = 127;
-        range[1] = 127;
-        precision[0] = 23;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
+    gl::GetShaderPrecisionFormat(shaderType, precisionType, range, precision);
 }
 
 bool GraphicsContextGLOpenGL::texImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, const void* pixels)
@@ -387,7 +416,7 @@ void GraphicsContextGLOpenGL::readPixels(GCGLint x, GCGLint y, GCGLsizei width, 
     if (attrs.antialias && m_state.boundReadFBO == m_multisampleFBO)
         gl::BindFramebuffer(framebufferTarget, m_multisampleFBO);
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
     if (!attrs.alpha && (format == GraphicsContextGL::RGBA || format == GraphicsContextGL::BGRA) && (m_state.boundReadFBO == m_fbo || (attrs.antialias && m_state.boundReadFBO == m_multisampleFBO)))
         wipeAlphaChannelFromPixels(width, height, static_cast<unsigned char*>(data));
 #endif
@@ -420,6 +449,9 @@ void GraphicsContextGLOpenGL::validateDepthStencil(const char* packedDepthStenci
             extensions.ensureEnabled("GL_ANGLE_framebuffer_blit");
             extensions.ensureEnabled("GL_OES_rgb8_rgba8");
         }
+    } else if (attrs.preserveDrawingBuffer) {
+        // Needed for preserveDrawingBuffer:true support without antialiasing.
+        extensions.ensureEnabled("GL_ANGLE_framebuffer_blit");
     }
 }
 
@@ -508,6 +540,25 @@ void GraphicsContextGLOpenGL::prepareTexture()
     else
         gl::BindFramebuffer(GraphicsContextGL::FRAMEBUFFER, m_fbo);
 #else
+    if (m_preserveDrawingBufferTexture) {
+        // Blit m_preserveDrawingBufferTexture into m_texture.
+        gl::BindFramebuffer(GL_DRAW_FRAMEBUFFER_ANGLE, m_preserveDrawingBufferFBO);
+        gl::BindFramebuffer(GL_READ_FRAMEBUFFER_ANGLE, m_fbo);
+        gl::BlitFramebufferANGLE(0, 0, m_currentWidth, m_currentHeight, 0, 0, m_currentWidth, m_currentHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        // Note: it's been observed that BlitFramebuffer may destroy the alpha channel of the
+        // destination texture if it's an RGB texture bound to an IOSurface. This wasn't observable
+        // through the WebGL conformance tests, but it may be necessary to save and restore the
+        // color mask and clear color, and use the color mask to clear the alpha channel of the
+        // destination texture to 1.0.
+
+        // Restore user's framebuffer bindings.
+        if (m_isForWebGL2) {
+            gl::BindFramebuffer(GL_DRAW_FRAMEBUFFER, m_state.boundDrawFBO);
+            gl::BindFramebuffer(GL_READ_FRAMEBUFFER, m_state.boundReadFBO);
+        } else
+            gl::BindFramebuffer(GL_FRAMEBUFFER, m_state.boundDrawFBO);
+    }
     gl::Flush();
 #endif
 }
@@ -572,6 +623,7 @@ void GraphicsContextGLOpenGL::reshape(int width, int height)
 
     TemporaryANGLESetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryANGLESetting scopedDither(GL_DITHER, GL_FALSE);
+    ScopedResetBufferBinding scopedPixelUnpackBufferReset(m_isForWebGL2, GL_PIXEL_UNPACK_BUFFER_BINDING, GL_PIXEL_UNPACK_BUFFER);
 
     bool mustRestoreFBO = reshapeFBOs(IntSize(width, height));
     auto attrs = contextAttributes();
@@ -621,6 +673,13 @@ void GraphicsContextGLOpenGL::reshape(int width, int height)
         gl::BindFramebuffer(GraphicsContextGL::FRAMEBUFFER, m_state.boundDrawFBO);
         if (m_isForWebGL2 && m_state.boundDrawFBO != m_state.boundReadFBO)
             gl::BindFramebuffer(GraphicsContextGL::READ_FRAMEBUFFER, m_state.boundReadFBO);
+    }
+
+    auto error = gl::GetError();
+    if (error != GL_NO_ERROR) {
+        RELEASE_LOG(WebGL, "Fatal: OpenGL error during GraphicsContextGL buffer initialization (%d).", error);
+        forceContextLost();
+        return;
     }
 
     gl::Flush();
@@ -1829,6 +1888,8 @@ void GraphicsContextGLOpenGL::dispatchContextChangedNotification()
 void GraphicsContextGLOpenGL::texImage2DDirect(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, const void* pixels)
 {
     makeContextCurrent();
+    if (!m_isForWebGL2 && m_extensions)
+        internalformat = m_extensions->adjustWebGL1TextureInternalFormat(internalformat, format, type);
     gl::TexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
     m_state.textureSeedCount.add(m_state.currentBoundTexture());
 }

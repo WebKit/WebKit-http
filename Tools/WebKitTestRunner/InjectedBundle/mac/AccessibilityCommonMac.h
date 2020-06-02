@@ -28,8 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #import "AccessibilityUIElement.h"
 #import <JavaScriptCore/JSRetainPtr.h>
 
@@ -44,7 +42,9 @@
 @end
 
 namespace WTR {
-    
+
+Class webAccessibilityObjectWrapperClass();
+JSValueRef makeValueRefForValue(JSContextRef, id value);
 extern NSDictionary *searchPredicateParameterizedAttributeForSearchCriteria(JSContextRef, AccessibilityUIElement *startElement, bool isDirectionNext, unsigned resultsLimit, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
 
 };

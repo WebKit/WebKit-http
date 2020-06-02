@@ -28,10 +28,9 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGBasicBlockInlines.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -415,7 +414,8 @@ private:
             
         case ToPrimitive:
         case ToNumber:
-        case ToNumeric: {
+        case ToNumeric:
+        case CallNumberConstructor: {
             node->child1()->mergeFlags(flags);
             break;
         }

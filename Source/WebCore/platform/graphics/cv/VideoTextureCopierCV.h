@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if HAVE(CORE_VIDEO)
-
 #import "GraphicsContextGLOpenGL.h"
 #import <wtf/UnsafePointer.h>
 
@@ -62,19 +60,12 @@ private:
     bool initializeContextObjects();
     bool initializeUVContextObjects();
 
-#if HAVE(IOSURFACE)
     unsigned lastTextureSeed(GCGLuint texture)
     {
-        auto iterator = m_lastTextureSeed.find(texture);
-        return iterator == m_lastTextureSeed.end() ? 0 : iterator->value;
+        return m_lastTextureSeed.get(texture);
     }
-#endif
 
 #if USE(ANGLE)
-#if !HAVE(IOSURFACE)
-#error USE(ANGLE) requires HAVE(IOSURFACE)
-#endif // !HAVE(IOSURFACE)
-
     // Returns a handle which, if non-null, must be released via the
     // detach call below.
     void* attachIOSurfaceToTexture(GCGLenum target, GCGLenum internalFormat, GCGLsizei width, GCGLsizei height, GCGLenum type, IOSurfaceRef, GCGLuint plane);
@@ -105,16 +96,12 @@ private:
     GCGLint m_yTextureSizeUniformLocation { -1 };
     GCGLint m_uvTextureSizeUniformLocation { -1 };
 
-#if HAVE(IOSURFACE)
     bool m_lastFlipY { false };
     UnsafePointer<IOSurfaceRef> m_lastSurface;
     uint32_t m_lastSurfaceSeed { 0 };
 
     using TextureSeedMap = HashMap<GCGLuint, unsigned, WTF::IntHash<GCGLuint>, WTF::UnsignedWithZeroKeyHashTraits<GCGLuint>>;
     TextureSeedMap m_lastTextureSeed;
-#endif
 };
 
 }
-
-#endif // HAVE(CORE_VIDEO)

@@ -30,8 +30,6 @@
 #include "config.h"
 #include "ScriptValue.h"
 
-#include "APICast.h"
-#include "CatchScope.h"
 #include "JSCInlines.h"
 #include "JSLock.h"
 

@@ -33,7 +33,6 @@
 #import "FocusController.h"
 #import "Frame.h"
 #import "FrameSelection.h"
-#import "HTMLConverter.h"
 #import "HitTestResult.h"
 #import "Page.h"
 #import "Range.h"
@@ -69,11 +68,11 @@ static bool selectionContainsPosition(const VisiblePosition& position, const Vis
     if (!selection.isRange())
         return false;
 
-    RefPtr<Range> selectedRange = selection.toNormalizedRange();
+    auto selectedRange = selection.toNormalizedRange();
     if (!selectedRange)
         return false;
 
-    return selectedRange->contains(position);
+    return createLiveRange(*selectedRange)->contains(position);
 }
 
 std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeForSelection(const VisibleSelection& selection)
@@ -98,7 +97,7 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeForSelection(co
     NSDictionary *options = nil;
     tokenRange(plainText(paragraphRange), characterRange(paragraphRange, selectionRange), &options);
 
-    return { selectedRange, options };
+    return { createLiveRange(*selectedRange), options };
 }
 
 std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeAtHitTestResult(const HitTestResult& hitTestResult)
@@ -126,7 +125,7 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeAtHitTestResult
         return rangeForSelection(selection);
 
     VisibleSelection selectionAccountingForLineRules { position };
-    selectionAccountingForLineRules.expandUsingGranularity(WordGranularity);
+    selectionAccountingForLineRules.expandUsingGranularity(TextGranularity::WordGranularity);
     position = selectionAccountingForLineRules.start();
 
     // As context, we are going to use 250 characters of text before and after the point.

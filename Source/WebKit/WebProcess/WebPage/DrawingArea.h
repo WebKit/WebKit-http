@@ -79,6 +79,8 @@ public:
     virtual void setNeedsDisplayInRect(const WebCore::IntRect&) = 0;
     virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) = 0;
 
+    virtual void sendEnterAcceleratedCompositingModeIfNeeded() { }
+
     // FIXME: These should be pure virtual.
     virtual void forceRepaint() { }
     virtual bool forceRepaintAsync(CallbackID) { return false; }
@@ -114,9 +116,7 @@ public:
     virtual void scheduleRenderingUpdate() = 0;
     virtual void scheduleImmediateRenderingUpdate() = 0;
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
-#endif
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(WTF::Function<void ()>&&);
 
@@ -168,8 +168,10 @@ private:
 
     // Message handlers.
     // FIXME: These should be pure virtual.
-    virtual void updateBackingStoreState(uint64_t /*backingStoreStateID*/, bool /*respondImmediately*/, float /*deviceScaleFactor*/, const WebCore::IntSize& /*size*/, 
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    virtual void updateBackingStoreState(uint64_t /*backingStoreStateID*/, bool /*respondImmediately*/, float /*deviceScaleFactor*/, const WebCore::IntSize& /*size*/,
                                          const WebCore::IntSize& /*scrollOffset*/) { }
+#endif
     virtual void didUpdate() { }
 
 #if PLATFORM(COCOA)

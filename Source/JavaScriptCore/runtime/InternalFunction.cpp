@@ -23,10 +23,9 @@
 #include "config.h"
 #include "InternalFunction.h"
 
-#include "FunctionPrototype.h"
-#include "JSGlobalObject.h"
-#include "JSString.h"
+#include "JSBoundFunction.h"
 #include "JSCInlines.h"
+#include "ProxyObject.h"
 
 namespace JSC {
 
@@ -85,21 +84,26 @@ const String InternalFunction::displayName(VM& vm)
     return String();
 }
 
-CallType InternalFunction::getCallData(JSCell* cell, CallData& callData)
+CallData InternalFunction::getCallData(JSCell* cell)
 {
     auto* function = jsCast<InternalFunction*>(cell);
     ASSERT(function->m_functionForCall);
+
+    CallData callData;
+    callData.type = CallData::Type::Native;
     callData.native.function = function->m_functionForCall;
-    return CallType::Host;
+    return callData;
 }
 
-ConstructType InternalFunction::getConstructData(JSCell* cell, ConstructData& constructData)
+CallData InternalFunction::getConstructData(JSCell* cell)
 {
+    CallData constructData;
     auto* function = jsCast<InternalFunction*>(cell);
-    if (function->m_functionForConstruct == callHostFunctionAsConstructor)
-        return ConstructType::None;
-    constructData.native.function = function->m_functionForConstruct;
-    return ConstructType::Host;
+    if (function->m_functionForConstruct != callHostFunctionAsConstructor) {
+        constructData.type = CallData::Type::Native;
+        constructData.native.function = function->m_functionForConstruct;
+    }
+    return constructData;
 }
 
 const String InternalFunction::calculatedDisplayName(VM& vm)
@@ -112,7 +116,7 @@ const String InternalFunction::calculatedDisplayName(VM& vm)
     return name();
 }
 
-Structure* InternalFunction::createSubclassStructureSlow(JSGlobalObject* globalObject, JSValue newTarget, Structure* baseClass)
+Structure* InternalFunction::createSubclassStructure(JSGlobalObject* globalObject, JSObject* newTarget, Structure* baseClass)
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -135,7 +139,7 @@ Structure* InternalFunction::createSubclassStructureSlow(JSGlobalObject* globalO
         if (JSObject* prototype = jsDynamicCast<JSObject*>(vm, prototypeValue))
             return rareData->createInternalFunctionAllocationStructureFromBase(vm, baseGlobalObject, prototype, baseClass);
     } else {
-        JSValue prototypeValue = newTarget.get(globalObject, vm.propertyNames->prototype);
+        JSValue prototypeValue = newTarget->get(globalObject, vm.propertyNames->prototype);
         RETURN_IF_EXCEPTION(scope, nullptr);
         if (JSObject* prototype = jsDynamicCast<JSObject*>(vm, prototypeValue)) {
             // This only happens if someone Reflect.constructs our builtin constructor with another builtin constructor as the new.target.
@@ -145,6 +149,33 @@ Structure* InternalFunction::createSubclassStructureSlow(JSGlobalObject* globalO
     }
     
     return baseClass;
+}
+
+// https://tc39.es/ecma262/#sec-getfunctionrealm
+JSGlobalObject* getFunctionRealm(VM& vm, JSObject* object)
+{
+    ASSERT(object->isCallable(vm));
+
+    while (true) {
+        if (object->inherits<JSBoundFunction>(vm)) {
+            object = jsCast<JSBoundFunction*>(object)->targetFunction();
+            continue;
+        }
+
+        if (object->type() == ProxyObjectType) {
+            auto* proxy = jsCast<ProxyObject*>(object);
+            // Per step 4.a, a TypeError should be thrown for revoked Proxy, yet we skip it since:
+            // a) It is barely observable anyway: "prototype" lookup in createSubclassStructure() will throw for revoked Proxy.
+            // b) Throwing getFunctionRealm() will restrict calling it inline as an argument of createSubclassStructure().
+            // c) There is ongoing discussion on removing it: https://github.com/tc39/ecma262/issues/1798.
+            if (!proxy->isRevoked()) {
+                object = proxy->target();
+                continue;
+            }
+        }
+
+        return object->globalObject(vm);
+    }
 }
 
 

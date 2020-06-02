@@ -111,8 +111,15 @@ void WebInspectorClient::didResizeMainFrame(Frame*)
 
 void WebInspectorClient::highlight()
 {
-    if (!m_page->corePage()->settings().acceleratedCompositingEnabled())
+    if (!m_page->corePage()->settings().acceleratedCompositingEnabled()) {
+#if PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(PLAYSTATION)
+        // FIXME: It can be optimized by marking only highlighted rect dirty.
+        // setNeedsDisplay always makes whole rect dirty, and could lead to poor performance.
+        // https://bugs.webkit.org/show_bug.cgi?id=195933
+        m_page->drawingArea()->setNeedsDisplay();
+#endif
         return;
+    }
 
 #if !PLATFORM(IOS_FAMILY)
     if (!m_highlightOverlay) {
@@ -133,6 +140,16 @@ void WebInspectorClient::highlight()
 
 void WebInspectorClient::hideHighlight()
 {
+#if PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(PLAYSTATION)
+    if (!m_page->corePage()->settings().acceleratedCompositingEnabled()) {
+        // FIXME: It can be optimized by marking only highlighted rect dirty.
+        // setNeedsDisplay always makes whole rect dirty, and could lead to poor performance.
+        // https://bugs.webkit.org/show_bug.cgi?id=195933
+        m_page->drawingArea()->setNeedsDisplay();
+        return;
+    }
+#endif
+
 #if !PLATFORM(IOS_FAMILY)
     if (m_highlightOverlay)
         m_page->corePage()->pageOverlayController().uninstallPageOverlay(*m_highlightOverlay, PageOverlay::FadeMode::Fade);
@@ -160,7 +177,7 @@ void WebInspectorClient::showPaintRect(const FloatRect& rect)
     paintLayer->setAnchorPoint(FloatPoint3D());
     paintLayer->setPosition(rect.location());
     paintLayer->setSize(rect.size());
-    paintLayer->setBackgroundColor(Color(1.0f, 0.0f, 0.0f, 0.2f));
+    paintLayer->setBackgroundColor(makeSimpleColorFromFloats(1.0f, 0.0f, 0.0f, 0.2f));
 
     KeyframeValueList fadeKeyframes(AnimatedPropertyOpacity);
     fadeKeyframes.insert(makeUnique<FloatAnimationValue>(0, 1));
@@ -218,10 +235,10 @@ void WebInspectorClient::timelineRecordingChanged(bool active)
         m_page->inspector()->timelineRecordingChanged(active);
 }
 
-void WebInspectorClient::setMockCaptureDevicesEnabledOverride(Optional<bool> enabled)
+void WebInspectorClient::setDeveloperPreferenceOverride(WebCore::InspectorClient::DeveloperPreference developerPreference, Optional<bool> overrideValue)
 {
     if (m_page->inspector())
-        m_page->inspector()->setMockCaptureDevicesEnabledOverride(enabled);
+        m_page->inspector()->setDeveloperPreferenceOverride(developerPreference, overrideValue);
 }
 
 void WebInspectorClient::willMoveToPage(PageOverlay&, Page* page)

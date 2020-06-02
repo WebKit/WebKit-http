@@ -34,6 +34,7 @@
 #include "FrameDestructionObserver.h"
 #include "ImageBitmap.h"
 #include "PostMessageOptions.h"
+#include "ReducedResolutionSeconds.h"
 #include "ScrollToOptions.h"
 #include "ScrollTypes.h"
 #include "Supplementable.h"
@@ -140,8 +141,8 @@ public:
         virtual void willDetachGlobalObjectFromFrame() { }
     };
 
-    void registerObserver(Observer&);
-    void unregisterObserver(Observer&);
+    WEBCORE_EXPORT void registerObserver(Observer&);
+    WEBCORE_EXPORT void unregisterObserver(Observer&);
 
     void resetUnlessSuspendedForDocumentSuspension();
     void suspendForBackForwardCache();
@@ -349,7 +350,10 @@ public:
 #endif
 
     Performance& performance() const;
-    WEBCORE_EXPORT double nowTimestamp() const;
+    WEBCORE_EXPORT ReducedResolutionSeconds nowTimestamp() const;
+    void freezeNowTimestamp();
+    void unfreezeNowTimestamp();
+    ReducedResolutionSeconds frozenNowTimestamp() const;
 
 #if PLATFORM(IOS_FAMILY)
     void incrementScrollEventListenersCount();
@@ -468,6 +472,8 @@ private:
     RefPtr<CustomElementRegistry> m_customElementRegistry;
 
     mutable RefPtr<Performance> m_performance;
+
+    Optional<ReducedResolutionSeconds> m_frozenNowTimestamp;
 
     // For the purpose of tracking user activation, each Window W has a last activation timestamp. This is a number indicating the last time W got
     // an activation notification. It corresponds to a DOMHighResTimeStamp value except for two cases: positive infinity indicates that W has never

@@ -190,7 +190,7 @@ ReplacementFragment::ReplacementFragment(DocumentFragment* fragment, const Visib
         return;
     }
     
-    RefPtr<Range> range = VisibleSelection::selectionFromContentsOfNode(holder.get()).toNormalizedRange();
+    auto range = VisibleSelection::selectionFromContentsOfNode(holder.get()).toNormalizedRange();
     String text = range ? plainText(*range, static_cast<TextIteratorBehavior>(TextIteratorEmitsOriginalText | TextIteratorIgnoresStyleVisibility)) : emptyString();
 
     removeInterchangeNodes(holder.get());
@@ -203,11 +203,11 @@ ReplacementFragment::ReplacementFragment(DocumentFragment* fragment, const Visib
     if (text != event->text() || !editableRoot->hasRichlyEditableStyle()) {
         restoreAndRemoveTestRenderingNodesToFragment(holder.get());
 
-        RefPtr<Range> range = selection.toNormalizedRange();
+        auto range = selection.toNormalizedRange();
         if (!range)
             return;
 
-        m_fragment = createFragmentFromText(*range, event->text());
+        m_fragment = createFragmentFromText(createLiveRange(*range), event->text());
         if (!m_fragment->firstChild())
             return;
 
@@ -547,9 +547,7 @@ static bool fragmentNeedsColorTransformed(ReplacementFragment& fragment, const P
         if (!color || !color.value().isVisible() || color.value().isSemantic())
             return { };
 
-        double hue, saturation, lightness;
-        color.value().getHSL(hue, saturation, lightness);
-        return lightness;
+        return color.value().lightness();
     };
 
     const double lightnessDarkEnoughForText = 0.4;
@@ -1181,7 +1179,7 @@ void ReplaceSelectionCommand::doApply()
     
     // FIXME: Can this wait until after the operation has been performed?  There doesn't seem to be
     // any work performed after this that queries or uses the typing style.
-    frame().selection().clearTypingStyle();
+    document().selection().clearTypingStyle();
 
     // We don't want the destination to end up inside nodes that weren't selected.  To avoid that, we move the
     // position forward without changing the visible position so we're still at the same visible location, but

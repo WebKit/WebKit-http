@@ -126,7 +126,7 @@ ValueOrException ScriptController::evaluateInWorld(const ScriptSourceCode& sourc
     JSLockHolder lock(world.vm());
 
     const SourceCode& jsSourceCode = sourceCode.jsSourceCode();
-    String sourceURL = jsSourceCode.provider()->url();
+    String sourceURL = jsSourceCode.provider()->url().string();
 
     // evaluate code. Returns the JS return value or 0
     // if there was none, an error occurred or the type couldn't be converted.
@@ -240,7 +240,7 @@ JSC::JSValue ScriptController::evaluateModule(const URL& sourceURL, JSModuleReco
 
     Ref<Frame> protector(m_frame);
 
-    InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, jsSourceCode.firstLine().oneBasedInt(), jsSourceCode.startColumn().oneBasedInt());
+    InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL.string(), jsSourceCode.firstLine().oneBasedInt(), jsSourceCode.startColumn().oneBasedInt());
     auto returnValue = moduleRecord.evaluate(&lexicalGlobalObject);
     InspectorInstrumentation::didEvaluateScript(m_frame);
 
@@ -573,29 +573,34 @@ JSC::JSValue ScriptController::executeScriptIgnoringException(const String& scri
 
 JSC::JSValue ScriptController::executeScriptInWorldIgnoringException(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
-    auto result = executeScriptInWorld(world, RunJavaScriptParameters { script, false, WTF::nullopt, forceUserGesture });
+    auto result = executeScriptInWorld(world, { script, URL { }, false, WTF::nullopt, forceUserGesture });
     return result ? result.value() : JSC::JSValue { };
 }
 
 ValueOrException ScriptController::executeScriptInWorld(DOMWrapperWorld& world, RunJavaScriptParameters&& parameters)
 {
-    if (m_frame.loader().client().hasNavigatedAwayFromAppBoundDomain() && !m_frame.loader().client().needsInAppBrowserPrivacyQuirks()) {
+    if (m_frame.loader().client().shouldEnableInAppBrowserPrivacyProtections()) {
         if (auto* document = m_frame.document())
             document->addConsoleMessage(MessageSource::Security, MessageLevel::Warning, "Ignoring user script injection for non-app bound domain.");
         RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "executeScriptInWorld: Ignoring user script injection for non app-bound domain");
         return makeUnexpected(ExceptionDetails { "Ignoring user script injection for non-app bound domain"_s });
     }
+    m_frame.loader().client().notifyPageOfAppBoundBehavior();
 
     UserGestureIndicator gestureIndicator(parameters.forceUserGesture == ForceUserGesture::Yes ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
         return makeUnexpected(ExceptionDetails { "Cannot execute JavaScript in this document"_s });
 
-    switch (parameters.runAsAsyncFunction) {
-    case RunAsAsyncFunction::No: {
-        ScriptSourceCode sourceCode(parameters.source, URL(m_frame.document()->url()), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()));
-        return evaluateInWorld(sourceCode, world);
+    auto sourceURL = parameters.sourceURL;
+    if (!sourceURL.isValid()) {
+        // FIXME: This is gross, but when setTimeout() and setInterval() are passed JS strings, the thrown errors should use the frame document URL (according to WPT).
+        sourceURL = m_frame.document()->url();
     }
+
+    switch (parameters.runAsAsyncFunction) {
+    case RunAsAsyncFunction::No:
+        return evaluateInWorld({ parameters.source, WTFMove(sourceURL), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()) }, world);
     case RunAsAsyncFunction::Yes:
         return callInWorld(WTFMove(parameters), world);
     default:
@@ -639,10 +644,10 @@ ValueOrException ScriptController::callInWorld(RunJavaScriptParameters&& paramet
 
     functionStringBuilder.append("){", parameters.source, "})");
 
-    auto sourceCode = ScriptSourceCode { functionStringBuilder.toString(), URL(m_frame.document()->url()), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()) };
+    auto sourceCode = ScriptSourceCode { functionStringBuilder.toString(), WTFMove(parameters.sourceURL), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()) };
     const auto& jsSourceCode = sourceCode.jsSourceCode();
 
-    String sourceURL = jsSourceCode.provider()->url();
+    String sourceURL = jsSourceCode.provider()->url().string();
     const String* savedSourceURL = m_sourceURL;
     m_sourceURL = &sourceURL;
 
@@ -659,21 +664,20 @@ ValueOrException ScriptController::callInWorld(RunJavaScriptParameters&& paramet
         if (evaluationException)
             break;
 
-        if (!functionObject || !functionObject.isFunction(world.vm())) {
+        if (!functionObject || !functionObject.isCallable(world.vm())) {
             optionalDetails = { { "Unable to create JavaScript async function to call"_s } };
             break;
         }
 
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=205562
-        // Getting CallData/CallType shouldn't be required to call into JS.
-        CallData callData;
-        CallType callType = getCallData(world.vm(), functionObject, callData);
-        if (callType == CallType::None) {
+        // Getting CallData shouldn't be required to call into JS.
+        auto callData = getCallData(world.vm(), functionObject);
+        if (callData.type == CallData::Type::None) {
             optionalDetails = { { "Unable to prepare JavaScript async function to be called"_s } };
             break;
         }
 
-        returnValue = JSExecState::profiledCall(&globalObject, JSC::ProfilingReason::Other, functionObject, callType, callData, &proxy, markedArguments, evaluationException);
+        returnValue = JSExecState::profiledCall(&globalObject, JSC::ProfilingReason::Other, functionObject, callData, &proxy, markedArguments, evaluationException);
     } while (false);
 
     InspectorInstrumentation::didEvaluateScript(m_frame);
@@ -698,7 +702,7 @@ JSC::JSValue ScriptController::executeUserAgentScriptInWorldIgnoringException(DO
 }
 ValueOrException ScriptController::executeUserAgentScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
-    return executeUserAgentScriptInWorldInternal(world, { script, false, WTF::nullopt, forceUserGesture });
+    return executeUserAgentScriptInWorldInternal(world, { script, URL { }, false, WTF::nullopt, forceUserGesture });
 }
 
 ValueOrException ScriptController::executeUserAgentScriptInWorldInternal(DOMWrapperWorld& world, RunJavaScriptParameters&& parameters)
@@ -732,9 +736,8 @@ void ScriptController::executeAsynchronousUserAgentScriptInWorld(DOMWrapperWorld
         return;
     }
 
-    CallData callData;
-    CallType callType = asObject(thenFunction)->methodTable(world.vm())->getCallData(asObject(thenFunction), callData);
-    if (callType == CallType::None) {
+    auto callData = getCallData(world.vm(), thenFunction);
+    if (callData.type == CallData::Type::None) {
         resolveCompletionHandler(result);
         return;
     }
@@ -772,7 +775,7 @@ void ScriptController::executeAsynchronousUserAgentScriptInWorld(DOMWrapperWorld
     arguments.append(fulfillHandler);
     arguments.append(rejectHandler);
 
-    call(&globalObject, thenFunction, callType, callData, result.value(), arguments);
+    call(&globalObject, thenFunction, callData, result.value(), arguments);
 }
 
 Expected<void, ExceptionDetails> ScriptController::shouldAllowUserAgentScripts(Document& document) const
@@ -806,13 +809,13 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 
 bool ScriptController::executeIfJavaScriptURL(const URL& url, RefPtr<SecurityOrigin> requesterSecurityOrigin, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL)
 {
-    if (!WTF::protocolIsJavaScript(url))
+    if (!url.protocolIsJavaScript())
         return false;
 
     if (requesterSecurityOrigin && !requesterSecurityOrigin->canAccess(m_frame.document()->securityOrigin()))
         return true;
 
-    if (!m_frame.page() || !m_frame.document()->contentSecurityPolicy()->allowJavaScriptURLs(m_frame.document()->url(), eventHandlerPosition().m_line))
+    if (!m_frame.page() || !m_frame.document()->contentSecurityPolicy()->allowJavaScriptURLs(m_frame.document()->url().string(), eventHandlerPosition().m_line))
         return true;
 
     // We need to hold onto the Frame here because executing script can

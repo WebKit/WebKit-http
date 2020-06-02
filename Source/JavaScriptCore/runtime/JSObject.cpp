@@ -24,11 +24,9 @@
 #include "config.h"
 #include "JSObject.h"
 
-#include "ButterflyInlines.h"
+#include "ArrayConstructor.h"
 #include "CatchScope.h"
 #include "CustomGetterSetter.h"
-#include "DatePrototype.h"
-#include "ErrorConstructor.h"
 #include "Exception.h"
 #include "GCDeferralContextInlines.h"
 #include "GetterSetter.h"
@@ -37,18 +35,13 @@
 #include "JSCInlines.h"
 #include "JSCustomGetterSetterFunction.h"
 #include "JSFunction.h"
-#include "JSGlobalObject.h"
 #include "JSImmutableButterfly.h"
 #include "Lookup.h"
-#include "NativeErrorConstructor.h"
-#include "ObjectPrototype.h"
 #include "PropertyDescriptor.h"
 #include "PropertyNameArray.h"
 #include "ProxyObject.h"
-#include "SlotVisitorInlines.h"
 #include "TypeError.h"
 #include "VMInlines.h"
-#include <math.h>
 #include <wtf/Assertions.h>
 
 namespace JSC {
@@ -519,9 +512,16 @@ String JSObject::className(const JSObject* object, VM& vm)
 String JSObject::toStringName(const JSObject* object, JSGlobalObject* globalObject)
 {
     VM& vm = globalObject->vm();
-    const ClassInfo* info = object->classInfo(vm);
-    ASSERT(info);
-    return info->className;
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    bool objectIsArray = isArray(globalObject, object);
+    RETURN_IF_EXCEPTION(scope, String());
+    if (objectIsArray)
+        return "Array"_s;
+    if (TypeInfo::isArgumentsType(object->type()))
+        return "Arguments"_s;
+    if (const_cast<JSObject*>(object)->isCallable(vm))
+        return "Function"_s;
+    return "Object"_s;
 }
 
 String JSObject::calculatedClassName(JSObject* object)
@@ -767,10 +767,9 @@ bool ordinarySetSlow(JSGlobalObject* globalObject, JSObject* object, PropertyNam
     args.append(value);
     ASSERT(!args.hasOverflowed());
 
-    CallData callData;
-    CallType callType = setterObject->methodTable(vm)->getCallData(setterObject, callData);
+    auto callData = getCallData(vm, setterObject);
     scope.release();
-    call(globalObject, setterObject, callType, callData, receiver, args);
+    call(globalObject, setterObject, callData, receiver, args);
 
     // 9.1.9.1-9 Return true.
     return true;
@@ -810,7 +809,7 @@ bool JSObject::putInlineSlow(JSGlobalObject* globalObject, PropertyName property
                 if (!this->structure(vm)->isDictionary())
                     slot.setCacheableSetter(obj, offset);
 
-                bool result = callSetter(globalObject, slot.thisValue(), gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
+                bool result = callSetter(globalObject, slot.thisValue(), gs, value, slot.isStrictMode() ? ECMAMode::strict() : ECMAMode::sloppy());
                 RETURN_IF_EXCEPTION(scope, false);
                 return result;
             }
@@ -1697,7 +1696,7 @@ ArrayStorage* JSObject::ensureArrayStorageSlow(VM& vm)
         
     default:
         RELEASE_ASSERT_NOT_REACHED();
-        return 0;
+        return nullptr;
     }
 }
 
@@ -1730,7 +1729,7 @@ ArrayStorage* JSObject::ensureArrayStorageExistsAndEnterDictionaryIndexingMode(V
         
     default:
         CRASH();
-        return 0;
+        return nullptr;
     }
 }
 
@@ -1818,7 +1817,7 @@ bool JSObject::setPrototypeWithCycleCheck(VM& vm, JSGlobalObject* globalObject, 
         return typeError(globalObject, scope, shouldThrowIfCantSet, "Cannot set prototype of immutable prototype object"_s);
     }
 
-    ASSERT(methodTable(vm)->toThis(this, globalObject, NotStrictMode) == this);
+    ASSERT(methodTable(vm)->toThis(this, globalObject, ECMAMode::sloppy()) == this);
 
     if (this->getPrototypeDirect(vm) == prototype)
         return true;
@@ -1959,6 +1958,14 @@ bool JSObject::hasProperty(JSGlobalObject* globalObject, unsigned propertyName) 
     return hasPropertyGeneric(globalObject, propertyName, PropertySlot::InternalMethodType::HasProperty);
 }
 
+bool JSObject::hasProperty(JSGlobalObject* globalObject, uint64_t propertyName) const
+{
+    if (LIKELY(propertyName <= MAX_ARRAY_INDEX))
+        return hasProperty(globalObject, static_cast<uint32_t>(propertyName));
+    ASSERT(propertyName <= maxSafeInteger());
+    return hasProperty(globalObject, Identifier::from(globalObject->vm(), propertyName));
+}
+
 bool JSObject::hasPropertyGeneric(JSGlobalObject* globalObject, PropertyName propertyName, PropertySlot::InternalMethodType internalMethodType) const
 {
     PropertySlot slot(this, internalMethodType);
@@ -2007,16 +2014,11 @@ bool JSObject::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, Proper
 
         PropertyOffset offset = invalidOffset;
         if (structure->isUncacheableDictionary())
-            offset = structure->removePropertyWithoutTransition(vm, propertyName, [](const GCSafeConcurrentJSCellLocker&, PropertyOffset, PropertyOffset) { });
+            offset = structure->removePropertyWithoutTransition(vm, propertyName, [] (const GCSafeConcurrentJSLocker&, PropertyOffset, PropertyOffset) { });
         else {
             structure = Structure::removePropertyTransition(vm, structure, propertyName, offset, &deferredWatchpointFire);
             slot.setHit(offset);
-            if (!structure->outOfLineCapacity() && thisObject->structure(vm)->outOfLineCapacity() && !structure->hasIndexingHeader(thisObject)) {
-                ASSERT(thisObject->m_butterfly);
-                thisObject->nukeStructureAndSetButterfly(vm, thisObject->structureID(), nullptr);
-                offset = invalidOffset;
-                ASSERT(structure->maxOffset() == invalidOffset);
-            }
+            ASSERT(structure->outOfLineCapacity() || !thisObject->structure(vm)->outOfLineCapacity());
             thisObject->setStructure(vm, structure);
         }
 
@@ -2122,9 +2124,8 @@ static ALWAYS_INLINE JSValue callToPrimitiveFunction(JSGlobalObject* globalObjec
     RETURN_IF_EXCEPTION(scope, scope.exception());
     if (function.isUndefinedOrNull() && mode == TypeHintMode::TakesHint)
         return JSValue();
-    CallData callData;
-    CallType callType = getCallData(vm, function, callData);
-    if (callType == CallType::None) {
+    auto callData = getCallData(vm, function);
+    if (callData.type == CallData::Type::None) {
         if (mode == TypeHintMode::TakesHint)
             throwTypeError(globalObject, scope, "Symbol.toPrimitive is not a function, undefined, or null"_s);
         return scope.exception();
@@ -2148,7 +2149,7 @@ static ALWAYS_INLINE JSValue callToPrimitiveFunction(JSGlobalObject* globalObjec
     }
     ASSERT(!callArgs.hasOverflowed());
 
-    JSValue result = call(globalObject, function, callType, callData, const_cast<JSObject*>(object), callArgs);
+    JSValue result = call(globalObject, function, callData, const_cast<JSObject*>(object), callArgs);
     RETURN_IF_EXCEPTION(scope, scope.exception());
     ASSERT(!result.isGetterSetter());
     if (result.isObject())
@@ -2245,9 +2246,8 @@ bool JSObject::hasInstance(JSGlobalObject* globalObject, JSValue value, JSValue 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (!hasInstanceValue.isUndefinedOrNull() && hasInstanceValue != globalObject->functionProtoHasInstanceSymbolFunction()) {
-        CallData callData;
-        CallType callType = JSC::getCallData(vm, hasInstanceValue, callData);
-        if (callType == CallType::None) {
+        auto callData = JSC::getCallData(vm, hasInstanceValue);
+        if (callData.type == CallData::Type::None) {
             throwException(globalObject, scope, createInvalidInstanceofParameterErrorHasInstanceValueNotFunction(globalObject, this));
             return false;
         }
@@ -2255,7 +2255,7 @@ bool JSObject::hasInstance(JSGlobalObject* globalObject, JSValue value, JSValue 
         MarkedArgumentBuffer args;
         args.append(value);
         ASSERT(!args.hasOverflowed());
-        JSValue result = call(globalObject, hasInstanceValue, callType, callData, this, args);
+        JSValue result = call(globalObject, hasInstanceValue, callData, this, args);
         RETURN_IF_EXCEPTION(scope, false);
         return result.toBoolean(globalObject);
     }
@@ -3484,44 +3484,23 @@ bool JSObject::getOwnPropertyDescriptor(JSGlobalObject* globalObject, PropertyNa
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    JSC::PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
 
     bool result = methodTable(vm)->getOwnPropertySlot(this, globalObject, propertyName, slot);
     EXCEPTION_ASSERT(!scope.exception() || !result);
     if (!result)
         return false;
 
-
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=200560
-    // This breaks the assumption that getOwnPropertySlot should return "own" property.
-    // We should fix DebuggerScope, ProxyObject etc. to remove this.
-    //
-    // DebuggerScope::getOwnPropertySlot() (and possibly others) may return attributes from the prototype chain
-    // but getOwnPropertyDescriptor() should only work for 'own' properties so we exit early if we detect that
-    // the property is not an own property.
-    if (slot.slotBase() != this && slot.slotBase()) {
-        JSProxy* jsProxy = jsDynamicCast<JSProxy*>(vm, this);
-        if (!jsProxy || jsProxy->target() != slot.slotBase()) {
-            // Try ProxyObject.
-            ProxyObject* proxyObject = jsDynamicCast<ProxyObject*>(vm, this);
-            if (!proxyObject || proxyObject->target() != slot.slotBase())
-                return false;
-        }
-    }
-
     if (slot.isAccessor())
         descriptor.setAccessorDescriptor(slot.getterSetter(), slot.attributes());
     else if (slot.attributes() & PropertyAttribute::CustomAccessor) {
-        descriptor.setCustomDescriptor(slot.attributes());
-
-        JSObject* thisObject = this;
-        if (auto* proxy = jsDynamicCast<JSProxy*>(vm, this))
-            thisObject = proxy->target();
-
         CustomGetterSetter* getterSetter;
         if (slot.isCustomAccessor())
             getterSetter = slot.customGetterSetter();
         else {
+            ASSERT(slot.slotBase());
+            JSObject* thisObject = slot.slotBase();
+
             JSValue maybeGetterSetter = thisObject->getDirect(vm, propertyName);
             if (!maybeGetterSetter) {
                 thisObject->reifyAllStaticProperties(globalObject);
@@ -3535,6 +3514,7 @@ bool JSObject::getOwnPropertyDescriptor(JSGlobalObject* globalObject, PropertyNa
         if (!getterSetter)
             return false;
 
+        descriptor.setCustomDescriptor(slot.attributes());
         if (getterSetter->getter())
             descriptor.setGetter(getCustomGetterSetterFunctionForGetterSetter(globalObject, propertyName, getterSetter, JSCustomGetterSetterFunction::Type::Getter));
         if (getterSetter->setter())
@@ -3776,7 +3756,7 @@ void JSObject::convertToDictionary(VM& vm)
         vm, Structure::toCacheableDictionaryTransition(vm, structure(vm), &deferredWatchpointFire));
 }
 
-void JSObject::shiftButterflyAfterFlattening(const GCSafeConcurrentJSCellLocker&, VM& vm, Structure* structure, size_t outOfLineCapacityAfter)
+void JSObject::shiftButterflyAfterFlattening(const GCSafeConcurrentJSLocker&, VM& vm, Structure* structure, size_t outOfLineCapacityAfter)
 {
     // This could interleave visitChildren because some old structure could have been a non
     // dictionary structure. We have to be crazy careful. But, we are guaranteed to be holding
@@ -3894,7 +3874,7 @@ void JSObject::getGenericPropertyNames(JSObject* object, JSGlobalObject* globalO
 
 // Implements GetMethod(O, P) in section 7.3.9 of the spec.
 // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-getmethod
-JSValue JSObject::getMethod(JSGlobalObject* globalObject, CallData& callData, CallType& callType, const Identifier& ident, const String& errorMessage)
+JSValue JSObject::getMethod(JSGlobalObject* globalObject, CallData& callData, const Identifier& ident, const String& errorMessage)
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -3910,8 +3890,8 @@ JSValue JSObject::getMethod(JSGlobalObject* globalObject, CallData& callData, Ca
         return jsUndefined();
     }
 
-    callType = method.asCell()->methodTable(vm)->getCallData(method.asCell(), callData);
-    if (callType == CallType::None) {
+    callData = JSC::getCallData(vm, method);
+    if (callData.type == CallData::Type::None) {
         throwVMTypeError(globalObject, scope, errorMessage);
         return jsUndefined();
     }

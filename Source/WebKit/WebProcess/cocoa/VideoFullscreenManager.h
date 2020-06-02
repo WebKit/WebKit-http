@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 #include "Connection.h"
 #include "MessageReceiver.h"
@@ -115,7 +115,7 @@ public:
     
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    // Interface to ChromeClient
+    // Interface to WebChromeClient
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) const;
     bool supportsVideoFullscreenStandby() const;
     void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool standby);
@@ -166,5 +166,5 @@ protected:
     
 } // namespace WebKit
 
-#endif // PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#endif // ENABLE(VIDEO_PRESENTATION_MODE)
 

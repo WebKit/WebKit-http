@@ -18,6 +18,7 @@ list(APPEND WTF_PUBLIC_HEADERS
     cocoa/NSURLExtras.h
     cocoa/RuntimeApplicationChecksCocoa.h
     cocoa/SoftLinking.h
+    cocoa/VectorCocoa.h
 
     darwin/WeakLinking.h
 
@@ -71,7 +72,6 @@ list(APPEND WTF_SOURCES
     cocoa/URLCocoa.mm
     cocoa/WorkQueueCocoa.cpp
 
-    mac/DeprecatedSymbolsUsedBySafari.mm
     mac/FileSystemMac.mm
     mac/SchedulePairMac.mm
 

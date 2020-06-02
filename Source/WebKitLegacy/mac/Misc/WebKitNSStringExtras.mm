@@ -69,7 +69,7 @@ static bool canUseFastRenderer(const UniChar* buffer, unsigned length)
 
     if (canUseFastRenderer(buffer.data(), length)) {
         FontCascade webCoreFont(FontPlatformData((__bridge CTFontRef)font, [font pointSize]));
-        TextRun run(StringView(buffer.data(), length));
+        TextRun run(StringView(reinterpret_cast<const UChar*>(buffer.data()), length));
 
         // The following is a half-assed attempt to match AppKit's rounding rules for drawAtPoint.
         // If you change it, be sure to test all the text drawn this way in Safari, including
@@ -77,9 +77,7 @@ static bool canUseFastRenderer(const UniChar* buffer, unsigned length)
         point.y = CGCeiling(point.y);
 
         NSGraphicsContext *nsContext = [NSGraphicsContext currentContext];
-        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-        CGContextRef cgContext = static_cast<CGContextRef>([nsContext graphicsPort]);
-        ALLOW_DEPRECATED_DECLARATIONS_END
+        CGContextRef cgContext = [nsContext CGContext];
         GraphicsContext graphicsContext { cgContext };
 
         // WebCore requires a flipped graphics context.
@@ -99,7 +97,7 @@ static bool canUseFastRenderer(const UniChar* buffer, unsigned length)
         else
             point.y += [font descender];
 
-        [self drawAtPoint:point withAttributes:[NSDictionary dictionaryWithObjectsAndKeys:font, NSFontAttributeName, textColor, NSForegroundColorAttributeName, nil]];
+        [self drawAtPoint:point withAttributes:@{ NSFontAttributeName: font, NSForegroundColorAttributeName: textColor }];
     }
 }
 
@@ -111,11 +109,11 @@ static bool canUseFastRenderer(const UniChar* buffer, unsigned length)
 
     if (canUseFastRenderer(buffer.data(), length)) {
         FontCascade webCoreFont(FontPlatformData((__bridge CTFontRef)font, [font pointSize]));
-        TextRun run(StringView(buffer.data(), length));
+        TextRun run(StringView(reinterpret_cast<const UChar*>(buffer.data()), length));
         return webCoreFont.width(run);
     }
 
-    return [self sizeWithAttributes:[NSDictionary dictionaryWithObjectsAndKeys:font, NSFontAttributeName, nil]].width;
+    return [self sizeWithAttributes:@{ NSFontAttributeName: font }].width;
 }
 
 #endif // PLATFORM(MAC)

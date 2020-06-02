@@ -27,11 +27,9 @@
 #include "JSArrayBufferView.h"
 
 #include "GenericTypedArrayViewInlines.h"
-#include "JSArrayBuffer.h"
 #include "JSCInlines.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSTypedArrays.h"
-#include "TypeError.h"
 #include "TypedArrayController.h"
 #include "TypedArrays.h"
 #include <wtf/Gigacage.h>
@@ -41,11 +39,6 @@ namespace JSC {
 const ClassInfo JSArrayBufferView::s_info = {
     "ArrayBufferView", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArrayBufferView)
 };
-
-String JSArrayBufferView::toStringName(const JSObject*, JSGlobalObject*)
-{
-    return "Object"_s;
-}
 
 JSArrayBufferView::ConstructionContext::ConstructionContext(
     Structure* structure, uint32_t length, void* vector)
@@ -62,9 +55,9 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
 JSArrayBufferView::ConstructionContext::ConstructionContext(
     VM& vm, Structure* structure, uint32_t length, uint32_t elementSize,
     InitializationMode mode)
-    : m_structure(0)
+    : m_structure(nullptr)
     , m_length(length)
-    , m_butterfly(0)
+    , m_butterfly(nullptr)
 {
     if (length <= fastSizeLimit) {
         // Attempt GC allocation.
@@ -115,7 +108,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
     m_vector = VectorType(static_cast<uint8_t*>(arrayBuffer->data()) + byteOffset, length);
     IndexingHeader indexingHeader;
     indexingHeader.setArrayBuffer(arrayBuffer.get());
-    m_butterfly = Butterfly::create(vm, 0, 0, 0, true, indexingHeader, 0);
+    m_butterfly = Butterfly::create(vm, nullptr, 0, 0, true, indexingHeader, 0);
 }
 
 JSArrayBufferView::ConstructionContext::ConstructionContext(
@@ -124,7 +117,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
     : m_structure(structure)
     , m_length(length)
     , m_mode(DataViewMode)
-    , m_butterfly(0)
+    , m_butterfly(nullptr)
 {
     ASSERT(arrayBuffer->data() == removeArrayPtrTag(arrayBuffer->data()));
     m_vector = VectorType(static_cast<uint8_t*>(arrayBuffer->data()) + byteOffset, length);

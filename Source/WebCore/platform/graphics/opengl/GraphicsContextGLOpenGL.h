@@ -151,6 +151,17 @@ public:
     // Helpers for texture uploading and pixel readback.
     //
 
+    struct PixelStoreParams final {
+        PixelStoreParams();
+
+        GCGLint alignment;
+        GCGLint rowLength;
+        GCGLint imageHeight;
+        GCGLint skipPixels;
+        GCGLint skipRows;
+        GCGLint skipImages;
+    };
+
     // Computes the components per pixel and bytes per component
     // for the given format and type combination. Returns false if
     // either was an invalid enum.
@@ -168,17 +179,25 @@ public:
         GCGLenum type,
         GCGLsizei width,
         GCGLsizei height,
-        GCGLint alignment,
+        GCGLsizei depth,
+        const PixelStoreParams&,
         unsigned* imageSizeInBytes,
-        unsigned* paddingInBytes);
+        unsigned* paddingInBytes,
+        unsigned* skipSizeInBytes);
 
+#if !USE(ANGLE)
     static bool possibleFormatAndTypeForInternalFormat(GCGLenum internalFormat, GCGLenum& format, GCGLenum& type);
+#endif // !USE(ANGLE)
 
     // Extracts the contents of the given ImageData into the passed Vector,
     // packing the pixel data according to the given format and type,
     // and obeying the flipY and premultiplyAlpha flags. Returns true
     // upon success.
     static bool extractImageData(ImageData*,
+        DataFormat,
+        const IntRect& sourceImageSubRectangle,
+        int depth,
+        int unpackImageHeight,
         GCGLenum format,
         GCGLenum type,
         bool flipY,
@@ -188,11 +207,11 @@ public:
     // Helper function which extracts the user-supplied texture
     // data, applying the flipY and premultiplyAlpha parameters.
     // If the data is not tightly packed according to the passed
-    // unpackAlignment, the output data will be tightly packed.
+    // unpackParams, the output data will be tightly packed.
     // Returns true if successful, false if any error occurred.
     static bool extractTextureData(unsigned width, unsigned height,
         GCGLenum format, GCGLenum type,
-        unsigned unpackAlignment,
+        const PixelStoreParams& unpackParams,
         bool flipY, bool premultiplyAlpha,
         const void* pixels,
         Vector<uint8_t>& data);
@@ -592,7 +611,7 @@ public:
     // Packs the contents of the given Image which is passed in |pixels| into the passed Vector
     // according to the given format and type, and obeying the flipY and AlphaOp flags.
     // Returns true upon success.
-    static bool packImageData(Image*, const void* pixels, GCGLenum format, GCGLenum type, bool flipY, AlphaOp, DataFormat sourceFormat, unsigned width, unsigned height, unsigned sourceUnpackAlignment, Vector<uint8_t>& data);
+    static bool packImageData(Image*, const void* pixels, GCGLenum format, GCGLenum type, bool flipY, AlphaOp, DataFormat sourceFormat, unsigned sourceImageWidth, unsigned sourceImageHeight, const IntRect& sourceImageSubRectangle, int depth, unsigned sourceUnpackAlignment, int unpackImageHeight, Vector<uint8_t>& data);
 
     class ImageExtractor {
     public:
@@ -647,6 +666,8 @@ public:
     void screenDidChange(PlatformDisplayID);
 #endif
 
+    void prepareForDisplay();
+
 private:
     GraphicsContextGLOpenGL(GraphicsContextGLAttributes, HostWindow*, Destination = Destination::Offscreen, GraphicsContextGLOpenGL* sharedContext = nullptr);
 
@@ -655,7 +676,7 @@ private:
     // A sourceUnpackAlignment of zero indicates that the source
     // data is tightly packed. Non-zero values may take a slow path.
     // Destination data will have no gaps between rows.
-    static bool packPixels(const uint8_t* sourceData, DataFormat sourceDataFormat, unsigned width, unsigned height, unsigned sourceUnpackAlignment, unsigned destinationFormat, unsigned destinationType, AlphaOp, void* destinationData, bool flipY);
+    static bool packPixels(const uint8_t* sourceData, DataFormat sourceDataFormat, unsigned sourceDataWidth, unsigned sourceDataHeight, const IntRect& sourceDataSubRectangle, int depth, unsigned sourceUnpackAlignment, int unpackImageHeight, unsigned destinationFormat, unsigned destinationType, AlphaOp, void* destinationData, bool flipY);
 
     // Take into account the user's requested context creation attributes,
     // in particular stencil and antialias, and determine which could or
@@ -852,6 +873,13 @@ private:
     GCGLuint m_multisampleFBO { 0 };
     GCGLuint m_multisampleDepthStencilBuffer { 0 };
     GCGLuint m_multisampleColorBuffer { 0 };
+
+#if USE(ANGLE)
+    // For preserveDrawingBuffer:true without multisampling.
+    GCGLuint m_preserveDrawingBufferTexture { 0 };
+    // Attaches m_texture when m_preserveDrawingBufferTexture is non-zero.
+    GCGLuint m_preserveDrawingBufferFBO { 0 };
+#endif
 
     // Errors raised by synthesizeGLError().
     ListHashSet<GCGLenum> m_syntheticErrors;

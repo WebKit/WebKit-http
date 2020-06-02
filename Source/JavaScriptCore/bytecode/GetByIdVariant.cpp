@@ -28,8 +28,7 @@
 
 #include "CacheableIdentifierInlines.h"
 #include "CallLinkStatus.h"
-#include "JSCInlines.h"
-#include <wtf/ListDump.h>
+#include "JSFunctionInlines.h"
 
 namespace JSC {
 
@@ -182,7 +181,7 @@ bool GetByIdVariant::finalize(VM& vm)
 
 void GetByIdVariant::dump(PrintStream& out) const
 {
-    dumpInContext(out, 0);
+    dumpInContext(out, nullptr);
 }
 
 void GetByIdVariant::dumpInContext(PrintStream& out, DumpContext* context) const

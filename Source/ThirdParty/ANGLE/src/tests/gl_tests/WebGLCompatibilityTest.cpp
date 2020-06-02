@@ -215,18 +215,19 @@ void main()
             0, 0, GLColor32F(floatData[0], floatData[1], floatData[2], floatData[3]), 1.0f);
     }
 
-    void TestExtFloatBlend(bool shouldBlend)
+    void TestExtFloatBlend(GLenum internalFormat, GLenum type, bool shouldBlend)
     {
         constexpr char kVS[] =
             R"(void main()
 {
+    gl_PointSize = 1.0;
     gl_Position = vec4(0, 0, 0, 1);
 })";
 
         constexpr char kFS[] =
             R"(void main()
 {
-    gl_FragColor = vec4(0, 1, 0, 1);
+    gl_FragColor = vec4(0.5, 0, 0, 0);
 })";
 
         ANGLE_GL_PROGRAM(program, kVS, kFS);
@@ -234,7 +235,7 @@ void main()
 
         GLTexture texture;
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1, 1, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, 1, 1, 0, GL_RGBA, type, nullptr);
         EXPECT_GL_NO_ERROR();
 
         GLFramebuffer fbo;
@@ -242,20 +243,37 @@ void main()
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
         ASSERT_EGLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(GL_FRAMEBUFFER));
 
+        glClearColor(1, 0, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        EXPECT_PIXEL_COLOR32F_NEAR(0, 0, GLColor32F(1, 0, 1, 1), 0.001f);
+
         glDisable(GL_BLEND);
         glDrawArrays(GL_POINTS, 0, 1);
         EXPECT_GL_NO_ERROR();
 
         glEnable(GL_BLEND);
+        glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+        glBlendColor(10, 1, 1, 1);
+        glViewport(0, 0, 1, 1);
         glDrawArrays(GL_POINTS, 0, 1);
-        if (shouldBlend)
-        {
-            EXPECT_GL_NO_ERROR();
-        }
-        else
+        if (!shouldBlend)
         {
             EXPECT_GL_ERROR(GL_INVALID_OPERATION);
+            return;
         }
+        EXPECT_GL_NO_ERROR();
+
+        if (!IsOpenGLES())
+        {
+            // GLES test machines will need a workaround.
+            EXPECT_PIXEL_COLOR32F_NEAR(0, 0, GLColor32F(5, 0, 0, 0), 0.001f);
+        }
+
+        // Check sure that non-float attachments clamp BLEND_COLOR.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glDrawArrays(GL_POINTS, 0, 1);
+
+        EXPECT_PIXEL_COLOR_NEAR(0, 0, GLColor(0x80, 0, 0, 0), 1);
     }
 
     void TestDifferentStencilMaskAndRef(GLenum errIfMismatch);
@@ -1918,6 +1936,159 @@ TEST_P(WebGLCompatibilityTest, BlendWithConstantColor)
             CheckBlendFunctions(src, dst);
         }
     }
+
+    // Ensure the same semantics for indexed blendFunc
+    if (IsGLExtensionRequestable("GL_OES_draw_buffers_indexed"))
+    {
+        glRequestExtensionANGLE("GL_OES_draw_buffers_indexed");
+        EXPECT_GL_NO_ERROR();
+        EXPECT_TRUE(IsGLExtensionEnabled("GL_OES_draw_buffers_indexed"));
+
+        for (GLenum src : srcFunc)
+        {
+            for (GLenum dst : dstFunc)
+            {
+                glBlendFunciOES(0, src, dst);
+                CheckBlendFunctions(src, dst);
+                glBlendFuncSeparateiOES(0, src, dst, GL_ONE, GL_ONE);
+                CheckBlendFunctions(src, dst);
+            }
+        }
+    }
+}
+
+// Test draw state validation and invalidation wrt indexed blendFunc.
+TEST_P(WebGLCompatibilityTest, IndexedBlendWithConstantColorInvalidation)
+{
+    ANGLE_SKIP_TEST_IF(getClientMajorVersion() < 3);
+    ANGLE_SKIP_TEST_IF(!IsGLExtensionRequestable("GL_OES_draw_buffers_indexed"));
+
+    glRequestExtensionANGLE("GL_OES_draw_buffers_indexed");
+    EXPECT_GL_NO_ERROR();
+    EXPECT_TRUE(IsGLExtensionEnabled("GL_OES_draw_buffers_indexed"));
+
+    constexpr char kVS[] =
+        R"(#version 300 es
+void main()
+{
+    gl_PointSize = 1.0;
+    gl_Position = vec4(0, 0, 0, 1);
+})";
+
+    constexpr char kFS[] =
+        R"(#version 300 es
+precision lowp float;
+layout(location = 0) out vec4 o_color0;
+layout(location = 1) out vec4 o_color1;
+void main()
+{
+    o_color0 = vec4(1, 0, 0, 1);
+    o_color1 = vec4(0, 1, 0, 1);
+})";
+
+    ANGLE_GL_PROGRAM(program, kVS, kFS);
+    glUseProgram(program);
+
+    glDisable(GL_BLEND);
+    glEnableiOES(GL_BLEND, 0);
+    glEnableiOES(GL_BLEND, 1);
+
+    GLTexture texture1;
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    EXPECT_GL_NO_ERROR();
+
+    GLTexture texture2;
+    glBindTexture(GL_TEXTURE_2D, texture2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    EXPECT_GL_NO_ERROR();
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture1, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2, 0);
+    ASSERT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(GL_FRAMEBUFFER));
+
+    GLenum drawbuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, drawbuffers);
+
+    glDrawArrays(GL_POINTS, 0, 1);
+    EXPECT_GL_NO_ERROR();
+
+    // Force-invalidate draw call
+    glBlendFuncSeparateiOES(0, GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, GL_CONSTANT_ALPHA,
+                            GL_CONSTANT_ALPHA);
+    EXPECT_GL_NO_ERROR();
+
+    glBlendFuncSeparateiOES(1, GL_CONSTANT_ALPHA, GL_CONSTANT_ALPHA, GL_CONSTANT_COLOR,
+                            GL_CONSTANT_COLOR);
+    EXPECT_GL_NO_ERROR();
+
+    glDrawArrays(GL_POINTS, 0, 1);
+    EXPECT_GL_ERROR(GL_INVALID_OPERATION);
+}
+
+// Test getIndexedParameter wrt GL_OES_draw_buffers_indexed.
+TEST_P(WebGLCompatibilityTest, DrawBuffersIndexedGetIndexedParameter)
+{
+    ANGLE_SKIP_TEST_IF(getClientMajorVersion() < 3);
+    ANGLE_SKIP_TEST_IF(!IsGLExtensionRequestable("GL_OES_draw_buffers_indexed"));
+
+    GLint value;
+    GLboolean data[4];
+
+    glGetIntegeri_v(GL_BLEND_EQUATION_RGB, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetIntegeri_v(GL_BLEND_SRC_RGB, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetIntegeri_v(GL_BLEND_SRC_ALPHA, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetIntegeri_v(GL_BLEND_DST_RGB, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetIntegeri_v(GL_BLEND_DST_ALPHA, 0, &value);
+    EXPECT_GL_ERROR(GL_INVALID_ENUM);
+    glGetBooleani_v(GL_COLOR_WRITEMASK, 0, data);
+    EXPECT_GL_ERROR(GL_INVALID_OPERATION);
+
+    glRequestExtensionANGLE("GL_OES_draw_buffers_indexed");
+    EXPECT_GL_NO_ERROR();
+    EXPECT_TRUE(IsGLExtensionEnabled("GL_OES_draw_buffers_indexed"));
+
+    glDisable(GL_BLEND);
+    glEnableiOES(GL_BLEND, 0);
+    glBlendEquationSeparateiOES(0, GL_FUNC_ADD, GL_FUNC_SUBTRACT);
+    glBlendFuncSeparateiOES(0, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ZERO);
+    glColorMaskiOES(0, true, false, true, false);
+    EXPECT_GL_NO_ERROR();
+
+    EXPECT_EQ(true, glIsEnablediOES(GL_BLEND, 0));
+    EXPECT_GL_NO_ERROR();
+    glGetIntegeri_v(GL_BLEND_EQUATION_RGB, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_FUNC_ADD, value);
+    glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_FUNC_SUBTRACT, value);
+    glGetIntegeri_v(GL_BLEND_SRC_RGB, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_SRC_ALPHA, value);
+    glGetIntegeri_v(GL_BLEND_SRC_ALPHA, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_ZERO, value);
+    glGetIntegeri_v(GL_BLEND_DST_RGB, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_ONE_MINUS_SRC_ALPHA, value);
+    glGetIntegeri_v(GL_BLEND_DST_ALPHA, 0, &value);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(GL_ZERO, value);
+    glGetBooleani_v(GL_COLOR_WRITEMASK, 0, data);
+    EXPECT_GL_NO_ERROR();
+    EXPECT_EQ(true, data[0]);
+    EXPECT_EQ(false, data[1]);
+    EXPECT_EQ(true, data[2]);
+    EXPECT_EQ(false, data[3]);
 }
 
 // Test that binding/querying uniforms and attributes with invalid names generates errors
@@ -2260,6 +2431,93 @@ void main() {
     drawQuad(program.get(), "a_position", 0.5f, 1.0f, true);
     ASSERT_GL_NO_ERROR();
     EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::red);
+}
+
+// Multi-context uses of textures should not cause rendering feedback loops.
+TEST_P(WebGLCompatibilityTest, MultiContextNoRenderingFeedbackLoops)
+{
+    constexpr char kUnusedTextureVS[] =
+        R"(attribute vec4 a_position;
+varying vec2 v_texCoord;
+void main() {
+    gl_Position = a_position;
+    v_texCoord = (a_position.xy * 0.5) + 0.5;
+})";
+
+    constexpr char kUnusedTextureFS[] =
+        R"(precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D u_texture;
+void main() {
+    gl_FragColor = texture2D(u_texture, v_texCoord).rgba;
+})";
+
+    ANGLE_GL_PROGRAM(unusedProgram, kUnusedTextureVS, kUnusedTextureFS);
+
+    glUseProgram(unusedProgram.get());
+    GLint uniformLoc = glGetUniformLocation(unusedProgram.get(), "u_texture");
+    ASSERT_NE(-1, uniformLoc);
+    glUniform1i(uniformLoc, 0);
+
+    GLTexture texture;
+    FillTexture2D(texture.get(), 1, 1, GLColor::red, 0, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE);
+    glBindTexture(GL_TEXTURE_2D, texture.get());
+    // Note that _texture_ is still bound to GL_TEXTURE_2D in this context at this point.
+
+    EGLWindow *window          = getEGLWindow();
+    EGLDisplay display         = window->getDisplay();
+    EGLConfig config           = window->getConfig();
+    EGLSurface surface         = window->getSurface();
+    EGLint contextAttributes[] = {
+        EGL_CONTEXT_MAJOR_VERSION_KHR,
+        GetParam().majorVersion,
+        EGL_CONTEXT_MINOR_VERSION_KHR,
+        GetParam().minorVersion,
+        EGL_CONTEXT_WEBGL_COMPATIBILITY_ANGLE,
+        EGL_TRUE,
+        EGL_NONE,
+    };
+    auto context1 = eglGetCurrentContext();
+    // Create context2, sharing resources with context1.
+    auto context2 = eglCreateContext(display, config, context1, contextAttributes);
+    ASSERT_NE(context2, EGL_NO_CONTEXT);
+    eglMakeCurrent(display, surface, surface, context2);
+
+    constexpr char kVS[] =
+        R"(attribute vec4 a_position;
+void main() {
+    gl_Position = a_position;
+})";
+
+    constexpr char kFS[] =
+        R"(precision mediump float;
+void main() {
+    gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+})";
+
+    ANGLE_GL_PROGRAM(program, kVS, kFS);
+    glUseProgram(program.get());
+
+    ASSERT_GL_NO_ERROR();
+
+    // Render to the texture in context2.
+    GLFramebuffer framebuffer;
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.get());
+    // Texture is still a valid name in context2.
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture.get(), 0);
+    ASSERT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    // There is no rendering feedback loop at this point.
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    ASSERT_GL_NO_ERROR();
+
+    drawQuad(program.get(), "a_position", 0.5f, 1.0f, true);
+    ASSERT_GL_NO_ERROR();
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green);
+
+    eglMakeCurrent(display, surface, surface, context1);
+    eglDestroyContext(display, context2);
 }
 
 // Test for the max draw buffers and color attachments.
@@ -3133,27 +3391,81 @@ void main()
     EXPECT_GL_NO_ERROR();
 }
 
+static void TestBlendColor(const bool shouldClamp)
+{
+    auto expected = GLColor32F(5, 0, 0, 0);
+    glBlendColor(expected.R, expected.G, expected.B, expected.A);
+    if (shouldClamp)
+    {
+        expected.R = 1;
+    }
+
+    float arr[4] = {};
+    glGetFloatv(GL_BLEND_COLOR, arr);
+    const auto actual = GLColor32F(arr[0], arr[1], arr[2], arr[3]);
+    EXPECT_COLOR_NEAR(expected, actual, 0.001);
+}
+
 // Test if blending of float32 color attachment generates GL_INVALID_OPERATION when
 // GL_EXT_float_blend is not enabled
 TEST_P(WebGLCompatibilityTest, FloatBlend)
 {
-    ANGLE_SKIP_TEST_IF(!IsGLExtensionRequestable("GL_EXT_float_blend"));
     if (getClientMajorVersion() >= 3)
     {
+        TestBlendColor(false);
         ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_color_buffer_float"));
     }
     else
     {
+        TestBlendColor(true);
         ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_OES_texture_float"));
         ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_CHROMIUM_color_buffer_float_rgba"));
     }
 
-    TestExtFloatBlend(false);
+    TestBlendColor(false);
 
-    glRequestExtensionANGLE("GL_EXT_float_blend");
+    // -
+
+    TestExtFloatBlend(GL_RGBA32F, GL_FLOAT, false);
+
+    ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_float_blend"));
     ASSERT_GL_NO_ERROR();
 
-    TestExtFloatBlend(true);
+    // D3D9 supports float rendering explicitly, supports blending operations in practice,
+    // but cannot support float blend colors.
+    ANGLE_SKIP_TEST_IF(IsD3D9());
+
+    TestExtFloatBlend(GL_RGBA32F, GL_FLOAT, true);
+}
+
+// Test the blending of float16 color attachments
+TEST_P(WebGLCompatibilityTest, HalfFloatBlend)
+{
+    GLenum internalFormat = GL_RGBA16F;
+    GLenum type           = GL_FLOAT;
+    if (getClientMajorVersion() >= 3)
+    {
+        TestBlendColor(false);
+        ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_color_buffer_float"));
+    }
+    else
+    {
+        TestBlendColor(true);
+        ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_OES_texture_half_float"));
+        ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_color_buffer_half_float"));
+        internalFormat = GL_RGBA;
+        type           = GL_HALF_FLOAT_OES;
+    }
+
+    TestBlendColor(false);
+
+    // -
+
+    // D3D9 supports float rendering explicitly, supports blending operations in practice,
+    // but cannot support float blend colors.
+    ANGLE_SKIP_TEST_IF(IsD3D9());
+
+    TestExtFloatBlend(internalFormat, type, true);
 }
 
 TEST_P(WebGLCompatibilityTest, R16FTextures)
@@ -4131,13 +4443,13 @@ TEST_P(WebGLCompatibilityTest, DrawBuffers)
         GLFramebuffer readFBO;
         glBindFramebuffer(GL_FRAMEBUFFER, readFBO);
 
-        for (int i = 0; i < 4; ++i)
+        for (int attachmentIndex = 0; attachmentIndex < 4; ++attachmentIndex)
         {
-            if (mask & (1 << i))
+            if (mask & (1 << attachmentIndex))
             {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
-                                          renderbuffers[i]);
-                EXPECT_PIXEL_COLOR_EQ(0, 0, color);
+                                          renderbuffers[attachmentIndex]);
+                EXPECT_PIXEL_COLOR_EQ(0, 0, color) << "attachment " << attachmentIndex;
             }
         }
         ASSERT_GL_NO_ERROR();
@@ -4507,8 +4819,9 @@ TEST_P(WebGLCompatibilityTest, EnableCompressedTextureExtensionDXT5SRGBA)
 // Test enabling GL_OES_compressed_ETC1_RGB8_texture
 TEST_P(WebGLCompatibilityTest, EnableCompressedTextureExtensionETC1)
 {
-    validateCompressedTexImageExtensionFormat(GL_ETC1_RGB8_OES, 4, 4, 8,
-                                              "GL_OES_compressed_ETC1_RGB8_texture", false);
+    validateCompressedTexImageExtensionFormat(
+        GL_ETC1_RGB8_OES, 4, 4, 8, "GL_OES_compressed_ETC1_RGB8_texture",
+        IsGLExtensionEnabled("GL_EXT_compressed_ETC1_RGB8_sub_texture"));
 }
 
 // Test enabling GL_ANGLE_lossy_etc_decode

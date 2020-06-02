@@ -308,7 +308,7 @@ bool Box::isAtomicInlineLevelBox() const
 bool Box::isBlockContainerBox() const
 {
     auto display = m_style.display();
-    return display == DisplayType::Block || display == DisplayType::ListItem || isInlineBlockBox() || isTableWrapperBox() || isTableCell() || isTableCaption(); // TODO && !replaced element
+    return display == DisplayType::Block || display == DisplayType::ListItem || isInlineBlockBox() || isTableCell() || isTableCaption(); // TODO && !replaced element
 }
 
 const Box* Box::nextInFlowSibling() const
@@ -374,11 +374,16 @@ bool Box::isOverflowVisible() const
 
 bool Box::isPaddingApplicable() const
 {
-    // 8.4 Padding properties:
-    // Applies to: all elements except table-row-group, table-header-group, table-footer-group, table-row, table-column-group and table-column
     if (isAnonymous())
         return false;
 
+    if (isTableBox() && style().borderCollapse() == BorderCollapse::Collapse) {
+        // When the table collapses its borders with inner table elements, there's no room for padding.
+        return false;
+    }
+
+    // 8.4 Padding properties:
+    // Applies to: all elements except table-row-group, table-header-group, table-footer-group, table-row, table-column-group and table-column
     return !isTableHeader()
         && !isTableBody()
         && !isTableFooter()
@@ -387,28 +392,28 @@ bool Box::isPaddingApplicable() const
         && !isTableColumn();
 }
 
-void Box::setRowSpan(unsigned rowSpan)
+void Box::setRowSpan(size_t rowSpan)
 {
-    ensureRareData().rowSpan = rowSpan;
+    ensureRareData().tableCellSpan.row = rowSpan;
 }
 
-void Box::setColumnSpan(unsigned columnSpan)
+void Box::setColumnSpan(size_t columnSpan)
 {
-    ensureRareData().columnSpan = columnSpan;
+    ensureRareData().tableCellSpan.column = columnSpan;
 }
 
-unsigned Box::rowSpan() const
+size_t Box::rowSpan() const
 {
     if (!hasRareData())
         return 1;
-    return rareData().rowSpan;
+    return rareData().tableCellSpan.row;
 }
 
-unsigned Box::columnSpan() const
+size_t Box::columnSpan() const
 {
     if (!hasRareData())
         return 1;
-    return rareData().columnSpan;
+    return rareData().tableCellSpan.column;
 }
 
 void Box::setColumnWidth(LayoutUnit columnWidth)

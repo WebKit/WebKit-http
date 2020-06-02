@@ -67,7 +67,7 @@ WI.LayerTreeManager = class LayerTreeManager extends WI.Object
     static supportsVisibleCompositingBorders()
     {
         return InspectorBackend.hasCommand("Page.setCompositingBordersVisible")
-            || (InspectorBackend.Enum.Page.Setting.ShowDebugBorders && InspectorBackend.Enum.Page.Setting.ShowRepaintCounter);
+            || (InspectorBackend.hasCommand("Page.overrideSetting") && InspectorBackend.Enum.Page.Setting.ShowDebugBorders && InspectorBackend.Enum.Page.Setting.ShowRepaintCounter);
     }
 
     // Public
@@ -90,7 +90,6 @@ WI.LayerTreeManager = class LayerTreeManager extends WI.Object
         this._showPaintRects = showPaintRects;
 
         for (let target of WI.targets) {
-            // COMPATIBILITY (iOS 9): Page.setCompositingBordersVisible did not exist yet.
             if (target.hasCommand("Page.setShowPaintRects"))
                 target.PageAgent.setShowPaintRects(this._showPaintRects);
         }

@@ -88,7 +88,7 @@ public:
     void scheduleAnimation() override { }
 
     PlatformDisplayID displayID() const override;
-    void windowScreenDidChange(PlatformDisplayID) override;
+    void windowScreenDidChange(PlatformDisplayID, Optional<unsigned>) override;
 
     FloatSize screenSize() const override;
     FloatSize availableScreenSize() const override;
@@ -192,7 +192,6 @@ private:
 
     Page& m_page;
     ChromeClient& m_client;
-    PlatformDisplayID m_displayID { 0 };
     Vector<PopupOpeningObserver*> m_popupOpeningObservers;
 #if PLATFORM(IOS_FAMILY)
     bool m_isDispatchViewportDataDidChangeSuppressed { false };

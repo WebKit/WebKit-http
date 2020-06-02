@@ -176,11 +176,36 @@ void handleMessageAsync(Connection& connection, Decoder& decoder, C* object, MF 
     }
 
     typename T::AsyncReply completionHandler = [listenerID = *listenerID, connection = makeRef(connection)] (auto&&... args) mutable {
-        auto encoder = makeUnique<Encoder>("AsyncReply", T::asyncMessageReplyName(), 0);
+        auto encoder = makeUnique<Encoder>(T::asyncMessageReplyName(), 0);
         *encoder << listenerID;
         T::send(WTFMove(encoder), WTFMove(connection), args...);
     };
     callMemberFunction(WTFMove(*arguments), WTFMove(completionHandler), object, function);
+}
+
+template<typename T, typename C, typename MF>
+void handleMessageAsyncWantsConnection(Connection& connection, Decoder& decoder, C* object, MF function)
+{
+    Optional<uint64_t> listenerID;
+    decoder >> listenerID;
+    if (!listenerID) {
+        decoder.markInvalid();
+        return;
+    }
+
+    Optional<typename CodingType<typename T::Arguments>::Type> arguments;
+    decoder >> arguments;
+    if (!arguments) {
+        decoder.markInvalid();
+        return;
+    }
+
+    typename T::AsyncReply completionHandler = [listenerID = *listenerID, connection = makeRef(connection)] (auto&&... args) mutable {
+        auto encoder = makeUnique<Encoder>(T::asyncMessageReplyName(), 0);
+        *encoder << listenerID;
+        T::send(WTFMove(encoder), WTFMove(connection), args...);
+    };
+    callMemberFunction(connection, WTFMove(*arguments), WTFMove(completionHandler), object, function);
 }
 
 } // namespace IPC

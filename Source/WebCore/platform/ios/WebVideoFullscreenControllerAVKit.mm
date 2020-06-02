@@ -24,10 +24,9 @@
  */
 
 #import "config.h"
+#import "WebVideoFullscreenControllerAVKit.h"
 
 #if PLATFORM(IOS_FAMILY)
-
-#import "WebVideoFullscreenControllerAVKit.h"
 
 #import "Logging.h"
 #import "MediaSelectionOption.h"
@@ -48,7 +47,7 @@
 
 using namespace WebCore;
 
-#if !HAVE(AVKIT)
+#if !(ENABLE(VIDEO_PRESENTATION_MODE) && HAVE(AVKIT))
 
 @implementation WebVideoFullscreenController
 - (void)setVideoElement:(NakedPtr<WebCore::HTMLVideoElement>)videoElement
@@ -260,6 +259,9 @@ void VideoFullscreenControllerContext::requestVideoContentLayer()
         [videoFullscreenLayer setBackgroundColor:cachedCGColor(WebCore::Color::transparent)];
         m_fullscreenModel->setVideoFullscreenLayer(videoFullscreenLayer.get(), [protectedThis = WTFMove(protectedThis), this] () mutable {
             dispatch_async(dispatch_get_main_queue(), [protectedThis = WTFMove(protectedThis), this] {
+                if (!m_interface)
+                    return;
+
                 m_interface->setHasVideoContentLayer(true);
             });
         });
@@ -277,6 +279,9 @@ void VideoFullscreenControllerContext::returnVideoContentLayer()
         [videoFullscreenLayer setBackgroundColor:cachedCGColor(WebCore::Color::transparent)];
         m_fullscreenModel->setVideoFullscreenLayer(nil, [protectedThis = WTFMove(protectedThis), this] () mutable {
             dispatch_async(dispatch_get_main_queue(), [protectedThis = WTFMove(protectedThis), this] {
+                if (!m_interface)
+                    return;
+
                 m_interface->setHasVideoContentLayer(false);
             });
         });

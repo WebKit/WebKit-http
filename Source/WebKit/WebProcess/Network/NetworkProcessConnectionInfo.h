@@ -36,7 +36,7 @@ struct NetworkProcessConnectionInfo {
     Optional<audit_token_t> auditToken;
 #endif
 
-    IPC::Connection::Identifier identifier()
+    IPC::Connection::Identifier identifier() const
     {
 #if USE(UNIX_DOMAIN_SOCKETS)
         return IPC::Connection::Identifier(connection.fileDescriptor());
@@ -70,7 +70,7 @@ struct NetworkProcessConnectionInfo {
 #endif
     }
     
-    static bool decode(IPC::Decoder& decoder, NetworkProcessConnectionInfo& info)
+    static WARN_UNUSED_RETURN bool decode(IPC::Decoder& decoder, NetworkProcessConnectionInfo& info)
     {
         if (!decoder.decode(info.connection))
             return false;

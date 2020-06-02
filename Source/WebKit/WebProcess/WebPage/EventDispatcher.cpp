@@ -42,6 +42,10 @@
 #include <WebCore/AsyncScrollingCoordinator.h>
 #endif
 
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+#include <WebCore/DisplayRefreshMonitorManager.h>
+#endif
+
 #if ENABLE(SCROLLING_THREAD)
 #include <WebCore/ScrollingThread.h>
 #include <WebCore/ThreadedScrollingTree.h>
@@ -117,22 +121,41 @@ void EventDispatcher::wheelEvent(PageIdentifier pageID, const WebWheelEvent& whe
 #endif
 
 #if ENABLE(SCROLLING_THREAD)
-    LockHolder locker(m_scrollingTreesMutex);
-    if (RefPtr<ThreadedScrollingTree> scrollingTree = m_scrollingTrees.get(pageID)) {
+    auto sentToScrollingThread = [&]() {
+        LockHolder locker(m_scrollingTreesMutex);
+
+        auto scrollingTree = m_scrollingTrees.get(pageID);
+        if (!scrollingTree)
+            return false;
+        
         // FIXME: It's pretty horrible that we're updating the back/forward state here.
         // WebCore should always know the current state and know when it changes so the
         // scrolling tree can be notified.
         // We only need to do this at the beginning of the gesture.
         if (platformWheelEvent.phase() == PlatformWheelEventPhaseBegan)
-            scrollingTree->setCanRubberBandState(canRubberBandAtLeft, canRubberBandAtRight, canRubberBandAtTop, canRubberBandAtBottom);
+            scrollingTree->setMainFrameCanRubberBand({ canRubberBandAtTop, canRubberBandAtRight, canRubberBandAtBottom, canRubberBandAtLeft });
 
-        ScrollingEventResult result = scrollingTree->tryToHandleWheelEvent(platformWheelEvent);
+        auto processingSteps = scrollingTree->determineWheelEventProcessing(platformWheelEvent);
+        if (!processingSteps.contains(WheelEventProcessingSteps::ScrollingThread))
+            return false;
 
-        if (result == ScrollingEventResult::DidHandleEvent || result == ScrollingEventResult::DidNotHandleEvent) {
-            sendDidReceiveEvent(pageID, wheelEvent, result == ScrollingEventResult::DidHandleEvent);
-            return;
-        }
-    }
+        ScrollingThread::dispatch([scrollingTree, wheelEvent, platformWheelEvent, pageID, protectedThis = makeRef(*this)] {
+            auto result = scrollingTree->handleWheelEvent(platformWheelEvent);
+
+            if (result.needsMainThreadProcessing()) {
+                protectedThis->dispatchWheelEventViaMainThread(pageID, wheelEvent);
+                return;
+            }
+
+            protectedThis->sendDidReceiveEvent(pageID, wheelEvent.type(), result.wasHandled);
+        });
+
+        return true;
+    }();
+
+    if (sentToScrollingThread)
+        return;
+
 #else
     UNUSED_PARAM(canRubberBandAtLeft);
     UNUSED_PARAM(canRubberBandAtRight);
@@ -140,9 +163,7 @@ void EventDispatcher::wheelEvent(PageIdentifier pageID, const WebWheelEvent& whe
     UNUSED_PARAM(canRubberBandAtBottom);
 #endif
 
-    RunLoop::main().dispatch([protectedThis = makeRef(*this), pageID, wheelEvent]() mutable {
-        protectedThis->dispatchWheelEvent(pageID, wheelEvent);
-    }); 
+    dispatchWheelEventViaMainThread(pageID, wheelEvent);
 }
 
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -212,6 +233,14 @@ void EventDispatcher::dispatchTouchEvents()
 }
 #endif
 
+void EventDispatcher::dispatchWheelEventViaMainThread(WebCore::PageIdentifier pageID, const WebWheelEvent& wheelEvent)
+{
+    ASSERT(!RunLoop::isMain());
+    RunLoop::main().dispatch([protectedThis = makeRef(*this), pageID, wheelEvent]() mutable {
+        protectedThis->dispatchWheelEvent(pageID, wheelEvent);
+    });
+}
+
 void EventDispatcher::dispatchWheelEvent(PageIdentifier pageID, const WebWheelEvent& wheelEvent)
 {
     ASSERT(RunLoop::isMain());
@@ -237,9 +266,24 @@ void EventDispatcher::dispatchGestureEvent(PageIdentifier pageID, const WebGestu
 #endif
 
 #if ENABLE(ASYNC_SCROLLING)
-void EventDispatcher::sendDidReceiveEvent(PageIdentifier pageID, const WebEvent& event, bool didHandleEvent)
+void EventDispatcher::sendDidReceiveEvent(PageIdentifier pageID, WebEvent::Type eventType, bool didHandleEvent)
 {
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(event.type()), didHandleEvent), pageID);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(eventType), didHandleEvent), pageID);
+}
+#endif
+
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+void EventDispatcher::displayWasRefreshed(PlatformDisplayID displayID)
+{
+#if ENABLE(SCROLLING_THREAD)
+    LockHolder locker(m_scrollingTreesMutex);
+    for (auto keyValuePair : m_scrollingTrees)
+        keyValuePair.value->displayDidRefresh(displayID);
+#endif
+
+    RunLoop::main().dispatch([displayID]() {
+        DisplayRefreshMonitorManager::sharedManager().displayWasUpdated(displayID);
+    });
 }
 #endif
 

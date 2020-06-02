@@ -775,8 +775,10 @@ static RetainPtr<UIWindow> makeWindowFromView(UIView *)
         _webViewPlaceholder.get().parent = nil;
         [_webViewPlaceholder removeFromSuperview];
 
-        if (auto page = [self._webView _page])
+        if (auto page = [self._webView _page]) {
             page->setSuppressVisibilityUpdates(false);
+            page->setNeedsDOMWindowResizeEvent();
+        }
     });
 
     if (auto page = [self._webView _page])
@@ -933,15 +935,8 @@ static RetainPtr<UIWindow> makeWindowFromView(UIView *)
     // If SecTrustCopyInfo returned NULL then it's likely that the SecTrustRef has not been evaluated
     // and the only way to get the information we need is to call SecTrustEvaluate ourselves.
     if (!infoDictionary) {
-#if HAVE(SEC_TRUST_EVALUATE_WITH_ERROR)
         if (!SecTrustEvaluateWithError(trust, nullptr))
             return nil;
-#else
-        SecTrustResultType result = kSecTrustResultProceed;
-        OSStatus err = SecTrustEvaluate(trust, &result);
-        if (err != noErr)
-            return nil;
-#endif
         infoDictionary = CFBridgingRelease(SecTrustCopyInfo(trust));
         if (!infoDictionary)
             return nil;

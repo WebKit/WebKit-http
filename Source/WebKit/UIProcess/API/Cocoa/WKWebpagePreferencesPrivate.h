@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,8 +22,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#pragma once
 
 #import <WebKit/WKFoundation.h>
 #import <WebKit/WKWebpagePreferences.h>
@@ -54,6 +52,16 @@ typedef NS_OPTIONS(NSUInteger, _WKWebsiteDeviceOrientationAndMotionAccessPolicy)
     _WKWebsiteDeviceOrientationAndMotionAccessPolicyDeny,
 } WK_API_AVAILABLE(macos(10.14), ios(12.0));
 
+typedef NS_OPTIONS(NSUInteger, _WKWebsiteMouseEventPolicy) {
+    // Indirect pointing devices will generate either touch or mouse events based on WebKit's default policy.
+    _WKWebsiteMouseEventPolicyDefault,
+
+#if TARGET_OS_IPHONE
+    // Indirect pointing devices will always synthesize touch events and behave as if touch input is being used.
+    _WKWebsiteMouseEventPolicySynthesizeTouchEvents,
+#endif
+} WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 @class _WKCustomHeaderFields;
 @class WKUserContentController;
 @class WKWebsiteDataStore;
@@ -74,5 +82,7 @@ typedef NS_OPTIONS(NSUInteger, _WKWebsiteDeviceOrientationAndMotionAccessPolicy)
 @property (nonatomic, setter=_setAllowSiteSpecificQuirksToOverrideCompatibilityMode:) BOOL _allowSiteSpecificQuirksToOverrideCompatibilityMode;
 
 @property (nonatomic, copy, setter=_setApplicationNameForUserAgentWithModernCompatibility:) NSString *_applicationNameForUserAgentWithModernCompatibility;
+
+@property (nonatomic, setter=_setMouseEventPolicy:) _WKWebsiteMouseEventPolicy _mouseEventPolicy WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end

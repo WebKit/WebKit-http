@@ -26,7 +26,8 @@
 #include "config.h"
 #include "ProfilerUID.h"
 
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
+#include "JSGlobalObject.h"
 #include <wtf/Lock.h>
 
 namespace JSC { namespace Profiler {

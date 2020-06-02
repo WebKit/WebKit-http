@@ -33,6 +33,7 @@
 #include "WebInspectorUtilities.h"
 #include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <WebCore/FloatRect.h>
+#include <WebCore/InspectorClient.h>
 #include <WebCore/InspectorFrontendClient.h>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
@@ -112,6 +113,8 @@ public:
 #if PLATFORM(MAC)
     enum class InspectionTargetType { Local, Remote };
     static RetainPtr<NSWindow> createFrontendWindow(NSRect savedWindowFrame, InspectionTargetType);
+
+    void didBecomeActive();
 
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
@@ -240,7 +243,7 @@ private:
     void showCertificate(const WebCore::CertificateInfo&);
     void elementSelectionChanged(bool);
     void timelineRecordingChanged(bool);
-    void setMockCaptureDevicesEnabledOverride(Optional<bool>);
+    void setDeveloperPreferenceOverride(WebCore::InspectorClient::DeveloperPreference, Optional<bool>);
 
     void save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void append(const String& filename, const String& content);

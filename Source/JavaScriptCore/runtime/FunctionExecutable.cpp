@@ -25,18 +25,10 @@
 
 #include "config.h"
 
-#include "BatchedTransitionOptimizer.h"
 #include "CodeBlock.h"
-#include "Debugger.h"
 #include "FunctionCodeBlock.h"
 #include "FunctionOverrides.h"
-#include "JIT.h"
-#include "JSCInlines.h"
-#include "LLIntEntrypoint.h"
-#include "Parser.h"
-#include "TypeProfiler.h"
-#include "VMInlines.h"
-#include <wtf/CommaPrinter.h>
+#include "JSCJSValueInlines.h"
 
 namespace JSC {
 
@@ -71,7 +63,7 @@ FunctionCodeBlock* FunctionExecutable::baselineCodeBlockFor(CodeSpecializationKi
         edge = m_codeBlockForConstruct.get();
     }
     if (!edge)
-        return 0;
+        return nullptr;
     return static_cast<FunctionCodeBlock*>(edge->codeBlock()->baselineAlternative());
 }
 

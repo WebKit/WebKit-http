@@ -952,6 +952,13 @@ unsigned int ParseArrayIndex(const std::string &name, size_t *nameLengthWithoutA
                 indexIsValidDecimalNumber = false;
                 break;
             }
+
+            // Leading zeroes are invalid
+            if ((i == (open + 1)) && (name[i] == '0') && (name[i + 1] != ']'))
+            {
+                indexIsValidDecimalNumber = false;
+                break;
+            }
         }
         if (indexIsValidDecimalNumber)
         {
@@ -1031,6 +1038,66 @@ PipelineType GetPipelineType(ShaderType type)
     }
 }
 
+const char *GetDebugMessageSourceString(GLenum source)
+{
+    switch (source)
+    {
+        case GL_DEBUG_SOURCE_API:
+            return "API";
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+            return "Window System";
+        case GL_DEBUG_SOURCE_SHADER_COMPILER:
+            return "Shader Compiler";
+        case GL_DEBUG_SOURCE_THIRD_PARTY:
+            return "Third Party";
+        case GL_DEBUG_SOURCE_APPLICATION:
+            return "Application";
+        case GL_DEBUG_SOURCE_OTHER:
+            return "Other";
+        default:
+            return "Unknown Source";
+    }
+}
+
+const char *GetDebugMessageTypeString(GLenum type)
+{
+    switch (type)
+    {
+        case GL_DEBUG_TYPE_ERROR:
+            return "Error";
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+            return "Deprecated behavior";
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+            return "Undefined behavior";
+        case GL_DEBUG_TYPE_PORTABILITY:
+            return "Portability";
+        case GL_DEBUG_TYPE_PERFORMANCE:
+            return "Performance";
+        case GL_DEBUG_TYPE_OTHER:
+            return "Other";
+        case GL_DEBUG_TYPE_MARKER:
+            return "Marker";
+        default:
+            return "Unknown Type";
+    }
+}
+
+const char *GetDebugMessageSeverityString(GLenum severity)
+{
+    switch (severity)
+    {
+        case GL_DEBUG_SEVERITY_HIGH:
+            return "High";
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            return "Medium";
+        case GL_DEBUG_SEVERITY_LOW:
+            return "Low";
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+            return "Notification";
+        default:
+            return "Unknown Severity";
+    }
+}
 }  // namespace gl
 
 namespace egl
@@ -1093,6 +1160,7 @@ bool IsExternalImageTarget(EGLenum target)
     {
         case EGL_NATIVE_BUFFER_ANDROID:
         case EGL_D3D11_TEXTURE_ANGLE:
+        case EGL_LINUX_DMA_BUF_EXT:
             return true;
 
         default:

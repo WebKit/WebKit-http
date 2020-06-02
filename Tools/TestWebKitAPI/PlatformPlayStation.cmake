@@ -1,7 +1,7 @@
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/TestWebKitAPI")
 
 set(test_main_SOURCES
-    generic/main.cpp
+    playstation/main.cpp
 )
 
 list(APPEND TestWTF_SOURCES
@@ -27,13 +27,11 @@ list(APPEND TestWebCore_SOURCES
 # so they are added here.
 list(APPEND TestWebCore_PRIVATE_LIBRARIES
     $<TARGET_OBJECTS:PAL>
+    $<TARGET_OBJECTS:WebCore>
 )
 
 # TestWebKit
 if (ENABLE_WEBKIT)
-    add_dependencies(TestWebKitAPIBase WebKitFrameworkHeaders)
-    add_dependencies(TestWebKitAPIInjectedBundle WebKitFrameworkHeaders)
-
     target_sources(TestWebKitAPIInjectedBundle PRIVATE
         generic/UtilitiesGeneric.cpp
 
@@ -51,7 +49,25 @@ if (ENABLE_WEBKIT)
         playstation/PlatformWebViewPlayStation.cpp
     )
 
-    list(APPEND TestWebKit_DEPENDENCIES
-        WebKitFrameworkHeaders
+    # Exclude tests which don't finish.
+    list(REMOVE_ITEM TestWebKit_SOURCES
+        Tests/WebKit/ForceRepaint.cpp
+        Tests/WebKit/Geolocation.cpp
     )
 endif ()
+
+
+# Set the debugger working directory for Visual Studio
+if (${CMAKE_GENERATOR} MATCHES "Visual Studio")
+    set_target_properties(TestWTF PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    if (ENABLE_WEBCORE)
+        set_target_properties(TestWebCore PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    endif ()
+    if (ENABLE_WEBCORE)
+        set_target_properties(TestWebKit PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    endif ()
+endif ()
+
+add_definitions(
+    -DTEST_WEBKIT_RESOURCES_DIR=\"${TOOLS_DIR}/TestWebKitAPI/Tests/WebKit\"
+)

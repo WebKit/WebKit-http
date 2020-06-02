@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,12 +44,14 @@ enum DataFormat : uint8_t {
     DataFormatBoolean = 5,
     DataFormatCell = 6,
     DataFormatStorage = 7,
-    DataFormatJS = 8,
+    DataFormatBigInt32 = 8, // FIXME: https://bugs.webkit.org/show_bug.cgi?id=210957 Actually support BigInt32 DataFormat.
+    DataFormatJS = 16,
     DataFormatJSInt32 = DataFormatJS | DataFormatInt32,
     DataFormatJSDouble = DataFormatJS | DataFormatDouble,
     DataFormatJSCell = DataFormatJS | DataFormatCell,
     DataFormatJSBoolean = DataFormatJS | DataFormatBoolean,
-    
+    DataFormatJSBigInt32 = DataFormatJS | DataFormatBigInt32,
+
     // Marker deliminating ordinary data formats and OSR-only data formats.
     DataFormatOSRMarker = 32, 
     
@@ -76,6 +78,8 @@ inline const char* dataFormatToString(DataFormat dataFormat)
         return "Boolean";
     case DataFormatStorage:
         return "Storage";
+    case DataFormatBigInt32:
+        return "BigInt32";
     case DataFormatJS:
         return "JS";
     case DataFormatJSInt32:
@@ -86,6 +90,8 @@ inline const char* dataFormatToString(DataFormat dataFormat)
         return "JSCell";
     case DataFormatJSBoolean:
         return "JSBoolean";
+    case DataFormatJSBigInt32:
+        return "JSBigInt32";
     case DataFormatDead:
         return "Dead";
     default:

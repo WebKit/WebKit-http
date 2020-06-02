@@ -32,7 +32,7 @@
 #include "RealtimeMediaSource.h"
 #include <wtf/LoggerHelper.h>
 #include <wtf/RefCounted.h>
-#include <wtf/WeakPtr.h>
+#include <wtf/WeakHashSet.h>
 
 namespace WebCore {
 
@@ -44,14 +44,13 @@ class WebAudioSourceProvider;
 
 class MediaStreamTrackPrivate final
     : public RefCounted<MediaStreamTrackPrivate>
-    , public CanMakeWeakPtr<MediaStreamTrackPrivate, WeakPtrFactoryInitialization::Eager>
     , public RealtimeMediaSource::Observer
 #if !RELEASE_LOG_DISABLED
     , public LoggerHelper
 #endif
 {
 public:
-    class Observer {
+    class Observer : public CanMakeWeakPtr<Observer> {
     public:
         virtual ~Observer() = default;
 
@@ -60,17 +59,13 @@ public:
         virtual void trackMutedChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackSettingsChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackEnabledChanged(MediaStreamTrackPrivate&) = 0;
-        virtual void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) { };
         virtual void readyStateChanged(MediaStreamTrackPrivate&) { };
-
-        // May get called on a background thread.
-        virtual void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) { };
     };
 
     static Ref<MediaStreamTrackPrivate> create(Ref<const Logger>&&, Ref<RealtimeMediaSource>&&);
     static Ref<MediaStreamTrackPrivate> create(Ref<const Logger>&&, Ref<RealtimeMediaSource>&&, String&& id);
 
-    virtual ~MediaStreamTrackPrivate();
+    WEBCORE_EXPORT virtual ~MediaStreamTrackPrivate();
 
     const String& id() const { return m_id; }
     const String& label() const;
@@ -100,15 +95,14 @@ public:
     Ref<MediaStreamTrackPrivate> clone();
 
     RealtimeMediaSource& source() { return m_source.get(); }
+    const RealtimeMediaSource& source() const { return m_source.get(); }
     WEBCORE_EXPORT RealtimeMediaSource::Type type() const;
 
     void endTrack();
 
     void addObserver(Observer&);
     void removeObserver(Observer&);
-#if ASSERT_ENABLED
-    bool hasObserver(Observer&) const;
-#endif
+    bool hasObserver(Observer& observer) const { return m_observers.contains(observer); }
 
     WEBCORE_EXPORT const RealtimeMediaSourceSettings& settings() const;
     const RealtimeMediaSourceCapabilities& capabilities() const;
@@ -132,35 +126,32 @@ public:
 private:
     MediaStreamTrackPrivate(Ref<const Logger>&&, Ref<RealtimeMediaSource>&&, String&& id);
 
-    // RealtimeMediaSourceObserver
+    // RealtimeMediaSource::Observer
     void sourceStarted() final;
     void sourceStopped() final;
     void sourceMutedChanged() final;
     void sourceSettingsChanged() final;
     bool preventSourceFromStopping() final;
-    void videoSampleAvailable(MediaSample&) final;
-    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
     void audioUnitWillStart() final;
+    void hasStartedProducingData() final;
 
     void updateReadyState();
 
-    void forEachObserver(const WTF::Function<void(Observer&)>&) const;
+    void forEachObserver(const Function<void(Observer&)>&);
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "MediaStreamTrackPrivate"; }
     WTFLogChannel& logChannel() const final;
 #endif
 
-    mutable RecursiveLock m_observersLock;
-    HashSet<Observer*> m_observers;
+    WeakHashSet<Observer> m_observers;
     Ref<RealtimeMediaSource> m_source;
 
     String m_id;
     ReadyState m_readyState { ReadyState::None };
     bool m_isEnabled { true };
     bool m_isEnded { false };
-    bool m_haveProducedData { false };
-    bool m_hasSentStartProducedData { false };
+    bool m_hasStartedProducingData { false };
     HintValue m_contentHint { HintValue::Empty };
     RefPtr<WebAudioSourceProvider> m_audioSourceProvider;
     Ref<const Logger> m_logger;
@@ -170,14 +161,6 @@ private:
 };
 
 typedef Vector<RefPtr<MediaStreamTrackPrivate>> MediaStreamTrackPrivateVector;
-
-#if ASSERT_ENABLED
-inline bool MediaStreamTrackPrivate::hasObserver(Observer& observer) const
-{
-    auto locker = holdLock(m_observersLock);
-    return m_observers.contains(&observer);
-}
-#endif
 
 } // namespace WebCore
 

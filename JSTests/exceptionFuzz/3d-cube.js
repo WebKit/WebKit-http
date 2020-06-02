@@ -1,13 +1,9 @@
-var enableExceptionFuzz = $vm.enableExceptionFuzz;
-
 try {
+(function() {
 
 // 3D Cube Rotation
 // http://www.speich.net/computer/moztesting/3d.htm
 // Created by Simon Speich
-
-enableExceptionFuzz();
-
 
 var Q = new Array();
 var MTrans = new Array();  // transformation matrix
@@ -360,6 +356,7 @@ Testing = null;
 LoopTime = null;
 DisplArea = null;
 
+})();
 } catch (e) {
     print("JSC EXCEPTION FUZZ: Caught exception: " + e);
 }

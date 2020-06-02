@@ -848,20 +848,22 @@ TEST(URLSchemeHandler, DisableCORS)
     WKWebViewConfiguration *configuration = [[[WKWebViewConfiguration alloc] init] autorelease];
     [configuration setURLSchemeHandler:handler.get() forURLScheme:@"cors"];
 
+    NSString *testJS = [NSString stringWithFormat:
+        @"fetch('http://127.0.0.1:%d/subresource').then(function(r){"
+            "r.json().then(function(object) {"
+                "if (object.testkey == 'testvalue') {"
+                    "fetch('/corssuccess')"
+                "} else {"
+                    "fetch('/corsfailure')"
+                "}"
+            "}).catch(function(){fetch('/corsfailure')})"
+        "}).catch(function(){fetch('/corsfailure')})"
+        , server.port()];
+
     [handler setStartURLSchemeTaskHandler:[&](WKWebView *, id<WKURLSchemeTask> task) {
         if ([task.request.URL.path isEqualToString:@"/main.html"]) {
             NSData *data = [[NSString stringWithFormat:
-                @"<script>"
-                    "fetch('http://127.0.0.1:%d/subresource').then(function(r){"
-                        "r.json().then(function(object) {"
-                            "if (object.testkey == 'testvalue') {"
-                                "fetch('/corssuccess')"
-                            "} else {"
-                                "fetch('/corsfailure')"
-                            "}"
-                        "}).catch(function(){fetch('/corsfailure')})"
-                    "}).catch(function(){fetch('/corsfailure')})"
-                "</script>", server.port()] dataUsingEncoding:NSUTF8StringEncoding];
+                @"<script>%@</script>", testJS] dataUsingEncoding:NSUTF8StringEncoding];
             [task didReceiveResponse:[[[NSURLResponse alloc] initWithURL:task.request.URL MIMEType:@"text/html" expectedContentLength:data.length textEncodingName:nil] autorelease]];
             [task didReceiveData:data];
             [task didFinish];
@@ -888,11 +890,29 @@ TEST(URLSchemeHandler, DisableCORS)
     done = false;
 
     configuration._corsDisablingPatterns = @[@"*://*/*"];
-    {
-        auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
-        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"cors://host1/main.html"]]];
-        TestWebKitAPI::Util::run(&done);
-    }
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"cors://host1/main.html"]]];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_TRUE(corssuccess);
+    EXPECT_FALSE(corsfailure);
+
+    corssuccess = false;
+    corsfailure = false;
+    done = false;
+
+    webView.get()._corsDisablingPatterns = @[];
+    [webView evaluateJavaScript:testJS completionHandler:nil];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_FALSE(corssuccess);
+    EXPECT_TRUE(corsfailure);
+
+    corssuccess = false;
+    corsfailure = false;
+    done = false;
+
+    webView.get()._corsDisablingPatterns = @[@"*://*/*"];
+    [webView evaluateJavaScript:testJS completionHandler:nil];
+    TestWebKitAPI::Util::run(&done);
     EXPECT_TRUE(corssuccess);
     EXPECT_FALSE(corsfailure);
 }
@@ -1002,6 +1022,77 @@ TEST(URLSchemeHandler, DisableCORSScript)
     }
     EXPECT_TRUE(loadSuccess);
     EXPECT_FALSE(loadFail);
+}
+
+TEST(URLSchemeHandler, DisableCORSCanvas)
+{
+    bool corssuccess = false;
+    bool corsfailure = false;
+    bool done = false;
+
+    auto handler = adoptNS([TestURLSchemeHandler new]);
+
+    WKWebViewConfiguration *configuration = [[[WKWebViewConfiguration alloc] init] autorelease];
+    [configuration setURLSchemeHandler:handler.get() forURLScheme:@"cors"];
+
+    [handler setStartURLSchemeTaskHandler:[&](WKWebView *, id<WKURLSchemeTask> task) {
+        NSData *response = nil;
+        NSString *mimeType = nil;
+        if ([task.request.URL.path isEqualToString:@"/main.html"]) {
+            mimeType = @"text/html";
+            response = [@"<canvas id='canvas'></canvas><img src='cors://host2/image.png' onload='imageloaded()' id='img'></img><script>"
+                "function imageloaded() {"
+                    "let canvas = document.getElementById('canvas');"
+                    "let context = canvas.getContext('2d');"
+                    "let img = document.getElementById('img');"
+                    "context.drawImage(img, 0, 0);"
+                    "try {"
+                        "let dataURL = canvas.toDataURL('image/png', 1);"
+                        "fetch('corssuccess');"
+                    "} catch(err) {"
+                        "fetch('corsfailure');"
+                    "}"
+                "}"
+            "</script>" dataUsingEncoding:NSUTF8StringEncoding];
+        } else if ([task.request.URL.path isEqualToString:@"/corssuccess"]) {
+            corssuccess = true;
+            done = true;
+        } else if ([task.request.URL.path isEqualToString:@"/corsfailure"]) {
+            corsfailure = true;
+            done = true;
+        } else if ([task.request.URL.path isEqualToString:@"/image.png"]) {
+            mimeType = @"image/png";
+            response = [NSData dataWithContentsOfURL:[[NSBundle mainBundle] URLForResource:@"400x400-green" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]];
+        } else
+            ASSERT_NOT_REACHED();
+
+        if (response) {
+            [task didReceiveResponse:[[[NSURLResponse alloc] initWithURL:task.request.URL MIMEType:mimeType expectedContentLength:response.length textEncodingName:nil] autorelease]];
+            [task didReceiveData:response];
+            [task didFinish];
+        }
+    }];
+
+    {
+        auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"cors://host1/main.html"]]];
+        TestWebKitAPI::Util::run(&done);
+    }
+    EXPECT_FALSE(corssuccess);
+    EXPECT_TRUE(corsfailure);
+
+    corssuccess = false;
+    corsfailure = false;
+    done = false;
+
+    configuration._corsDisablingPatterns = @[@"*://*/*"];
+    {
+        auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"cors://host1/main.html"]]];
+        TestWebKitAPI::Util::run(&done);
+    }
+    EXPECT_TRUE(corssuccess);
+    EXPECT_FALSE(corsfailure);
 }
 
 TEST(URLSchemeHandler, LoadsFromNetwork)

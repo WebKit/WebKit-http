@@ -35,15 +35,15 @@ class JS_EXPORT_PRIVATE ExtractValue final : public Value {
 public:
     static bool accepts(Kind kind) { return kind == Extract; }
 
-    ~ExtractValue();
+    ~ExtractValue() final;
 
     int32_t index() const { return m_index; }
 
     B3_SPECIALIZE_VALUE_FOR_FIXED_CHILDREN(1)
     B3_SPECIALIZE_VALUE_FOR_FINAL_SIZE_FIXED_CHILDREN
 
-protected:
-    void dumpMeta(CommaPrinter&, PrintStream&) const override;
+private:
+    void dumpMeta(CommaPrinter&, PrintStream&) const final;
 
     static Opcode opcodeFromConstructor(Origin, Type, Value*, int32_t) { return Extract; }
 
@@ -53,7 +53,6 @@ protected:
     {
     }
 
-private:
     friend class Procedure;
     friend class Value;
 

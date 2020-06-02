@@ -96,14 +96,8 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
         return { };
 
     if (trustResultType == kSecTrustResultInvalid) {
-#if HAVE(SEC_TRUST_EVALUATE_WITH_ERROR)
         if (!SecTrustEvaluateWithError(trust, nullptr))
             return { };
-#else
-        result = SecTrustEvaluate(trust, &trustResultType);
-        if (result != errSecSuccess)
-            return { };
-#endif
     }
 
 #if HAVE(SEC_TRUST_SERIALIZATION)
@@ -150,7 +144,7 @@ static inline AtomString extractHTTPStatusText(CFHTTPMessageRef messageRef)
     if (auto httpStatusLine = adoptCF(CFHTTPMessageCopyResponseStatusLine(messageRef)))
         return extractReasonPhraseFromHTTPStatusLine(httpStatusLine.get());
 
-    static NeverDestroyed<AtomString> defaultStatusText("OK", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> defaultStatusText("OK", AtomString::ConstructFromLiteral);
     return defaultStatusText;
 }
 

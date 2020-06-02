@@ -47,9 +47,12 @@ class MachSendRight;
 namespace WebKit {
 
 class LayerTreeContext;
-class UpdateInfo;
 class WebPageProxy;
 class WebProcessProxy;
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+class UpdateInfo;
+#endif
 
 class DrawingAreaProxy : public IPC::MessageReceiver, protected IPC::MessageSender {
     WTF_MAKE_FAST_ALLOCATED;
@@ -73,7 +76,7 @@ public:
     const WebCore::IntSize& size() const { return m_size; }
     bool setSize(const WebCore::IntSize&, const WebCore::IntSize& scrollOffset = { });
 
-#if !PLATFORM(COCOA)
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     // The timeout we use when waiting for a DidUpdateGeometry message.
     static constexpr Seconds didUpdateBackingStoreStateTimeout() { return Seconds::fromMilliseconds(500); }
 #endif
@@ -86,8 +89,7 @@ public:
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }
 
 #if PLATFORM(MAC)
-    virtual void setViewExposedRect(Optional<WebCore::FloatRect>);
-    Optional<WebCore::FloatRect> viewExposedRect() const { return m_viewExposedRect; }
+    virtual void didChangeViewExposedRect();
     void viewExposedRectChangedTimerFired();
 #endif
 
@@ -144,16 +146,17 @@ private:
     // FIXME: These should be pure virtual.
     virtual void enterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
+    virtual void didFirstLayerFlush(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
 
 #if PLATFORM(MAC)
     RunLoop::Timer<DrawingAreaProxy> m_viewExposedRectChangedTimer;
-    Optional<WebCore::FloatRect> m_viewExposedRect;
     Optional<WebCore::FloatRect> m_lastSentViewExposedRect;
 #endif // PLATFORM(MAC)
+#endif
 
-#else
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     virtual void update(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
     virtual void didUpdateBackingStoreState(uint64_t /* backingStoreStateID */, const UpdateInfo&, const LayerTreeContext&) { }
     virtual void exitAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }

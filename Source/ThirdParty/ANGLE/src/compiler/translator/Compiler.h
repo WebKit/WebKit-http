@@ -99,6 +99,7 @@ class TCompiler : public TShHandleBase
     TInfoSink &getInfoSink() { return mInfoSink; }
 
     bool isEarlyFragmentTestsSpecified() const { return mEarlyFragmentTestsSpecified; }
+    bool isEarlyFragmentTestsOptimized() const { return mEarlyFragmentTestsOptimized; }
 
     bool isComputeShaderLocalSizeDeclared() const { return mComputeShaderLocalSizeDeclared; }
     const sh::WorkGroupSize &getComputeShaderLocalSize() const { return mComputeShaderLocalSize; }
@@ -173,6 +174,12 @@ class TCompiler : public TShHandleBase
 
     virtual bool shouldFlattenPragmaStdglInvariantAll() = 0;
     virtual bool shouldCollectVariables(ShCompileOptions compileOptions);
+    // If precision emulation needed, set isNeeded to true and emulate precision for given
+    //  outputLanguage, returning false if that fails, else returning true.
+    bool emulatePrecisionIfNeeded(TIntermBlock *root,
+                                  TInfoSinkBase &sink,
+                                  bool *isNeeded,
+                                  const ShShaderOutput outputLanguage);
 
     bool wereVariablesCollected() const;
     std::vector<sh::ShaderVariable> mAttributes;
@@ -272,6 +279,7 @@ class TCompiler : public TShHandleBase
 
     // fragment shader early fragment tests
     bool mEarlyFragmentTestsSpecified;
+    bool mEarlyFragmentTestsOptimized;
 
     // compute shader local group size
     bool mComputeShaderLocalSizeDeclared;

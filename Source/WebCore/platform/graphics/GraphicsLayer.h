@@ -451,6 +451,10 @@ public:
     // Set a rounded rect that will be used to clip the layer contents.
     FloatRoundedRect contentsClippingRect() const { return m_contentsClippingRect; }
     virtual void setContentsClippingRect(const FloatRoundedRect& roundedRect) { m_contentsClippingRect = roundedRect; }
+    
+    // If true, contentsClippingRect is used to clip child GraphicsLayers.
+    bool contentsRectClipsDescendants() const { return m_contentsRectClipsDescendants; }
+    virtual void setContentsRectClipsDescendants(bool b) { m_contentsRectClipsDescendants = b; }
 
     // Set a rounded rect that is used to clip this layer and its descendants (implies setting masksToBounds).
     // Returns false if the platform can't support this rounded clip, and we should fall back to painting a mask.
@@ -474,7 +478,6 @@ public:
     // These methods handle both transitions and keyframe animations.
     virtual bool addAnimation(const KeyframeValueList&, const FloatSize& /*boxSize*/, const Animation*, const String& /*animationName*/, double /*timeOffset*/)  { return false; }
     virtual void pauseAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
-    virtual void seekAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
     virtual void removeAnimation(const String& /*animationName*/) { }
 
     WEBCORE_EXPORT virtual void suspendAnimations(MonotonicTime);
@@ -711,6 +714,7 @@ protected:
     bool m_masksToBounds : 1;
     bool m_drawsContent : 1;
     bool m_contentsVisible : 1;
+    bool m_contentsRectClipsDescendants : 1;
     bool m_acceleratesDrawing : 1;
     bool m_usesDisplayListDrawing : 1;
     bool m_appliesPageScale : 1; // Set for the layer which has the page scale applied to it.

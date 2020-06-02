@@ -1,3 +1,395 @@
+2020-06-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r262290.
+        https://bugs.webkit.org/show_bug.cgi?id=212638
+
+        it is not yet ready (Requested by youenn on #webkit).
+
+        Reverted changeset:
+
+        "Enable VTB required low latency code path"
+        https://bugs.webkit.org/show_bug.cgi?id=210609
+        https://trac.webkit.org/changeset/262290
+
+2020-05-29  Keith Rollin  <krollin@apple.com>
+
+        Revert switch to XCBuild
+        https://bugs.webkit.org/show_bug.cgi?id=212530
+        <rdar://problem/63764632>
+
+        Unreviewed build fix.
+
+        Bug 209890 enabled the use of XCBuild by default. Since then, some
+        build issues have shown up. While addressing them, temporarily turn
+        off the use of XCBuild by default.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-05-29  Youenn Fablet  <youenn@apple.com>
+
+        Enable VTB required low latency code path
+        https://bugs.webkit.org/show_bug.cgi?id=210609
+        <rdar://problem/61890332>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.h:
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        Declare the new key since it is now in a private header.
+
+2020-05-26  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-05-13  Jer Noble  <jer.noble@apple.com>
+
+        Replace isNullFunctionPointer with real weak-linking support
+        https://bugs.webkit.org/show_bug.cgi?id=211751
+
+        Reviewed by Sam Weinig.
+
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+
+2020-05-11  Saam Barati  <sbarati@apple.com>
+
+        Remove OTHER_CFLAGS="" in libwebrtc pbxproj
+        https://bugs.webkit.org/show_bug.cgi?id=211742
+
+        Reviewed by Darin Adler.
+
+        I believe this was done by accident in a larger patch. If we did indeed
+        want to define OTHER_CFLAGS to be empty, the right place for that is inside
+        the xcconfig files, not the pbxproj files.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-04-30  Youenn Fablet  <youenn@apple.com>
+
+        Disable low latency encoder on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=211229
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.h:
+        This is not yet fully ready.
+
+2020-04-15  Jer Noble  <jer.noble@apple.com>
+
+        isNullFunctionPointer() can fail for symbols not explicitly marked as weakly linked.
+        https://bugs.webkit.org/show_bug.cgi?id=210532
+
+        Reviewed by Tim Horton.
+
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+
+2020-04-09  Keith Rollin  <krollin@apple.com>
+
+        Set ENTITLEMENTS_REQUIRED=NO for some Xcode build targets
+        https://bugs.webkit.org/show_bug.cgi?id=210250
+        <rdar://problem/61502270>
+
+        Reviewed by Jonathan Bedard.
+
+        When building with the public version of Xcode 11.4, with XCBuild
+        enabled, and targeting the iOS device, some build targets issue an
+        error like:
+
+            error: An empty identity is not valid when signing a binary for
+                the product type 'Command-line Tool'. (in target 'yasm' from
+                project 'libwebrtc')
+
+        A comment in <rdar://problem/47092353> suggests setting
+        ENTITLEMENTS_REQUIRED=NO to relax the requirement. To that end, when
+        building with the public Xcode, establish that setting for the
+        affected targets.
+
+        * Configurations/Base.xcconfig:
+
+2020-04-08  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r259708.
+
+        Broke the iOS device Build
+
+        Reverted changeset:
+
+        "Enable the use of XCBuild by default in Apple builds"
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        https://trac.webkit.org/changeset/259708
+
+2020-04-08  Keith Rollin  <krollin@apple.com>
+
+        Enable the use of XCBuild by default in Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=209890
+        <rdar://problem/44182078>
+
+        Reviewed by Darin Adler.
+
+        Switch from the "legacy" Xcode build system to the "new" build system
+        (also known as "XCBuild"). Switching to the new system speeds up
+        builds by a small percentage, better validates projects for
+        build-related issues (such as dependency cycles), lets WebKit benefit
+        from future improvements in XCBuild such as those coming from the
+        underlying llbuild open source project, and prepares us for any other
+        tools built for this new ecosystem.
+
+        Specific changes:
+
+        - Remove Xcode project and workspace settings that selected the Build
+          system, allowing the default to take hold (which is currently the
+          New build system).
+        - Updated webkitdirs.pm with a terser check for Xcode version.
+        - Update build-webkit and Makefile.shared to be explicit when using
+          the old build system (no longer treat it as a default or fall-back
+          configuration).
+        - Update various xcconfig files similarly to treat the default as
+          using the new build system.
+        - Update various post-processing build steps to check for Xcode 11.4
+          and to no longer treat the default as using the old build system.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-04-06  youenn fablet  <youenn@apple.com>
+
+        Add HEVC support in GPU Process for WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=209857
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+        * Source/webrtc/sdk/WebKit/WebKitDecoder.h: Copied from Source/ThirdParty/libwebrtc/Source/webrtc/sdk/WebKit/WebKitUtilities.h.
+        * Source/webrtc/sdk/WebKit/WebKitDecoder.mm: Added.
+        (-[WK_RTCLocalVideoH264H265Decoder initH264DecoderWithCallback:]):
+        (-[WK_RTCLocalVideoH264H265Decoder initH265DecoderWithCallback:]):
+        (-[WK_RTCLocalVideoH264H265Decoder decodeData:size:timeStamp:]):
+        (-[WK_RTCLocalVideoH264H265Decoder releaseDecoder]):
+        (webrtc::videoDecoderCallbacks):
+        (webrtc::setVideoDecoderCallbacks):
+        (webrtc::RemoteVideoDecoder::RemoteVideoDecoder):
+        (webrtc::RemoteVideoDecoder::decodeComplete):
+        (webrtc::RemoteVideoDecoder::InitDecode):
+        (webrtc::RemoteVideoDecoder::Decode):
+        (webrtc::RemoteVideoDecoder::RegisterDecodeCompleteCallback):
+        (webrtc::RemoteVideoDecoder::Release):
+        (webrtc::RemoteVideoDecoderFactory::RemoteVideoDecoderFactory):
+        (webrtc::RemoteVideoDecoderFactory::GetSupportedFormats const):
+        (webrtc::RemoteVideoDecoderFactory::CreateVideoDecoder):
+        (webrtc::createWebKitDecoderFactory):
+        (webrtc::createLocalH264Decoder):
+        (webrtc::createLocalH265Decoder):
+        (webrtc::releaseLocalDecoder):
+        (webrtc::decodeFrame):
+        * Source/webrtc/sdk/WebKit/WebKitEncoder.mm:
+        (-[WK_RTCLocalVideoH264H265Encoder initWithCodecInfo:]):
+        (-[WK_RTCLocalVideoH264H265Encoder setCallback:]):
+        (-[WK_RTCLocalVideoH264H265Encoder releaseEncoder]):
+        (-[WK_RTCLocalVideoH264H265Encoder startEncodeWithSettings:numberOfCores:]):
+        (-[WK_RTCLocalVideoH264H265Encoder encode:codecSpecificInfo:frameTypes:]):
+        (-[WK_RTCLocalVideoH264H265Encoder setBitrate:framerate:]):
+        (webrtc::createLocalEncoder):
+        (webrtc::releaseLocalEncoder):
+        (webrtc::initializeLocalEncoder):
+        (webrtc::encodeLocalEncoderFrame):
+        (webrtc::setLocalEncoderRates):
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+        (): Deleted.
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::videoDecoderCallbacks): Deleted.
+        (webrtc::setVideoDecoderCallbacks): Deleted.
+        (webrtc::RemoteVideoDecoder::RemoteVideoDecoder): Deleted.
+        (webrtc::RemoteVideoDecoder::decodeComplete): Deleted.
+        (webrtc::RemoteVideoDecoder::InitDecode): Deleted.
+        (webrtc::RemoteVideoDecoder::Decode): Deleted.
+        (webrtc::RemoteVideoDecoder::RegisterDecodeCompleteCallback): Deleted.
+        (webrtc::RemoteVideoDecoder::Release): Deleted.
+        (webrtc::RemoteVideoDecoderFactory::RemoteVideoDecoderFactory): Deleted.
+        (webrtc::RemoteVideoDecoderFactory::GetSupportedFormats const): Deleted.
+        (webrtc::RemoteVideoDecoderFactory::CreateVideoDecoder): Deleted.
+        (webrtc::createWebKitDecoderFactory): Deleted.
+        (webrtc::createLocalDecoder): Deleted.
+        (webrtc::releaseLocalDecoder): Deleted.
+        (webrtc::decodeFrame): Deleted.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoDecoderH265.h:
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoDecoderH265.mm:
+        (-[RTCVideoDecoderH265 decode:missingFrames:codecSpecificInfo:renderTimeMs:]):
+        (-[RTCVideoDecoderH265 decodeData:size:timeStamp:]):
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-04-03  David Kilzer  <ddkilzer@apple.com>
+
+        [Xcode] Replace ASAN_OTHER_CFLAGS and ASAN_OTHER_CPLUSPLUSFLAGS with $(inherited)
+        <https://webkit.org/b/209963>
+        <rdar://problem/61257504>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        - Remove ASAN_OTHER_CFLAGS, ASAN_OTHER_CPLUSPLUSFLAGS and
+          ASAN_OTHER_LDFLAGS.
+
+2020-04-03  youenn fablet  <youenn@apple.com>
+
+        Remove rtpplay.exe from the libwebrtc source folder
+        https://bugs.webkit.org/show_bug.cgi?id=209957
+
+        Reviewed by Eric Carlson.
+
+        * .gitignore:
+        * Source/webrtc/data/voice_engine/stereo_rtp_files/rtpplay.exe: Removed.
+
+2020-04-03  youenn fablet  <youenn@apple.com>
+
+        Add initial support for WebRTC HEVC
+        https://bugs.webkit.org/show_bug.cgi?id=204283
+
+        Reviewed by Eric Carlson.
+
+        Add H265 packetization/depacketization and ObjC H265 encoder/decoder.
+        Support is switchable using a boolean given to the decoder/encoder factories.
+
+        * Source/webrtc/api/video/video_codec_type.h:
+        * Source/webrtc/api/video_codecs/video_codec.cc:
+        * Source/webrtc/api/video_codecs/video_codec.h:
+        (webrtc::VideoCodecH265::operator!= const):
+        * Source/webrtc/api/video_codecs/video_encoder.cc:
+        * Source/webrtc/api/video_codecs/video_encoder.h:
+        * Source/webrtc/api/video_codecs/video_encoder_config.cc:
+        * Source/webrtc/api/video_codecs/video_encoder_config.h:
+        * Source/webrtc/build_overrides/build.gni:
+        * Source/webrtc/call/rtp_payload_params.cc:
+        * Source/webrtc/common_video/BUILD.gn:
+        * Source/webrtc/common_video/h265/h265_common.cc: Added.
+        * Source/webrtc/common_video/h265/h265_common.h: Added.
+        * Source/webrtc/common_video/h265/h265_pps_parser.cc: Added.
+        * Source/webrtc/common_video/h265/h265_pps_parser.h: Added.
+        * Source/webrtc/common_video/h265/h265_sps_parser.cc: Added.
+        * Source/webrtc/common_video/h265/h265_sps_parser.h: Added.
+        * Source/webrtc/common_video/h265/h265_vps_parser.cc: Added.
+        * Source/webrtc/common_video/h265/h265_vps_parser.h: Added.
+        * Source/webrtc/media/base/media_constants.cc:
+        * Source/webrtc/media/base/media_constants.h:
+        * Source/webrtc/modules/rtp_rtcp/BUILD.gn:
+        * Source/webrtc/modules/rtp_rtcp/source/create_video_rtp_depacketizer.cc:
+        * Source/webrtc/modules/rtp_rtcp/source/h265_sps_parser.cc: Added.
+        * Source/webrtc/modules/rtp_rtcp/source/h265_sps_parser.h: Added.
+        (webrtc::H265SpsParser::width):
+        (webrtc::H265SpsParser::height):
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_format.cc:
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_format_h265.cc: Added.
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_format_h265.h: Added.
+        (webrtc::RtpPacketizerH265::Packet::Packet):
+        (webrtc::RtpPacketizerH265::PacketUnit::PacketUnit):
+        (webrtc::VideoRtpDepacketizerH265::~VideoRtpDepacketizerH265):
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_sender_video.cc:
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_video_header.h:
+        * Source/webrtc/modules/video_coding/BUILD.gn:
+        * Source/webrtc/modules/video_coding/codecs/h265/include/h265_globals.h: Added.
+        * Source/webrtc/modules/video_coding/encoded_frame.cc:
+        * Source/webrtc/modules/video_coding/h265_vps_sps_pps_tracker.cc: Added.
+        * Source/webrtc/modules/video_coding/h265_vps_sps_pps_tracker.h: Added.
+        * Source/webrtc/modules/video_coding/include/video_codec_interface.h:
+        * Source/webrtc/modules/video_coding/jitter_buffer_common.h:
+        * Source/webrtc/modules/video_coding/packet.cc:
+        * Source/webrtc/modules/video_coding/packet_buffer.cc:
+        * Source/webrtc/modules/video_coding/session_info.cc:
+        * Source/webrtc/modules/video_coding/session_info.h:
+        * Source/webrtc/rtc_base/experiments/min_video_bitrate_experiment.cc:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::createWebKitEncoderFactory):
+        (webrtc::createWebKitDecoderFactory):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCCodecSpecificInfoH265+Private.h: Copied from Source/ThirdParty/libwebrtc/Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCCodecSpecificInfoH265.h: Added.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCCodecSpecificInfoH265.mm: Added.
+        (-[RTCCodecSpecificInfoH265 nativeCodecSpecificInfo]):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h:
+        * Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.m:
+        (-[RTCDefaultVideoDecoderFactory initWithH265:]):
+        (-[RTCDefaultVideoDecoderFactory supportedCodecs]):
+        (-[RTCDefaultVideoDecoderFactory createDecoder:]):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoEncoderFactory.h:
+        * Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoEncoderFactory.m:
+        (-[RTCDefaultVideoEncoderFactory initWithH265:]):
+        (+[RTCDefaultVideoEncoderFactory supportedCodecs]):
+        (-[RTCDefaultVideoEncoderFactory createEncoder:]):
+        (-[RTCDefaultVideoEncoderFactory supportedCodecs]):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCH265ProfileLevelId.h: Copied from Source/ThirdParty/libwebrtc/Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCH265ProfileLevelId.mm: Added.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoDecoderH265.h: Copied from Source/ThirdParty/libwebrtc/Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoDecoderH265.mm: Added.
+        (RTCH265FrameDecodeParams::RTCH265FrameDecodeParams):
+        (h265DecompressionOutputCallback):
+        (-[RTCVideoDecoderH265 init]):
+        (-[RTCVideoDecoderH265 dealloc]):
+        (-[RTCVideoDecoderH265 startDecodeWithNumberOfCores:]):
+        (-[RTCVideoDecoderH265 decode:missingFrames:codecSpecificInfo:renderTimeMs:]):
+        (-[RTCVideoDecoderH265 setCallback:]):
+        (-[RTCVideoDecoderH265 releaseDecoder]):
+        (-[RTCVideoDecoderH265 resetDecompressionSession]):
+        (-[RTCVideoDecoderH265 configureDecompressionSession]):
+        (-[RTCVideoDecoderH265 destroyDecompressionSession]):
+        (-[RTCVideoDecoderH265 setVideoFormat:]):
+        (-[RTCVideoDecoderH265 implementationName]):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH265.h: Copied from Source/ThirdParty/libwebrtc/Source/webrtc/sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h.
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH265.mm: Added.
+        (-[RTCVideoEncoderH265 initWithCodecInfo:]):
+        (-[RTCVideoEncoderH265 dealloc]):
+        (-[RTCVideoEncoderH265 startEncodeWithSettings:numberOfCores:]):
+        (-[RTCVideoEncoderH265 encode:codecSpecificInfo:frameTypes:]):
+        (-[RTCVideoEncoderH265 setCallback:]):
+        (-[RTCVideoEncoderH265 setBitrate:framerate:]):
+        (-[RTCVideoEncoderH265 releaseEncoder]):
+        (-[RTCVideoEncoderH265 resetCompressionSession]):
+        (-[RTCVideoEncoderH265 configureCompressionSession]):
+        (-[RTCVideoEncoderH265 destroyCompressionSession]):
+        (-[RTCVideoEncoderH265 implementationName]):
+        (-[RTCVideoEncoderH265 setBitrateBps:]):
+        (-[RTCVideoEncoderH265 setEncoderBitrateBps:]):
+        (-[RTCVideoEncoderH265 frameWasEncoded:flags:sampleBuffer:width:height:renderTimeMs:timestamp:rotation:]):
+        (-[RTCVideoEncoderH265 scalingSettings]):
+        * Source/webrtc/sdk/objc/components/video_codec/nalu_rewriter.cc:
+        * Source/webrtc/sdk/objc/components/video_codec/nalu_rewriter.h:
+        * Source/webrtc/sdk/objc/native/src/objc_video_decoder_factory.mm:
+        (webrtc::ObjCVideoDecoderFactory::CreateVideoDecoder):
+        * Source/webrtc/sdk/objc/native/src/objc_video_encoder_factory.mm:
+        (webrtc::ObjCVideoEncoderFactory::CreateVideoEncoder):
+        * Source/webrtc/video/rtp_video_stream_receiver.cc:
+        * Source/webrtc/video/rtp_video_stream_receiver.h:
+        * Source/webrtc/video/send_statistics_proxy.cc:
+        * Source/webrtc/video/video_receive_stream.cc:
+        * Source/webrtc/video/video_stream_encoder.cc:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
 2020-04-02  Keith Rollin  <krollin@apple.com>
 
         Sort libwebrtc Xcode project file

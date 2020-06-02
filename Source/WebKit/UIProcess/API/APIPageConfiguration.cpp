@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,7 +73,6 @@ Ref<PageConfiguration> PageConfiguration::copy() const
     copy->m_websiteDataStore = this->m_websiteDataStore;
 #if PLATFORM(IOS_FAMILY)
     copy->m_clientNavigationsRunAtForegroundPriority = this->m_clientNavigationsRunAtForegroundPriority;
-    copy->m_alwaysRunsAtForegroundPriority = this->m_alwaysRunsAtForegroundPriority;
     copy->m_canShowWhileLocked = this->m_canShowWhileLocked;
     copy->m_clickInteractionDriverForTesting = this->m_clickInteractionDriverForTesting;
 #endif
@@ -86,16 +85,19 @@ Ref<PageConfiguration> PageConfiguration::copy() const
 #if ENABLE(APPLICATION_MANIFEST)
     copy->m_applicationManifest = this->m_applicationManifest;
 #endif
+    copy->m_shouldRelaxThirdPartyCookieBlocking = this->m_shouldRelaxThirdPartyCookieBlocking;
     for (auto& pair : this->m_urlSchemeHandlers)
         copy->m_urlSchemeHandlers.set(pair.key, pair.value.copyRef());
     copy->m_corsDisablingPatterns = this->m_corsDisablingPatterns;
     copy->m_crossOriginAccessControlCheckEnabled = this->m_crossOriginAccessControlCheckEnabled;
+    copy->m_userScriptsShouldWaitUntilNotification = this->m_userScriptsShouldWaitUntilNotification;
     copy->m_webViewCategory = this->m_webViewCategory;
 
     copy->m_processDisplayName = this->m_processDisplayName;
     copy->m_ignoresAppBoundDomains = this->m_ignoresAppBoundDomains;
     copy->m_loadsSubresources = this->m_loadsSubresources;
     copy->m_loadsFromNetwork = this->m_loadsFromNetwork;
+    copy->m_limitsNavigationsToAppBoundDomains = this->m_limitsNavigationsToAppBoundDomains;
 
     return copy;
 }

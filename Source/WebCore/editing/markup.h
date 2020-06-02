@@ -52,8 +52,8 @@ class VisibleSelection;
 void replaceSubresourceURLs(Ref<DocumentFragment>&&, HashMap<AtomString, AtomString>&&);
 void removeSubresourceURLAttributes(Ref<DocumentFragment>&&, WTF::Function<bool(const URL&)> shouldRemoveURL);
 
-enum class MSOListQuirks { CheckIfNeeded, Disabled };
 std::unique_ptr<Page> createPageForSanitizingWebContent();
+enum class MSOListQuirks : bool { CheckIfNeeded, Disabled };
 String sanitizeMarkup(const String&, MSOListQuirks = MSOListQuirks::Disabled, Optional<WTF::Function<void(DocumentFragment&)>> fragmentSanitizer = WTF::nullopt);
 String sanitizedMarkupForFragmentInDocument(Ref<DocumentFragment>&&, Document&, MSOListQuirks, const String& originalMarkup);
 

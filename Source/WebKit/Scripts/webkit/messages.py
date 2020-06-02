@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+# Copyright (C) 2010-2020 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ SYNCHRONOUS_ATTRIBUTE = 'Synchronous'
 ASYNC_ATTRIBUTE = 'Async'
 
 _license_header = """/*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -134,16 +134,15 @@ def message_to_reply_forward_declaration(message):
     return surround_in_condition(''.join(result), message.condition)
 
 
-def message_to_struct_declaration(message):
+def message_to_struct_declaration(receiver, message):
     result = []
     function_parameters = [(function_parameter_type(x.type, x.kind), x.name) for x in message.parameters]
 
     result.append('class %s {\n' % message.name)
     result.append('public:\n')
-    result.append('    typedef %s Arguments;\n' % arguments_type(message))
+    result.append('    using Arguments = %s;\n' % arguments_type(message))
     result.append('\n')
-    result.append('    static IPC::StringReference receiverName() { return messageReceiverName(); }\n')
-    result.append('    static IPC::StringReference name() { return IPC::StringReference("%s"); }\n' % message.name)
+    result.append('    static IPC::MessageName name() { return IPC::MessageName::%s_%s; }\n' % (receiver.name, message.name))
     result.append('    static const bool isSync = %s;\n' % ('false', 'true')[message.reply_parameters != None and not message.has_attribute(ASYNC_ATTRIBUTE)])
     result.append('\n')
     if message.reply_parameters != None:
@@ -153,7 +152,7 @@ def message_to_struct_declaration(message):
             move_parameters = ', '.join([move_type(x.type) for x in message.reply_parameters])
             result.append('    static void callReply(IPC::Decoder&, CompletionHandler<void(%s)>&&);\n' % move_parameters)
             result.append('    static void cancelReply(CompletionHandler<void(%s)>&&);\n' % move_parameters)
-            result.append('    static IPC::StringReference asyncMessageReplyName() { return { "%sReply" }; }\n' % message.name)
+            result.append('    static IPC::MessageName asyncMessageReplyName() { return IPC::MessageName::%s_%sReply; }\n' % (receiver.name, message.name))
             result.append('    using AsyncReply = %sAsyncReply;\n' % message.name)
         elif message.has_attribute(SYNCHRONOUS_ATTRIBUTE):
             result.append('    using DelayedReply = %sDelayedReply;\n' % message.name)
@@ -207,11 +206,13 @@ def types_that_cannot_be_forward_declared():
         'MediaTime',
         'String',
         'WebCore::ColorSpace',
+        'WebCore::DictationContext',
         'WebCore::DocumentIdentifier',
         'WebCore::DocumentOrWorkerIdentifier',
         'WebCore::FetchIdentifier',
         'WebCore::FrameIdentifier',
         'WebCore::LibWebRTCSocketIdentifier',
+        'WebCore::MediaSessionIdentifier',
         'WebCore::PageIdentifier',
         'WebCore::PointerID',
         'WebCore::ProcessIdentifier',
@@ -222,15 +223,19 @@ def types_that_cannot_be_forward_declared():
         'WebCore::ServiceWorkerOrClientData',
         'WebCore::ServiceWorkerOrClientIdentifier',
         'WebCore::ServiceWorkerRegistrationIdentifier',
+        'WebCore::SharedStringHash',
         'WebCore::SleepDisablerIdentifier',
         'WebCore::SWServerConnectionIdentifier',
         'WebKit::ActivityStateChangeID',
         'WebKit::AudioMediaStreamTrackRendererIdentifier',
         'WebKit::ContentWorldIdentifier',
+        'WebKit::DisplayLinkObserverID',
+        'WebKit::GeolocationIdentifier',
         'WebKit::ImageBufferBackendHandle',
         'WebKit::ImageBufferFlushIdentifier',
         'WebKit::ImageBufferIdentifier',
         'WebKit::LayerHostingContextID',
+        'WebKit::LegacyCustomProtocolID',
         'WebKit::LibWebRTCResolverIdentifier',
         'WebKit::MDNSRegisterIdentifier',
         'WebKit::MediaPlayerPrivateRemoteIdentifier',
@@ -262,6 +267,7 @@ def conditions_for_header(header):
     conditions = {
         '"InputMethodState.h"': ["PLATFORM(GTK)", "PLATFORM(WPE)"],
         '"LayerHostingContext.h"': ["PLATFORM(COCOA)", ],
+        '"GestureTypes.h"': ["PLATFORM(IOS_FAMILY)"],
     }
     if not header in conditions:
         return None
@@ -273,8 +279,9 @@ def forward_declarations_and_headers(receiver):
 
     headers = set([
         '"ArgumentCoders.h"',
-        '<wtf/Forward.h>',
         '"Connection.h"',
+        '"MessageNames.h"',
+        '<wtf/Forward.h>',
         '<wtf/ThreadSafeRefCounted.h>',
         '"%sMessagesReplies.h"' % receiver.name,
     ])
@@ -331,6 +338,7 @@ def forward_declarations_and_headers_for_replies(receiver):
 
     headers = set([
         '<wtf/Forward.h>',
+        '"MessageNames.h"',
     ])
 
     non_template_wtf_types = frozenset([
@@ -436,12 +444,12 @@ def generate_messages_header(receiver):
 
     result.append('namespace Messages {\nnamespace %s {\n' % receiver.name)
     result.append('\n')
-    result.append('static inline IPC::StringReference messageReceiverName()\n')
+    result.append('static inline IPC::ReceiverName messageReceiverName()\n')
     result.append('{\n')
-    result.append('    return IPC::StringReference("%s");\n' % receiver.name)
+    result.append('    return IPC::ReceiverName::%s;\n' % receiver.name)
     result.append('}\n')
     result.append('\n')
-    result.append('\n'.join([message_to_struct_declaration(x) for x in receiver.messages]))
+    result.append('\n'.join([message_to_struct_declaration(receiver, x) for x in receiver.messages]))
     result.append('\n')
     result.append('} // namespace %s\n} // namespace Messages\n' % receiver.name)
 
@@ -466,7 +474,10 @@ def async_message_statement(receiver, message):
         dispatch_function_args.insert(0, 'connection')
 
     if message.has_attribute(WANTS_CONNECTION_ATTRIBUTE):
-        dispatch_function_args.insert(0, 'connection')
+        if message.has_attribute(ASYNC_ATTRIBUTE):
+            dispatch_function += 'WantsConnection'
+        else:
+            dispatch_function_args.insert(0, 'connection')
 
     result = []
     result.append('    if (decoder.messageName() == Messages::%s::%s::name()) {\n' % (receiver.name, message.name))
@@ -594,6 +605,7 @@ def headers_for_type(type):
         'WebCore::LegacyCDMSessionClient::MediaKeyErrorCode': ['<WebCore/LegacyCDMSession.h>'],
         'WebCore::LockBackForwardList': ['<WebCore/FrameLoaderTypes.h>'],
         'WebCore::MessagePortChannelProvider::HasActivity': ['<WebCore/MessagePortChannelProvider.h>'],
+        'WebCore::MouseEventPolicy': ['<WebCore/DocumentLoader.h>'],
         'WebCore::NetworkTransactionInformation': ['<WebCore/NetworkLoadInformation.h>'],
         'WebCore::PasteboardCustomData': ['<WebCore/Pasteboard.h>'],
         'WebCore::PasteboardImage': ['<WebCore/Pasteboard.h>'],
@@ -603,11 +615,14 @@ def headers_for_type(type):
         'WebCore::PaymentMethodUpdate': ['<WebCore/ApplePaySessionPaymentRequest.h>'],
         'WebCore::PluginInfo': ['<WebCore/PluginData.h>'],
         'WebCore::PolicyAction': ['<WebCore/FrameLoaderTypes.h>'],
+        'WebCore::ShouldContinuePolicyCheck': ['<WebCore/FrameLoaderTypes.h>'],
         'WebCore::PolicyCheckIdentifier': ['<WebCore/FrameLoaderTypes.h>'],
         'WebCore::ProcessIdentifier': ['<WebCore/ProcessIdentifier.h>'],
         'WebCore::RecentSearch': ['<WebCore/SearchPopupMenu.h>'],
+        'WebCore::RequestStorageAccessResult': ['<WebCore/DocumentStorageAccess.h>'],
         'WebCore::RouteSharingPolicy': ['<WebCore/AudioSession.h>'],
         'WebCore::SWServerConnectionIdentifier': ['<WebCore/ServiceWorkerTypes.h>'],
+        'WebCore::SelectionDirection': ['<WebCore/VisibleSelection.h>'],
         'WebCore::ServiceWorkerJobIdentifier': ['<WebCore/ServiceWorkerTypes.h>'],
         'WebCore::ServiceWorkerOrClientData': ['<WebCore/ServiceWorkerTypes.h>', '<WebCore/ServiceWorkerClientData.h>', '<WebCore/ServiceWorkerData.h>'],
         'WebCore::ServiceWorkerOrClientIdentifier': ['<WebCore/ServiceWorkerTypes.h>', '<WebCore/ServiceWorkerClientIdentifier.h>'],
@@ -620,6 +635,7 @@ def headers_for_type(type):
         'WebCore::ShouldNotifyWhenResolved': ['<WebCore/ServiceWorkerTypes.h>'],
         'WebCore::ShouldSample': ['<WebCore/DiagnosticLoggingClient.h>'],
         'WebCore::StorageAccessPromptWasShown': ['<WebCore/DocumentStorageAccess.h>'],
+        'WebCore::StorageAccessScope': ['<WebCore/DocumentStorageAccess.h>'],
         'WebCore::StorageAccessWasGranted': ['<WebCore/DocumentStorageAccess.h>'],
         'WebCore::SupportedPluginIdentifier': ['<WebCore/PluginData.h>'],
         'WebCore::SystemPreviewInfo': ['<WebCore/FrameLoaderTypes.h>'],
@@ -632,15 +648,22 @@ def headers_for_type(type):
         'WebCore::FirstPartyWebsiteDataRemovalMode': ['<WebCore/NetworkStorageSession.h>'],
         'WebCore::UsedLegacyTLS': ['<WebCore/ResourceResponseBase.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
+        'WebCore::WebGLLoadPolicy': ['<WebCore/FrameLoaderTypes.h>'],
         'WebCore::WillContinueLoading': ['<WebCore/FrameLoaderTypes.h>'],
         'WebCore::SelectionRect': ['"EditorState.h"'],
         'WebKit::ActivityStateChangeID': ['"DrawingAreaInfo.h"'],
         'WebKit::BackForwardListItemState': ['"SessionState.h"'],
-        'WebKit::ContentWorldIdentifier' : ['"ContentWorldShared.h"'],
+        'WebKit::ContentWorldIdentifier': ['"ContentWorldShared.h"'],
+        'WebKit::GestureRecognizerState': ['"GestureTypes.h"'],
+        'WebKit::GestureType': ['"GestureTypes.h"'],
         'WebKit::LayerHostingContextID': ['"LayerHostingContext.h"'],
         'WebKit::LayerHostingMode': ['"LayerTreeContext.h"'],
         'WebKit::PageState': ['"SessionState.h"'],
+        'WebKit::PaymentSetupConfiguration': ['"PaymentSetupConfigurationWebKit.h"'],
+        'WebKit::PaymentSetupFeatures': ['"ApplePayPaymentSetupFeaturesWebKit.h"'],
         'WebKit::RespectSelectionAnchor': ['"GestureTypes.h"'],
+        'WebKit::SelectionFlags': ['"GestureTypes.h"'],
+        'WebKit::SelectionTouch': ['"GestureTypes.h"'],
         'WebKit::WebGestureEvent': ['"WebEvent.h"'],
         'WebKit::WebKeyboardEvent': ['"WebEvent.h"'],
         'WebKit::WebMouseEvent': ['"WebEvent.h"'],
@@ -840,4 +863,175 @@ def generate_message_handler(receiver):
     if receiver.condition:
         result.append('\n#endif // %s\n' % receiver.condition)
 
+    return ''.join(result)
+
+
+def generate_message_names_header(receivers):
+    result = []
+    result.append(_license_header)
+    result.append('#pragma once\n')
+    result.append('\n')
+    result.append('#include <wtf/EnumTraits.h>\n')
+    result.append('\n')
+    result.append('namespace IPC {\n')
+    result.append('\n')
+    result.append('enum class ReceiverName : uint8_t {')
+
+    enum_value = 1
+    first_receiver = True
+    for receiver in receivers:
+        result.append('\n')
+        result.append('    ')
+        if not first_receiver:
+            result.append(', ')
+        first_receiver = False
+        result.append('%s = %d' % (receiver.name, enum_value))
+        enum_value = enum_value + 1
+    result.append('\n    , IPC = %d' % enum_value)
+    enum_value = enum_value + 1
+    result.append('\n    , AsyncReply = %d' % enum_value)
+    enum_value = enum_value + 1
+    result.append('\n    , Invalid = %d' % enum_value)
+    result.append('\n};\n')
+    result.append('\n')
+    result.append('enum class MessageName : uint16_t {')
+
+    enum_value = 1
+    first_message = True
+    for receiver in receivers:
+        for message in receiver.messages:
+            result.append('\n')
+            if message.condition:
+                result.append('#if %s\n' % message.condition)
+            result.append('    ')
+            if not first_message:
+                result.append(', ')
+            first_message = False
+            result.append('%s_%s = %d' % (receiver.name, message.name, enum_value))
+            enum_value = enum_value + 1
+            if message.has_attribute(ASYNC_ATTRIBUTE):
+                result.append('\n    , %s_%sReply = %d' % (receiver.name, message.name, enum_value))
+                enum_value = enum_value + 1
+            if message.condition:
+                result.append('\n#endif')
+    result.append('\n    , WrappedAsyncMessageForTesting = %d' % enum_value)
+    enum_value = enum_value + 1
+    result.append('\n    , SyncMessageReply = %d' % enum_value)
+    enum_value = enum_value + 1
+    result.append('\n    , InitializeConnection = %d' % enum_value)
+    enum_value = enum_value + 1
+    result.append('\n    , LegacySessionState = %d' % enum_value)
+    result.append('\n};\n')
+    result.append('\n')
+    result.append('ReceiverName receiverName(MessageName);\n')
+    result.append('const char* description(MessageName);\n')
+    result.append('bool isValidMessageName(MessageName);\n')
+    result.append('\n')
+    result.append('} // namespace IPC\n')
+    result.append('\n')
+    result.append('namespace WTF {\n')
+    result.append('\n')
+    result.append('template<>\n')
+    result.append('class HasCustomIsValidEnum<IPC::MessageName> : public std::true_type { };\n')
+    result.append('template<typename E, typename T, typename = std::enable_if_t<std::is_same<E, IPC::MessageName>::value>>\n')
+    result.append('bool isValidEnum(T messageName)\n')
+    result.append('{\n')
+    result.append('    static_assert(sizeof(T) == sizeof(IPC::MessageName), "isValidEnum<MessageName> should only be called with 16-bit types");\n')
+    result.append('    return IPC::isValidMessageName(static_cast<IPC::MessageName>(messageName));\n')
+    result.append('};\n')
+    result.append('\n')
+    result.append('} // namespace WTF\n')
+    return ''.join(result)
+
+
+def generate_message_names_implementation(receivers):
+    result = []
+    result.append(_license_header)
+    result.append('#include "config.h"\n')
+    result.append('#include "MessageNames.h"\n')
+    result.append('\n')
+    result.append('namespace IPC {\n')
+    result.append('\n')
+    result.append('const char* description(MessageName name)\n')
+    result.append('{\n')
+    result.append('    switch (name) {\n')
+    for receiver in receivers:
+        for message in receiver.messages:
+            if message.condition:
+                result.append('#if %s\n' % message.condition)
+            result.append('    case MessageName::%s_%s:\n' % (receiver.name, message.name))
+            result.append('        return "%s::%s";\n' % (receiver.name, message.name))
+            if message.has_attribute(ASYNC_ATTRIBUTE):
+                result.append('    case MessageName::%s_%sReply:\n' % (receiver.name, message.name))
+                result.append('        return "%s::%sReply";\n' % (receiver.name, message.name))
+            if message.condition:
+                result.append('#endif\n')
+    result.append('    case MessageName::WrappedAsyncMessageForTesting:\n')
+    result.append('        return "IPC::WrappedAsyncMessageForTesting";\n')
+    result.append('    case MessageName::SyncMessageReply:\n')
+    result.append('        return "IPC::SyncMessageReply";\n')
+    result.append('    case MessageName::InitializeConnection:\n')
+    result.append('        return "IPC::InitializeConnection";\n')
+    result.append('    case MessageName::LegacySessionState:\n')
+    result.append('        return "IPC::LegacySessionState";\n')
+    result.append('    }\n')
+    result.append('    ASSERT_NOT_REACHED();\n')
+    result.append('    return "<invalid message name>";\n')
+    result.append('}\n')
+    result.append('\n')
+    result.append('ReceiverName receiverName(MessageName messageName)\n')
+    result.append('{\n')
+    result.append('    switch (messageName) {\n')
+    for receiver in receivers:
+        for message in receiver.messages:
+            if message.condition:
+                result.append('#if %s\n' % message.condition)
+            result.append('    case MessageName::%s_%s:\n' % (receiver.name, message.name))
+            if message.condition:
+                result.append('#endif\n')
+        result.append('        return ReceiverName::%s;\n' % receiver.name)
+    for receiver in receivers:
+        for message in receiver.messages:
+            if message.has_attribute(ASYNC_ATTRIBUTE):
+                if message.condition:
+                    result.append('#if %s\n' % message.condition)
+                result.append('    case MessageName::%s_%sReply:\n' % (receiver.name, message.name))
+                if message.condition:
+                    result.append('#endif\n')
+    result.append('        return ReceiverName::AsyncReply;\n')
+    result.append('    case MessageName::WrappedAsyncMessageForTesting:\n')
+    result.append('    case MessageName::SyncMessageReply:\n')
+    result.append('    case MessageName::InitializeConnection:\n')
+    result.append('    case MessageName::LegacySessionState:\n')
+    result.append('        return ReceiverName::IPC;\n')
+    result.append('    }\n')
+    result.append('    ASSERT_NOT_REACHED();\n')
+    result.append('    return ReceiverName::Invalid;\n')
+    result.append('}\n')
+    result.append('\n')
+    result.append('bool isValidMessageName(MessageName messageName)\n')
+    result.append('{\n')
+    for receiver in receivers:
+        for message in receiver.messages:
+            if message.condition:
+                result.append('#if %s\n' % message.condition)
+            result.append('    if (messageName == IPC::MessageName::%s_%s)\n' % (receiver.name, message.name))
+            result.append('        return true;\n')
+            if message.has_attribute(ASYNC_ATTRIBUTE):
+                result.append('    if (messageName == IPC::MessageName::%s_%sReply)\n' % (receiver.name, message.name))
+                result.append('        return true;\n')
+            if message.condition:
+                result.append('#endif\n')
+    result.append('    if (messageName == IPC::MessageName::WrappedAsyncMessageForTesting)\n')
+    result.append('        return true;\n')
+    result.append('    if (messageName == IPC::MessageName::SyncMessageReply)\n')
+    result.append('        return true;\n')
+    result.append('    if (messageName == IPC::MessageName::InitializeConnection)\n')
+    result.append('        return true;\n')
+    result.append('    if (messageName == IPC::MessageName::LegacySessionState)\n')
+    result.append('        return true;\n')
+    result.append('    return false;\n')
+    result.append('};\n')
+    result.append('\n')
+    result.append('} // namespace IPC\n')
     return ''.join(result)

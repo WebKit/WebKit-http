@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ EncodedJSValue JSC_HOST_CALL APICallbackFunction::call(JSGlobalObject* globalObj
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSContextRef execRef = toRef(globalObject);
     JSObjectRef functionRef = toRef(callFrame->jsCallee());
-    JSObjectRef thisObjRef = toRef(jsCast<JSObject*>(callFrame->thisValue().toThis(globalObject, NotStrictMode)));
+    JSObjectRef thisObjRef = toRef(jsCast<JSObject*>(callFrame->thisValue().toThis(globalObject, ECMAMode::sloppy())));
 
     int argumentCount = static_cast<int>(callFrame->argumentCount());
     Vector<JSValueRef, 16> arguments;
@@ -56,14 +56,16 @@ EncodedJSValue JSC_HOST_CALL APICallbackFunction::call(JSGlobalObject* globalObj
     for (int i = 0; i < argumentCount; i++)
         arguments.uncheckedAppend(toRef(globalObject, callFrame->uncheckedArgument(i)));
 
-    JSValueRef exception = 0;
+    JSValueRef exception = nullptr;
     JSValueRef result;
     {
         JSLock::DropAllLocks dropAllLocks(globalObject);
         result = jsCast<T*>(toJS(functionRef))->functionCallback()(execRef, functionRef, thisObjRef, argumentCount, arguments.data(), &exception);
     }
-    if (exception)
+    if (exception) {
         throwException(globalObject, scope, toJS(globalObject, exception));
+        return JSValue::encode(jsUndefined());
+    }
 
     // result must be a valid JSValue.
     if (!result)
@@ -89,7 +91,7 @@ EncodedJSValue JSC_HOST_CALL APICallbackFunction::construct(JSGlobalObject* glob
         for (size_t i = 0; i < argumentCount; ++i)
             arguments.uncheckedAppend(toRef(globalObject, callFrame->uncheckedArgument(i)));
 
-        JSValueRef exception = 0;
+        JSValueRef exception = nullptr;
         JSObjectRef result;
         {
             JSLock::DropAllLocks dropAllLocks(globalObject);
@@ -97,7 +99,7 @@ EncodedJSValue JSC_HOST_CALL APICallbackFunction::construct(JSGlobalObject* glob
         }
         if (exception) {
             throwException(globalObject, scope, toJS(globalObject, exception));
-            return JSValue::encode(toJS(globalObject, exception));
+            return JSValue::encode(jsUndefined());
         }
         // result must be a valid JSValue.
         if (!result)
@@ -105,7 +107,7 @@ EncodedJSValue JSC_HOST_CALL APICallbackFunction::construct(JSGlobalObject* glob
         return JSValue::encode(toJS(result));
     }
     
-    return JSValue::encode(toJS(JSObjectMake(ctx, jsCast<JSCallbackConstructor*>(constructor)->classRef(), 0)));
+    return JSValue::encode(toJS(JSObjectMake(ctx, jsCast<JSCallbackConstructor*>(constructor)->classRef(), nullptr)));
 }
 
 } // namespace JSC

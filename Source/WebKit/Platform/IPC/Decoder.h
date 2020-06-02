@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,8 +27,10 @@
 
 #include "ArgumentCoder.h"
 #include "Attachment.h"
+#include "MessageNames.h"
 #include "StringReference.h"
 #include <wtf/EnumTraits.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Vector.h>
 
 #if HAVE(QOS_CLASSES)
@@ -39,19 +41,21 @@ namespace IPC {
 
 class DataReference;
 class ImportanceAssertion;
-enum class ShouldDispatchWhenWaitingForSyncReply;
+enum class MessageFlags : uint8_t;
+enum class ShouldDispatchWhenWaitingForSyncReply : uint8_t;
 
 class Decoder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Decoder(const uint8_t* buffer, size_t bufferSize, void (*bufferDeallocator)(const uint8_t*, size_t), Vector<Attachment>&&);
+    static std::unique_ptr<Decoder> create(const uint8_t* buffer, size_t bufferSize, void (*bufferDeallocator)(const uint8_t*, size_t), Vector<Attachment>&&);
+    explicit Decoder(const uint8_t* buffer, size_t bufferSize, void (*bufferDeallocator)(const uint8_t*, size_t), Vector<Attachment>&&);
     ~Decoder();
 
     Decoder(const Decoder&) = delete;
     Decoder(Decoder&&) = delete;
 
-    StringReference messageReceiverName() const { return m_messageReceiverName; }
-    StringReference messageName() const { return m_messageName; }
+    ReceiverName messageReceiverName() const { return receiverName(m_messageName); }
+    MessageName messageName() const { return m_messageName; }
     uint64_t destinationID() const { return m_destinationID; }
 
     bool isSyncMessage() const;
@@ -70,72 +74,60 @@ public:
 
     size_t length() const { return m_bufferEnd - m_buffer; }
 
-    bool isInvalid() const
-    {
-        // (m_bufferPos == m_bufferEnd) is a valid state for decoding if the last parameter
-        // is a variable length byte array and its size == 0.
-        return m_bufferPos < m_buffer || m_bufferPos > m_bufferEnd;
-    }
+    WARN_UNUSED_RETURN bool isValid() const { return m_bufferPos != nullptr; }
     void markInvalid() { m_bufferPos = nullptr; }
 
-    bool decodeFixedLengthData(uint8_t*, size_t, unsigned alignment) WARN_UNUSED_RETURN;
+    WARN_UNUSED_RETURN bool decodeFixedLengthData(uint8_t* data, size_t, size_t alignment);
 
     // The data in the data reference here will only be valid for the lifetime of the ArgumentDecoder object.
-    bool decodeVariableLengthByteArray(DataReference&);
+    WARN_UNUSED_RETURN bool decodeVariableLengthByteArray(DataReference&);
 
-    bool decode(bool&);
-    Decoder& operator>>(Optional<bool>&);
-    bool decode(uint8_t&);
-    Decoder& operator>>(Optional<uint8_t>&);
-    bool decode(uint16_t&);
-    Decoder& operator>>(Optional<uint16_t>&);
-    bool decode(uint32_t&);
-    Decoder& operator>>(Optional<uint32_t>&);
-    bool decode(uint64_t&);
-    Decoder& operator>>(Optional<uint64_t>&);
-    bool decode(int16_t&);
-    Decoder& operator>>(Optional<int16_t>&);
-    bool decode(int32_t&);
-    Decoder& operator>>(Optional<int32_t>&);
-    bool decode(int64_t&);
-    Decoder& operator>>(Optional<int64_t>&);
-    bool decode(float&);
-    Decoder& operator>>(Optional<float>&);
-    bool decode(double&);
-    Decoder& operator>>(Optional<double>&);
-
-    template<typename E>
-    auto decode(E& e) -> std::enable_if_t<std::is_enum<E>::value, bool>
+    template<typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    WARN_UNUSED_RETURN bool decode(T& value)
     {
-        uint64_t value;
+        return decodeFixedLengthData(reinterpret_cast<uint8_t*>(&value), sizeof(T), alignof(T));
+    }
+
+    template<typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    Decoder& operator>>(Optional<T>& optional)
+    {
+        T result;
+        if (decodeFixedLengthData(reinterpret_cast<uint8_t*>(&result), sizeof(T), alignof(T)))
+            optional = result;
+        return *this;
+    }
+
+    template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
+    WARN_UNUSED_RETURN bool decode(E& enumValue)
+    {
+        typename std::underlying_type<E>::type value;
         if (!decode(value))
             return false;
-        if (!isValidEnum<E>(value))
+        if (!WTF::isValidEnum<E>(value))
             return false;
 
-        e = static_cast<E>(value);
+        enumValue = static_cast<E>(value);
         return true;
     }
 
     template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
     Decoder& operator>>(Optional<E>& optional)
     {
-        Optional<uint64_t> value;
+        Optional<typename std::underlying_type<E>::type> value;
         *this >> value;
-        if (value && isValidEnum<E>(*value))
+        if (value && WTF::isValidEnum<E>(*value))
             optional = static_cast<E>(*value);
         return *this;
     }
 
-    template<typename T> bool decodeEnum(T& result)
+    template<typename E>
+    WARN_UNUSED_RETURN bool decodeEnum(E& result)
     {
-        static_assert(sizeof(T) <= 8, "Enum type T must not be larger than 64 bits!");
-
-        uint64_t value;
+        // FIXME: Remove this after migrating all uses of this function to decode() or operator>>() with WTF::isValidEnum check.
+        typename std::underlying_type<E>::type value;
         if (!decode(value))
             return false;
-        
-        result = static_cast<T>(value);
+        result = static_cast<E>(value);
         return true;
     }
 
@@ -150,14 +142,14 @@ public:
         return bufferIsLargeEnoughToContain(alignof(T), numElements * sizeof(T));
     }
 
-    template<typename T, std::enable_if_t<!std::is_enum<T>::value && UsesLegacyDecoder<T>::value>* = nullptr>
-    bool decode(T& t)
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !std::is_arithmetic<T>::value && UsesLegacyDecoder<T>::value>* = nullptr>
+    WARN_UNUSED_RETURN bool decode(T& t)
     {
         return ArgumentCoder<T>::decode(*this, t);
     }
 
-    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !UsesLegacyDecoder<T>::value>* = nullptr>
-    bool decode(T& t)
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !std::is_arithmetic<T>::value && !UsesLegacyDecoder<T>::value>* = nullptr>
+    WARN_UNUSED_RETURN bool decode(T& t)
     {
         Optional<T> optional;
         *this >> optional;
@@ -174,7 +166,7 @@ public:
         return *this;
     }
     
-    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !UsesModernDecoder<T>::value>* = nullptr>
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !std::is_arithmetic<T>::value && !UsesModernDecoder<T>::value>* = nullptr>
     Decoder& operator>>(Optional<T>& optional)
     {
         T t;
@@ -191,9 +183,8 @@ public:
     static const bool isIPCDecoder = true;
 
 private:
-    bool alignBufferPosition(unsigned alignment, size_t);
-    bool bufferIsLargeEnoughToContain(unsigned alignment, size_t) const;
-    template<typename Type> Decoder& getOptional(Optional<Type>&);
+    bool alignBufferPosition(size_t alignment, size_t);
+    bool bufferIsLargeEnoughToContain(size_t alignment, size_t) const;
 
     const uint8_t* m_buffer;
     const uint8_t* m_bufferPos;
@@ -202,9 +193,8 @@ private:
 
     Vector<Attachment> m_attachments;
 
-    uint8_t m_messageFlags;
-    StringReference m_messageReceiverName;
-    StringReference m_messageName;
+    OptionSet<MessageFlags> m_messageFlags;
+    MessageName m_messageName;
 
     uint64_t m_destinationID;
 

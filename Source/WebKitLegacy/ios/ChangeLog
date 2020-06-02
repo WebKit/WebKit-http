@@ -1,3 +1,158 @@
+2020-05-15  Alex Christensen  <achristensen@webkit.org>
+
+        Use enum serialization instead of casting to/from uint32_t
+        https://bugs.webkit.org/show_bug.cgi?id=211885
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame aggressivelyExpandSelectionToWordContainingCaretSelection]):
+        (-[WebFrame setSelectionGranularity:]):
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (toTextGranularity):
+        (toSelectionDirection):
+
+2020-05-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Remove dead dictation code
+        https://bugs.webkit.org/show_bug.cgi?id=211871
+
+        Reviewed by Wenson Hsieh.
+
+        * DefaultDelegates/WebDefaultUIKitDelegate.m:
+        (-[WebDefaultUIKitDelegate isUnperturbedDictationResultMarker:]): Deleted.
+        * WebCoreSupport/WebFrameIOS.h:
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame previousUnperturbedDictationResultBoundaryFromPosition:]): Deleted.
+        (-[WebFrame nextUnperturbedDictationResultBoundaryFromPosition:]): Deleted.
+        * WebView/WebUIKitDelegate.h:
+
+2020-05-10  Tim Horton  <timothy_horton@apple.com>
+
+        Clicking a tel:// link on iPad with a trackpad presents different UI than tapping on it
+        https://bugs.webkit.org/show_bug.cgi?id=211686
+        <rdar://problem/57941589>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+
+2020-04-11  Darin Adler  <darin@apple.com>
+
+        Stop using live ranges in functions that return range of the selection
+        https://bugs.webkit.org/show_bug.cgi?id=210396
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame selectionRectsForCoreRange:]): Changed argument type to
+        not require a live range. Internally, use createLiveRange and also
+        use a range-for loop.
+        (-[WebFrame selectionRectsForRange:]): Remove use of live range.
+        (-[WebFrame selectionRects]): Ditto.
+
+2020-04-19  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Use createNSArray in many more places that build NSArray objects from C++ collections
+        https://bugs.webkit.org/show_bug.cgi?id=210702
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame selectionRectsForCoreRange:]): Use createNSArray.
+
+2020-04-20  Darin Adler  <darin@apple.com>
+
+        Use #import instead of #include in Objective-C and don't use #pragma once
+        https://bugs.webkit.org/show_bug.cgi?id=210724
+
+        Reviewed by David Kilzer.
+
+        * Misc/MemoryMeasure.h: Removed.
+        * Misc/MemoryMeasure.mm: Removed.
+        * WebKit.iOS.exp: Removed MemoryMeasure symbols.
+
+2020-04-18  Rob Buis  <rbuis@igalia.com>
+
+        Reduce parameter list of the FrameLoadRequest constructor
+        https://bugs.webkit.org/show_bug.cgi?id=210668
+
+        Reviewed by Darin Adler.
+
+        Adapt to API change.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]):
+
+2020-04-12  Darin Adler  <darin@apple.com>
+
+        Fix some strange uses of start/endOfDocument
+        https://bugs.webkit.org/show_bug.cgi?id=210408
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame moveSelectionToStart]): Call startOfDocument on the document;
+        there is no need to pass a particular VisiblePosition, since all it gets
+        from the VisiblePosition is the document.
+        (-[WebFrame moveSelectionToEnd]): Ditto, for endOfDocument.
+        (-[WebFrame startPosition]): Call startOfDocument on the document rather
+        than using code to find the document element, since the function works
+        on any node.
+        (-[WebFrame endPosition]): Ditto.
+
+2020-04-10  Darin Adler  <darin@apple.com>
+
+        Move more from live range to SimpleRange: callers of absoluteTextRects
+        https://bugs.webkit.org/show_bug.cgi?id=210369
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame closestCaretRectInMarkedTextRangeForPoint:]): Use
+        RenderObject::absoluteTextRects instead of Range::absoluteTextRects.
+        Also added some missing null checks and reorganized the function a
+        bit to make it more direct and slightly cleaerer.
+
+2020-04-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Simplify NSArray, NSDictionary, and NSNumber idioms throughout WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=210138
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::runOpenPanel): Use createNSArray.
+
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition enclosingRangeWithDictationPhraseAlternatives:]):
+        Use createNSArray.
+
+        * WebCoreSupport/WebVisiblePositionInternal.h:
+        Added #if so that this correctly doesn't compile anything on Mac.
+
+        * WebView/WebPDFViewIOS.mm:
+        (+[WebPDFView supportedMIMETypes]): Use @[].
+
+2020-04-04  Darin Adler  <darin@apple.com>
+
+        Stop using live ranges in DocumentMarkerController
+        https://bugs.webkit.org/show_bug.cgi?id=209985
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame previousUnperturbedDictationResultBoundaryFromPosition:]):
+        Update since DocumentMarker::metadata no longer exists.
+        (-[WebFrame nextUnperturbedDictationResultBoundaryFromPosition:]):
+        Ditto.
+
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition enclosingRangeWithDictationPhraseAlternatives:]):
+        Update since DocumentMarker::alternatives no longer exists.
+        (-[WebVisiblePosition enclosingRangeWithCorrectionIndicator]):
+        Ditto.
+
 2020-03-12  Alexey Proskuryakov  <ap@apple.com>
 
         rdar://problem/60359230 Mark locationManager:didChangeAuthorizationStatus: as deprecated.

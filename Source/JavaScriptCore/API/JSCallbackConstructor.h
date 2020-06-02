@@ -62,14 +62,13 @@ public:
         return Structure::create(vm, globalObject, proto, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-protected:
+private:
     JSCallbackConstructor(JSGlobalObject*, Structure*, JSClassRef, JSObjectCallAsConstructorCallback);
     void finishCreation(JSGlobalObject*, JSClassRef);
 
-private:
     friend struct APICallbackFunction;
 
-    static ConstructType getConstructData(JSCell*, ConstructData&);
+    static CallData getConstructData(JSCell*);
 
     JSObjectCallAsConstructorCallback constructCallback() { return m_callback; }
 

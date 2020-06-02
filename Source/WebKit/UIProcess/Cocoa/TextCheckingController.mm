@@ -28,9 +28,9 @@
 
 #if ENABLE(PLATFORM_DRIVEN_TEXT_CHECKING)
 
-#import "AttributedString.h"
 #import "TextCheckingControllerProxyMessages.h"
 #import "WebProcessProxy.h"
+#import <WebCore/AttributedString.h>
 
 namespace WebKit {
 
@@ -44,7 +44,7 @@ void TextCheckingController::replaceRelativeToSelection(NSAttributedString *anno
     if (!m_page.hasRunningProcess())
         return;
 
-    m_page.process().send(Messages::TextCheckingControllerProxy::ReplaceRelativeToSelection(annotatedString, selectionOffset, length, relativeReplacementLocation, relativeReplacementLength), m_page.webPageID());
+    m_page.send(Messages::TextCheckingControllerProxy::ReplaceRelativeToSelection({ annotatedString, nil }, selectionOffset, length, relativeReplacementLocation, relativeReplacementLength));
 }
 
 void TextCheckingController::removeAnnotationRelativeToSelection(NSString *annotationName, int64_t selectionOffset, uint64_t length)
@@ -52,7 +52,7 @@ void TextCheckingController::removeAnnotationRelativeToSelection(NSString *annot
     if (!m_page.hasRunningProcess())
         return;
 
-    m_page.process().send(Messages::TextCheckingControllerProxy::RemoveAnnotationRelativeToSelection(annotationName, selectionOffset, length), m_page.webPageID());
+    m_page.send(Messages::TextCheckingControllerProxy::RemoveAnnotationRelativeToSelection(annotationName, selectionOffset, length));
 }
 
 } // namespace WebKit

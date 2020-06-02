@@ -11,8 +11,8 @@
 #define LIBANGLE_RENDERER_VULKAN_TEXTUREVK_H_
 
 #include "libANGLE/renderer/TextureImpl.h"
-#include "libANGLE/renderer/vulkan/CommandGraph.h"
 #include "libANGLE/renderer/vulkan/RenderTargetVk.h"
+#include "libANGLE/renderer/vulkan/ResourceVk.h"
 #include "libANGLE/renderer/vulkan/SamplerVk.h"
 #include "libANGLE/renderer/vulkan/vk_helpers.h"
 
@@ -30,7 +30,7 @@ enum class ImageMipLevels
 // vkCmdCopyBufferToImage buffer offset multiple
 constexpr VkDeviceSize kBufferOffsetMultiple = 4;
 
-class TextureVk : public TextureImpl
+class TextureVk : public TextureImpl, public angle::ObserverInterface
 {
   public:
     TextureVk(const gl::TextureState &state, RendererVk *renderer);
@@ -44,6 +44,7 @@ class TextureVk : public TextureImpl
                            GLenum format,
                            GLenum type,
                            const gl::PixelUnpackState &unpack,
+                           gl::Buffer *unpackBuffer,
                            const uint8_t *pixels) override;
     angle::Result setSubImage(const gl::Context *context,
                               const gl::ImageIndex &index,
@@ -179,14 +180,9 @@ class TextureVk : public TextureImpl
         return *mImage;
     }
 
-    void onImageViewUse(vk::ResourceUseList *resourceUseList)
+    void retainImageViews(vk::ResourceUseList *resourceUseList)
     {
-        mImageViews.onResourceAccess(resourceUseList);
-    }
-
-    void onSamplerUse(vk::ResourceUseList *resourceUseList)
-    {
-        mSampler.onResourceAccess(resourceUseList);
+        mImageViews.retain(resourceUseList);
     }
 
     void releaseOwnershipOfImage(const gl::Context *context);
@@ -229,6 +225,11 @@ class TextureVk : public TextureImpl
                               GLenum type,
                               void *pixels) override;
 
+    ANGLE_INLINE bool isBoundAsImageTexture(gl::ContextID contextID) const
+    {
+        return mState.isBoundAsImageTexture(contextID);
+    }
+
   private:
     // Transform an image index from the frontend into one that can be used on the backing
     // ImageHelper, taking into account mipmap or cube face offsets
@@ -259,6 +260,7 @@ class TextureVk : public TextureImpl
                                const gl::Extents &size,
                                GLenum type,
                                const gl::PixelUnpackState &unpack,
+                               gl::Buffer *unpackBuffer,
                                const uint8_t *pixels);
     angle::Result setSubImageImpl(const gl::Context *context,
                                   const gl::ImageIndex &index,
@@ -273,7 +275,7 @@ class TextureVk : public TextureImpl
     angle::Result copyImageDataToBufferAndGetData(ContextVk *contextVk,
                                                   size_t sourceLevel,
                                                   uint32_t layerCount,
-                                                  const gl::Rectangle &sourceArea,
+                                                  const gl::Box &sourceArea,
                                                   uint8_t **outDataPtr);
 
     angle::Result copyBufferDataToImage(ContextVk *contextVk,
@@ -291,9 +293,11 @@ class TextureVk : public TextureImpl
                                               GLuint layer,
                                               GLuint firstMipLevel,
                                               GLuint maxMipLevel,
-                                              size_t sourceWidth,
-                                              size_t sourceHeight,
-                                              size_t sourceRowPitch,
+                                              const size_t sourceWidth,
+                                              const size_t sourceHeight,
+                                              const size_t sourceDepth,
+                                              const size_t sourceRowPitch,
+                                              const size_t sourceDepthPitch,
                                               uint8_t *sourceData);
 
     angle::Result copySubImageImpl(const gl::Context *context,
@@ -370,18 +374,22 @@ class TextureVk : public TextureImpl
                                              uint32_t levelCount,
                                              const vk::Format &format);
 
-    void onStagingBufferChange() { onStateChange(angle::SubjectMessage::SubjectChanged); }
-
     const gl::InternalFormat &getImplementationSizedFormat(const gl::Context *context) const;
     const vk::Format &getBaseLevelFormat(RendererVk *renderer) const;
-    // Re-create the image.
-    angle::Result changeLevels(ContextVk *contextVk,
-                               GLuint previousBaseLevel,
-                               GLuint baseLevel,
-                               GLuint maxLevel);
+    // Queues a flush of any modified image attributes. The image will be reallocated with its new
+    // attributes at the next opportunity.
+    angle::Result respecifyImageAttributes(ContextVk *contextVk);
+    angle::Result respecifyImageAttributesAndLevels(ContextVk *contextVk,
+                                                    GLuint previousBaseLevel,
+                                                    GLuint baseLevel,
+                                                    GLuint maxLevel);
 
     // Update base and max levels, and re-create image if needed.
     angle::Result updateBaseMaxLevels(ContextVk *contextVk, GLuint baseLevel, GLuint maxLevel);
+
+    // We monitor the staging buffer and set dirty bits if the staging buffer changes. Note that we
+    // support changes in the staging buffer even outside the TextureVk class.
+    void onSubjectStateChange(angle::SubjectIndex index, angle::SubjectMessage message) override;
 
     bool mOwnsImage;
 
@@ -407,7 +415,7 @@ class TextureVk : public TextureImpl
 
     // |mSampler| contains the relevant Vulkan sampler states reprensenting the OpenGL Texture
     // sampling states for the Texture.
-    vk::SamplerHelper mSampler;
+    vk::BindingPointer<vk::Sampler> mSampler;
 
     // Render targets stored as vector of vectors
     // Level is first dimension, layer is second
@@ -421,6 +429,11 @@ class TextureVk : public TextureImpl
 
     // The created vkImage usage flag.
     VkImageUsageFlags mImageUsageFlags;
+
+    // Additional image create flags
+    VkImageCreateFlags mImageCreateFlags;
+
+    angle::ObserverBinding mImageObserverBinding;
 };
 
 }  // namespace rx

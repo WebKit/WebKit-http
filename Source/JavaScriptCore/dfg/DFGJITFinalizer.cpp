@@ -30,9 +30,8 @@
 
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
-#include "DFGCommon.h"
 #include "DFGPlan.h"
-#include "JSCInlines.h"
+#include "HeapInlines.h"
 #include "ProfilerDatabase.h"
 
 namespace JSC { namespace DFG {

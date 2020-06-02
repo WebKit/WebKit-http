@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if USE(VIDEOTOOLBOX)
-
 #include "IntSize.h"
 #include "MediaSample.h"
 #include <wtf/RetainPtr.h>
@@ -53,14 +51,14 @@ public:
     RefPtr<MediaSample> createMediaSample(CGImageRef, const MediaTime&, const IntSize&, MediaSample::VideoRotation = MediaSample::VideoRotation::None, bool mirrored = false);
     RefPtr<MediaSample> createMediaSample(CMSampleBufferRef, const IntSize&, MediaSample::VideoRotation = MediaSample::VideoRotation::None, bool mirrored = false);
 
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if !PLATFORM(MACCATALYST)
     WEBCORE_EXPORT RefPtr<MediaSample> createMediaSample(IOSurfaceRef, const MediaTime&, const IntSize&, MediaSample::VideoRotation = MediaSample::VideoRotation::None, bool mirrored = false);
 #if ENABLE(MEDIA_STREAM)
     WEBCORE_EXPORT RefPtr<MediaSample> createMediaSample(const RemoteVideoSample&);
 #endif
 #endif
 
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if !PLATFORM(MACCATALYST)
     WEBCORE_EXPORT RetainPtr<CVPixelBufferRef> createPixelBuffer(IOSurfaceRef);
     WEBCORE_EXPORT RetainPtr<CVPixelBufferRef> createPixelBuffer(IOSurfaceRef, const IntSize&);
 #endif
@@ -70,7 +68,7 @@ public:
 private:
     WEBCORE_EXPORT explicit ImageTransferSessionVT(uint32_t pixelFormat);
 
-#if HAVE(IOSURFACE) && !PLATFORM(MACCATALYST)
+#if !PLATFORM(MACCATALYST)
     CFDictionaryRef ioSurfacePixelBufferCreationOptions(IOSurfaceRef);
     RetainPtr<CMSampleBufferRef> createCMSampleBuffer(IOSurfaceRef, const MediaTime&, const IntSize&);
 #endif
@@ -93,5 +91,3 @@ private:
 };
 
 }
-
-#endif // USE(VIDEOTOOLBOX)

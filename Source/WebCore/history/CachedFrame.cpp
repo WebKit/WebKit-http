@@ -279,14 +279,14 @@ void CachedFrame::destroy()
 
     Frame::clearTimers(m_view.get(), m_document.get());
 
-    m_view->frame().animation().detachFromDocument(m_document.get());
+    m_view->frame().legacyAnimation().detachFromDocument(m_document.get());
 
     // FIXME: Why do we need to call removeAllEventListeners here? When the document is in back/forward cache, this method won't work
     // fully anyway, because the document won't be able to access its DOMWindow object (due to being frameless).
     m_document->removeAllEventListeners();
 
     m_document->setBackForwardCacheState(Document::NotInBackForwardCache);
-    m_document->prepareForDestruction();
+    m_document->willBeRemovedFromFrame();
 
     clear();
 }

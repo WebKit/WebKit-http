@@ -55,6 +55,7 @@
 #import "RenderStyle.h"
 #import "Settings.h"
 #import "Text.h"
+#import "UTIUtilities.h"
 #import "WebContentReader.h"
 #import "markup.h"
 #import <pal/spi/cocoa/NSAttributedStringSPI.h>
@@ -80,8 +81,8 @@ static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *
 
 String Editor::selectionInHTMLFormat()
 {
-    return serializePreservingVisualAppearance(m_frame.selection().selection(), ResolveURLs::YesExcludingLocalFileURLsForPrivacy,
-        m_frame.settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No);
+    return serializePreservingVisualAppearance(m_document.selection().selection(), ResolveURLs::YesExcludingLocalFileURLsForPrivacy,
+        m_document.settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No);
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -105,17 +106,23 @@ void Editor::getPasteboardTypesAndDataForAttachment(Element& element, Vector<Str
 
 #endif
 
+static RetainPtr<NSAttributedString> selectionAsAttributedString(const Document& document)
+{
+    auto range = document.selection().selection().firstRange();
+    return range ? attributedString(*range).string : adoptNS([[NSAttributedString alloc] init]);
+}
+
 void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 {
-    NSAttributedString *attributedString = attributedStringFromSelection(m_frame.selection().selection());
+    auto string = selectionAsAttributedString(m_document);
 
     PasteboardWebContent content;
-    content.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
+    content.contentOrigin = m_document.originIdentifierForPasteboard();
     content.canSmartCopyOrDelete = canSmartCopyOrDelete();
     content.dataInWebArchiveFormat = selectionInWebArchiveFormat();
-    content.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;
-    content.dataInRTFFormat = dataInRTFFormat(attributedString);
-    content.dataInAttributedStringFormat = archivedDataForAttributedString(attributedString);
+    content.dataInRTFDFormat = [string containsAttachments] ? dataInRTFDFormat(string.get()) : nullptr;
+    content.dataInRTFFormat = dataInRTFFormat(string.get());
+    content.dataInAttributedStringFormat = archivedDataForAttributedString(string.get());
     content.dataInHTMLFormat = selectionInHTMLFormat();
     content.dataInStringFormat = stringSelectionForPasteboardWithImageAltText();
     client()->getClientPasteboardDataForRange(selectedRange().get(), content.clientTypes, content.clientData);
@@ -125,15 +132,15 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 
 void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
 {
-    NSAttributedString *attributedString = attributedStringFromSelection(m_frame.selection().selection());
+    auto string = selectionAsAttributedString(m_document);
 
     PasteboardWriterData::WebContent webContent;
-    webContent.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
+    webContent.contentOrigin = m_document.originIdentifierForPasteboard();
     webContent.canSmartCopyOrDelete = canSmartCopyOrDelete();
     webContent.dataInWebArchiveFormat = selectionInWebArchiveFormat();
-    webContent.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;
-    webContent.dataInRTFFormat = dataInRTFFormat(attributedString);
-    webContent.dataInAttributedStringFormat = archivedDataForAttributedString(attributedString);
+    webContent.dataInRTFDFormat = [string containsAttachments] ? dataInRTFDFormat(string.get()) : nullptr;
+    webContent.dataInRTFFormat = dataInRTFFormat(string.get());
+    webContent.dataInAttributedStringFormat = archivedDataForAttributedString(string.get());
     webContent.dataInHTMLFormat = selectionInHTMLFormat();
     webContent.dataInStringFormat = stringSelectionForPasteboardWithImageAltText();
     client()->getClientPasteboardDataForRange(selectedRange().get(), webContent.clientTypes, webContent.clientData);
@@ -143,7 +150,7 @@ void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
 
 RefPtr<SharedBuffer> Editor::selectionInWebArchiveFormat()
 {
-    auto archive = LegacyWebArchive::createFromSelection(&m_frame);
+    auto archive = LegacyWebArchive::createFromSelection(m_document.frame());
     if (!archive)
         return nullptr;
     return SharedBuffer::create(archive->rawDataRepresentation().get());
@@ -171,11 +178,11 @@ String Editor::stringSelectionForPasteboardWithImageAltText()
 
 void Editor::replaceSelectionWithAttributedString(NSAttributedString *attributedString, MailBlockquoteHandling mailBlockquoteHandling)
 {
-    if (m_frame.selection().isNone())
+    if (m_document.selection().isNone())
         return;
 
-    if (m_frame.selection().selection().isContentRichlyEditable()) {
-        if (auto fragment = createFragmentAndAddResources(m_frame, attributedString)) {
+    if (m_document.selection().selection().isContentRichlyEditable()) {
+        if (auto fragment = createFragmentAndAddResources(*m_document.frame(), attributedString)) {
             if (shouldInsertFragment(*fragment, selectedRange().get(), EditorInsertAction::Pasted))
                 pasteAsFragment(fragment.releaseNonNull(), false, false, mailBlockquoteHandling);
         }
@@ -219,9 +226,9 @@ RefPtr<SharedBuffer> Editor::dataInRTFFormat(NSAttributedString *string)
 
 // FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
 // Or refactor so it does not do that.
-RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
+RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, const SimpleRange& context, bool allowPlainText, bool& chosePlainText)
 {
-    WebContentReader reader(m_frame, context, allowPlainText);
+    WebContentReader reader(*m_document.frame(), context, allowPlainText);
     pasteboard.read(reader);
     chosePlainText = reader.madeFragmentFromPlainText;
     return WTFMove(reader.fragment);
@@ -234,7 +241,7 @@ void Editor::takeFindStringFromSelection()
         return;
     }
 
-    auto stringFromSelection = m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer());
+    auto stringFromSelection = m_document.frame()->displayStringModifiedByEncoding(selectedTextForDataTransfer());
 #if PLATFORM(MAC)
     Vector<String> types;
     types.append(String(legacyStringPasteboardType()));
@@ -249,6 +256,14 @@ void Editor::takeFindStringFromSelection()
         client->updateStringForFind(stringFromSelection);
     }
 #endif
+}
+
+String Editor::platformContentTypeForBlobType(const String& type) const
+{
+    auto utiType = UTIFromMIMEType(type);
+    if (!utiType.isEmpty())
+        return utiType;
+    return type;
 }
 
 }

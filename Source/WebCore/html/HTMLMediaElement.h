@@ -155,6 +155,7 @@ public:
     virtual bool isVideo() const { return false; }
     bool hasVideo() const override { return false; }
     bool hasAudio() const override;
+    bool hasRenderer() const { return static_cast<bool>(renderer()); }
 
     static HashSet<HTMLMediaElement*>& allMediaElements();
 
@@ -176,7 +177,7 @@ public:
     bool isVideoLayerInline();
     void setPreparedToReturnVideoLayerToInline(bool);
     void waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler = [] { });
-#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
     RetainPtr<PlatformLayer> createVideoFullscreenLayer();
     WEBCORE_EXPORT void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
 #ifdef __OBJC__
@@ -560,7 +561,7 @@ public:
 
     bool isSuspended() const final;
 
-    WEBCORE_EXPORT void didBecomeFullscreenElement() override;
+    WEBCORE_EXPORT void didBecomeFullscreenElement() final;
     WEBCORE_EXPORT void willExitFullscreen();
 
 #if ENABLE(PICTURE_IN_PICTURE_API)
@@ -613,6 +614,7 @@ protected:
     void updateMediaControlsAfterPresentationModeChange();
 
     void scheduleEvent(const AtomString&);
+    bool waitingToEnterFullscreen() { return m_waitingToEnterFullscreen; }
 
 private:
     void createMediaPlayer();
@@ -932,6 +934,8 @@ private:
 
     void setInActiveDocument(bool);
 
+    void checkForAudioAndVideo();
+
 #if !RELEASE_LOG_DISABLED
     const void* mediaPlayerLogIdentifier() final { return logIdentifier(); }
     const Logger& mediaPlayerLogger() final { return logger(); }
@@ -1021,7 +1025,7 @@ private:
 
     bool m_temporarilyAllowingInlinePlaybackAfterFullscreen { false };
 
-#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
     RetainPtr<PlatformLayer> m_videoFullscreenLayer;
     FloatRect m_videoFullscreenFrame;
     MediaPlayer::VideoGravity m_videoFullscreenGravity { MediaPlayer::VideoGravity::ResizeAspect };
@@ -1197,7 +1201,6 @@ private:
     bool m_isPlayingToWirelessTarget { false };
     bool m_playingOnSecondScreen { false };
     bool m_removedBehaviorRestrictionsAfterFirstUserGesture { false };
-    MediaSessionIdentifier m_mediaSessionIdentifier;
 };
 
 String convertEnumerationToString(HTMLMediaElement::AutoplayEventPlaybackState);

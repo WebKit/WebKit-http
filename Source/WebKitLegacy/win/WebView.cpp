@@ -163,7 +163,6 @@
 #include <WebCore/Settings.h>
 #include <WebCore/ShouldTreatAsContinuingLoad.h>
 #include <WebCore/SocketProvider.h>
-#include <WebCore/SubframeLoader.h>
 #include <WebCore/SystemInfo.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/UserContentController.h>
@@ -1918,7 +1917,7 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
     logicalGestureBeginPoint.scale(inverseScaleFactor, inverseScaleFactor);
 
     HitTestRequest request { OptionSet<HitTestRequest::RequestType> { HitTestRequest::ReadOnly, HitTestRequest::DisallowUserAgentShadowContent } };
-    for (Frame* childFrame = &m_page->mainFrame(); childFrame; childFrame = EventHandler::subframeForTargetNode(m_gestureTargetNode.get())) {
+    for (RefPtr<Frame> childFrame = &m_page->mainFrame(); childFrame; childFrame = EventHandler::subframeForTargetNode(m_gestureTargetNode.get())) {
         FrameView* frameView = childFrame->view();
         if (!frameView)
             break;
@@ -2973,14 +2972,14 @@ HRESULT WebView::canShowMIMEType(_In_ BSTR mimeType, _Out_ BOOL* canShow)
 bool WebView::canShowMIMEType(const String& mimeType)
 {
     Frame* coreFrame = core(m_mainFrame);
-    bool allowPlugins = coreFrame && coreFrame->loader().subframeLoader().allowPlugins();
+    bool arePluginsEnabled = coreFrame && coreFrame->loader().arePluginsEnabled();
 
     bool canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeType)
         || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)
         || MIMETypeRegistry::isSupportedMediaMIMEType(mimeType);
 
     if (!canShow && m_page) {
-        canShow = (m_page->pluginData().supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && allowPlugins)
+        canShow = (m_page->pluginData().supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && arePluginsEnabled)
             || m_page->pluginData().supportsWebVisibleMimeType(mimeType, PluginData::OnlyApplicationPlugins);
     }
 
@@ -5281,6 +5280,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsCSSIntegrationEnabled(!!enabled);
 
+    hr = prefsPrivate->CSSCustomPropertiesAndValuesEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setCSSCustomPropertiesAndValuesEnabled(!!enabled);
+
     hr = prefsPrivate->userTimingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -6187,10 +6191,8 @@ void WebView::releaseIMMContext(HIMC hIMC)
 void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext) 
 {
     IntRect caret;
-    if (RefPtr<Range> range = targetFrame->selection().selection().toNormalizedRange()) {
-        RefPtr<Range> tempRange = range->cloneRange();
-        caret = targetFrame->editor().firstRectForRange(tempRange.get());
-    }
+    if (auto range = targetFrame->selection().selection().toNormalizedRange())
+        caret = targetFrame->editor().firstRectForRange(createLiveRange(*range).ptr());
     caret = targetFrame->view()->contentsToWindow(caret);
     caret.scale(deviceScaleFactor());
 
@@ -6273,7 +6275,7 @@ static void compositionToUnderlines(const Vector<DWORD>& clauses, const Vector<B
         underlines[i].endOffset = clauses[i + 1];
         BYTE attribute = attributes[clauses[i]];
         underlines[i].thick = attribute == ATTR_TARGET_CONVERTED || attribute == ATTR_TARGET_NOTCONVERTED;
-        underlines[i].color = Color(0,0,0);
+        underlines[i].color = makeSimpleColor(0, 0, 0);
     }
 }
 
@@ -6446,10 +6448,14 @@ LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* c
     if (charPos->dwCharPos && !targetFrame->editor().hasComposition())
         return 0;
     IntRect caret;
-    if (RefPtr<Range> range = targetFrame->editor().hasComposition() ? targetFrame->editor().compositionRange() : targetFrame->selection().selection().toNormalizedRange()) {
-        RefPtr<Range> tempRange = range->cloneRange();
-        tempRange->setStart(tempRange->startContainer(), tempRange->startOffset() + charPos->dwCharPos);
-        caret = targetFrame->editor().firstRectForRange(tempRange.get());
+    RefPtr<Range> range;
+    if (targetFrame->editor().hasComposition())
+        range = targetFrame->editor().compositionRange();
+    else
+        range = createLiveRange(targetFrame->selection().selection().toNormalizedRange());
+    if (range) {
+        range->setStart(range->startContainer(), range->startOffset() + charPos->dwCharPos);
+        caret = targetFrame->editor().firstRectForRange(range.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
     caret.scale(deviceScaleFactor());
@@ -6463,8 +6469,10 @@ LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* c
 
 LRESULT WebView::onIMERequestReconvertString(Frame* targetFrame, RECONVERTSTRING* reconvertString)
 {
-    RefPtr<Range> selectedRange = targetFrame->selection().toNormalizedRange();
-    String text = selectedRange->text();
+    auto selectedRange = targetFrame->selection().selection().toNormalizedRange();
+    String text;
+    if (selectedRange)
+        text = plainText(*selectedRange);
     if (!reconvertString)
         return sizeof(RECONVERTSTRING) + text.length() * sizeof(UChar);
 
@@ -7007,8 +7015,8 @@ HRESULT WebView::addUserScriptToGroup(_In_ BSTR groupName, _In_opt_ IWebScriptWo
 
     WebScriptWorld* world = reinterpret_cast<WebScriptWorld*>(iWorld);
     auto userScript = makeUnique<UserScript>(source, toURL(url), toStringVector(whitelist, whitelistCount),
-        toStringVector(blacklist, blacklistCount), injectionTime == WebInjectAtDocumentStart ? InjectAtDocumentStart : InjectAtDocumentEnd,
-        injectedFrames == WebInjectInAllFrames ? InjectInAllFrames : InjectInTopFrameOnly);
+        toStringVector(blacklist, blacklistCount), injectionTime == WebInjectAtDocumentStart ? UserScriptInjectionTime::DocumentStart : UserScriptInjectionTime::DocumentEnd,
+        injectedFrames == WebInjectInAllFrames ? UserContentInjectedFrames::InjectInAllFrames : UserContentInjectedFrames::InjectInTopFrameOnly, WaitForNotificationBeforeInjecting::No);
     viewGroup->userContentController().addUserScript(world->world(), WTFMove(userScript));
     return S_OK;
 }
@@ -7034,7 +7042,7 @@ HRESULT WebView::addUserStyleSheetToGroup(_In_ BSTR groupName, _In_opt_ IWebScri
 
     WebScriptWorld* world = reinterpret_cast<WebScriptWorld*>(iWorld);
     auto styleSheet = makeUnique<UserStyleSheet>(source, toURL(url), toStringVector(whitelist, whitelistCount), toStringVector(blacklist, blacklistCount),
-        injectedFrames == WebInjectInAllFrames ? InjectInAllFrames : InjectInTopFrameOnly, UserStyleUserLevel);
+        injectedFrames == WebInjectInAllFrames ? UserContentInjectedFrames::InjectInAllFrames : UserContentInjectedFrames::InjectInTopFrameOnly, UserStyleUserLevel);
     viewGroup->userContentController().addUserStyleSheet(world->world(), WTFMove(styleSheet), InjectInExistingDocuments);
     return S_OK;
 }
@@ -7235,6 +7243,10 @@ void WebView::flushPendingGraphicsLayerChangesSoon()
     }
     m_layerTreeHost->flushPendingGraphicsLayerChangesSoon();
 #elif USE(TEXTURE_MAPPER_GL)
+    if (!isAcceleratedCompositing()) {
+        m_page->updateRendering();
+        return;
+    }
     if (!m_acceleratedCompositingContext)
         return;
     m_acceleratedCompositingContext->flushPendingLayerChangesSoon();

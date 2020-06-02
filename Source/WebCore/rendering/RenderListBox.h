@@ -106,8 +106,8 @@ private:
     int scrollTop() const override;
     int scrollWidth() const override;
     int scrollHeight() const override;
-    void setScrollLeft(int, ScrollType, ScrollClamping, bool) override;
-    void setScrollTop(int, ScrollType, ScrollClamping, bool) override;
+    void setScrollLeft(int, ScrollType, ScrollClamping, AnimatedScroll) override;
+    void setScrollTop(int, ScrollType, ScrollClamping, AnimatedScroll) override;
 
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
@@ -130,7 +130,7 @@ private:
     Scrollbar* verticalScrollbar() const final { return m_vBar.get(); }
     IntSize contentsSize() const final;
     IntSize visibleSize() const final { return IntSize(width(), height()); }
-    IntPoint lastKnownMousePosition() const final;
+    IntPoint lastKnownMousePositionInView() const final;
     bool isHandlingWheelEvent() const final;
     bool shouldSuspendScrollAnimations() const final;
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const final;
@@ -141,6 +141,7 @@ private:
     IntRect scrollableAreaBoundingBox(bool* = nullptr) const final;
     bool usesMockScrollAnimator() const final;
     void logMockScrollAnimatorMessage(const String&) const final;
+    String debugDescription() const final;
 
     // NOTE: This should only be called by the overridden setScrollOffset from ScrollableArea.
     void scrollTo(int newOffset);

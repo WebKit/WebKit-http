@@ -1,3 +1,563 @@
+2020-05-31  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Transition between encrypted and clear codecs throws error from SourceBuffer.appendBuffer()
+        https://bugs.webkit.org/show_bug.cgi?id=212550
+        <rdar://problem/62207260>
+
+        Reviewed by Eric Carlson.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+
+2020-05-30  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r262332): Windows build failure because <nw/private.h> doesn't exist
+        <https://bugs.webkit.org/show_bug.cgi?id=212551>
+        <rdar://problem/62461099>
+
+        Unreviewed Windows build fix.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        - Move <nw/private.h> so it is not included with PLATFORM(WIN).
+        - Add or clean up some macro comments.
+
+2020-05-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Cocoa] Improve logging quality for non-ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=212551
+        <rdar://problem/62461099>
+
+        Reviewed by David Kilzer.
+
+        Add support for the 'nw_context_privacy_level' setting.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-05-29  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove conditionals for ENABLE_APPLE_PAY_SESSION_V(3|4)
+        https://bugs.webkit.org/show_bug.cgi?id=212541
+
+        Reviewed by Darin Adler.
+
+        APPLE_PAY_SESSION_V(3|4) is now enabled whenever APPLE_PAY itself is enabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+S2020-05-29  Darin Adler  <darin@apple.com>
+
+        Remove things from FeatureDefines.xcconfig that are covered by PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212418
+
+        Rubber-stamped by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Add back ENABLE_CSS_CONIC_GRADIENTS, removed
+        by accident.
+
+2020-05-27  Darin Adler  <darin@apple.com>
+
+        Remove things from FeatureDefines.xcconfig that are covered by PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212418
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig: Removed 83 of the 119 things defined in
+        this file. There are 36 more that are slightly more complex that we can remove
+        carefully later.
+
+2020-05-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Clipboard API] Support reading "image/png" on ClipboardItem
+        https://bugs.webkit.org/show_bug.cgi?id=212339
+        <rdar://problem/63588957>
+
+        Reviewed by Tim Horton.
+
+        Soft link `UIImagePNGRepresentation`.
+
+        * pal/ios/UIKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.mm:
+
+2020-05-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace `featureGuard` and `availability` with a combined `condition` that accepts any macro
+        https://bugs.webkit.org/show_bug.cgi?id=210014
+
+        Reviewed by Brian Burg.
+
+        Previously, the generated InspectorBackendCommands.js would include code for things that the
+        backend doesn't actually support. By using actual macros and preprocessing that file, we can
+        ensure that the frontend doesn't incorrectly think that something is supported by the page
+        being inspected:
+         - the `Canvas` commands and events related to shader programs/pipelines should only exist
+           when the corresponding context type exists, namely `ENABLE(WEBGL)` and `ENABLE(WEBGPU)`.
+         - iOS doesn't support showing rulers, so create a variant of `DOM.setInspectModeEnabled`
+           that only exists for `PLATFORM(IOS_FAMILY)` that doesn't have the `showRulers` optional
+           parameter, as well as removing `Page.setShowRulers` entirely.
+         - setting the forced appearance should only be possible if dark mode is supported.
+         - web archives only exist if CF is used.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add `ENABLE_WEB_ARCHIVE` since it's always enabled in wtf/PlatformEnableCocoa.h.
+
+2020-05-22  Alex Christensen  <achristensen@webkit.org>
+
+        Make download resume workaround forgiving of changes in CFNetwork
+        https://bugs.webkit.org/show_bug.cgi?id=212273
+
+        Reviewed by Geoffrey Garen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-05-22  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add new ApplePayInstallmentConfiguration members
+        https://bugs.webkit.org/show_bug.cgi?id=212160
+        <rdar://problem/60703650>
+
+        Reviewed by Alex Christensen.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm: Added soft-linking macros for PKPaymentInstallmentItem.
+
+2020-05-20  Andy Estes  <aestes@apple.com>
+
+        [Mac] UI processes spin when creating the "Share" context menu item
+        https://bugs.webkit.org/show_bug.cgi?id=212137
+        <rdar://problem/54498394>
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/mac/NSSharingServicePickerSPI.h: Declared -getMenuWithCompletion:.
+
+2020-05-18  Andy Estes  <aestes@apple.com>
+
+        http/tests/ssl/applepay/ApplePayInstallmentConfiguration.https.html fails in public SDK builds
+        https://bugs.webkit.org/show_bug.cgi?id=212000
+        <rdar://problem/63323082>
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-05-15  Alex Christensen  <achristensen@webkit.org>
+
+        [iOS Simulator] TestWebKitAPI._WKDownload.Resume is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=211786
+
+        Reviewed by Geoffrey Garen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        Use CFNetwork SPI to stop it from unlinking the downloaded file after resuming then completing.
+
+2020-05-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Rebuild MobileGestalt cache if needed
+        https://bugs.webkit.org/show_bug.cgi?id=211739
+
+        Reviewed by Darin Adler.
+
+        Add SPI to check if MobileGestalt cache is valid, and declare MobileGestaltHelperProxy class.
+
+        * pal/spi/ios/MobileGestaltSPI.h:
+
+2020-05-11  Darin Adler  <darin@apple.com>
+
+        Fix problems caught by replacing WTF::Optional with std::optional
+        https://bugs.webkit.org/show_bug.cgi?id=211703
+
+        Reviewed by Chris Dumez.
+
+        * pal/spi/cg/CoreGraphicsSPI.h: Moved definition of CGDisplayUsesForceToGray
+        here from PlatformScreenMac.mm and also added include of the private header
+        it's from when compiling with the Apple internal SDK for the additional
+        checking that we get from using both.
+
+2020-05-11  Andres Gonzalez  <andresg_22@apple.com>
+
+        Add mechanism to turn on accessibility isolated tree mode from WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=211725
+
+        Reviewed by Chris Fleizach.
+
+        Added _AXSSetIsolatedTreeMode to turn on isolated tree mode from WebKitTestRunner.
+
+        * pal/spi/cocoa/AccessibilitySupportSPI.h:
+        * pal/spi/mac/HIServicesSPI.h:
+
+2020-05-09  David Kilzer  <ddkilzer@apple.com>
+
+        Adapt LocalCurrentGraphicsContext for iOS
+        <https://webkit.org/b/211660>
+
+        Reviewed by Darin Adler.
+
+        * pal/ios/UIKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.mm:
+        - Add soft linking of UIGraphics{GetCurrent,Pop,Push}Context()
+          functions.
+
+2020-05-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Close connections to Launch Services after revoking extension
+        https://bugs.webkit.org/show_bug.cgi?id=211594
+
+        Reviewed by Brent Fulgham.
+
+        Declare _LSDService class.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-05-07  Darin Adler  <darin@apple.com>
+
+        Remove USE(INSERTION_UNDO_GROUPING) checks in macOS platform code
+        https://bugs.webkit.org/show_bug.cgi?id=211525
+
+        Reviewed by Anders Carlsson.
+
+        * PAL.xcodeproj/project.pbxproj: Added NSTextInputContextSPI.h and NSUndoManagerSPI.h.
+        * pal/PlatformMac.cmake: Ditto.
+        * pal/spi/mac/NSTextInputContextSPI.h: Added.
+        * pal/spi/mac/NSUndoManagerSPI.h: Added.
+
+2020-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Drop code path using the legacy CFNetwork cookie change notification SPI
+        https://bugs.webkit.org/show_bug.cgi?id=211411
+        <rdar://problem/62869148>
+
+        Reviewed by John Wilander.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, reverting r261130.
+
+        Caused crashes on some of our bots
+
+        Reverted changeset:
+
+        "Drop code path using the legacy CFNetwork cookie change
+        notification SPI"
+        https://bugs.webkit.org/show_bug.cgi?id=211411
+        https://trac.webkit.org/changeset/261130
+
+2020-05-05  Darin Adler  <darin@apple.com>
+
+        Remove now-unneeded USE(COREMEDIA) and USE(VIDEOTOOLBOX)
+        https://bugs.webkit.org/show_bug.cgi?id=211437
+
+        Reviewed by Eric Carlson.
+
+        * pal/system/mac/ClockCM.h: Remove USE(COREMEDIA). Also made everything
+        private since nothing includes this header. Removed everything unused.
+
+        * pal/system/mac/ClockCM.mm: Remove USE(COREMEDIA). Put everything inside
+        the PAL namespace.
+        (PAL::ClockCM::ClockCM): Merged in the second constructor and initializeWithTimingSource.
+        (PAL::ClockCM::ClockCM): Deleted.
+        (PAL::ClockCM::initializeWithTimingSource): Deleted.
+        (PAL::ClockCM::setCurrentTime): Tweaked.
+        (PAL::ClockCM::currentTime const): Tweaked.
+        (PAL::ClockCM::setCurrentMediaTime): Deleted.
+        (PAL::ClockCM::currentMediaTime const): Deleted.
+
+2020-05-04  Darin Adler  <darin@apple.com>
+
+        [Mac] Remove __MAC_OS_X_VERSION_MIN_REQUIRED checks for versions older than 10.14
+        https://bugs.webkit.org/show_bug.cgi?id=211420
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cocoa/NSColorSPI.h: Remove __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400.
+        * pal/spi/cocoa/QuartzCoreSPI.h: Ditto.
+        * pal/spi/mac/DataDetectorsSPI.h: Ditto.
+        * pal/spi/mac/NSApplicationSPI.h: Ditto.
+
+2020-05-04  Darin Adler  <darin@apple.com>
+
+        Remove now-unneeded HAVE(ACCESSIBILITY_SUPPORT)
+        https://bugs.webkit.org/show_bug.cgi?id=211425
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cocoa/AccessibilitySupportSPI.h: Remove HAVE(ACCESSIBILITY_SUPPORT).
+
+2020-05-04  Darin Adler  <darin@apple.com>
+
+        Make __IPHONE_OS_VERSION_MIN_REQUIRED checks against old versions explicit about watchOS and tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=211402
+
+        Reviewed by Alexey Proskuryakov.
+
+        * pal/spi/cocoa/NSAttributedStringSPI.h: Moved iOS family version of
+        NSExcludedElementsDocumentAttribute to this header. For now didn't
+        change its implementation to match, just moved it as is.
+
+2020-05-04  Peng Liu  <peng.liu6@apple.com>
+
+        Fix the mistake on macro HAVE_SYSTEM_FEATURE_FLAGS
+        https://bugs.webkit.org/show_bug.cgi?id=211416
+
+        Reviewed by Tim Horton.
+
+        We should use "#if HAVE(SYSTEM_FEATURE_FLAGS)" instead of "#if HAVE(HAVE_SYSTEM_FEATURE_FLAGS)".
+
+        * pal/spi/cocoa/FeatureFlagsSPI.h:
+
+2020-05-04  Darin Adler  <darin@apple.com>
+
+        Remove HAVE(IOSURFACE) checks in Cocoa-platform-specific code
+        https://bugs.webkit.org/show_bug.cgi?id=211389
+
+        Reviewed by Alexey Proskuryakov.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h: Remove HAVE(IOSURFACE).
+
+2020-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop code path using the legacy CFNetwork cookie change notification SPI
+        https://bugs.webkit.org/show_bug.cgi?id=211411
+
+        Reviewed by John Wilander.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-05-04  Darin Adler  <darin@apple.com>
+
+        Remove unneeded USE(MEDIAREMOTE)
+        https://bugs.webkit.org/show_bug.cgi?id=211385
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/MediaRemoteSPI.h: Removed check of USE(MEDIAREMOTE).
+        Also got rid of __has_include for MRNowPlayingTypes.h and moved
+        it down into the normal sections below.
+
+2020-05-01  Don Olmstead  <don.olmstead@sony.com>
+
+        Use export macros on all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=211293
+
+        Reviewed by Michael Catanzaro.
+
+        Allow overriding of PAL_EXPORT if desired otherwise use the defaults.
+
+        * pal/ExportMacros.h:
+
+2020-04-28  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt kMTSupportNotification_ShouldPlayHDRVideoChanged notification
+        https://bugs.webkit.org/show_bug.cgi?id=211028
+
+        Reviewed by Eric Carlson.
+
+        Make MediaToolboxSoftLink fully exported from PAL.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cocoa/MediaToolboxSoftLink.cpp:
+        * pal/cocoa/MediaToolboxSoftLink.h:
+
+2020-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Move ApplePay code from WebKitAdditions to WebCore and WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=210521
+
+        Reviewed by Andy Estes.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, reverting r260717.
+
+        Wrong Patch
+
+        Reverted changeset:
+
+        "Move ApplePay code from WebKitAdditions to WebCore and
+        WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=210521
+        https://trac.webkit.org/changeset/260717
+
+2020-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Move ApplePay code from WebKitAdditions to WebCore and WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=210521
+
+        Reviewed by Andy Estes.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-04-25  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Deal with another round of Xcode upgrade checks
+        https://bugs.webkit.org/show_bug.cgi?id=211027
+
+        Reviewed by Alexey Proskuryakov.
+
+        * PAL.xcodeproj/project.pbxproj: Bump the upgrade check version.
+
+2020-04-21  Peng Liu  <peng.liu6@apple.com>
+
+        Fix MACCATALYST build failures
+        https://bugs.webkit.org/show_bug.cgi?id=210815
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-04-20  Peng Liu  <peng.liu6@apple.com>
+
+        Fix build failures when video fullscreen and picture-in-picture is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=210777
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-04-20  Darin Adler  <darin@apple.com>
+
+        Use #import instead of #include in Objective-C and don't use #pragma once
+        https://bugs.webkit.org/show_bug.cgi?id=210724
+
+        Reviewed by David Kilzer.
+
+        * pal/cocoa/AppSSOSoftLink.mm:
+        * pal/cocoa/FileSizeFormatterCocoa.mm:
+        * pal/cocoa/UsageTrackingSoftLink.mm:
+        * pal/ios/ManagedConfigurationSoftLink.mm:
+        * pal/ios/UIKitSoftLink.mm:
+        * pal/mac/LookupSoftLink.mm:
+        * pal/spi/cocoa/AVFoundationSPI.h:
+        * pal/spi/cocoa/AccessibilitySupportSoftLink.cpp:
+        * pal/spi/cocoa/AppSSOSPI.h:
+        * pal/spi/cocoa/AuthKitSPI.h:
+        * pal/spi/cocoa/DataDetectorsCoreSPI.h:
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+        * pal/spi/cocoa/NSAccessibilitySPI.h:
+        * pal/spi/cocoa/NSAttributedStringSPI.h:
+        * pal/spi/cocoa/NSProgressSPI.h:
+        * pal/spi/cocoa/NSURLDownloadSPI.h:
+        * pal/spi/cocoa/NSUserDefaultsSPI.h:
+        * pal/spi/cocoa/NSXPCConnectionSPI.h:
+        * pal/spi/cocoa/PassKitSPI.h:
+        * pal/spi/cocoa/SecKeyProxySPI.h:
+        * pal/spi/ios/CelestialSPI.h:
+        * pal/spi/mac/DataDetectorsSPI.h:
+        * pal/spi/mac/NSColorWellSPI.h:
+        * pal/spi/mac/NSGraphicsSPI.h:
+        * pal/spi/mac/NSPopoverColorWellSPI.h:
+        * pal/spi/mac/NSScrollerImpSPI.h:
+        More #import, less #pragma once.
+
+2020-04-16  Eric Carlson  <eric.carlson@apple.com>
+
+        [macOS] Update ScreenTime as playback state changes
+        https://bugs.webkit.org/show_bug.cgi?id=210518
+        <rdar://problem/61181092>
+
+        Reviewed by Jer Noble.
+
+        Soft link the UsageTracking framework.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cocoa/UsageTrackingSoftLink.h: Added.
+        * pal/cocoa/UsageTrackingSoftLink.mm: Added.
+
+2020-04-14  Peng Liu  <peng.liu6@apple.com>
+
+        Adopt interface AVAudioRoutingArbiter for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=210167
+
+        Reviewed by Eric Carlson.
+
+        Add softlink for AVAudioRoutingArbiter.
+
+        * pal/cocoa/AVFoundationSoftLink.h:
+        * pal/cocoa/AVFoundationSoftLink.mm:
+
+2020-04-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Remove unused UTType swizzler code
+        https://bugs.webkit.org/show_bug.cgi?id=210435
+
+        Unreviewed rollout of r258120.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/NSUTTypeRecordSPI.h: Removed.
+
+2020-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to handle proxy authentication and require secure proxy connections
+        https://bugs.webkit.org/show_bug.cgi?id=210343
+        <rdar://problem/61546396> <rdar://problem/61546519> and <rdar://problem/61546658>
+
+        Reviewed by Geoffrey Garen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-04-08  Daniel Bates  <dabates@apple.com>
+
+        Track editable elements on screen
+        https://bugs.webkit.org/show_bug.cgi?id=209888
+        <rdar://problem/61196886>
+
+        Reviewed by Simon Fraser.
+
+        Add feature define to track editable elements on screen (enabled by default on iOS and iOS Simulator).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-04-08  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK4] Make PAL::systemBeep() work
+        https://bugs.webkit.org/show_bug.cgi?id=210158
+
+        Reviewed by Carlos Garcia Campos.
+
+        * pal/system/gtk/SoundGtk.cpp:
+        (PAL::systemBeep): Use gdk_display_beep(), which works both with GTK3 and GTK4.
+
+2020-04-07  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] CMake find module for GTK4
+        https://bugs.webkit.org/show_bug.cgi?id=210110
+
+        Reviewed by Don Olmstead.
+
+        * pal/PlatformGTK.cmake: Use the GTK::GTK imported target.
+
+2020-04-05  Peng Liu  <peng.liu6@apple.com>
+
+        The value of [AVPlayerViewController isPictureInPicturePossible] is NO in the first attempt to enter PiP
+        https://bugs.webkit.org/show_bug.cgi?id=204979
+
+        Reviewed by Darin Adler.
+
+        We should use "#if HAVE(AVOBSERVATIONCONTROLLER)" instead of
+        "#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)".
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2020-04-03  David Kilzer  <ddkilzer@apple.com>
+
+        [Xcode] Replace ASAN_OTHER_CFLAGS and ASAN_OTHER_CPLUSPLUSFLAGS with $(inherited)
+        <https://webkit.org/b/209963>
+        <rdar://problem/61257504>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        - Remove ASAN_OTHER_CFLAGS, ASAN_OTHER_CPLUSPLUSFLAGS and
+          ASAN_OTHER_LDFLAGS.
+
 2020-04-02  Per Arne Vollan  <pvollan@apple.com>
 
         Unreviewed build fix after r259396.

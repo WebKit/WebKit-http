@@ -84,7 +84,7 @@
 #import <wtf/text/WTFString.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include <WebCore/WebMediaSessionManager.h>
+#import <WebCore/WebMediaSessionManager.h>
 #endif
 
 static NSString * const kAXLoadCompleteNotification = @"AXLoadComplete";
@@ -277,7 +277,7 @@ void PageClientImpl::toolTipChanged(const String& oldToolTip, const String& newT
     m_impl->toolTipChanged(oldToolTip, newToolTip);
 }
 
-void PageClientImpl::didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider)
+void PageClientImpl::didCommitLoadForMainFrame(const String&, bool)
 {
     m_impl->updateSupportsArbitraryLayoutModes();
     m_impl->dismissContentRelativeChildWindowsWithAnimation(true);
@@ -341,12 +341,10 @@ void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, Und
     m_impl->registerEditCommand(WTFMove(command), undoOrRedo);
 }
 
-#if USE(INSERTION_UNDO_GROUPING)
 void PageClientImpl::registerInsertionUndoGrouping()
 {
     registerInsertionUndoGroupingWithUndoManager([m_view undoManager]);
 }
-#endif
 
 void PageClientImpl::clearAllEditCommands()
 {
@@ -530,6 +528,14 @@ void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext& lay
     ASSERT(!layerTreeContext.isEmpty());
 
     CALayer *renderLayer = [CALayer _web_renderLayerWithContextID:layerTreeContext.contextID];
+    m_impl->enterAcceleratedCompositingWithRootLayer(renderLayer);
+}
+
+void PageClientImpl::didFirstLayerFlush(const LayerTreeContext& layerTreeContext)
+{
+    ASSERT(!layerTreeContext.isEmpty());
+
+    CALayer *renderLayer = [CALayer _web_renderLayerWithContextID:layerTreeContext.contextID];
     m_impl->setAcceleratedCompositingRootLayer(renderLayer);
 }
 
@@ -674,9 +680,7 @@ bool PageClientImpl::executeSavedCommandBySelector(const String& selectorString)
     return m_impl->executeSavedCommandBySelector(NSSelectorFromString(selectorString));
 }
 
-#if USE(DICTATION_ALTERNATIVES)
-
-void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext)
+void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, WebCore::DictationContext dictationContext)
 {
     if (!isViewVisible() || !isViewInWindow())
         return;
@@ -684,8 +688,6 @@ void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect& boundi
         m_impl->handleAcceptedAlternativeText(acceptedAlternative);
     });
 }
-
-#endif
 
 void PageClientImpl::setEditableElementIsFocused(bool editableElementIsFocused)
 {

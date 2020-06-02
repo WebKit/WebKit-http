@@ -229,7 +229,8 @@ bool JIT::compileCallEval(const OpCallEval& bytecode)
 
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
 
-    callOperation(operationCallEval, m_codeBlock->globalObject(), regT1);
+    move(TrustedImm32(bytecode.m_ecmaMode.value()), regT2);
+    callOperation(operationCallEval, m_codeBlock->globalObject(), regT1, regT2);
 
     addSlowCase(branchIfEmpty(regT1));
 
@@ -363,6 +364,26 @@ void JIT::compileOpCallSlowCase(const Instruction* instruction, Vector<SlowCaseE
 
     auto bytecode = instruction->as<Op>();
     emitPutCallResult(bytecode);
+}
+
+void JIT::emit_op_iterator_open(const Instruction*)
+{
+    UNREACHABLE_FOR_PLATFORM();
+}
+
+void JIT::emitSlow_op_iterator_open(const Instruction*, Vector<SlowCaseEntry>::iterator&)
+{
+    UNREACHABLE_FOR_PLATFORM();
+}
+
+void JIT::emit_op_iterator_next(const Instruction*)
+{
+    UNREACHABLE_FOR_PLATFORM();
+}
+
+void JIT::emitSlow_op_iterator_next(const Instruction*, Vector<SlowCaseEntry>::iterator&)
+{
+    UNREACHABLE_FOR_PLATFORM();
 }
 
 } // namespace JSC

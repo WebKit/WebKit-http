@@ -29,7 +29,7 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <wtf/Assertions.h>
-#include <wtf/PageAllocation.h>
+#include <wtf/PageBlock.h>
 
 #if OS(HAIKU)
 #define madvise posix_madvise

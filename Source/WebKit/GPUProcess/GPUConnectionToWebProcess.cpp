@@ -73,7 +73,9 @@
 #include "RemoteCDMProxyMessages.h"
 #endif
 
-#if ENABLE(MEDIA_STREAM)
+// FIXME: <https://bugs.webkit.org/show_bug.cgi?id=211085>
+// UserMediaCaptureManagerProxy should not be platform specific
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
 #include "UserMediaCaptureManagerProxy.h"
 #include "UserMediaCaptureManagerProxyMessages.h"
 #endif
@@ -114,8 +116,8 @@ public:
 
 private:
     Logger& logger() final { return m_process.logger(); }
-    void addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& receiver) final { }
-    void removeMessageReceiver(IPC::StringReference messageReceiverName) final { }
+    void addMessageReceiver(IPC::ReceiverName, IPC::MessageReceiver&) final { }
+    void removeMessageReceiver(IPC::ReceiverName messageReceiverName) final { }
     IPC::Connection& connection() final { return m_process.connection(); }
     bool willStartCapture(CaptureDevice::DeviceType type) const final
     {
@@ -185,9 +187,9 @@ Logger& GPUConnectionToWebProcess::logger()
     return *m_logger;
 }
 
-void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connection, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connection, IPC::MessageName messageName)
 {
-    WTFLogAlways("Received an invalid message \"%s.%s\" from the web process.\n", messageReceiverName.toString().data(), messageName.toString().data());
+    WTFLogAlways("Received an invalid message \"%s\" from the web process.\n", description(messageName));
     CRASH();
 }
 
@@ -364,7 +366,7 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         remoteMediaResourceManager().didReceiveMessage(connection, decoder);
         return true;
     }
-#if ENABLE(MEDIA_STREAM)
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManagerProxy::messageReceiverName()) {
         userMediaCaptureManagerProxy().didReceiveMessageFromGPUProcess(connection, decoder);
         return true;
@@ -377,7 +379,7 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         mediaRecorderManager().didReceiveRemoteMediaRecorderMessage(connection, decoder);
         return true;
     }
-#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO_TRACK)
     if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRendererManager::messageReceiverName()) {
         audioTrackRendererManager().didReceiveMessageFromWebProcess(connection, decoder);
         return true;
@@ -497,7 +499,7 @@ const String& GPUConnectionToWebProcess::mediaCacheDirectory() const
     return m_gpuProcess->mediaCacheDirectory(m_sessionID);
 }
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 const String& GPUConnectionToWebProcess::mediaKeysStorageDirectory() const
 {
     return m_gpuProcess->mediaKeysStorageDirectory(m_sessionID);
@@ -507,7 +509,10 @@ const String& GPUConnectionToWebProcess::mediaKeysStorageDirectory() const
 #if ENABLE(MEDIA_STREAM)
 void GPUConnectionToWebProcess::setOrientationForMediaCapture(uint64_t orientation)
 {
+// FIXME: <https://bugs.webkit.org/show_bug.cgi?id=211085>
+#if PLATFORM(COCOA)
     userMediaCaptureManagerProxy().setOrientation(orientation);
+#endif
 }
 
 void GPUConnectionToWebProcess::updateCaptureAccess(bool allowAudioCapture, bool allowVideoCapture, bool allowDisplayCapture)

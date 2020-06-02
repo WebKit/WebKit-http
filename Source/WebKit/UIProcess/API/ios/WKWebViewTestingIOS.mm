@@ -29,13 +29,73 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "RemoteLayerTreeDrawingAreaProxy.h"
+#import "RemoteLayerTreeViews.h"
 #import "RemoteScrollingCoordinatorProxy.h"
+#import "UIKitSPI.h"
+#import "WKContentViewInteraction.h"
 #import "WKFullScreenWindowController.h"
 #import "WKWebViewIOS.h"
 #import "WebPageProxy.h"
 #import "_WKActivatedElementInfoInternal.h"
+#import "_WKTextInputContextInternal.h"
+#import <WebCore/ElementContext.h>
 
 @implementation WKWebView (WKTestingIOS)
+
+- (void)_requestTextInputContextsInRect:(CGRect)rect completionHandler:(void (^)(NSArray<_WKTextInputContext *> *))completionHandler
+{
+    // Adjust returned bounding rects to be in WKWebView coordinates.
+    auto adjustedRect = [self convertRect:rect toView:_contentView.get()];
+    [_contentView _requestTextInputContextsInRect:adjustedRect completionHandler:[weakSelf = WeakObjCPtr<WKWebView>(self), completionHandler = makeBlockPtr(completionHandler)](NSArray<_WKTextInputContext *> *contexts) {
+        auto strongSelf = weakSelf.get();
+        if (!strongSelf || !contexts.count) {
+            completionHandler(@[ ]);
+            return;
+        }
+        auto adjustedContexts = adoptNS([[NSMutableArray alloc] initWithCapacity:contexts.count]);
+        for (_WKTextInputContext *context in contexts) {
+            auto adjustedContext = context._textInputContext;
+            adjustedContext.boundingRect = [strongSelf convertRect:adjustedContext.boundingRect fromView:strongSelf->_contentView.get()];
+            [adjustedContexts addObject:adoptNS([[_WKTextInputContext alloc] _initWithTextInputContext:adjustedContext]).get()];
+        }
+        completionHandler(adjustedContexts.autorelease());
+    }];
+}
+
+- (void)_focusTextInputContext:(_WKTextInputContext *)context placeCaretAt:(CGPoint)point completionHandler:(void (^)(UIResponder<UITextInput> *))completionHandler
+{
+    auto adjustedPoint = [self convertPoint:point toView:_contentView.get()];
+    [_contentView _focusTextInputContext:context placeCaretAt:adjustedPoint completionHandler:completionHandler];
+}
+
+- (void)_willBeginTextInteractionInTextInputContext:(_WKTextInputContext *)context
+{
+    [_contentView _willBeginTextInteractionInTextInputContext:context];
+}
+
+- (void)_didFinishTextInteractionInTextInputContext:(_WKTextInputContext *)context
+{
+    [_contentView _didFinishTextInteractionInTextInputContext:context];
+}
+
+- (void)_requestDocumentContext:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler
+{
+    [_contentView requestDocumentContext:request completionHandler:completionHandler];
+}
+
+- (void)_adjustSelectionWithDelta:(NSRange)deltaRange completionHandler:(void (^)(void))completionHandler
+{
+    [_contentView adjustSelectionWithDelta:deltaRange completionHandler:completionHandler];
+}
+
+- (BOOL)_mayContainEditableElementsInRect:(CGRect)rect
+{
+#if ENABLE(EDITABLE_REGION)
+    return WebKit::mayContainEditableElementsInRect(_contentView.get(), [self convertRect:rect toView:_contentView.get()]);
+#else
+    return NO;
+#endif
+}
 
 - (void)keyboardAccessoryBarNext
 {
@@ -69,9 +129,24 @@
     [_contentView setTimePickerValueToHour:hour minute:minute];
 }
 
+- (double)timePickerValueHour
+{
+    return [_contentView timePickerValueHour];
+}
+
+- (double)timePickerValueMinute
+{
+    return [_contentView timePickerValueMinute];
+}
+
 - (void)selectFormAccessoryPickerRow:(int)rowIndex
 {
     [_contentView selectFormAccessoryPickerRow:rowIndex];
+}
+
+- (BOOL)selectFormAccessoryHasCheckedItemAtRow:(long)rowIndex
+{
+    return [_contentView selectFormAccessoryHasCheckedItemAtRow:rowIndex];
 }
 
 - (NSString *)selectFormPopoverTitle
@@ -223,6 +298,11 @@
 #endif
 }
 
+- (void)_simulateElementAction:(_WKElementActionType)actionType atLocation:(CGPoint)location
+{
+    [_contentView _simulateElementAction:actionType atLocation:location];
+}
+
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location
 {
     [_contentView _simulateLongPressActionAtLocation:location];
@@ -257,6 +337,12 @@
     if (handler)
         handlerWrapper = [handler = makeBlockPtr(handler)] { return handler(); };
     _page->setDeviceOrientationUserPermissionHandlerForTesting(WTFMove(handlerWrapper));
+}
+
+- (void)_setDeviceHasAGXCompilerServiceForTesting
+{
+    if (_page)
+        _page->setDeviceHasAGXCompilerServiceForTesting();
 }
 
 @end

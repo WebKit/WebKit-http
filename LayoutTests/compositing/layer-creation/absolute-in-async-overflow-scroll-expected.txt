@@ -12,7 +12,7 @@ This layer should be composited.
           (bounds 202.00 202.00)
           (opacity 0.80)
           (drawsContent 1)
-          (children 1
+          (children 2
             (GraphicsLayer
               (offsetFromRenderer width=1 height=1)
               (position 1.00 1.00)
@@ -31,6 +31,27 @@ This layer should be composited.
                       (drawsContent 1)
                     )
                   )
+                )
+              )
+            )
+            (GraphicsLayer
+              (position 1.00 1.00)
+              (bounds 200.00 200.00)
+              (children 3
+                (GraphicsLayer
+                  (position 0.00 185.00)
+                  (bounds 185.00 15.00)
+                  (drawsContent 1)
+                )
+                (GraphicsLayer
+                  (position 185.00 0.00)
+                  (bounds 15.00 185.00)
+                  (drawsContent 1)
+                )
+                (GraphicsLayer
+                  (position 185.00 185.00)
+                  (bounds 15.00 15.00)
+                  (drawsContent 1)
                 )
               )
             )

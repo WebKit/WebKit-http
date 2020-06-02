@@ -31,7 +31,6 @@
 #include "APIPageHandle.h"
 #include "AuthenticationManager.h"
 #include "AuxiliaryProcessMessages.h"
-#include "DependencyProcessAssertion.h"
 #include "DrawingArea.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
@@ -43,6 +42,7 @@
 #include "NetworkSession.h"
 #include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
+#include "ProcessAssertion.h"
 #include "RemoteAudioSession.h"
 #include "RemoteLegacyCDMFactory.h"
 #include "StorageAreaMap.h"
@@ -83,7 +83,6 @@
 #include "WebsiteDataType.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
-#include <JavaScriptCore/WasmFaultSignalHandler.h>
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AuthenticationChallenge.h>
@@ -126,6 +125,7 @@
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
 #include <wtf/Algorithms.h>
+#include <wtf/CallbackAggregator.h>
 #include <wtf/Language.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
@@ -144,10 +144,6 @@
 #if PLATFORM(COCOA)
 #include "ObjCObjectGraph.h"
 #include "UserMediaCaptureManager.h"
-#endif
-
-#if PLATFORM(IOS_FAMILY)
-#include "WebSQLiteDatabaseTracker.h"
 #endif
 
 #if ENABLE(SEC_ITEM_SHIM)
@@ -182,6 +178,10 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include "RemoteMediaSessionHelper.h"
+#endif
+
+#if ENABLE(ROUTING_ARBITRATION)
+#include "AudioSessionRoutingArbitrator.h"
 #endif
 
 #define RELEASE_LOG_SESSION_ID (m_sessionID ? m_sessionID->toUInt64() : 0)
@@ -223,9 +223,6 @@ WebProcess::WebProcess()
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
-#if PLATFORM(IOS_FAMILY)
-    , m_webSQLiteDatabaseTracker([this](bool isHoldingLockedFiles) { parentProcessConnection()->send(Messages::WebProcessProxy::SetIsHoldingLockedFiles(isHoldingLockedFiles), 0); })
-#endif
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -257,6 +254,10 @@ WebProcess::WebProcess()
 
 #if ENABLE(GPU_PROCESS) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
     addSupplement<RemoteLegacyCDMFactory>();
+#endif
+
+#if ENABLE(ROUTING_ARBITRATION)
+    addSupplement<AudioSessionRoutingArbitrator>();
 #endif
 
     Gigacage::forbidDisablingPrimitiveGigacage();
@@ -296,12 +297,6 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
     m_eventDispatcher->initializeConnection(connection);
 #if PLATFORM(IOS_FAMILY)
     m_viewUpdateDispatcher->initializeConnection(connection);
-
-    ASSERT(!m_uiProcessDependencyProcessAssertion);
-    if (auto remoteProcessID = connection->remoteProcessID())
-        m_uiProcessDependencyProcessAssertion = makeUnique<DependencyProcessAssertion>(remoteProcessID, "WebContent process dependency on UIProcess"_s);
-    else
-        RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "Unable to create a process depending assertion on UIProcess because remoteProcessID is 0");
 #endif // PLATFORM(IOS_FAMILY)
 
     m_webInspectorInterruptDispatcher->initializeConnection(connection);
@@ -358,7 +353,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
             auto maintainMemoryCache = m_isSuspending && m_hasSuspendedPageProxy ? WebCore::MaintainMemoryCache::Yes : WebCore::MaintainMemoryCache::No;
             WebCore::releaseMemory(critical, synchronous, maintainBackForwardCache, maintainMemoryCache);
         });
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WPE)
+#if ENABLE(PERIODIC_MEMORY_MONITOR)
         memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
         memoryPressureHandler.setMemoryKillCallback([this] () {
             WebCore::logMemoryStatisticsAtTimeOfDeath();
@@ -378,8 +373,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         memoryPressureHandler.install();
     }
 
-    for (size_t i = 0, size = parameters.additionalSandboxExtensionHandles.size(); i < size; ++i)
-        SandboxExtension::consumePermanently(parameters.additionalSandboxExtensionHandles[i]);
+    SandboxExtension::consumePermanently(parameters.additionalSandboxExtensionHandles);
 
     if (!parameters.injectedBundlePath.isEmpty())
         m_injectedBundle = InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
@@ -426,9 +420,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     for (auto& scheme : parameters.urlSchemesRegisteredAsCachePartitioned)
         registerURLSchemeAsCachePartitioned(scheme);
 
-    for (auto& scheme : parameters.urlSchemesServiceWorkersCanHandle)
-        WebCore::LegacySchemeRegistry::registerURLSchemeServiceWorkersCanHandle(scheme);
-
     for (auto& scheme : parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest)
         registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
 
@@ -473,10 +464,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
 #if ENABLE(SERVICE_WORKER)
     ServiceWorkerProvider::setSharedProvider(WebServiceWorkerProvider::singleton());
-#endif
-
-#if ENABLE(WEBASSEMBLY)
-    JSC::Wasm::enableFastMemory();
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
@@ -791,7 +778,7 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
     }
 #endif
 
-    LOG_ERROR("Unhandled web process message '%s::%s' (destination: %" PRIu64 " pid: %d)", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID(), static_cast<int>(getCurrentProcessID()));
+    LOG_ERROR("Unhandled web process message '%s' (destination: %" PRIu64 " pid: %d)", description(decoder.messageName()), decoder.destinationID(), static_cast<int>(getCurrentProcessID()));
 }
 
 WebFrame* WebProcess::webFrame(FrameIdentifier frameID) const
@@ -1094,16 +1081,20 @@ static NetworkProcessConnectionInfo getNetworkProcessConnection(IPC::Connection&
 {
     NetworkProcessConnectionInfo connectionInfo;
     if (!connection.sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(connectionInfo), 0)) {
+        // If we failed the first time, retry once. The attachment may have become invalid
+        // before it was received by the web process if the network process crashed.
+        if (!connection.sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(connectionInfo), 0)) {
 #if PLATFORM(GTK) || PLATFORM(WPE)
-        // GTK+ and WPE ports don't exit on send sync message failure.
-        // In this particular case, the network process can be terminated by the UI process while the
-        // Web process is still initializing, so we always want to exit instead of crashing. This can
-        // happen when the WebView is created and then destroyed quickly.
-        // See https://bugs.webkit.org/show_bug.cgi?id=183348.
-        exit(0);
+            // GTK+ and WPE ports don't exit on send sync message failure.
+            // In this particular case, the network process can be terminated by the UI process while the
+            // Web process is still initializing, so we always want to exit instead of crashing. This can
+            // happen when the WebView is created and then destroyed quickly.
+            // See https://bugs.webkit.org/show_bug.cgi?id=183348.
+            exit(0);
 #else
-        CRASH();
+            CRASH();
 #endif
+        }
     }
 
     return connectionInfo;
@@ -1217,8 +1208,12 @@ WebLoaderStrategy& WebProcess::webLoaderStrategy()
 static GPUProcessConnectionInfo getGPUProcessConnection(IPC::Connection& connection)
 {
     GPUProcessConnectionInfo connectionInfo;
-    if (!connection.sendSync(Messages::WebProcessProxy::GetGPUProcessConnection(), Messages::WebProcessProxy::GetGPUProcessConnection::Reply(connectionInfo), 0))
-        CRASH();
+    if (!connection.sendSync(Messages::WebProcessProxy::GetGPUProcessConnection(), Messages::WebProcessProxy::GetGPUProcessConnection::Reply(connectionInfo), 0)) {
+        // If we failed the first time, retry once. The attachment may have become invalid
+        // before it was received by the web process if the network process crashed.
+        if (!connection.sendSync(Messages::WebProcessProxy::GetGPUProcessConnection(), Messages::WebProcessProxy::GetGPUProcessConnection::Reply(connectionInfo), 0))
+            CRASH();
+    }
 
     return connectionInfo;
 }
@@ -1429,7 +1424,6 @@ void WebProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<v
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    m_webSQLiteDatabaseTracker.setIsSuspended(true);
     SQLiteDatabase::setIsDatabaseOpeningForbidden(true);
     if (DatabaseTracker::isInitialized())
         DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
@@ -1437,44 +1431,29 @@ void WebProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<v
     updateFreezerStatus();
 #endif
 
-    markAllLayersVolatile([this, completionHandler = WTFMove(completionHandler)](bool success) mutable {
-        if (success)
-            RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "markAllLayersVolatile: Successfuly marked all layers as volatile");
-        else
-            RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "markAllLayersVolatile: Failed to mark all layers as volatile");
-
+    markAllLayersVolatile([this, completionHandler = WTFMove(completionHandler)]() mutable {
         RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "prepareToSuspend: Process is ready to suspend");
         completionHandler();
     });
 }
 
-void WebProcess::markAllLayersVolatile(WTF::Function<void(bool)>&& completionHandler)
+void WebProcess::markAllLayersVolatile(CompletionHandler<void()>&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "markAllLayersVolatile:");
-    ASSERT(!m_pageMarkingLayersAsVolatileCounter);
-    m_countOfPagesFailingToMarkVolatile = 0;
-
-    m_pageMarkingLayersAsVolatileCounter = makeUnique<PageMarkingLayersAsVolatileCounter>([this, completionHandler = WTFMove(completionHandler)] (RefCounterEvent) {
-        if (m_pageMarkingLayersAsVolatileCounter->value())
-            return;
-
-        completionHandler(m_countOfPagesFailingToMarkVolatile == 0);
-        m_pageMarkingLayersAsVolatileCounter = nullptr;
-    });
-    auto token = m_pageMarkingLayersAsVolatileCounter->count();
-    for (auto& page : m_pageMap.values())
-        page->markLayersVolatile([token, this] (bool succeeded) {
-            if (!succeeded)
-                ++m_countOfPagesFailingToMarkVolatile;
+    auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    for (auto& page : m_pageMap.values()) {
+        page->markLayersVolatile([this, callbackAggregator = callbackAggregator.copyRef(), pageID = page->identifier()] (bool succeeded) {
+            if (succeeded)
+                RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "markAllLayersVolatile: Successfuly marked layers as volatile for webPageID=%" PRIu64, pageID.toUInt64());
+            else
+                RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "markAllLayersVolatile: Failed to mark layers as volatile for webPageID=%" PRIu64, pageID.toUInt64());
         });
+    }
 }
 
 void WebProcess::cancelMarkAllLayersVolatile()
 {
-    if (!m_pageMarkingLayersAsVolatileCounter)
-        return;
-
-    m_pageMarkingLayersAsVolatileCounter = nullptr;
+    RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "cancelMarkAllLayersVolatile:");
     for (auto& page : m_pageMap.values())
         page->cancelMarkLayersVolatile();
 }
@@ -1508,7 +1487,6 @@ void WebProcess::processDidResume()
     unfreezeAllLayerTrees();
     
 #if PLATFORM(IOS_FAMILY)
-    m_webSQLiteDatabaseTracker.setIsSuspended(false);
     SQLiteDatabase::setIsDatabaseOpeningForbidden(false);
     accessibilityProcessSuspendedNotification(false);
 #endif
@@ -1898,7 +1876,7 @@ bool WebProcess::areAllPagesThrottleable() const
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void WebProcess::setShouldBlockThirdPartyCookiesForTesting(ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode, CompletionHandler<void()>&& completionHandler)
+void WebProcess::setThirdPartyCookieBlockingMode(ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode, CompletionHandler<void()>&& completionHandler)
 {
     m_thirdPartyCookieBlockingMode = thirdPartyCookieBlockingMode;
     completionHandler();

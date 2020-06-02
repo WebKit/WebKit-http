@@ -21,6 +21,9 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 
+Modules/async-clipboard/ios/ClipboardImageReaderIOS.mm
+Modules/async-clipboard/mac/ClipboardImageReaderMac.mm
+
 Modules/mediasession/WebMediaSessionManager.cpp
 
 Modules/plugins/QuickTimePluginReplacement.mm
@@ -112,6 +115,8 @@ html/shadow/mac/ImageControlsRootElementMac.cpp
 
 history/mac/HistoryItemMac.mm
 
+inspector/mac/PageScriptDebugServerMac.mm
+
 loader/archive/cf/LegacyWebArchive.cpp
 loader/archive/cf/LegacyWebArchiveMac.mm
 
@@ -157,7 +162,6 @@ page/scrolling/cocoa/ScrollingTreeStickyNode.mm
 page/scrolling/mac/ScrollingCoordinatorMac.mm
 page/scrolling/mac/ScrollingMomentumCalculatorMac.mm
 page/scrolling/mac/ScrollingStateScrollingNodeMac.mm
-page/scrolling/mac/ScrollingThreadMac.mm
 page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm
 page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.mm
 page/scrolling/mac/ScrollingTreeScrollingNodeDelegateMac.mm
@@ -181,7 +185,7 @@ platform/audio/mac/AudioBusMac.mm
 platform/audio/mac/AudioDestinationMac.cpp
 platform/audio/mac/AudioFileReaderMac.cpp
 platform/audio/mac/AudioHardwareListenerMac.cpp
-platform/audio/mac/AudioSessionMac.cpp
+platform/audio/mac/AudioSessionMac.mm
 platform/audio/mac/CARingBuffer.cpp
 platform/audio/mac/FFTFrameMac.cpp
 
@@ -258,7 +262,6 @@ platform/graphics/avfoundation/objc/CDMSessionAVStreamSession.mm @no-unify
 platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/ImageDecoderAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/InbandTextTrackPrivateAVFObjC.mm @no-unify
-platform/graphics/avfoundation/objc/InbandTextTrackPrivateLegacyAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/LocalSampleBufferDisplayLayer.mm @no-unify
 platform/graphics/avfoundation/objc/MediaPlaybackTargetPickerMac.mm @no-unify
 platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm @no-unify
@@ -315,6 +318,7 @@ platform/graphics/cg/UTIRegistry.cpp
 platform/graphics/cocoa/ColorCocoa.mm
 platform/graphics/cocoa/GraphicsContextGLOpenGLCocoa.mm
 platform/graphics/cocoa/GraphicsContextCocoa.mm
+platform/graphics/cocoa/FloatRectCocoa.mm
 platform/graphics/cocoa/FontCacheCoreText.cpp
 platform/graphics/cocoa/FontCascadeCocoa.mm
 platform/graphics/cocoa/FontCocoa.mm
@@ -324,6 +328,7 @@ platform/graphics/cocoa/FontPlatformDataCocoa.mm
 platform/graphics/cocoa/HEVCUtilitiesCocoa.mm
 platform/graphics/cocoa/IOSurface.mm
 platform/graphics/cocoa/IOSurfacePoolCocoa.mm
+platform/graphics/cocoa/IntRectCocoa.mm
 platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.cpp
 platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp
 platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
@@ -367,7 +372,6 @@ platform/graphics/mac/ColorMac.mm
 platform/graphics/mac/ComplexTextControllerCoreText.mm
 platform/graphics/mac/DisplayRefreshMonitorMac.cpp
 platform/graphics/mac/FloatPointMac.mm
-platform/graphics/mac/FloatRectMac.mm
 platform/graphics/mac/FloatSizeMac.mm
 platform/graphics/mac/FontCacheMac.mm
 platform/graphics/mac/FontCustomPlatformData.cpp
@@ -375,7 +379,6 @@ platform/graphics/mac/GlyphPageMac.cpp
 platform/graphics/mac/IconMac.mm
 platform/graphics/mac/ImageMac.mm
 platform/graphics/mac/IntPointMac.mm
-platform/graphics/mac/IntRectMac.mm
 platform/graphics/mac/IntSizeMac.mm
 platform/graphics/mac/PDFDocumentImageMac.mm
 platform/graphics/mac/SimpleFontDataCoreText.cpp
@@ -403,6 +406,7 @@ platform/ios/LegacyTileGrid.mm
 platform/ios/LegacyTileGridTile.mm
 platform/ios/LegacyTileLayer.mm
 platform/ios/LegacyTileLayerPool.mm
+platform/ios/LocalCurrentGraphicsContextIOS.mm
 platform/ios/LocalCurrentTraitCollection.mm
 platform/ios/LocalizedDeviceModel.mm
 platform/ios/LowPowerModeNotifierIOS.mm
@@ -448,7 +452,7 @@ platform/mac/BlacklistUpdater.mm
 platform/mac/CursorMac.mm @no-unify
 platform/mac/KeyEventMac.mm @no-unify
 platform/mac/PlaybackSessionInterfaceMac.mm @no-unify
-platform/mac/LocalCurrentGraphicsContext.mm
+platform/mac/LocalCurrentGraphicsContextMac.mm
 platform/mac/LocalDefaultSystemAppearance.mm
 platform/mac/LoggingMac.mm
 platform/mac/MediaRemoteSoftLink.cpp
@@ -568,8 +572,8 @@ platform/mediastream/mac/RealtimeMediaSourceCenterMac.mm
 platform/mediastream/mac/RealtimeOutgoingAudioSourceCocoa.cpp
 platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.cpp
 platform/mediastream/mac/RealtimeVideoUtilities.mm
-platform/mediastream/mac/ScreenDisplayCaptureSourceMac.mm
-platform/mediastream/mac/WindowDisplayCaptureSourceMac.mm
+platform/mediastream/mac/ScreenDisplayCapturerMac.mm
+platform/mediastream/mac/WindowDisplayCapturerMac.mm
 
 platform/audio/mac/AudioSampleDataSource.mm
 
@@ -577,6 +581,8 @@ platform/mediastream/mac/MockAudioSharedUnit.mm
 platform/mediastream/mac/WebAudioSourceProviderAVFObjC.mm
 
 platform/mediastream/libwebrtc/LibWebRTCProviderCocoa.cpp
+
+testing/cocoa/WebViewVisualIdentificationOverlay.mm
 
 // Derived Sources
 
@@ -591,6 +597,8 @@ WHLSLStandardLibraryFunctionMap.cpp
     Modules/applepay/ApplePayPaymentAuthorizedEvent.cpp
     Modules/applepay/ApplePayPaymentMethodSelectedEvent.cpp
     Modules/applepay/ApplePayRequestBase.cpp
+    Modules/applepay/ApplePaySetup.cpp
+    Modules/applepay/ApplePaySetupFeature.mm
     Modules/applepay/ApplePaySession.cpp
     Modules/applepay/ApplePaySessionPaymentRequest.cpp
     Modules/applepay/ApplePayShippingContactSelectedEvent.cpp
@@ -598,6 +606,7 @@ WHLSLStandardLibraryFunctionMap.cpp
     Modules/applepay/ApplePayValidateMerchantEvent.cpp
     Modules/applepay/PaymentCoordinator.cpp
     Modules/applepay/PaymentCoordinatorClient.cpp
+    Modules/applepay/PaymentInstallmentConfiguration.mm
     Modules/applepay/PaymentRequestValidator.mm
     Modules/applepay/PaymentSession.cpp
 
@@ -616,6 +625,10 @@ WHLSLStandardLibraryFunctionMap.cpp
     JSApplePayError.cpp
     JSApplePayErrorCode.cpp
     JSApplePayErrorContactField.cpp
+    JSApplePayInstallmentConfiguration.cpp
+    JSApplePayInstallmentItem.cpp
+    JSApplePayInstallmentItemType.cpp
+    JSApplePayInstallmentRetailChannel.cpp
     JSApplePayLineItem.cpp
     JSApplePayMerchantCapability.cpp
     JSApplePayModifier.cpp
@@ -633,6 +646,9 @@ WHLSLStandardLibraryFunctionMap.cpp
     JSApplePayRequestBase.cpp
     JSApplePaySession.cpp
     JSApplePaySessionError.cpp
+    JSApplePaySetup.cpp
+    JSApplePaySetupFeature.cpp
+    JSApplePaySetupFeatureType.cpp
     JSApplePayShippingContactSelectedEvent.cpp
     JSApplePayShippingContactUpdate.cpp
     JSApplePayShippingMethod.cpp

@@ -88,11 +88,6 @@
         "The regular setter on RenderStyle will only be called if",
         "StyleResolver::applyPropertyToRegularStyle() returns true.",
         "",
-        "* no-default-color:",
-        "Should only be used with \"VisitedLinkColorSupport\". It indicates that when",
-        "setting the inherited value, it will not fallback to using the parent's",
-        "\"color\" property if the inherited color is invalid.",
-        "",
         "* font-property:",
         "Indicates that this CSS property is font-related. It must have corresponding",
         "methods on the FontDescription class.",
@@ -133,6 +128,10 @@
         "",
         "* runtime-flag:",
         "The name of the flag on RuntimeEnabledFeatures (e.g. \"cssLogical\")",
+        "that conditionally enables the property.",
+        "",
+        "* settings-flag:",
+        "The name of the flag on Settings (e.g. \"CSSOMViewSmoothScrolling\")",
         "that conditionally enables the property.",
         "",
         "2. Lesser known capabilities of this file format",
@@ -184,7 +183,7 @@
         "caret-color" : {
             "inherited": true,
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -196,7 +195,6 @@
             "inherited": true,
             "codegen-properties": {
                 "visited-link-color-support": true,
-                "no-default-color": true,
                 "high-priority": true
             },
             "status": {
@@ -1059,8 +1057,7 @@
         },
         "background-color": {
             "codegen-properties": {
-                "visited-link-color-support": true,
-                "no-default-color": true
+                "visited-link-color-support": true
             },
             "specification": {
                 "category": "css-backgrounds",
@@ -1420,7 +1417,7 @@
         },
         "border-bottom-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -1434,7 +1431,7 @@
                     "-webkit-border-bottom-left-radius"
                 ],
                 "initial": "initialBorderRadius",
-                "converter": "Radius"
+                "custom": "Inherit|Value"
             },
             "specification": {
                 "category": "css-backgrounds",
@@ -1447,7 +1444,7 @@
                     "-webkit-border-bottom-right-radius"
                 ],
                 "initial": "initialBorderRadius",
-                "converter": "Radius"
+                "custom": "Inherit|Value"
             },
             "specification": {
                 "category": "css-backgrounds",
@@ -1773,7 +1770,7 @@
         },
         "border-left-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -1841,7 +1838,7 @@
         },
         "border-right-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -1922,7 +1919,7 @@
         },
         "border-top-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -1936,7 +1933,7 @@
                     "-webkit-border-top-left-radius"
                 ],
                 "initial": "initialBorderRadius",
-                "converter": "Radius"
+                "custom": "Inherit|Value"
             },
             "specification": {
                 "category": "css-backgrounds",
@@ -1949,7 +1946,7 @@
                     "-webkit-border-top-right-radius"
                 ],
                 "initial": "initialBorderRadius",
-                "converter": "Radius"
+                "custom": "Inherit|Value"
             },
             "specification": {
                 "category": "css-backgrounds",
@@ -3196,7 +3193,7 @@
         },
         "outline-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification": {
@@ -3579,16 +3576,6 @@
                 "url": "https://www.w3.org/TR/SVG/shapes.html"
             }
         },
-        "scroll-behavior": {
-            "values": [
-                "auto",
-                "smooth"
-            ],
-            "specification": {
-                "category": "cssom-view",
-                "url": "https://drafts.csswg.org/cssom-view/#propdef-scroll-behavior"
-            }
-        },
         "shape-rendering": {
             "inherited": true,
             "values": [
@@ -3743,7 +3730,7 @@
             "inherited": true,
             "codegen-properties": {
                 "custom": "Value",
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "status": "supported",
@@ -4841,7 +4828,7 @@
                 "aliases": [
                     "-webkit-column-rule-color"
                 ],
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "specification":  {
@@ -6175,7 +6162,7 @@
         },
         "text-decoration-color": {
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true,
                 "aliases": [
                     "-webkit-text-decoration-color"
@@ -6288,7 +6275,7 @@
                     "-epub-text-emphasis-color",
                     "text-emphasis-color"
                 ],
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "status": {
@@ -6335,7 +6322,7 @@
         "-webkit-text-fill-color": {
             "inherited": true,
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "status": {
@@ -6366,7 +6353,7 @@
         "-webkit-text-stroke-color": {
             "inherited": true,
             "codegen-properties": {
-                "initial": "invalidColor",
+                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "status": {
@@ -6398,13 +6385,14 @@
         },
         "transform-box": {
             "values" : [
+                "content-box",
                 "border-box",
                 "fill-box",
-                "view-box",
                 "stroke-box",
-                "content-box"
+                "view-box"
             ],
             "codegen-properties": {
+                "initial": "initialTransformBox"
             },
             "specification": {
                 "category": "css-transforms",
@@ -6522,6 +6510,7 @@
                 "smooth"
             ],
             "codegen-properties": {
+                "settings-flag": "CSSOMViewSmoothScrolling",
                 "converter": "SmoothScrolling",
                 "name-for-methods": "UseSmoothScrolling"
             },

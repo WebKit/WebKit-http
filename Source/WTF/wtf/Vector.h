@@ -328,7 +328,7 @@ public:
             return;
         
         if (m_buffer == bufferToDeallocate) {
-            m_buffer = 0;
+            m_buffer = nullptr;
             m_capacity = 0;
         }
 
@@ -343,14 +343,14 @@ public:
     MallocPtr<T, Malloc> releaseBuffer()
     {
         T* buffer = m_buffer;
-        m_buffer = 0;
+        m_buffer = nullptr;
         m_capacity = 0;
         return adoptMallocPtr<T, Malloc>(buffer);
     }
 
 protected:
     VectorBufferBase()
-        : m_buffer(0)
+        : m_buffer(nullptr)
         , m_capacity(0)
         , m_size(0)
     {
@@ -691,6 +691,7 @@ public:
     Vector& operator=(Vector&&);
 
     size_t size() const { return m_size; }
+    size_t sizeInBytes() const { return static_cast<size_t>(m_size) * sizeof(T); }
     static ptrdiff_t sizeMemoryOffset() { return OBJECT_OFFSETOF(Vector, m_size); }
     size_t capacity() const { return Base::capacity(); }
     bool isEmpty() const { return !size(); }

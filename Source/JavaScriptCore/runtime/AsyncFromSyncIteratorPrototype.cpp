@@ -26,10 +26,7 @@
 #include "config.h"
 #include "AsyncFromSyncIteratorPrototype.h"
 
-#include "BuiltinNames.h"
-#include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSObject.h"
 
 #include "AsyncFromSyncIteratorPrototype.lut.h"
 

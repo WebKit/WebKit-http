@@ -106,8 +106,8 @@ namespace JSC {
 
         JSValue executeProgram(const SourceCode&, JSGlobalObject*, JSObject* thisObj);
         JSValue executeModuleProgram(ModuleProgramExecutable*, JSGlobalObject*, JSModuleEnvironment*);
-        JSValue executeCall(JSGlobalObject*, JSObject* function, CallType, const CallData&, JSValue thisValue, const ArgList&);
-        JSObject* executeConstruct(JSGlobalObject*, JSObject* function, ConstructType, const ConstructData&, const ArgList&, JSValue newTarget);
+        JSValue executeCall(JSGlobalObject*, JSObject* function, const CallData&, JSValue thisValue, const ArgList&);
+        JSObject* executeConstruct(JSGlobalObject*, JSObject* function, const CallData&, const ArgList&, JSValue newTarget);
         JSValue execute(EvalExecutable*, JSGlobalObject*, JSValue thisValue, JSScope*);
 
         void getArgumentsData(CallFrame*, JSFunction*&, ptrdiff_t& firstParameterIndex, Register*& argv, int& argc);
@@ -150,7 +150,7 @@ namespace JSC {
 #endif // ENABLE(COMPUTED_GOTO_OPCODES)
     };
 
-    JSValue eval(JSGlobalObject*, CallFrame*);
+    JSValue eval(JSGlobalObject*, CallFrame*, ECMAMode);
 
     inline CallFrame* calleeFrameForVarargs(CallFrame* callFrame, unsigned numUsedStackSlots, unsigned argumentCountIncludingThis)
     {

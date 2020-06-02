@@ -11,7 +11,7 @@ PASS Element includes Animatable: member names are unique
 PASS Element includes ParentNode: member names are unique 
 PASS Element includes NonDocumentTypeChildNode: member names are unique 
 PASS Element includes ChildNode: member names are unique 
-PASS Element includes Slotable: member names are unique 
+PASS Element includes Slottable: member names are unique 
 PASS Document includes NonElementParentNode: member names are unique 
 PASS Document includes DocumentOrShadowRoot: member names are unique 
 PASS Document includes ParentNode: member names are unique 
@@ -28,6 +28,7 @@ PASS AnimationTimeline interface: existence and properties of interface prototyp
 PASS AnimationTimeline interface: existence and properties of interface prototype object's "constructor" property 
 PASS AnimationTimeline interface: existence and properties of interface prototype object's @@unscopables property 
 PASS AnimationTimeline interface: attribute currentTime 
+FAIL AnimationTimeline interface: attribute phase assert_true: The prototype object must have a property "phase" expected true got false
 PASS DocumentTimeline interface: existence and properties of interface object 
 PASS DocumentTimeline interface object length 
 PASS DocumentTimeline interface object name 
@@ -37,6 +38,7 @@ PASS DocumentTimeline interface: existence and properties of interface prototype
 PASS DocumentTimeline must be primary interface of document.timeline 
 PASS Stringification of document.timeline 
 PASS AnimationTimeline interface: document.timeline must inherit property "currentTime" with the proper type 
+FAIL AnimationTimeline interface: document.timeline must inherit property "phase" with the proper type assert_inherits: property "phase" not found in prototype chain
 PASS Animation interface: existence and properties of interface object 
 PASS Animation interface object length 
 PASS Animation interface object name 
@@ -100,7 +102,7 @@ PASS AnimationEffect interface: existence and properties of interface prototype 
 PASS AnimationEffect interface: existence and properties of interface prototype object's @@unscopables property 
 PASS AnimationEffect interface: operation getTiming() 
 PASS AnimationEffect interface: operation getComputedTiming() 
-PASS AnimationEffect interface: operation updateTiming(OptionalEffectTiming) 
+PASS AnimationEffect interface: operation updateTiming(optional OptionalEffectTiming) 
 PASS KeyframeEffect interface: existence and properties of interface object 
 PASS KeyframeEffect interface object length 
 PASS KeyframeEffect interface object name 
@@ -108,22 +110,22 @@ PASS KeyframeEffect interface: existence and properties of interface prototype o
 PASS KeyframeEffect interface: existence and properties of interface prototype object's "constructor" property 
 PASS KeyframeEffect interface: existence and properties of interface prototype object's @@unscopables property 
 PASS KeyframeEffect interface: attribute target 
-FAIL KeyframeEffect interface: attribute pseudoElement assert_true: The prototype object must have a property "pseudoElement" expected true got false
+PASS KeyframeEffect interface: attribute pseudoElement 
 PASS KeyframeEffect interface: attribute composite 
 PASS KeyframeEffect interface: operation getKeyframes() 
-PASS KeyframeEffect interface: operation setKeyframes(object) 
+PASS KeyframeEffect interface: operation setKeyframes(object?) 
 PASS KeyframeEffect must be primary interface of new KeyframeEffect(null, null) 
 PASS Stringification of new KeyframeEffect(null, null) 
 PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "target" with the proper type 
-FAIL KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "pseudoElement" with the proper type assert_inherits: property "pseudoElement" not found in prototype chain
+PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "pseudoElement" with the proper type 
 PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "composite" with the proper type 
 PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "getKeyframes()" with the proper type 
-PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "setKeyframes(object)" with the proper type 
-PASS KeyframeEffect interface: calling setKeyframes(object) on new KeyframeEffect(null, null) with too few arguments must throw TypeError 
+PASS KeyframeEffect interface: new KeyframeEffect(null, null) must inherit property "setKeyframes(object?)" with the proper type 
+PASS KeyframeEffect interface: calling setKeyframes(object?) on new KeyframeEffect(null, null) with too few arguments must throw TypeError 
 PASS AnimationEffect interface: new KeyframeEffect(null, null) must inherit property "getTiming()" with the proper type 
 PASS AnimationEffect interface: new KeyframeEffect(null, null) must inherit property "getComputedTiming()" with the proper type 
-PASS AnimationEffect interface: new KeyframeEffect(null, null) must inherit property "updateTiming(OptionalEffectTiming)" with the proper type 
-PASS AnimationEffect interface: calling updateTiming(OptionalEffectTiming) on new KeyframeEffect(null, null) with too few arguments must throw TypeError 
+PASS AnimationEffect interface: new KeyframeEffect(null, null) must inherit property "updateTiming(optional OptionalEffectTiming)" with the proper type 
+PASS AnimationEffect interface: calling updateTiming(optional OptionalEffectTiming) on new KeyframeEffect(null, null) with too few arguments must throw TypeError 
 PASS AnimationPlaybackEvent interface: existence and properties of interface object 
 PASS AnimationPlaybackEvent interface object length 
 PASS AnimationPlaybackEvent interface object name 
@@ -140,8 +142,8 @@ PASS Document interface: attribute timeline
 PASS Document interface: operation getAnimations() 
 PASS Document interface: document must inherit property "timeline" with the proper type 
 PASS Document interface: document must inherit property "getAnimations()" with the proper type 
-FAIL ShadowRoot interface: operation getAnimations() assert_own_property: interface prototype object missing non-static operation expected property "getAnimations" missing
-FAIL ShadowRoot interface: shadowRoot must inherit property "getAnimations()" with the proper type assert_inherits: property "getAnimations" not found in prototype chain
-PASS Element interface: operation animate(object, [object Object],[object Object]) 
-PASS Element interface: operation getAnimations(GetAnimationsOptions) 
+PASS ShadowRoot interface: operation getAnimations() 
+PASS ShadowRoot interface: shadowRoot must inherit property "getAnimations()" with the proper type 
+PASS Element interface: operation animate(object?, optional (unrestricted double or KeyframeAnimationOptions)) 
+PASS Element interface: operation getAnimations(optional GetAnimationsOptions) 
 

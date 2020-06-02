@@ -31,10 +31,10 @@
 #import "WebDatabaseManagerClient.h"
 #import "WebPlatformStrategies.h"
 #import "WebSecurityOriginInternal.h"
-
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DatabaseTracker.h>
 #import <WebCore/SecurityOrigin.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if ENABLE(INDEXED_DATABASE)
 #import "WebDatabaseProvider.h"
@@ -92,25 +92,16 @@ static NSString *databasesDirectoryPath();
 
 - (NSArray *)origins
 {
-    auto coreOrigins = DatabaseTracker::singleton().origins();
-    NSMutableArray *webOrigins = [[NSMutableArray alloc] initWithCapacity:coreOrigins.size()];
-    for (auto& coreOrigin : coreOrigins) {
-        WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:coreOrigin.securityOrigin().ptr()];
-        [webOrigins addObject:webOrigin];
-        [webOrigin release];
-    }
-    return [webOrigins autorelease];
+    return createNSArray(DatabaseTracker::singleton().origins(), [] (auto& origin) {
+        return adoptNS([[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:origin.securityOrigin().ptr()]);
+    }).autorelease();
 }
 
 - (NSArray *)databasesWithOrigin:(WebSecurityOrigin *)origin
 {
     if (!origin)
         return nil;
-    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames([origin _core]->data());
-    NSMutableArray *names = [[NSMutableArray alloc] initWithCapacity:nameVector.size()];
-    for (auto& name : nameVector)
-        [names addObject:(NSString *)name];
-    return [names autorelease];
+    return createNSArray(DatabaseTracker::singleton().databaseNames([origin _core]->data())).autorelease();
 }
 
 - (NSDictionary *)detailsForDatabase:(NSString *)databaseIdentifier withOrigin:(WebSecurityOrigin *)origin

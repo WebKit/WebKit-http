@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKFormColorPicker.h"
+#import "config.h"
+#import "WKFormColorPicker.h"
 
 #if ENABLE(INPUT_TYPE_COLOR) && PLATFORM(IOS_FAMILY)
 
@@ -75,6 +75,14 @@ using namespace WebKit;
     return colorButton;
 }
 
+- (void)dealloc
+{
+    [_color release];
+    _color = nil;
+
+    [super dealloc];
+}
+
 @end
 
 #pragma mark - WKColorMatrixView
@@ -112,8 +120,7 @@ using namespace WebKit;
             [buttons addObject:button];
             [self addSubview:button];
         }
-        RetainPtr<NSArray> colorButtonsRow = buttons;
-        [colorButtons addObject:colorButtonsRow.get()];
+        [colorButtons addObject:buttons];
     }
     _colorButtons = colorButtons;
 
@@ -306,6 +313,7 @@ using namespace WebKit;
     [self setControlValueFromUIColor:colorButton.color];
 #if PLATFORM(MACCATALYST)
     [_popover dismissPopoverAnimated:NO];
+    [_view accessoryDone];
 #endif
 }
 

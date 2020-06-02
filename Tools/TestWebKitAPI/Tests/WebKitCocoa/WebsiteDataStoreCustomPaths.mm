@@ -218,7 +218,7 @@ static void runWebsiteDataStoreCustomPaths(ShouldEnableProcessPrewarming shouldE
         EXPECT_EQ([records count], (unsigned long)3);
         for (id record in records) {
             if ([[record displayName] isEqual: @"apple.com"]) {
-                [dataStore removeDataOfTypes:types.get() forDataRecords:[NSArray arrayWithObject:record] completionHandler:^() {
+                [dataStore removeDataOfTypes:types.get() forDataRecords:@[record] completionHandler:^() {
                     receivedScriptMessage = true;
                     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:frameIDBPath.get().path]);
                 }];
@@ -517,6 +517,35 @@ TEST(WebKit, WebsiteDataStoreIfExists)
     EXPECT_TRUE(dataStore._configuration.persistent);
 }
 
+TEST(WebKit, WebsiteDataStoreRenameOrigin)
+{
+    TestWKWebView *webView = [[[TestWKWebView alloc] init] autorelease];
+    [webView synchronouslyLoadHTMLString:@"<script>localStorage.setItem('testkey', 'testvalue')</script>" baseURL:[NSURL URLWithString:@"https://example.com/"]];
+    
+    __block bool done = false;
+    NSURL *exampleURL = [NSURL URLWithString:@"https://example.com/"];
+    NSURL *webKitURL = [NSURL URLWithString:@"https://webkit.org/"];
+    WKWebsiteDataStore *dataStore = webView.configuration.websiteDataStore;
+    NSSet *localStorageSet = [NSSet setWithObject:WKWebsiteDataTypeLocalStorage];
+    [dataStore _renameOrigin:exampleURL to:webKitURL forDataOfTypes:localStorageSet completionHandler:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    [webView synchronouslyLoadHTMLString:@"hello" baseURL:webKitURL];
+    EXPECT_WK_STREQ([webView objectByEvaluatingJavaScript:@"localStorage.getItem('testkey')"], "testvalue");
+    [webView synchronouslyLoadHTMLString:@"hello" baseURL:exampleURL];
+    EXPECT_TRUE([[webView objectByEvaluatingJavaScript:@"localStorage.getItem('testkey')"] isKindOfClass:[NSNull class]]);
+
+    done = false;
+    [dataStore fetchDataRecordsOfTypes:localStorageSet completionHandler:^(NSArray<WKWebsiteDataRecord *> *records) {
+        [dataStore removeDataOfTypes:localStorageSet forDataRecords:records completionHandler:^{
+            done = true;
+        }];
+    }];
+    TestWebKitAPI::Util::run(&done);
+}
+
 TEST(WebKit, NetworkCacheDirectory)
 {
     using namespace TestWebKitAPI;
@@ -654,8 +683,6 @@ TEST(WebKit, DISABLED_AlternativeService)
 
 #endif // HAVE(NETWORK_FRAMEWORK)
 
-// FIXME: investigate why this test times out on High Sierra
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(IOS_FAMILY)
 TEST(WebKit, MediaCache)
 {
     JSC::Config::configureForTesting();
@@ -729,4 +756,3 @@ TEST(WebKit, MediaCache)
     [fileManager removeItemAtPath:path error:&error];
     EXPECT_FALSE(error);
 }
-#endif

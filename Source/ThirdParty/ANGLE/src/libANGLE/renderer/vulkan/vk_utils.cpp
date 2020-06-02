@@ -11,29 +11,11 @@
 
 #include "libANGLE/Context.h"
 #include "libANGLE/renderer/vulkan/BufferVk.h"
-#include "libANGLE/renderer/vulkan/CommandGraph.h"
 #include "libANGLE/renderer/vulkan/ContextVk.h"
 #include "libANGLE/renderer/vulkan/DisplayVk.h"
 #include "libANGLE/renderer/vulkan/RendererVk.h"
-
-namespace
-{
-VkImageUsageFlags GetStagingBufferUsageFlags(rx::vk::StagingUsage usage)
-{
-    switch (usage)
-    {
-        case rx::vk::StagingUsage::Read:
-            return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        case rx::vk::StagingUsage::Write:
-            return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        case rx::vk::StagingUsage::Both:
-            return (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        default:
-            UNREACHABLE();
-            return 0;
-    }
-}
-}  // anonymous namespace
+#include "libANGLE/renderer/vulkan/ResourceVk.h"
+#include "libANGLE/renderer/vulkan/vk_mem_alloc_wrapper.h"
 
 namespace angle
 {
@@ -52,48 +34,22 @@ egl::Error ToEGL(Result result, rx::DisplayVk *displayVk, EGLint errorCode)
 
 namespace rx
 {
-// Unified layer that includes full validation layer stack
-const char *g_VkKhronosValidationLayerName  = "VK_LAYER_KHRONOS_validation";
-const char *g_VkStandardValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
-const char *g_VkValidationLayerNames[]      = {
-    "VK_LAYER_GOOGLE_threading", "VK_LAYER_LUNARG_parameter_validation",
-    "VK_LAYER_LUNARG_object_tracker", "VK_LAYER_LUNARG_core_validation",
-    "VK_LAYER_GOOGLE_unique_objects"};
-
-bool HasValidationLayer(const std::vector<VkLayerProperties> &layerProps, const char *layerName)
+namespace
 {
-    for (const auto &layerProp : layerProps)
+VkImageUsageFlags GetStagingBufferUsageFlags(vk::StagingUsage usage)
+{
+    switch (usage)
     {
-        if (std::string(layerProp.layerName) == layerName)
-        {
-            return true;
-        }
+        case vk::StagingUsage::Read:
+            return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        case vk::StagingUsage::Write:
+            return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        case vk::StagingUsage::Both:
+            return (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        default:
+            UNREACHABLE();
+            return 0;
     }
-
-    return false;
-}
-
-bool HasKhronosValidationLayer(const std::vector<VkLayerProperties> &layerProps)
-{
-    return HasValidationLayer(layerProps, g_VkKhronosValidationLayerName);
-}
-
-bool HasStandardValidationLayer(const std::vector<VkLayerProperties> &layerProps)
-{
-    return HasValidationLayer(layerProps, g_VkStandardValidationLayerName);
-}
-
-bool HasValidationLayers(const std::vector<VkLayerProperties> &layerProps)
-{
-    for (const char *layerName : g_VkValidationLayerNames)
-    {
-        if (!HasValidationLayer(layerProps, layerName))
-        {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 angle::Result FindAndAllocateCompatibleMemory(vk::Context *context,
@@ -104,6 +60,11 @@ angle::Result FindAndAllocateCompatibleMemory(vk::Context *context,
                                               const void *extraAllocationInfo,
                                               vk::DeviceMemory *deviceMemoryOut)
 {
+    // Pick an arbitrary value to initialize non-zero memory for sanitization.
+    constexpr int kNonZeroInitValue = 55;
+
+    VkDevice device = context->getDevice();
+
     uint32_t memoryTypeIndex = 0;
     ANGLE_TRY(memoryProperties.findCompatibleMemoryIndex(context, memoryRequirements,
                                                          requestedMemoryPropertyFlags,
@@ -115,7 +76,22 @@ angle::Result FindAndAllocateCompatibleMemory(vk::Context *context,
     allocInfo.memoryTypeIndex      = memoryTypeIndex;
     allocInfo.allocationSize       = memoryRequirements.size;
 
-    ANGLE_VK_TRY(context, deviceMemoryOut->allocate(context->getDevice(), allocInfo));
+    ANGLE_VK_TRY(context, deviceMemoryOut->allocate(device, allocInfo));
+
+    // Wipe memory to an invalid value when the 'allocateNonZeroMemory' feature is enabled. The
+    // invalid values ensures our testing doesn't assume zero-initialized memory.
+    RendererVk *renderer = context->getRenderer();
+    if (renderer->getFeatures().allocateNonZeroMemory.enabled)
+    {
+        if ((*memoryPropertyFlagsOut & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+        {
+            // Can map the memory.
+            ANGLE_TRY(vk::InitMappableDeviceMemory(context, deviceMemoryOut,
+                                                   memoryRequirements.size, kNonZeroInitValue,
+                                                   *memoryPropertyFlagsOut));
+        }
+    }
+
     return angle::Result::Continue;
 }
 
@@ -143,7 +119,8 @@ angle::Result AllocateBufferOrImageMemory(vk::Context *context,
                                           VkMemoryPropertyFlags *memoryPropertyFlagsOut,
                                           const void *extraAllocationInfo,
                                           T *bufferOrImage,
-                                          vk::DeviceMemory *deviceMemoryOut)
+                                          vk::DeviceMemory *deviceMemoryOut,
+                                          VkDeviceSize *sizeOut)
 {
     // Call driver to determine memory requirements.
     VkMemoryRequirements memoryRequirements;
@@ -153,69 +130,122 @@ angle::Result AllocateBufferOrImageMemory(vk::Context *context,
         context, requestedMemoryPropertyFlags, memoryPropertyFlagsOut, memoryRequirements,
         extraAllocationInfo, bufferOrImage, deviceMemoryOut));
 
+    *sizeOut = memoryRequirements.size;
+
     return angle::Result::Continue;
 }
+
+// Unified layer that includes full validation layer stack
+constexpr char kVkKhronosValidationLayerName[]  = "VK_LAYER_KHRONOS_validation";
+constexpr char kVkStandardValidationLayerName[] = "VK_LAYER_LUNARG_standard_validation";
+const char *kVkValidationLayerNames[]           = {
+    "VK_LAYER_GOOGLE_threading", "VK_LAYER_LUNARG_parameter_validation",
+    "VK_LAYER_LUNARG_object_tracker", "VK_LAYER_LUNARG_core_validation",
+    "VK_LAYER_GOOGLE_unique_objects"};
+
+bool HasValidationLayer(const std::vector<VkLayerProperties> &layerProps, const char *layerName)
+{
+    for (const auto &layerProp : layerProps)
+    {
+        if (std::string(layerProp.layerName) == layerName)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool HasKhronosValidationLayer(const std::vector<VkLayerProperties> &layerProps)
+{
+    return HasValidationLayer(layerProps, kVkKhronosValidationLayerName);
+}
+
+bool HasStandardValidationLayer(const std::vector<VkLayerProperties> &layerProps)
+{
+    return HasValidationLayer(layerProps, kVkStandardValidationLayerName);
+}
+
+bool HasValidationLayers(const std::vector<VkLayerProperties> &layerProps)
+{
+    for (const char *layerName : kVkValidationLayerNames)
+    {
+        if (!HasValidationLayer(layerProps, layerName))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+}  // anonymous namespace
 
 const char *VulkanResultString(VkResult result)
 {
     switch (result)
     {
         case VK_SUCCESS:
-            return "Command successfully completed.";
+            return "Command successfully completed";
         case VK_NOT_READY:
-            return "A fence or query has not yet completed.";
+            return "A fence or query has not yet completed";
         case VK_TIMEOUT:
-            return "A wait operation has not completed in the specified time.";
+            return "A wait operation has not completed in the specified time";
         case VK_EVENT_SET:
-            return "An event is signaled.";
+            return "An event is signaled";
         case VK_EVENT_RESET:
-            return "An event is unsignaled.";
+            return "An event is unsignaled";
         case VK_INCOMPLETE:
-            return "A return array was too small for the result.";
+            return "A return array was too small for the result";
         case VK_SUBOPTIMAL_KHR:
             return "A swapchain no longer matches the surface properties exactly, but can still be "
-                   "used to present to the surface successfully.";
+                   "used to present to the surface successfully";
         case VK_ERROR_OUT_OF_HOST_MEMORY:
-            return "A host memory allocation has failed.";
+            return "A host memory allocation has failed";
         case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return "A device memory allocation has failed.";
+            return "A device memory allocation has failed";
         case VK_ERROR_INITIALIZATION_FAILED:
             return "Initialization of an object could not be completed for implementation-specific "
-                   "reasons.";
+                   "reasons";
         case VK_ERROR_DEVICE_LOST:
-            return "The logical or physical device has been lost.";
+            return "The logical or physical device has been lost";
         case VK_ERROR_MEMORY_MAP_FAILED:
-            return "Mapping of a memory object has failed.";
+            return "Mapping of a memory object has failed";
         case VK_ERROR_LAYER_NOT_PRESENT:
-            return "A requested layer is not present or could not be loaded.";
+            return "A requested layer is not present or could not be loaded";
         case VK_ERROR_EXTENSION_NOT_PRESENT:
-            return "A requested extension is not supported.";
+            return "A requested extension is not supported";
         case VK_ERROR_FEATURE_NOT_PRESENT:
-            return "A requested feature is not supported.";
+            return "A requested feature is not supported";
         case VK_ERROR_INCOMPATIBLE_DRIVER:
             return "The requested version of Vulkan is not supported by the driver or is otherwise "
-                   "incompatible for implementation-specific reasons.";
+                   "incompatible for implementation-specific reasons";
         case VK_ERROR_TOO_MANY_OBJECTS:
-            return "Too many objects of the type have already been created.";
+            return "Too many objects of the type have already been created";
         case VK_ERROR_FORMAT_NOT_SUPPORTED:
-            return "A requested format is not supported on this device.";
+            return "A requested format is not supported on this device";
         case VK_ERROR_SURFACE_LOST_KHR:
-            return "A surface is no longer available.";
+            return "A surface is no longer available";
         case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
             return "The requested window is already connected to a VkSurfaceKHR, or to some other "
-                   "non-Vulkan API.";
+                   "non-Vulkan API";
         case VK_ERROR_OUT_OF_DATE_KHR:
             return "A surface has changed in such a way that it is no longer compatible with the "
-                   "swapchain.";
+                   "swapchain";
         case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
             return "The display used by a swapchain does not use the same presentable image "
-                   "layout, or is incompatible in a way that prevents sharing an image.";
+                   "layout, or is incompatible in a way that prevents sharing an image";
         case VK_ERROR_VALIDATION_FAILED_EXT:
-            return "The validation layers detected invalid API usage.";
+            return "The validation layers detected invalid API usage";
         case VK_ERROR_INVALID_SHADER_NV:
-            return "Invalid Vulkan shader was generated.";
+            return "Invalid Vulkan shader was generated";
+        case VK_ERROR_OUT_OF_POOL_MEMORY:
+            return "A pool memory allocation has failed";
+        case VK_ERROR_FRAGMENTED_POOL:
+            return "A pool allocation has failed due to fragmentation of the pool's memory";
+        case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+            return "An external handle is not a valid handle of the specified type";
         default:
-            return "Unknown vulkan error code.";
+            return "Unknown vulkan error code";
     }
 }
 
@@ -226,15 +256,15 @@ bool GetAvailableValidationLayers(const std::vector<VkLayerProperties> &layerPro
     // Favor unified Khronos layer, but fallback to standard validation
     if (HasKhronosValidationLayer(layerProps))
     {
-        enabledLayerNames->push_back(g_VkKhronosValidationLayerName);
+        enabledLayerNames->push_back(kVkKhronosValidationLayerName);
     }
     else if (HasStandardValidationLayer(layerProps))
     {
-        enabledLayerNames->push_back(g_VkStandardValidationLayerName);
+        enabledLayerNames->push_back(kVkStandardValidationLayerName);
     }
     else if (HasValidationLayers(layerProps))
     {
-        for (const char *layerName : g_VkValidationLayerNames)
+        for (const char *layerName : kVkValidationLayerNames)
         {
             enabledLayerNames->push_back(layerName);
         }
@@ -329,6 +359,29 @@ angle::Result MemoryProperties::findCompatibleMemoryIndex(
         }
     }
 
+    // We did not find a compatible memory type, the Vulkan spec says the following -
+    //     There must be at least one memory type with both the
+    //     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    //     bits set in its propertyFlags
+    constexpr VkMemoryPropertyFlags fallbackMemoryPropertyFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    // If the caller wanted a host visible memory, just return the memory index
+    // with the fallback memory flags.
+    if (requestedMemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    {
+        for (size_t memoryIndex : angle::BitSet32<32>(memoryRequirements.memoryTypeBits))
+        {
+            if ((mMemoryProperties.memoryTypes[memoryIndex].propertyFlags &
+                 fallbackMemoryPropertyFlags) == fallbackMemoryPropertyFlags)
+            {
+                *memoryPropertyFlagsOut = mMemoryProperties.memoryTypes[memoryIndex].propertyFlags;
+                *typeIndexOut           = static_cast<uint32_t>(memoryIndex);
+                return angle::Result::Continue;
+            }
+        }
+    }
+
     // TODO(jmadill): Add error message to error.
     context->handleError(VK_ERROR_INCOMPATIBLE_DRIVER, __FILE__, ANGLE_FUNCTION, __LINE__);
     return angle::Result::Stop;
@@ -337,23 +390,16 @@ angle::Result MemoryProperties::findCompatibleMemoryIndex(
 // StagingBuffer implementation.
 StagingBuffer::StagingBuffer() : mSize(0) {}
 
-void StagingBuffer::destroy(VkDevice device)
+void StagingBuffer::destroy(RendererVk *renderer)
 {
+    VkDevice device = renderer->getDevice();
     mBuffer.destroy(device);
-    mDeviceMemory.destroy(device);
+    mAllocation.destroy(renderer->getAllocator());
     mSize = 0;
 }
 
-angle::Result StagingBuffer::init(ContextVk *contextVk, VkDeviceSize size, StagingUsage usage)
+angle::Result StagingBuffer::init(Context *context, VkDeviceSize size, StagingUsage usage)
 {
-    // TODO: Remove with anglebug.com/2162: Vulkan: Implement device memory sub-allocation
-    // Check if we have too many resources allocated already and need to free some before allocating
-    // more and (possibly) exceeding the device's limits.
-    if (contextVk->shouldFlush())
-    {
-        ANGLE_TRY(contextVk->flushImpl(nullptr));
-    }
-
     VkBufferCreateInfo createInfo    = {};
     createInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     createInfo.flags                 = 0;
@@ -363,12 +409,16 @@ angle::Result StagingBuffer::init(ContextVk *contextVk, VkDeviceSize size, Stagi
     createInfo.queueFamilyIndexCount = 0;
     createInfo.pQueueFamilyIndices   = nullptr;
 
-    VkMemoryPropertyFlags flags =
-        (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkMemoryPropertyFlags memoryPropertyOutFlags;
+    VkMemoryPropertyFlags preferredFlags = 0;
+    VkMemoryPropertyFlags requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    ANGLE_VK_TRY(contextVk, mBuffer.init(contextVk->getDevice(), createInfo));
-    VkMemoryPropertyFlags flagsOut = 0;
-    ANGLE_TRY(AllocateBufferMemory(contextVk, flags, &flagsOut, nullptr, &mBuffer, &mDeviceMemory));
+    mAllocation.createBufferAndMemory(
+        context->getRenderer()->getAllocator(), &createInfo, requiredFlags, preferredFlags,
+        context->getRenderer()->getFeatures().persistentlyMappedBuffers.enabled, &mBuffer,
+        &memoryPropertyOutFlags);
+
     mSize = static_cast<size_t>(size);
     return angle::Result::Continue;
 }
@@ -376,7 +426,66 @@ angle::Result StagingBuffer::init(ContextVk *contextVk, VkDeviceSize size, Stagi
 void StagingBuffer::release(ContextVk *contextVk)
 {
     contextVk->addGarbage(&mBuffer);
-    contextVk->addGarbage(&mDeviceMemory);
+    contextVk->addGarbage(&mAllocation);
+}
+
+void StagingBuffer::collectGarbage(RendererVk *renderer, Serial serial)
+{
+    vk::GarbageList garbageList;
+    garbageList.emplace_back(vk::GetGarbage(&mBuffer));
+    garbageList.emplace_back(vk::GetGarbage(&mAllocation));
+
+    vk::SharedResourceUse sharedUse;
+    sharedUse.init();
+    sharedUse.updateSerialOneOff(serial);
+    renderer->collectGarbage(std::move(sharedUse), std::move(garbageList));
+}
+
+angle::Result InitMappableAllocation(VmaAllocator allocator,
+                                     Allocation *allocation,
+                                     VkDeviceSize size,
+                                     int value,
+                                     VkMemoryPropertyFlags memoryPropertyFlags)
+{
+    uint8_t *mapPointer;
+    allocation->map(allocator, &mapPointer);
+    memset(mapPointer, value, static_cast<size_t>(size));
+
+    if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+    {
+        allocation->flush(allocator, 0, size);
+    }
+
+    allocation->unmap(allocator);
+
+    return angle::Result::Continue;
+}
+
+angle::Result InitMappableDeviceMemory(Context *context,
+                                       DeviceMemory *deviceMemory,
+                                       VkDeviceSize size,
+                                       int value,
+                                       VkMemoryPropertyFlags memoryPropertyFlags)
+{
+    VkDevice device = context->getDevice();
+
+    uint8_t *mapPointer;
+    ANGLE_VK_TRY(context, deviceMemory->map(device, 0, VK_WHOLE_SIZE, 0, &mapPointer));
+    memset(mapPointer, value, static_cast<size_t>(size));
+
+    // if the memory type is not host coherent, we perform an explicit flush
+    if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+    {
+        VkMappedMemoryRange mappedRange = {};
+        mappedRange.sType               = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        mappedRange.memory              = deviceMemory->getHandle();
+        mappedRange.size                = VK_WHOLE_SIZE;
+        ANGLE_VK_TRY(context, vkFlushMappedMemoryRanges(device, 1, &mappedRange));
+    }
+
+    deviceMemory->unmap(device);
+
+    return angle::Result::Continue;
 }
 
 angle::Result AllocateBufferMemory(vk::Context *context,
@@ -384,22 +493,24 @@ angle::Result AllocateBufferMemory(vk::Context *context,
                                    VkMemoryPropertyFlags *memoryPropertyFlagsOut,
                                    const void *extraAllocationInfo,
                                    Buffer *buffer,
-                                   DeviceMemory *deviceMemoryOut)
+                                   DeviceMemory *deviceMemoryOut,
+                                   VkDeviceSize *sizeOut)
 {
     return AllocateBufferOrImageMemory(context, requestedMemoryPropertyFlags,
                                        memoryPropertyFlagsOut, extraAllocationInfo, buffer,
-                                       deviceMemoryOut);
+                                       deviceMemoryOut, sizeOut);
 }
 
 angle::Result AllocateImageMemory(vk::Context *context,
                                   VkMemoryPropertyFlags memoryPropertyFlags,
                                   const void *extraAllocationInfo,
                                   Image *image,
-                                  DeviceMemory *deviceMemoryOut)
+                                  DeviceMemory *deviceMemoryOut,
+                                  VkDeviceSize *sizeOut)
 {
     VkMemoryPropertyFlags memoryPropertyFlagsOut = 0;
     return AllocateBufferOrImageMemory(context, memoryPropertyFlags, &memoryPropertyFlagsOut,
-                                       extraAllocationInfo, image, deviceMemoryOut);
+                                       extraAllocationInfo, image, deviceMemoryOut, sizeOut);
 }
 
 angle::Result AllocateImageMemoryWithRequirements(vk::Context *context,
@@ -478,8 +589,9 @@ GarbageObject &GarbageObject::operator=(GarbageObject &&rhs)
 // GarbageObject implementation
 // Using c-style casts here to avoid conditional compile for MSVC 32-bit
 //  which fails to compile with reinterpret_cast, requiring static_cast.
-void GarbageObject::destroy(VkDevice device)
+void GarbageObject::destroy(RendererVk *renderer)
 {
+    VkDevice device = renderer->getDevice();
     switch (mHandleType)
     {
         case HandleType::Semaphore:
@@ -540,13 +652,230 @@ void GarbageObject::destroy(VkDevice device)
         case HandleType::QueryPool:
             vkDestroyQueryPool(device, (VkQueryPool)mHandle, nullptr);
             break;
+        case HandleType::Allocation:
+            vma::FreeMemory(renderer->getAllocator(), (VmaAllocation)mHandle);
+            break;
         default:
             UNREACHABLE();
             break;
     }
+
+    renderer->getActiveHandleCounts().onDeallocate(mHandleType);
 }
 
+void MakeDebugUtilsLabel(GLenum source, const char *marker, VkDebugUtilsLabelEXT *label)
+{
+    static constexpr angle::ColorF kLabelColors[6] = {
+        angle::ColorF(1.0f, 0.5f, 0.5f, 1.0f),  // DEBUG_SOURCE_API
+        angle::ColorF(0.5f, 1.0f, 0.5f, 1.0f),  // DEBUG_SOURCE_WINDOW_SYSTEM
+        angle::ColorF(0.5f, 0.5f, 1.0f, 1.0f),  // DEBUG_SOURCE_SHADER_COMPILER
+        angle::ColorF(0.7f, 0.7f, 0.7f, 1.0f),  // DEBUG_SOURCE_THIRD_PARTY
+        angle::ColorF(0.5f, 0.8f, 0.9f, 1.0f),  // DEBUG_SOURCE_APPLICATION
+        angle::ColorF(0.9f, 0.8f, 0.5f, 1.0f),  // DEBUG_SOURCE_OTHER
+    };
+
+    int colorIndex = source - GL_DEBUG_SOURCE_API;
+    ASSERT(colorIndex >= 0 && static_cast<size_t>(colorIndex) < ArraySize(kLabelColors));
+
+    label->sType      = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    label->pNext      = nullptr;
+    label->pLabelName = marker;
+    kLabelColors[colorIndex].writeData(label->color);
+}
+
+// ClearValuesArray implementation.
+ClearValuesArray::ClearValuesArray() : mValues{}, mEnabled{} {}
+
+ClearValuesArray::~ClearValuesArray() = default;
+
+ClearValuesArray::ClearValuesArray(const ClearValuesArray &other) = default;
+
+ClearValuesArray &ClearValuesArray::operator=(const ClearValuesArray &rhs) = default;
+
+void ClearValuesArray::store(uint32_t index,
+                             VkImageAspectFlags aspectFlags,
+                             const VkClearValue &clearValue)
+{
+    ASSERT(aspectFlags != 0);
+
+    // We do this double if to handle the packed depth-stencil case.
+    if ((aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT) != 0)
+    {
+        // Ensure for packed DS we're writing to the depth index.
+        ASSERT(index == kClearValueDepthIndex ||
+               (index == kClearValueStencilIndex && aspectFlags == VK_IMAGE_ASPECT_STENCIL_BIT));
+        mValues[kClearValueStencilIndex] = clearValue;
+        mEnabled.set(kClearValueStencilIndex);
+    }
+
+    if (aspectFlags != VK_IMAGE_ASPECT_STENCIL_BIT)
+    {
+        mValues[index] = clearValue;
+        mEnabled.set(index);
+    }
+}
 }  // namespace vk
+
+#if !defined(ANGLE_SHARED_LIBVULKAN)
+// VK_EXT_debug_utils
+PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT   = nullptr;
+PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = nullptr;
+PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT       = nullptr;
+PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT           = nullptr;
+PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT     = nullptr;
+
+// VK_EXT_debug_report
+PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT   = nullptr;
+PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = nullptr;
+
+// VK_KHR_get_physical_device_properties2
+PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR = nullptr;
+PFN_vkGetPhysicalDeviceFeatures2KHR vkGetPhysicalDeviceFeatures2KHR     = nullptr;
+
+// VK_KHR_external_semaphore_fd
+PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR = nullptr;
+
+// VK_EXT_external_memory_host
+PFN_vkGetMemoryHostPointerPropertiesEXT vkGetMemoryHostPointerPropertiesEXT = nullptr;
+
+// VK_EXT_transform_feedback
+PFN_vkCmdBindTransformFeedbackBuffersEXT vkCmdBindTransformFeedbackBuffersEXT = nullptr;
+PFN_vkCmdBeginTransformFeedbackEXT vkCmdBeginTransformFeedbackEXT             = nullptr;
+PFN_vkCmdEndTransformFeedbackEXT vkCmdEndTransformFeedbackEXT                 = nullptr;
+PFN_vkCmdBeginQueryIndexedEXT vkCmdBeginQueryIndexedEXT                       = nullptr;
+PFN_vkCmdEndQueryIndexedEXT vkCmdEndQueryIndexedEXT                           = nullptr;
+PFN_vkCmdDrawIndirectByteCountEXT vkCmdDrawIndirectByteCountEXT               = nullptr;
+
+PFN_vkGetBufferMemoryRequirements2KHR vkGetBufferMemoryRequirements2KHR = nullptr;
+PFN_vkGetImageMemoryRequirements2KHR vkGetImageMemoryRequirements2KHR   = nullptr;
+
+// VK_KHR_external_fence_capabilities
+PFN_vkGetPhysicalDeviceExternalFencePropertiesKHR vkGetPhysicalDeviceExternalFencePropertiesKHR =
+    nullptr;
+
+// VK_KHR_external_fence_fd
+PFN_vkGetFenceFdKHR vkGetFenceFdKHR       = nullptr;
+PFN_vkImportFenceFdKHR vkImportFenceFdKHR = nullptr;
+
+// VK_KHR_external_semaphore_capabilities
+PFN_vkGetPhysicalDeviceExternalSemaphorePropertiesKHR
+    vkGetPhysicalDeviceExternalSemaphorePropertiesKHR = nullptr;
+
+#    if defined(ANGLE_PLATFORM_FUCHSIA)
+// VK_FUCHSIA_imagepipe_surface
+PFN_vkCreateImagePipeSurfaceFUCHSIA vkCreateImagePipeSurfaceFUCHSIA = nullptr;
+#    endif
+
+#    if defined(ANGLE_PLATFORM_ANDROID)
+PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID =
+    nullptr;
+PFN_vkGetMemoryAndroidHardwareBufferANDROID vkGetMemoryAndroidHardwareBufferANDROID = nullptr;
+#    endif
+
+#    if defined(ANGLE_PLATFORM_GGP)
+PFN_vkCreateStreamDescriptorSurfaceGGP vkCreateStreamDescriptorSurfaceGGP = nullptr;
+#    endif
+
+#    define GET_INSTANCE_FUNC(vkName)                                                          \
+        do                                                                                     \
+        {                                                                                      \
+            vkName = reinterpret_cast<PFN_##vkName>(vkGetInstanceProcAddr(instance, #vkName)); \
+            ASSERT(vkName);                                                                    \
+        } while (0)
+
+#    define GET_DEVICE_FUNC(vkName)                                                        \
+        do                                                                                 \
+        {                                                                                  \
+            vkName = reinterpret_cast<PFN_##vkName>(vkGetDeviceProcAddr(device, #vkName)); \
+            ASSERT(vkName);                                                                \
+        } while (0)
+
+void InitDebugUtilsEXTFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkCreateDebugUtilsMessengerEXT);
+    GET_INSTANCE_FUNC(vkDestroyDebugUtilsMessengerEXT);
+    GET_INSTANCE_FUNC(vkCmdBeginDebugUtilsLabelEXT);
+    GET_INSTANCE_FUNC(vkCmdEndDebugUtilsLabelEXT);
+    GET_INSTANCE_FUNC(vkCmdInsertDebugUtilsLabelEXT);
+}
+
+void InitDebugReportEXTFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkCreateDebugReportCallbackEXT);
+    GET_INSTANCE_FUNC(vkDestroyDebugReportCallbackEXT);
+}
+
+void InitGetPhysicalDeviceProperties2KHRFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetPhysicalDeviceProperties2KHR);
+    GET_INSTANCE_FUNC(vkGetPhysicalDeviceFeatures2KHR);
+}
+
+void InitTransformFeedbackEXTFunctions(VkDevice device)
+{
+    GET_DEVICE_FUNC(vkCmdBindTransformFeedbackBuffersEXT);
+    GET_DEVICE_FUNC(vkCmdBeginTransformFeedbackEXT);
+    GET_DEVICE_FUNC(vkCmdEndTransformFeedbackEXT);
+    GET_DEVICE_FUNC(vkCmdBeginQueryIndexedEXT);
+    GET_DEVICE_FUNC(vkCmdEndQueryIndexedEXT);
+    GET_DEVICE_FUNC(vkCmdDrawIndirectByteCountEXT);
+}
+
+#    if defined(ANGLE_PLATFORM_FUCHSIA)
+void InitImagePipeSurfaceFUCHSIAFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkCreateImagePipeSurfaceFUCHSIA);
+}
+#    endif
+
+#    if defined(ANGLE_PLATFORM_ANDROID)
+void InitExternalMemoryHardwareBufferANDROIDFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetAndroidHardwareBufferPropertiesANDROID);
+    GET_INSTANCE_FUNC(vkGetMemoryAndroidHardwareBufferANDROID);
+}
+#    endif
+
+#    if defined(ANGLE_PLATFORM_GGP)
+void InitGGPStreamDescriptorSurfaceFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkCreateStreamDescriptorSurfaceGGP);
+}
+#    endif  // defined(ANGLE_PLATFORM_GGP)
+
+void InitExternalSemaphoreFdFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkImportSemaphoreFdKHR);
+}
+
+void InitExternalMemoryHostFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetMemoryHostPointerPropertiesEXT);
+}
+
+// VK_KHR_external_fence_capabilities
+void InitExternalFenceCapabilitiesFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetPhysicalDeviceExternalFencePropertiesKHR);
+}
+
+// VK_KHR_external_fence_fd
+void InitExternalFenceFdFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetFenceFdKHR);
+    GET_INSTANCE_FUNC(vkImportFenceFdKHR);
+}
+
+// VK_KHR_external_semaphore_capabilities
+void InitExternalSemaphoreCapabilitiesFunctions(VkInstance instance)
+{
+    GET_INSTANCE_FUNC(vkGetPhysicalDeviceExternalSemaphorePropertiesKHR);
+}
+
+#    undef GET_INSTANCE_FUNC
+#    undef GET_DEVICE_FUNC
+
+#endif  // !defined(ANGLE_SHARED_LIBVULKAN)
 
 namespace gl_vk
 {

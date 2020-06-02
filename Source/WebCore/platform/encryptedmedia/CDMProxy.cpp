@@ -122,6 +122,16 @@ bool KeyStore::add(RefPtr<Key>&& key)
         didStoreChange = true;
     }
 
+    if (didStoreChange) {
+        // Sort the keys lexicographically.
+        // NOTE: This is not as pathological as it may seem, for all
+        // practical purposes the store has a maximum of 2 keys.
+        std::sort(m_keys.begin(), m_keys.end(),
+            [](const RefPtr<Key>& a, const RefPtr<Key>& b) {
+                return *a < *b;
+            });
+    }
+
     key->addSessionReference();
     return didStoreChange;
 }
@@ -260,19 +270,23 @@ Optional<Vector<uint8_t>> CDMProxy::getOrWaitForKey(const Vector<uint8_t>& keyID
 
 void CDMInstanceProxy::startedWaitingForKey()
 {
-    ASSERT(!isMainThread() && m_player);
+    ASSERT(!isMainThread());
+    ASSERT(m_player);
+
     bool wasWaitingForKey = m_numDecryptorsWaitingForKey > 0;
     m_numDecryptorsWaitingForKey++;
 
     callOnMainThread([player = m_player, wasWaitingForKey] {
-        if (player && wasWaitingForKey)
+        if (player && !wasWaitingForKey)
             player->waitingForKeyChanged();
     });
 }
 
 void CDMInstanceProxy::stoppedWaitingForKey()
 {
-    ASSERT(!isMainThread() && m_player && m_numDecryptorsWaitingForKey > 0);
+    ASSERT(!isMainThread());
+    ASSERT(m_player);
+    ASSERT(m_numDecryptorsWaitingForKey > 0);
     m_numDecryptorsWaitingForKey--;
     bool isNobodyWaitingForKey = !m_numDecryptorsWaitingForKey;
 
@@ -287,9 +301,10 @@ void CDMInstanceProxy::mergeKeysFrom(const KeyStore& keyStore)
     // FIXME: Notify JS when appropriate.
     ASSERT(isMainThread());
     m_keyStore.merge(keyStore);
-    LOG(EME, "EME - CDMInstanceProxy - merging keys into proxy instance and notifying CDMProxy of changes");
-    ASSERT(m_cdmProxy);
-    m_cdmProxy->updateKeyStore(keyStore);
+    if (m_cdmProxy) {
+        LOG(EME, "EME - CDMInstanceProxy - merging keys into proxy instance and notifying CDMProxy of changes");
+        m_cdmProxy->updateKeyStore(keyStore);
+    }
 }
 
 void CDMInstanceProxy::removeAllKeysFrom(const KeyStore& keyStore)

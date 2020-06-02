@@ -47,6 +47,7 @@
 #include "Page.h"
 #include "StorageArea.h"
 #include "WebAnimation.h"
+#include "WorkerInspectorProxy.h"
 #include <JavaScriptCore/ConsoleMessage.h>
 #include <initializer_list>
 #include <wtf/CompletionHandler.h>
@@ -97,7 +98,6 @@ class SharedBuffer;
 class TimerBase;
 class WebKitNamedFlow;
 class WorkerGlobalScope;
-class WorkerInspectorProxy;
 
 #if ENABLE(WEBGL)
 class WebGLProgram;
@@ -229,7 +229,9 @@ public:
     static void frameStoppedLoading(Frame&);
     static void frameScheduledNavigation(Frame&, Seconds delay);
     static void frameClearedScheduledNavigation(Frame&);
+#if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
     static void defaultAppearanceDidChange(Page&, bool useDarkAppearance);
+#endif
     static void willDestroyCachedResource(CachedResource&);
 
     static bool willInterceptRequest(const Frame*, const ResourceRequest&);
@@ -270,8 +272,8 @@ public:
     static void didDispatchDOMStorageEvent(Page&, const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
     static bool shouldWaitForDebuggerOnStart(ScriptExecutionContext&);
-    static void workerStarted(ScriptExecutionContext&, WorkerInspectorProxy*, const URL&);
-    static void workerTerminated(ScriptExecutionContext&, WorkerInspectorProxy*);
+    static void workerStarted(WorkerInspectorProxy&);
+    static void workerTerminated(WorkerInspectorProxy&);
 
     static void didCreateWebSocket(Document*, unsigned long identifier, const URL& requestURL);
     static void willSendWebSocketHandshakeRequest(Document*, unsigned long identifier, const ResourceRequest&);
@@ -306,6 +308,7 @@ public:
 #endif
 
     static void willApplyKeyframeEffect(Element&, KeyframeEffect&, ComputedEffectTiming);
+    static void didChangeWebAnimationName(WebAnimation&);
     static void didSetWebAnimationEffect(WebAnimation&);
     static void didChangeWebAnimationEffectTiming(WebAnimation&);
     static void didChangeWebAnimationEffectTarget(WebAnimation&);
@@ -434,7 +437,9 @@ private:
     static void frameStoppedLoadingImpl(InstrumentingAgents&, Frame&);
     static void frameScheduledNavigationImpl(InstrumentingAgents&, Frame&, Seconds delay);
     static void frameClearedScheduledNavigationImpl(InstrumentingAgents&, Frame&);
+#if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
     static void defaultAppearanceDidChangeImpl(InstrumentingAgents&, bool useDarkAppearance);
+#endif
     static void willDestroyCachedResourceImpl(CachedResource&);
 
     static bool willInterceptRequestImpl(InstrumentingAgents&, const ResourceRequest&);
@@ -470,8 +475,8 @@ private:
     static void didDispatchDOMStorageEventImpl(InstrumentingAgents&, const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
     static bool shouldWaitForDebuggerOnStartImpl(InstrumentingAgents&);
-    static void workerStartedImpl(InstrumentingAgents&, WorkerInspectorProxy*, const URL&);
-    static void workerTerminatedImpl(InstrumentingAgents&, WorkerInspectorProxy*);
+    static void workerStartedImpl(InstrumentingAgents&, WorkerInspectorProxy&);
+    static void workerTerminatedImpl(InstrumentingAgents&, WorkerInspectorProxy&);
 
     static void didCreateWebSocketImpl(InstrumentingAgents&, unsigned long identifier, const URL& requestURL);
     static void willSendWebSocketHandshakeRequestImpl(InstrumentingAgents&, unsigned long identifier, const ResourceRequest&);
@@ -510,6 +515,7 @@ private:
 #endif
 
     static void willApplyKeyframeEffectImpl(InstrumentingAgents&, Element&, KeyframeEffect&, ComputedEffectTiming);
+    static void didChangeWebAnimationNameImpl(InstrumentingAgents&, WebAnimation&);
     static void didSetWebAnimationEffectImpl(InstrumentingAgents&, WebAnimation&);
     static void didChangeWebAnimationEffectTimingImpl(InstrumentingAgents&, WebAnimation&);
     static void didChangeWebAnimationEffectTargetImpl(InstrumentingAgents&, WebAnimation&);
@@ -1237,11 +1243,13 @@ inline void InspectorInstrumentation::frameClearedScheduledNavigation(Frame& fra
         frameClearedScheduledNavigationImpl(*instrumentingAgents, frame);
 }
 
+#if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
 inline void InspectorInstrumentation::defaultAppearanceDidChange(Page& page, bool useDarkAppearance)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     defaultAppearanceDidChangeImpl(instrumentingAgentsForPage(page), useDarkAppearance);
 }
+#endif
 
 inline void InspectorInstrumentation::willDestroyCachedResource(CachedResource& cachedResource)
 {
@@ -1293,17 +1301,17 @@ inline bool InspectorInstrumentation::shouldWaitForDebuggerOnStart(ScriptExecuti
     return false;
 }
 
-inline void InspectorInstrumentation::workerStarted(ScriptExecutionContext& context, WorkerInspectorProxy* proxy, const URL& url)
+inline void InspectorInstrumentation::workerStarted(WorkerInspectorProxy& proxy)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        workerStartedImpl(*instrumentingAgents, proxy, url);
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(proxy.scriptExecutionContext()))
+        workerStartedImpl(*instrumentingAgents, proxy);
 }
 
-inline void InspectorInstrumentation::workerTerminated(ScriptExecutionContext& context, WorkerInspectorProxy* proxy)
+inline void InspectorInstrumentation::workerTerminated(WorkerInspectorProxy& proxy)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(proxy.scriptExecutionContext()))
         workerTerminatedImpl(*instrumentingAgents, proxy);
 }
 
@@ -1480,6 +1488,13 @@ inline void InspectorInstrumentation::willApplyKeyframeEffect(Element& target, K
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (auto* instrumentingAgents = instrumentingAgentsForDocument(target.document()))
         willApplyKeyframeEffectImpl(*instrumentingAgents, target, effect, computedTiming);
+}
+
+inline void InspectorInstrumentation::didChangeWebAnimationName(WebAnimation& animation)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (auto* instrumentingAgents = instrumentingAgentsForContext(animation.scriptExecutionContext()))
+        didChangeWebAnimationNameImpl(*instrumentingAgents, animation);
 }
 
 inline void InspectorInstrumentation::didSetWebAnimationEffect(WebAnimation& animation)

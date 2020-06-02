@@ -61,7 +61,6 @@
 #import <WebCore/LocalizedDeviceModel.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
-#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSScrollerImpDetails.h>
 #import <WebCore/NetworkExtensionContentFilter.h>
@@ -86,11 +85,13 @@
 #import <stdio.h>
 #import <wtf/FileSystem.h>
 #import <wtf/ProcessPrivilege.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/cocoa/NSURLExtras.h>
 #import <wtf/cocoa/RuntimeApplicationChecksCocoa.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if ENABLE(REMOTE_INSPECTOR)
-#include <JavaScriptCore/RemoteInspector.h>
+#import <JavaScriptCore/RemoteInspector.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -110,7 +111,6 @@
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIAccessibility.h>
-#import <WebCore/UTTypeRecordSwizzler.h>
 #import <pal/spi/ios/GraphicsServicesSPI.h>
 #endif
 
@@ -134,6 +134,10 @@
 #if USE(OS_STATE)
 #import <os/state_private.h>
 #endif
+
+SOFT_LINK_FRAMEWORK(CoreServices)
+SOFT_LINK_CLASS(CoreServices, _LSDService)
+SOFT_LINK_CLASS(CoreServices, _LSDOpenService)
 
 #define RELEASE_LOG_SESSION_ID (m_sessionID ? m_sessionID->toUInt64() : 0)
 #define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
@@ -174,7 +178,33 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
         auto uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, CFSTR("text/html"), 0));
         ok = extension->revoke();
         ASSERT_UNUSED(ok, ok);
+
+        auto services = [get_LSDServiceClass() allServiceClasses];
+        for (Class cls in services) {
+            auto connection = [cls XPCConnectionToService];
+            [connection invalidate];
+        }
+
+        ASSERT(String(uti.get()) = String(adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, CFSTR("text/html"), 0)).get()));
     }
+
+
+#if PLATFORM(IOS_FAMILY)
+    if (parameters.runningboardExtensionHandle) {
+        auto extension = SandboxExtension::create(WTFMove(*parameters.runningboardExtensionHandle));
+        bool consumed = extension->consume();
+        ASSERT_UNUSED(consumed, consumed);
+
+        ASSERT(!m_uiProcessDependencyProcessAssertion);
+        if (auto remoteProcessID = parentProcessConnection()->remoteProcessID())
+            m_uiProcessDependencyProcessAssertion = makeUnique<ProcessAssertion>(remoteProcessID, "WebContent process dependency on UIProcess"_s, ProcessAssertionType::DependentProcessLink);
+        else
+            RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "Unable to create a process dependency assertion on UIProcess because remoteProcessID is 0");
+
+        bool revoked = extension->revoke();
+        ASSERT_UNUSED(revoked, revoked);
+    }
+#endif
 
 #if !LOG_DISABLED || !RELEASE_LOG_DISABLED
     WebCore::initializeLogChannelsIfNecessary(parameters.webCoreLoggingChannels);
@@ -216,7 +246,9 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #if PLATFORM(IOS_FAMILY)
     setCurrentUserInterfaceIdiomIsPad(parameters.currentUserInterfaceIdiomIsPad);
     setLocalizedDeviceModel(parameters.localizedDeviceModel);
+#if ENABLE(VIDEO_PRESENTATION_MODE)
     setSupportsPictureInPicture(parameters.supportsPictureInPicture);
+#endif
 #endif
 
 #if USE(APPKIT)
@@ -267,14 +299,17 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     if (parameters.contentFilterExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.contentFilterExtensionHandle);
     ParentalControlsContentFilter::setHasConsumedSandboxExtension(parameters.contentFilterExtensionHandle.hasValue());
+
+    if (parameters.frontboardServiceExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.frontboardServiceExtensionHandle);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     if (parameters.diagnosticsExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.diagnosticsExtensionHandle);
 
-    for (size_t i = 0, size = parameters.dynamicMachExtensionHandles.size(); i < size; ++i)
-        SandboxExtension::consumePermanently(parameters.dynamicMachExtensionHandles[i]);
+    SandboxExtension::consumePermanently(parameters.dynamicMachExtensionHandles);
+    SandboxExtension::consumePermanently(parameters.dynamicIOKitExtensionHandles);
 #endif
     
     if (parameters.neHelperExtensionHandle)
@@ -285,32 +320,21 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 
     setSystemHasBattery(parameters.systemHasBattery);
 
-    if (parameters.mimeTypesMap)
-        overriddenMimeTypesMap() = WTFMove(parameters.mimeTypesMap);
-
 #if PLATFORM(IOS_FAMILY)
     RenderThemeIOS::setCSSValueToSystemColorMap(WTFMove(parameters.cssValueToSystemColorMap));
     RenderThemeIOS::setFocusRingColor(parameters.focusRingColor);
 #endif
 
     // FIXME(207716): The following should be removed when the GPU process is complete.
-    for (size_t i = 0, size = parameters.mediaExtensionHandles.size(); i < size; ++i)
-        SandboxExtension::consumePermanently(parameters.mediaExtensionHandles[i]);
+    SandboxExtension::consumePermanently(parameters.mediaExtensionHandles);
 
 #if ENABLE(CFPREFS_DIRECT_MODE)
-    if (parameters.preferencesExtensionHandle) {
-        SandboxExtension::consumePermanently(*parameters.preferencesExtensionHandle);
+    if (parameters.preferencesExtensionHandles) {
+        SandboxExtension::consumePermanently(*parameters.preferencesExtensionHandles);
         _CFPrefsSetDirectModeEnabled(false);
     }
 #endif
         
-#if USE(UTTYPE_SWIZZLER)
-    if (!parameters.vectorOfUTTypeItem.isEmpty()) {
-        swizzleUTTypeRecord();
-        setVectorOfUTTypeItem(WTFMove(parameters.vectorOfUTTypeItem));
-    }
-#endif
-
     WebCore::sleepDisablerClient() = makeUnique<WebSleepDisablerClient>();
 
     updateProcessName();
@@ -344,7 +368,7 @@ void WebProcess::initializeProcessName(const AuxiliaryProcessInitializationParam
 void WebProcess::updateProcessName()
 {
 #if PLATFORM(MAC)
-    NSString *applicationName;
+    RetainPtr<NSString> applicationName;
     switch (m_processType) {
     case ProcessType::Inspector:
         applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Inspector", "Visible name of Web Inspector's web process. The argument is the application name."), (NSString *)m_uiProcessName];
@@ -363,9 +387,9 @@ void WebProcess::updateProcessName()
         break;
     }
 
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+    RunLoop::main().dispatch([this, applicationName = WTFMove(applicationName)] {
         // Note that it is important for _RegisterApplication() to have been called before setting the display name.
-        auto error = _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
+        auto error = _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName.get(), nullptr);
         ASSERT(!error);
         if (error) {
             RELEASE_LOG_ERROR_IF_ALLOWED(Process, "updateProcessName: Failed to set the display name of the WebContent process, error code: %ld", static_cast<long>(error));
@@ -444,14 +468,12 @@ void WebProcess::registerWithStateDumper()
                 [stateDict setObject:jsObjectCounts.get() forKey:@"JavaScript Object Counts"];
             }
 
-            auto pageLoadTimes = adoptNS([[NSMutableArray alloc] init]);
-            for (auto& page : m_pageMap.values()) {
+            auto pageLoadTimes = createNSArray(m_pageMap.values(), [] (auto& page) -> id {
                 if (page->usesEphemeralSession())
-                    continue;
+                    return nil;
 
-                NSDate* date = [NSDate dateWithTimeIntervalSince1970:page->loadCommitTime().secondsSinceEpoch().seconds()];
-                [pageLoadTimes addObject:date];
-            }
+                return [NSDate dateWithTimeIntervalSince1970:page->loadCommitTime().secondsSinceEpoch().seconds()];
+            });
 
             // Adding an empty array to the process state may provide an
             // indication of the existance of private sessions, which we'd like
@@ -594,7 +616,7 @@ static NSURL *origin(WebPage& page)
 {
     auto& mainFrame = page.mainWebFrame();
 
-    URL mainFrameURL = { URL(), mainFrame.url() };
+    URL mainFrameURL = mainFrame.url();
     Ref<SecurityOrigin> mainFrameOrigin = SecurityOrigin::create(mainFrameURL);
     String mainFrameOriginString;
     if (!mainFrameOrigin->isUnique())
@@ -612,34 +634,33 @@ static NSURL *origin(WebPage& page)
 #endif
 
 #if PLATFORM(MAC)
+
 static RetainPtr<NSArray<NSString *>> activePagesOrigins(const HashMap<PageIdentifier, RefPtr<WebPage>>& pageMap)
 {
-    RetainPtr<NSMutableArray<NSString *>> activeOrigins = adoptNS([[NSMutableArray alloc] init]);
-
-    for (auto& page : pageMap.values()) {
+    return createNSArray(pageMap.values(), [] (auto& page) -> NSString * {
         if (page->usesEphemeralSession())
-            continue;
+            return nil;
 
-        if (NSURL *originAsURL = origin(*page))
-            [activeOrigins addObject:WTF::userVisibleString(originAsURL)];
-    }
+        NSURL *originAsURL = origin(*page);
+        if (!originAsURL)
+            return nil;
 
-    return activeOrigins;
+        return WTF::userVisibleString(originAsURL);
+    });
 }
+
 #endif
 
 void WebProcess::updateActivePages(const String& overrideDisplayName)
 {
 #if PLATFORM(MAC)
     if (!overrideDisplayName) {
-        auto activeOrigins = activePagesOrigins(m_pageMap);
-
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [activeOrigins = WTFMove(activeOrigins)] {
+        RunLoop::main().dispatch([activeOrigins = activePagesOrigins(m_pageMap)] {
             _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activeOrigins.get(), nullptr);
         });
     } else {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, overrideDisplayName.createCFString().get(), nullptr);
+        RunLoop::main().dispatch([name = overrideDisplayName.createCFString()] {
+            _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, name.get(), nullptr);
         });
     }
 #endif
@@ -648,12 +669,7 @@ void WebProcess::updateActivePages(const String& overrideDisplayName)
 void WebProcess::getActivePagesOriginsForTesting(CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
 #if PLATFORM(MAC)
-    auto activeOriginsAsNSStrings = activePagesOrigins(m_pageMap);
-    Vector<String> activeOrigins;
-    activeOrigins.reserveInitialCapacity([activeOriginsAsNSStrings count]);
-    for (NSString* activeOrigin in activeOriginsAsNSStrings.get())
-        activeOrigins.uncheckedAppend(activeOrigin);
-    completionHandler(WTFMove(activeOrigins));
+    completionHandler(makeVector<String>(activePagesOrigins(m_pageMap).get()));
 #else
     completionHandler({ });
 #endif
@@ -862,11 +878,6 @@ void WebProcess::displayConfigurationChanged(CGDirectDisplayID displayID, CGDisp
 {
     GraphicsContextGLOpenGLManager::displayWasReconfigured(displayID, flags, nullptr);
 }
-    
-void WebProcess::displayWasRefreshed(CGDirectDisplayID displayID)
-{
-    DisplayRefreshMonitorManager::sharedManager().displayWasUpdated(displayID);
-}
 #endif
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
@@ -925,10 +936,9 @@ void WebProcess::notifyPreferencesChanged(const String& domain, const String& ke
     [defaults setObject:object forKey:key];
 }
 
-void WebProcess::unblockPreferenceService(const SandboxExtension::Handle& handle)
+void WebProcess::unblockPreferenceService(SandboxExtension::HandleArray&& handleArray)
 {
-    bool ok = SandboxExtension::consumePermanently(handle);
-    ASSERT_UNUSED(ok, ok);
+    SandboxExtension::consumePermanently(handleArray);
     _CFPrefsSetDirectModeEnabled(false);
 }
 #endif
@@ -980,11 +990,11 @@ void WebProcess::updatePageScreenProperties()
 }
 #endif
 
-void WebProcess::unblockAccessibilityServer(const SandboxExtension::Handle& handle)
+void WebProcess::unblockServicesRequiredByAccessibility(const SandboxExtension::HandleArray& handleArray)
 {
 #if PLATFORM(IOS_FAMILY)
-    bool ok = SandboxExtension::consumePermanently(handle);
-    ASSERT_UNUSED(ok, ok);
+    bool consumed = SandboxExtension::consumePermanently(handleArray);
+    ASSERT_UNUSED(consumed, consumed);
 #endif
     registerWithAccessibility();
 }

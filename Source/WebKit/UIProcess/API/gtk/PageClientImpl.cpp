@@ -70,6 +70,9 @@ std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProc
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::Region& region)
 {
+#if USE(GTK4)
+    gtk_widget_queue_draw(m_viewWidget);
+#else
     WebPageProxy* pageProxy = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     ASSERT(pageProxy);
 
@@ -81,6 +84,7 @@ void PageClientImpl::setViewNeedsDisplay(const WebCore::Region& region)
     }
 
     gtk_widget_queue_draw_region(m_viewWidget, toCairoRegion(region).get());
+#endif
 }
 
 void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&)
@@ -148,11 +152,18 @@ void PageClientImpl::setCursor(const WebCore::Cursor& cursor)
     // http://bugs.webkit.org/show_bug.cgi?id=16388
     // Setting the cursor may be an expensive operation in some backends,
     // so don't re-set the cursor if it's already set to the target value.
+#if USE(GTK4)
+    GdkCursor* currentCursor = gtk_widget_get_cursor(m_viewWidget);
+    GdkCursor* newCursor = cursor.platformCursor().get();
+    if (currentCursor != newCursor)
+        gtk_widget_set_cursor(m_viewWidget, newCursor);
+#else
     GdkWindow* window = gtk_widget_get_window(m_viewWidget);
     GdkCursor* currentCursor = gdk_window_get_cursor(window);
     GdkCursor* newCursor = cursor.platformCursor().get();
     if (currentCursor != newCursor)
         gdk_window_set_cursor(window, newCursor);
+#endif
 }
 
 void PageClientImpl::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
@@ -228,12 +239,16 @@ WebCore::IntRect PageClientImpl::rootViewToAccessibilityScreen(const WebCore::In
 
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool wasEventHandled)
 {
-    if (wasEventHandled)
+    if (wasEventHandled || event.type() != WebEvent::Type::KeyDown || !event.nativeEvent())
         return;
 
     WebKitWebViewBase* webkitWebViewBase = WEBKIT_WEB_VIEW_BASE(m_viewWidget);
     webkitWebViewBaseForwardNextKeyEvent(webkitWebViewBase);
+#if USE(GTK4)
+    gdk_display_put_event(gtk_widget_get_display(m_viewWidget), event.nativeEvent());
+#else
     gtk_main_do_event(event.nativeEvent());
+#endif
 }
 
 RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& page)
@@ -305,14 +320,14 @@ void PageClientImpl::didChangeContentSize(const IntSize& size)
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void PageClientImpl::startDrag(Ref<SelectionData>&& selection, DragOperation dragOperation, RefPtr<ShareableBitmap>&& dragImage)
+void PageClientImpl::startDrag(SelectionData&& selection, DragOperation dragOperation, RefPtr<ShareableBitmap>&& dragImage)
 {
-    WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(m_viewWidget);
-    webkitWebViewBaseDragAndDropHandler(webView).startDrag(WTFMove(selection), dragOperation, WTFMove(dragImage));
+    webkitWebViewBaseStartDrag(WEBKIT_WEB_VIEW_BASE(m_viewWidget), WTFMove(selection), dragOperation, WTFMove(dragImage));
+}
 
-    // A drag starting should prevent a double-click from happening. This might
-    // happen if a drag is followed very quickly by another click (like in the WTR).
-    webkitWebViewBaseResetClickCounter(webView);
+void PageClientImpl::didPerformDragControllerAction()
+{
+    webkitWebViewBaseDidPerformDragControllerAction(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 #endif
 
@@ -386,7 +401,10 @@ void PageClientImpl::beganExitFullScreen(const IntRect& /* initialFrame */, cons
 #if ENABLE(TOUCH_EVENTS)
 void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& event, bool wasEventHandled)
 {
+#if !USE(GTK4)
     const GdkEvent* touchEvent = event.nativeEvent();
+    if (!touchEvent)
+        return;
 
     GestureController& gestureController = webkitWebViewBaseGestureController(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     if (wasEventHandled) {
@@ -441,11 +459,16 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& event, bool w
     pointerEvent->any.send_event = TRUE;
 
     gtk_widget_event(m_viewWidget, pointerEvent.get());
+#endif
 }
 #endif // ENABLE(TOUCH_EVENTS)
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)
 {
+    if (!event.nativeEvent())
+        return;
+
+#if !USE(GTK4)
     ViewGestureController* controller = webkitWebViewBaseViewGestureController(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     if (controller && controller->isSwipeGestureEnabled()) {
         controller->wheelEventWasNotHandledByWebCore(&event.nativeEvent()->scroll);
@@ -454,6 +477,7 @@ void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&
 
     webkitWebViewBaseForwardNextWheelEvent(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     gtk_main_do_event(event.nativeEvent());
+#endif
 }
 
 void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&)

@@ -120,11 +120,7 @@
     if (!(self = [super initWithFrame:frame webView:webView]))
         return nil;
 
-#if HAVE(PDF_HOST_VIEW_CONTROLLER_WITH_BACKGROUND_COLOR)
     UIColor *backgroundColor = PDFHostViewController.backgroundColor;
-#else
-    UIColor *backgroundColor = UIColor.grayColor;
-#endif
     self.backgroundColor = backgroundColor;
     webView.scrollView.backgroundColor = backgroundColor;
 
@@ -367,12 +363,8 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 
 + (BOOL)web_requiresCustomSnapshotting
 {
-#if HAVE(PDFHOSTVIEWCONTROLLER_SNAPSHOTTING)
     static bool hasGlobalCaptureEntitlement = WTF::processHasEntitlement("com.apple.QuartzCore.global-capture");
     return !hasGlobalCaptureEntitlement;
-#else
-    return false;
-#endif
 }
 
 - (void)web_scrollViewDidScroll:(UIScrollView *)scrollView
@@ -404,12 +396,10 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 
 - (void)web_snapshotRectInContentViewCoordinates:(CGRect)rectInContentViewCoordinates snapshotWidth:(CGFloat)snapshotWidth completionHandler:(void (^)(CGImageRef))completionHandler
 {
-#if HAVE(PDFHOSTVIEWCONTROLLER_SNAPSHOTTING)
     CGRect rectInHostViewCoordinates = [self._contentView convertRect:rectInContentViewCoordinates toView:[_hostViewController view]];
     [_hostViewController snapshotViewRect:rectInHostViewCoordinates snapshotWidth:@(snapshotWidth) afterScreenUpdates:NO withResult:^(UIImage *image) {
         completionHandler(image.CGImage);
     }];
-#endif
 }
 
 - (NSData *)web_dataRepresentation
@@ -495,12 +485,15 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     positionInformation.url = url;
 
     _positionInformation = WTFMove(positionInformation);
+
 #if ENABLE(DATA_DETECTION)
-    if (WebCore::DataDetection::canBePresentedByDataDetectors(_positionInformation.url))
-        [_actionSheetAssistant showDataDetectorsSheet];
-    else
+    if (WebCore::DataDetection::canBePresentedByDataDetectors(_positionInformation.url)) {
+        [_actionSheetAssistant showDataDetectorsUIForPositionInformation:positionInformation];
+        return;
+    }
 #endif
-        [_actionSheetAssistant showLinkSheet];
+
+    [_actionSheetAssistant showLinkSheet];
 }
 
 - (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressURL:(NSURL *)url atLocation:(CGPoint)location withAnnotationRect:(CGRect)annotationRect
@@ -536,7 +529,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
         return;
 
     NSDictionary *representations = @{
-        (NSString *)kUTTypeUTF8PlainText : (NSString *)_positionInformation.url,
+        (NSString *)kUTTypeUTF8PlainText : (NSString *)_positionInformation.url.string(),
         (NSString *)kUTTypeURL : (NSURL *)_positionInformation.url,
     };
 
@@ -592,7 +585,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     return page->uiClient().actionsForElement(element, WTFMove(defaultActions));
 }
 
-- (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+- (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant positionInformation:(const WebKit::InteractionInformationAtPosition&)positionInformation
 {
     auto webView = _webView.getAutoreleased();
     if (!webView)

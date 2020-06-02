@@ -246,35 +246,35 @@ void DOMSelection::modify(const String& alterString, const String& directionStri
 
     SelectionDirection direction;
     if (equalLettersIgnoringASCIICase(directionString, "forward"))
-        direction = DirectionForward;
+        direction = SelectionDirection::Forward;
     else if (equalLettersIgnoringASCIICase(directionString, "backward"))
-        direction = DirectionBackward;
+        direction = SelectionDirection::Backward;
     else if (equalLettersIgnoringASCIICase(directionString, "left"))
-        direction = DirectionLeft;
+        direction = SelectionDirection::Left;
     else if (equalLettersIgnoringASCIICase(directionString, "right"))
-        direction = DirectionRight;
+        direction = SelectionDirection::Right;
     else
         return;
 
     TextGranularity granularity;
     if (equalLettersIgnoringASCIICase(granularityString, "character"))
-        granularity = CharacterGranularity;
+        granularity = TextGranularity::CharacterGranularity;
     else if (equalLettersIgnoringASCIICase(granularityString, "word"))
-        granularity = WordGranularity;
+        granularity = TextGranularity::WordGranularity;
     else if (equalLettersIgnoringASCIICase(granularityString, "sentence"))
-        granularity = SentenceGranularity;
+        granularity = TextGranularity::SentenceGranularity;
     else if (equalLettersIgnoringASCIICase(granularityString, "line"))
-        granularity = LineGranularity;
+        granularity = TextGranularity::LineGranularity;
     else if (equalLettersIgnoringASCIICase(granularityString, "paragraph"))
-        granularity = ParagraphGranularity;
+        granularity = TextGranularity::ParagraphGranularity;
     else if (equalLettersIgnoringASCIICase(granularityString, "lineboundary"))
-        granularity = LineBoundary;
+        granularity = TextGranularity::LineBoundary;
     else if (equalLettersIgnoringASCIICase(granularityString, "sentenceboundary"))
-        granularity = SentenceBoundary;
+        granularity = TextGranularity::SentenceBoundary;
     else if (equalLettersIgnoringASCIICase(granularityString, "paragraphboundary"))
-        granularity = ParagraphBoundary;
+        granularity = TextGranularity::ParagraphBoundary;
     else if (equalLettersIgnoringASCIICase(granularityString, "documentboundary"))
-        granularity = DocumentBoundary;
+        granularity = TextGranularity::DocumentBoundary;
     else
         return;
 
@@ -316,7 +316,7 @@ ExceptionOr<Ref<Range>> DOMSelection::getRangeAt(unsigned index)
     ASSERT(firstRange);
     if (!firstRange)
         return Exception { IndexSizeError };
-    return firstRange.releaseNonNull();
+    return createLiveRange(*firstRange);
 }
 
 void DOMSelection::removeAllRanges()
@@ -341,7 +341,7 @@ void DOMSelection::addRange(Range& range)
         return;
     }
 
-    auto normalizedRange = selection.selection().toNormalizedRange();
+    auto normalizedRange = createLiveRange(selection.selection().toNormalizedRange());
     if (!normalizedRange)
         return;
 
@@ -386,12 +386,14 @@ void DOMSelection::deleteFromDocument()
         return;
 
     auto selectedRange = selection.selection().toNormalizedRange();
-    if (!selectedRange || selectedRange->shadowRoot())
+    if (!selectedRange || createLiveRange(*selectedRange)->shadowRoot())
         return;
 
     Ref<Frame> protector(*frame);
-    selectedRange->deleteContents();
-    setBaseAndExtent(&selectedRange->startContainer(), selectedRange->startOffset(), &selectedRange->startContainer(), selectedRange->startOffset());
+    createLiveRange(*selectedRange)->deleteContents();
+    auto container = selectedRange->start.container.ptr();
+    auto offset = selectedRange->start.offset;
+    setBaseAndExtent(container, offset, container, offset);
 }
 
 bool DOMSelection::containsNode(Node& node, bool allowPartial) const

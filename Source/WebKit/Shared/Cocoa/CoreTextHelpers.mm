@@ -31,7 +31,7 @@
 
 namespace WebKit {
 
-PlatformFontDescriptor *fontDescriptorWithFontAttributes(NSDictionary *attributes)
+CocoaFont *fontWithAttributes(NSDictionary *attributes, CGFloat size)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
@@ -44,10 +44,13 @@ PlatformFontDescriptor *fontDescriptorWithFontAttributes(NSDictionary *attribute
                 [mutableDictionary setObject:size forKey:(__bridge NSString *)kCTFontOpticalSizeAttribute];
         }
     }
-    return [PlatformFontDescriptor fontDescriptorWithFontAttributes:mutableDictionary.get()];
+
+    auto descriptor = [CocoaFontDescriptor fontDescriptorWithFontAttributes:mutableDictionary.get()];
 #else
-    return [PlatformFontDescriptor fontDescriptorWithFontAttributes:attributes];
+    auto descriptor = [CocoaFontDescriptor fontDescriptorWithFontAttributes:attributes];
 #endif
+
+    return [CocoaFont fontWithDescriptor:descriptor size:size];
 
     END_BLOCK_OBJC_EXCEPTIONS
 

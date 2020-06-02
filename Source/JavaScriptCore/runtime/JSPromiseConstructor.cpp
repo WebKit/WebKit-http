@@ -27,16 +27,9 @@
 #include "JSPromiseConstructor.h"
 
 #include "BuiltinNames.h"
-#include "Error.h"
-#include "Exception.h"
-#include "GetterSetter.h"
 #include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSFunction.h"
-#include "JSPromise.h"
 #include "JSPromisePrototype.h"
-#include "Lookup.h"
-#include "NumberObject.h"
 
 namespace JSC {
 
@@ -57,6 +50,7 @@ const ClassInfo JSPromiseConstructor::s_info = { "Function", &Base::s_info, &pro
   race            JSBuiltin             DontEnum|Function 1
   all             JSBuiltin             DontEnum|Function 1
   allSettled      JSBuiltin             DontEnum|Function 1
+  any             JSBuiltin             DontEnum|Function 1
 @end
 */
 

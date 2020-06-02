@@ -86,6 +86,7 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
     encoder << needsCertificateInfo;
     encoder << isMainFrameNavigation;
     encoder << isMainResourceNavigationForAnyFrame;
+    encoder << shouldRelaxThirdPartyCookieBlocking;
     encoder << maximumBufferingTime;
 
     encoder << static_cast<bool>(sourceOrigin);
@@ -198,6 +199,8 @@ Optional<NetworkResourceLoadParameters> NetworkResourceLoadParameters::decode(IP
         return WTF::nullopt;
     if (!decoder.decode(result.isMainResourceNavigationForAnyFrame))
         return WTF::nullopt;
+    if (!decoder.decode(result.shouldRelaxThirdPartyCookieBlocking))
+        return WTF::nullopt;
     if (!decoder.decode(result.maximumBufferingTime))
         return WTF::nullopt;
 
@@ -303,7 +306,7 @@ Optional<NetworkResourceLoadParameters> NetworkResourceLoadParameters::decode(IP
     result.userContentControllerIdentifier = *userContentControllerIdentifier;
 #endif
 
-    Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain;
+    Optional<Optional<NavigatingToAppBoundDomain>> isNavigatingToAppBoundDomain;
     decoder >> isNavigatingToAppBoundDomain;
     if (!isNavigatingToAppBoundDomain)
         return WTF::nullopt;

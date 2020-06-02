@@ -620,22 +620,34 @@ void WebInspectorProxy::timelineRecordingChanged(bool active)
     m_isProfilingPage = active;
 }
 
-void WebInspectorProxy::setMockCaptureDevicesEnabledOverride(Optional<bool> enabled)
+void WebInspectorProxy::setDeveloperPreferenceOverride(WebCore::InspectorClient::DeveloperPreference developerPreference, Optional<bool> overrideValue)
 {
-#if ENABLE(MEDIA_STREAM)
-    if (!m_inspectedPage)
+    switch (developerPreference) {
+    case InspectorClient::DeveloperPreference::AdClickAttributionDebugModeEnabled:
+        if (m_inspectedPage)
+            m_inspectedPage->websiteDataStore().setAdClickAttributionDebugMode(overrideValue && overrideValue.value());
         return;
 
-    m_inspectedPage->setMockCaptureDevicesEnabledOverride(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
+    case InspectorClient::DeveloperPreference::ITPDebugModeEnabled:
+        if (m_inspectedPage)
+            m_inspectedPage->websiteDataStore().setResourceLoadStatisticsDebugMode(overrideValue && overrideValue.value());
+        return;
+
+    case InspectorClient::DeveloperPreference::MockCaptureDevicesEnabled:
+#if ENABLE(MEDIA_STREAM)
+        if (m_inspectedPage)
+            m_inspectedPage->setMockCaptureDevicesEnabledOverride(overrideValue);
+#endif // ENABLE(MEDIA_STREAM)
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
 }
 
 void WebInspectorProxy::setDiagnosticLoggingAvailable(bool available)
 {
 #if ENABLE(INSPECTOR_TELEMETRY)
-    m_inspectorPage->process().send(Messages::WebInspectorUI::SetDiagnosticLoggingAvailable(available), m_inspectorPage->webPageID());
+    m_inspectorPage->send(Messages::WebInspectorUI::SetDiagnosticLoggingAvailable(available));
 #else
     UNUSED_PARAM(available);
 #endif

@@ -179,6 +179,11 @@ inline WKURLRef toCopiedURLAPI(const String& string)
     return toAPI(&API::URL::create(string).leakRef());
 }
 
+inline WKURLRef toCopiedURLAPI(const URL& url)
+{
+    return toCopiedURLAPI(url.string());
+}
+
 inline String toWTFString(WKStringRef stringRef)
 {
     if (!stringRef)
@@ -993,21 +998,21 @@ inline WebCore::UserScriptInjectionTime toUserScriptInjectionTime(_WKUserScriptI
 {
     switch (wkInjectedTime) {
     case kWKInjectAtDocumentStart:
-        return WebCore::InjectAtDocumentStart;
+        return WebCore::UserScriptInjectionTime::DocumentStart;
     case kWKInjectAtDocumentEnd:
-        return WebCore::InjectAtDocumentEnd;
+        return WebCore::UserScriptInjectionTime::DocumentEnd;
     }
 
     ASSERT_NOT_REACHED();
-    return WebCore::InjectAtDocumentStart;
+    return WebCore::UserScriptInjectionTime::DocumentStart;
 }
 
 inline _WKUserScriptInjectionTime toWKUserScriptInjectionTime(WebCore::UserScriptInjectionTime injectedTime)
 {
     switch (injectedTime) {
-    case WebCore::InjectAtDocumentStart:
+    case WebCore::UserScriptInjectionTime::DocumentStart:
         return kWKInjectAtDocumentStart;
-    case WebCore::InjectAtDocumentEnd:
+    case WebCore::UserScriptInjectionTime::DocumentEnd:
         return kWKInjectAtDocumentEnd;
     }
 
@@ -1019,13 +1024,13 @@ inline WebCore::UserContentInjectedFrames toUserContentInjectedFrames(WKUserCont
 {
     switch (wkInjectedFrames) {
     case kWKInjectInAllFrames:
-        return WebCore::InjectInAllFrames;
+        return WebCore::UserContentInjectedFrames::InjectInAllFrames;
     case kWKInjectInTopFrameOnly:
-        return WebCore::InjectInTopFrameOnly;
+        return WebCore::UserContentInjectedFrames::InjectInTopFrameOnly;
     }
 
     ASSERT_NOT_REACHED();
-    return WebCore::InjectInAllFrames;
+    return WebCore::UserContentInjectedFrames::InjectInAllFrames;
 }
 
 } // namespace WebKit

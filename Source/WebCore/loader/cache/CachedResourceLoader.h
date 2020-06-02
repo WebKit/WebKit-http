@@ -57,6 +57,7 @@ class DocumentLoader;
 class Frame;
 class ImageLoader;
 class Page;
+class SVGImage;
 class Settings;
 
 template <typename T>
@@ -116,6 +117,9 @@ public:
     typedef HashMap<String, CachedResourceHandle<CachedResource>> DocumentResourceMap;
     const DocumentResourceMap& allCachedResources() const { return m_documentResources; }
 
+    void notifyFinished(const CachedResource&);
+    Vector<Ref<SVGImage>> allCachedSVGImages() const;
+
     bool autoLoadImages() const { return m_autoLoadImages; }
     void setAutoLoadImages(bool);
 
@@ -173,7 +177,7 @@ private:
     void prepareFetch(CachedResource::Type, CachedResourceRequest&);
     void updateHTTPRequestHeaders(FrameLoader&, CachedResource::Type, CachedResourceRequest&);
 
-    bool canRequest(CachedResource::Type, const URL&, const CachedResourceRequest&, ForPreload);
+    bool canRequest(CachedResource::Type, const URL&, const ResourceLoaderOptions&, ForPreload);
 
     enum RevalidationPolicy { Use, Revalidate, Reload, Load };
     RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, CachedResourceRequest&, CachedResource* existingResource, ForPreload, ImageLoading) const;
@@ -193,6 +197,7 @@ private:
     bool canRequestInContentDispositionAttachmentSandbox(CachedResource::Type, const URL&) const;
 
     HashSet<String> m_validatedURLs;
+    HashSet<String> m_cachedSVGImagesURLs;
     mutable DocumentResourceMap m_documentResources;
     WeakPtr<Document> m_document;
     DocumentLoader* m_documentLoader;

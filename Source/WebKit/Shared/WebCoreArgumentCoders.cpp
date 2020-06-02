@@ -46,6 +46,7 @@
 #include <WebCore/DragData.h>
 #include <WebCore/EventTrackingRegions.h>
 #include <WebCore/FetchOptions.h>
+#include <WebCore/File.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FilterOperation.h>
 #include <WebCore/FilterOperations.h>
@@ -146,7 +147,7 @@ static void encodeSharedBuffer(Encoder& encoder, const SharedBuffer* buffer)
 #endif
 }
 
-static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
+static WARN_UNUSED_RETURN bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
 {
     uint64_t bufferSize = 0;
     if (!decoder.decode(bufferSize))
@@ -175,6 +176,9 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
         return false;
 
     auto sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
+    if (!sharedMemoryBuffer)
+        return false;
+
     buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
 #endif
 
@@ -190,7 +194,7 @@ static void encodeTypesAndData(Encoder& encoder, const Vector<String>& types, co
         encodeSharedBuffer(encoder, buffer.get());
 }
 
-static bool decodeTypesAndData(Decoder& decoder, Vector<String>& types, Vector<RefPtr<SharedBuffer>>& data)
+static WARN_UNUSED_RETURN bool decodeTypesAndData(Decoder& decoder, Vector<String>& types, Vector<RefPtr<SharedBuffer>>& data)
 {
     if (!decoder.decode(types))
         return false;
@@ -543,7 +547,7 @@ void ArgumentCoder<StepsTimingFunction>::encode(Encoder& encoder, const StepsTim
     encoder.encodeEnum(timingFunction.type());
     
     encoder << timingFunction.numberOfSteps();
-    encoder << timingFunction.stepAtStart();
+    encoder << timingFunction.stepPosition();
 }
 
 bool ArgumentCoder<StepsTimingFunction>::decode(Decoder& decoder, StepsTimingFunction& timingFunction)
@@ -553,12 +557,12 @@ bool ArgumentCoder<StepsTimingFunction>::decode(Decoder& decoder, StepsTimingFun
     if (!decoder.decode(numSteps))
         return false;
 
-    bool stepAtStart;
-    if (!decoder.decode(stepAtStart))
+    Optional<StepsTimingFunction::StepPosition> stepPosition;
+    if (!decoder.decode(stepPosition))
         return false;
 
     timingFunction.setNumberOfSteps(numSteps);
-    timingFunction.setStepAtStart(stepAtStart);
+    timingFunction.setStepPosition(stepPosition);
 
     return true;
 }
@@ -1050,7 +1054,7 @@ static void encodeImage(Encoder& encoder, Image& image)
     encoder << handle;
 }
 
-static bool decodeImage(Decoder& decoder, RefPtr<Image>& image)
+static WARN_UNUSED_RETURN bool decodeImage(Decoder& decoder, RefPtr<Image>& image)
 {
     Optional<bool> didCreateGraphicsContext;
     decoder >> didCreateGraphicsContext;
@@ -1079,7 +1083,7 @@ static void encodeOptionalImage(Encoder& encoder, Image* image)
         encodeImage(encoder, *image);
 }
 
-static bool decodeOptionalImage(Decoder& decoder, RefPtr<Image>& image)
+static WARN_UNUSED_RETURN bool decodeOptionalImage(Decoder& decoder, RefPtr<Image>& image)
 {
     image = nullptr;
 
@@ -1122,7 +1126,7 @@ static void encodeNativeImage(Encoder& encoder, NativeImagePtr image)
     encoder << handle;
 }
 
-static bool decodeNativeImage(Decoder& decoder, NativeImagePtr& nativeImage)
+static WARN_UNUSED_RETURN bool decodeNativeImage(Decoder& decoder, NativeImagePtr& nativeImage)
 {
     Optional<bool> didCreateGraphicsContext;
     decoder >> didCreateGraphicsContext;
@@ -1157,7 +1161,7 @@ static void encodeOptionalNativeImage(Encoder& encoder, NativeImagePtr image)
         encodeNativeImage(encoder, image);
 }
 
-static bool decodeOptionalNativeImage(Decoder& decoder, NativeImagePtr& image)
+static WARN_UNUSED_RETURN bool decodeOptionalNativeImage(Decoder& decoder, NativeImagePtr& image)
 {
     image = nullptr;
 
@@ -1522,84 +1526,6 @@ bool ArgumentCoder<WindowFeatures>::decode(Decoder& decoder, WindowFeatures& win
     return true;
 }
 
-
-void ArgumentCoder<Color>::encode(Encoder& encoder, const Color& color)
-{
-    if (color.isExtended()) {
-        encoder << true;
-        encoder << color.asExtended().red();
-        encoder << color.asExtended().green();
-        encoder << color.asExtended().blue();
-        encoder << color.asExtended().alpha();
-        encoder << color.asExtended().colorSpace();
-        return;
-    }
-
-    encoder << false;
-
-    if (!color.isValid()) {
-        encoder << false;
-        return;
-    }
-
-    uint32_t value = color.rgb().value();
-
-    encoder << true;
-    encoder << value;
-}
-
-bool ArgumentCoder<Color>::decode(Decoder& decoder, Color& color)
-{
-    bool isExtended;
-    if (!decoder.decode(isExtended))
-        return false;
-
-    if (isExtended) {
-        float red;
-        float green;
-        float blue;
-        float alpha;
-        ColorSpace colorSpace;
-        if (!decoder.decode(red))
-            return false;
-        if (!decoder.decode(green))
-            return false;
-        if (!decoder.decode(blue))
-            return false;
-        if (!decoder.decode(alpha))
-            return false;
-        if (!decoder.decode(colorSpace))
-            return false;
-        color = Color(red, green, blue, alpha, colorSpace);
-        return true;
-    }
-
-    bool isValid;
-    if (!decoder.decode(isValid))
-        return false;
-
-    if (!isValid) {
-        color = Color();
-        return true;
-    }
-
-    uint32_t value;
-    if (!decoder.decode(value))
-        return false;
-
-    color = SimpleColor { value };
-    return true;
-}
-
-Optional<Color> ArgumentCoder<Color>::decode(Decoder& decoder)
-{
-    Color color;
-    if (!decode(decoder, color))
-        return WTF::nullopt;
-
-    return color;
-}
-
 #if ENABLE(DRAG_SUPPORT)
 void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
 {
@@ -1611,7 +1537,7 @@ void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
     encoder << dragData.pasteboardName();
     encoder << dragData.fileNames();
 #endif
-    encoder.encodeEnum(dragData.dragDestinationAction());
+    encoder << dragData.dragDestinationActionMask();
 }
 
 bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
@@ -1642,11 +1568,11 @@ bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
         return false;
 #endif
 
-    DragDestinationAction destinationAction;
-    if (!decoder.decodeEnum(destinationAction))
+    OptionSet<DragDestinationAction> dragDestinationActionMask;
+    if (!decoder.decode(dragDestinationActionMask))
         return false;
 
-    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags, destinationAction);
+    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags, dragDestinationActionMask);
     dragData.setFileNames(fileNames);
 
     return true;
@@ -1722,7 +1648,7 @@ bool ArgumentCoder<DatabaseDetails>::decode(Decoder& decoder, DatabaseDetails& d
 
 template<> struct ArgumentCoder<PasteboardCustomData::Entry> {
     static void encode(Encoder&, const PasteboardCustomData::Entry&);
-    static bool decode(Decoder&, PasteboardCustomData::Entry&);
+    static WARN_UNUSED_RETURN bool decode(Decoder&, PasteboardCustomData::Entry&);
 };
 
 void ArgumentCoder<PasteboardCustomData::Entry>::encode(Encoder& encoder, const PasteboardCustomData::Entry& data)
@@ -1958,31 +1884,24 @@ bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWeb
 }
 #endif // USE(LIBWPE)
 
-void ArgumentCoder<DictationAlternative>::encode(Encoder& encoder, const DictationAlternative& dictationAlternative)
+void ArgumentCoder<DictationAlternative>::encode(Encoder& encoder, const DictationAlternative& alternative)
 {
-    encoder << dictationAlternative.rangeStart;
-    encoder << dictationAlternative.rangeLength;
-    encoder << dictationAlternative.dictationContext;
+    encoder << alternative.range << alternative.context;
 }
 
 Optional<DictationAlternative> ArgumentCoder<DictationAlternative>::decode(Decoder& decoder)
 {
-    Optional<unsigned> rangeStart;
-    decoder >> rangeStart;
-    if (!rangeStart)
+    Optional<CharacterRange> range;
+    decoder >> range;
+    if (!range)
         return WTF::nullopt;
-    
-    Optional<unsigned> rangeLength;
-    decoder >> rangeLength;
-    if (!rangeLength)
+
+    Optional<DictationContext> context;
+    decoder >> context;
+    if (!context)
         return WTF::nullopt;
-    
-    Optional<uint64_t> dictationContext;
-    decoder >> dictationContext;
-    if (!dictationContext)
-        return WTF::nullopt;
-    
-    return {{ WTFMove(*rangeStart), WTFMove(*rangeLength), WTFMove(*dictationContext) }};
+
+    return {{ *range, *context }};
 }
 
 void ArgumentCoder<FileChooserSettings>::encode(Encoder& encoder, const FileChooserSettings& settings)
@@ -2016,6 +1935,21 @@ bool ArgumentCoder<FileChooserSettings>::decode(Decoder& decoder, FileChooserSet
 
     return true;
 }
+
+void ArgumentCoder<RawFile>::encode(Encoder& encoder, const RawFile& file)
+{
+    encoder << file.fileName;
+    encodeSharedBuffer(encoder, file.fileData.get());
+}
+
+bool ArgumentCoder<RawFile>::decode(Decoder& decoder, RawFile& file)
+{
+    if (!decoder.decode(file.fileName))
+        return false;
+    if (!decodeSharedBuffer(decoder, file.fileData))
+        return false;
+    return true;
+}
     
 void ArgumentCoder<ShareData>::encode(Encoder& encoder, const ShareData& settings)
 {
@@ -2039,6 +1973,7 @@ void ArgumentCoder<ShareDataWithParsedURL>::encode(Encoder& encoder, const Share
 {
     encoder << settings.shareData;
     encoder << settings.url;
+    encoder << settings.files;
 }
 
 bool ArgumentCoder<ShareDataWithParsedURL>::decode(Decoder& decoder, ShareDataWithParsedURL& settings)
@@ -2046,6 +1981,8 @@ bool ArgumentCoder<ShareDataWithParsedURL>::decode(Decoder& decoder, ShareDataWi
     if (!decoder.decode(settings.shareData))
         return false;
     if (!decoder.decode(settings.url))
+        return false;
+    if (!decoder.decode(settings.files))
         return false;
     return true;
 }
@@ -2590,8 +2527,8 @@ void ArgumentCoder<TextIndicatorData>::encode(Encoder& encoder, const TextIndica
     encoder << textIndicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
     encoder << textIndicatorData.contentImageScaleFactor;
     encoder << textIndicatorData.estimatedBackgroundColor;
-    encoder.encodeEnum(textIndicatorData.presentationTransition);
-    encoder << static_cast<uint64_t>(textIndicatorData.options);
+    encoder << textIndicatorData.presentationTransition;
+    encoder << textIndicatorData.options;
 
     encodeOptionalImage(encoder, textIndicatorData.contentImage.get());
     encodeOptionalImage(encoder, textIndicatorData.contentImageWithHighlight.get());
@@ -2619,13 +2556,11 @@ Optional<TextIndicatorData> ArgumentCoder<TextIndicatorData>::decode(Decoder& de
     if (!decoder.decode(textIndicatorData.estimatedBackgroundColor))
         return WTF::nullopt;
 
-    if (!decoder.decodeEnum(textIndicatorData.presentationTransition))
+    if (!decoder.decode(textIndicatorData.presentationTransition))
         return WTF::nullopt;
 
-    uint64_t options;
-    if (!decoder.decode(options))
+    if (!decoder.decode(textIndicatorData.options))
         return WTF::nullopt;
-    textIndicatorData.options = static_cast<TextIndicatorOptions>(options);
 
     if (!decodeOptionalImage(decoder, textIndicatorData.contentImage))
         return WTF::nullopt;

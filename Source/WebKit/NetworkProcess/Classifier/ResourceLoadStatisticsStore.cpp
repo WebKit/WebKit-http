@@ -52,9 +52,6 @@ namespace WebKit {
 using namespace WebCore;
 
 constexpr Seconds minimumStatisticsProcessingInterval { 5_s };
-constexpr unsigned operatingDatesWindowLong { 30 };
-constexpr unsigned operatingDatesWindowShort { 7 };
-constexpr Seconds operatingTimeWindowForLiveOnTesting { 1_h };
 
 static String domainsToString(const Vector<RegistrableDomain>& domains)
 {
@@ -133,8 +130,6 @@ ResourceLoadStatisticsStore::ResourceLoadStatisticsStore(WebResourceLoadStatisti
     , m_shouldIncludeLocalhost(shouldIncludeLocalhost)
 {
     ASSERT(!RunLoop::isMain());
-
-    includeTodayAsOperatingDateIfNecessary();
 }
 
 ResourceLoadStatisticsStore::~ResourceLoadStatisticsStore()
@@ -292,6 +287,9 @@ void ResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode(bool enable
 {
     ASSERT(!RunLoop::isMain());
 
+    if (m_debugModeEnabled == enable)
+        return;
+
     m_debugModeEnabled = enable;
     m_debugLoggingEnabled = enable;
 
@@ -312,6 +310,11 @@ void ResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode(bool enable
 void ResourceLoadStatisticsStore::setPrevalentResourceForDebugMode(const RegistrableDomain& domain)
 {
     m_debugManualPrevalentResource = domain;
+}
+
+void ResourceLoadStatisticsStore::setAppBoundDomains(HashSet<RegistrableDomain>&& domains)
+{
+    m_appBoundDomains = WTFMove(domains);
 }
 
 void ResourceLoadStatisticsStore::scheduleStatisticsProcessingRequestIfNecessary()
@@ -443,96 +446,16 @@ void ResourceLoadStatisticsStore::updateCookieBlockingForDomains(const Registrab
         });
     });
 }
-    
 
-Optional<Seconds> ResourceLoadStatisticsStore::statisticsEpirationTime() const
+bool ResourceLoadStatisticsStore::shouldEnforceSameSiteStrictForSpecificDomain(const RegistrableDomain& domain) const
 {
-    ASSERT(!RunLoop::isMain());
+    static NeverDestroyed<HashSet<RegistrableDomain>> domains = [] {
+        HashSet<RegistrableDomain> set;
+        set.add(RegistrableDomain::uncheckedCreateFromRegistrableDomainString("yahoo.co.jp"_s));
+        return set;
+    }();
 
-    if (m_parameters.timeToLiveUserInteraction)
-        return WallTime::now().secondsSinceEpoch() - m_parameters.timeToLiveUserInteraction.value();
-    
-    if (m_operatingDates.size() >= operatingDatesWindowLong)
-        return m_operatingDates.first().secondsSinceEpoch();
-    
-    return WTF::nullopt;
-}
-
-Vector<OperatingDate> ResourceLoadStatisticsStore::mergeOperatingDates(const Vector<OperatingDate>& existingDates, Vector<OperatingDate>&& newDates)
-{
-    if (existingDates.isEmpty())
-        return WTFMove(newDates);
-    
-    Vector<OperatingDate> mergedDates(existingDates.size() + newDates.size());
-    
-    // Merge the two sorted vectors of dates.
-    std::merge(existingDates.begin(), existingDates.end(), newDates.begin(), newDates.end(), mergedDates.begin());
-    // Remove duplicate dates.
-    removeRepeatedElements(mergedDates);
-    
-    // Drop old dates until the Vector size reaches operatingDatesWindowLong.
-    while (mergedDates.size() > operatingDatesWindowLong)
-        mergedDates.remove(0);
-    
-    return mergedDates;
-}
-
-void ResourceLoadStatisticsStore::mergeOperatingDates(Vector<OperatingDate>&& newDates)
-{
-    ASSERT(!RunLoop::isMain());
-
-    m_operatingDates = mergeOperatingDates(m_operatingDates, WTFMove(newDates));
-}
-
-void ResourceLoadStatisticsStore::includeTodayAsOperatingDateIfNecessary()
-{
-    ASSERT(!RunLoop::isMain());
-
-    auto today = OperatingDate::today();
-    if (!m_operatingDates.isEmpty() && today <= m_operatingDates.last())
-        return;
-
-    while (m_operatingDates.size() >= operatingDatesWindowLong)
-        m_operatingDates.remove(0);
-
-    m_operatingDates.append(today);
-}
-
-bool ResourceLoadStatisticsStore::hasStatisticsExpired(WallTime mostRecentUserInteractionTime, OperatingDatesWindow operatingDatesWindow) const
-{
-    ASSERT(!RunLoop::isMain());
-
-    unsigned operatingDatesWindowInDays = 0;
-    switch (operatingDatesWindow) {
-    case OperatingDatesWindow::Long:
-        operatingDatesWindowInDays = operatingDatesWindowLong;
-        break;
-    case OperatingDatesWindow::Short:
-        operatingDatesWindowInDays = operatingDatesWindowShort;
-        break;
-    case OperatingDatesWindow::ForLiveOnTesting:
-        return WallTime::now() > mostRecentUserInteractionTime + operatingTimeWindowForLiveOnTesting;
-    case OperatingDatesWindow::ForReproTesting:
-        return true;
-    }
-
-    if (m_operatingDates.size() >= operatingDatesWindowInDays) {
-        if (OperatingDate::fromWallTime(mostRecentUserInteractionTime) < m_operatingDates.first())
-            return true;
-    }
-    
-    // If we don't meet the real criteria for an expired statistic, check the user setting for a tighter restriction (mainly for testing).
-    if (m_parameters.timeToLiveUserInteraction) {
-        if (WallTime::now() > mostRecentUserInteractionTime + m_parameters.timeToLiveUserInteraction.value())
-            return true;
-    }
-    
-    return false;
-}
-
-bool ResourceLoadStatisticsStore::hasStatisticsExpired(const ResourceLoadStatistics& resourceStatistic, OperatingDatesWindow operatingDatesWindow) const
-{
-    return hasStatisticsExpired(resourceStatistic.mostRecentUserInteractionTime, operatingDatesWindow);
+    return domains.get().contains(domain);
 }
 
 void ResourceLoadStatisticsStore::setMaxStatisticsEntries(size_t maximumEntryCount)
@@ -554,6 +477,7 @@ void ResourceLoadStatisticsStore::resetParametersToDefaultValues()
     ASSERT(!RunLoop::isMain());
 
     m_parameters = { };
+    m_appBoundDomains.clear();
 }
 
 void ResourceLoadStatisticsStore::logTestingEvent(const String& event)
@@ -604,18 +528,20 @@ void ResourceLoadStatisticsStore::debugBroadcastConsoleMessage(MessageSource sou
 
 void ResourceLoadStatisticsStore::debugLogDomainsInBatches(const char* action, const RegistrableDomainsToBlockCookiesFor& domainsToBlock)
 {
+    ASSERT(debugLoggingEnabled());
+
     Vector<RegistrableDomain> domains;
     domains.appendVector(domainsToBlock.domainsToBlockAndDeleteCookiesFor);
     domains.appendVector(domainsToBlock.domainsToBlockButKeepCookiesFor);
     if (domains.isEmpty())
         return;
 
-    debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("[ITP] About to "_s, action, "cookies in third-party contexts for: ["_s, domainsToString(domains), "]."_s));
+    debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("[ITP] "_s, action, " to: ["_s, domainsToString(domains), "]."_s));
 
     static const auto maxNumberOfDomainsInOneLogStatement = 50;
 
     if (domains.size() <= maxNumberOfDomainsInOneLogStatement) {
-        RELEASE_LOG_INFO(ITPDebug, "About to %" PUBLIC_LOG_STRING " cookies in third-party contexts for: %" PUBLIC_LOG_STRING ".", action, domainsToString(domains).utf8().data());
+        RELEASE_LOG_INFO(ITPDebug, "%" PUBLIC_LOG_STRING " to: %" PUBLIC_LOG_STRING ".", action, domainsToString(domains).utf8().data());
         return;
     }
 
@@ -626,14 +552,19 @@ void ResourceLoadStatisticsStore::debugLogDomainsInBatches(const char* action, c
 
     for (auto& domain : domains) {
         if (batch.size() == maxNumberOfDomainsInOneLogStatement) {
-            RELEASE_LOG_INFO(ITPDebug, "About to %" PUBLIC_LOG_STRING " cookies in third-party contexts for (%{public}d of %u): %" PUBLIC_LOG_STRING ".", action, batchNumber, numberOfBatches, domainsToString(batch).utf8().data());
+            RELEASE_LOG_INFO(ITPDebug, "%" PUBLIC_LOG_STRING " to (%{public}d of %u): %" PUBLIC_LOG_STRING ".", action, batchNumber, numberOfBatches, domainsToString(batch).utf8().data());
             batch.shrink(0);
             ++batchNumber;
         }
         batch.append(domain);
     }
     if (!batch.isEmpty())
-        RELEASE_LOG_INFO(ITPDebug, "About to %" PUBLIC_LOG_STRING " cookies in third-party contexts for (%{public}d of %u): %" PUBLIC_LOG_STRING ".", action, batchNumber, numberOfBatches, domainsToString(batch).utf8().data());
+        RELEASE_LOG_INFO(ITPDebug, "%" PUBLIC_LOG_STRING " to (%{public}d of %u): %" PUBLIC_LOG_STRING ".", action, batchNumber, numberOfBatches, domainsToString(batch).utf8().data());
+}
+
+bool ResourceLoadStatisticsStore::shouldExemptFromWebsiteDataDeletion(const RegistrableDomain& domain) const
+{
+    return !domain.isEmpty() && (domain == m_standaloneApplicationDomain || m_appBoundDomains.contains(domain));
 }
 
 } // namespace WebKit

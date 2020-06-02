@@ -30,8 +30,6 @@
 
 #include "CodeBlock.h"
 #include "DFGCommon.h"
-#include "InterpreterInlines.h"
-#include "JSCInlines.h"
 #include "Options.h"
 
 namespace JSC { namespace DFG {
@@ -149,10 +147,12 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_is_undefined_or_null:
     case op_is_boolean:
     case op_is_number:
+    case op_is_big_int:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_cell_with_type:
     case op_is_function:
+    case op_is_constructor:
     case op_not:
     case op_less:
     case op_lesseq:
@@ -253,6 +253,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_get_enumerable_length:
     case op_has_generic_property:
     case op_has_structure_property:
+    case op_has_own_structure_property:
+    case op_in_structure_property:
     case op_has_indexed_property:
     case op_get_direct_pname:
     case op_get_property_enumerator:
@@ -274,6 +276,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_catch:
     case op_create_rest:
     case op_get_rest_length:
+    case op_iterator_open:
+    case op_iterator_next:
     case op_log_shadow_chicken_prologue:
     case op_log_shadow_chicken_tail:
     case op_put_to_scope:
@@ -311,6 +315,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case checkpoint_osr_exit_from_inlined_call_trampoline:
     case checkpoint_osr_exit_trampoline:
     case handleUncaughtException:
+    case op_iterator_open_return_location:
+    case op_iterator_next_return_location:
     case op_call_return_location:
     case op_construct_return_location:
     case op_call_varargs_slow_return_location:

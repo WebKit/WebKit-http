@@ -55,6 +55,12 @@ static const int testFooterBannerHeight = 58;
 
 @implementation MiniBrowserNSTextFinder
 
+- (void)dealloc
+{
+    [_hideInterfaceCallback release];
+    [super dealloc];
+}
+
 - (void)performAction:(NSTextFinderAction)op
 {
     [super performAction:op];
@@ -253,6 +259,8 @@ static BOOL areEssentiallyEqual(double a, double b)
         [menuItem setTitle:[_webView isHidden] ? @"Show Web View" : @"Hide Web View"];
     else if (action == @selector(removeReinsertWebView:))
         [menuItem setTitle:[_webView window] ? @"Remove Web View" : @"Insert Web View"];
+    else if (action == @selector(toggleFullWindowWebView:))
+        [menuItem setTitle:[self webViewFillsWindow] ? @"Inset Web View" : @"Fit Web View to Window"];
     else if (action == @selector(toggleZoomMode:))
         [menuItem setState:_zoomTextOnly ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleEditable:))
@@ -462,6 +470,8 @@ static BOOL areEssentiallyEqual(double a, double b)
     preferences._punchOutWhiteBackgroundsInDarkMode = settings.punchOutWhiteBackgroundsInDarkMode;
 
     _webView.configuration.websiteDataStore._resourceLoadStatisticsEnabled = settings.resourceLoadStatisticsEnabled;
+
+    [self setWebViewFillsWindow:settings.webViewFillsWindow];
 
     BOOL useTransparentWindows = settings.useTransparentWindows;
     if (useTransparentWindows != !_webView._drawsBackground) {

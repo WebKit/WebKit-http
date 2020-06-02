@@ -27,7 +27,6 @@
 #include "JSModuleNamespaceObject.h"
 
 #include "AbstractModuleRecord.h"
-#include "Error.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
 

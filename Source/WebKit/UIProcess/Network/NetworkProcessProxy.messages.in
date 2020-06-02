@@ -23,17 +23,16 @@
 messages -> NetworkProcessProxy LegacyReceiver NotRefCounted {
     DidReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebKit::WebPageProxyIdentifier pageID, Optional<WebCore::SecurityOriginData> topOrigin, WebCore::AuthenticationChallenge challenge, bool negotiatedLegacyTLS, uint64_t challengeID)
     NegotiatedLegacyTLS(WebKit::WebPageProxyIdentifier pageID)
+    DidNegotiateModernTLS(WebKit::WebPageProxyIdentifier pageID, WebCore::AuthenticationChallenge challenge)
 
-    DidFetchWebsiteData(uint64_t callbackID, struct WebKit::WebsiteData websiteData)
-    DidDeleteWebsiteData(uint64_t callbackID)
-    DidDeleteWebsiteDataForOrigins(uint64_t callbackID)
+    DidFetchWebsiteData(WebKit::CallbackID callbackID, struct WebKit::WebsiteData websiteData)
+    DidDeleteWebsiteData(WebKit::CallbackID callbackID)
+    DidDeleteWebsiteDataForOrigins(WebKit::CallbackID callbackID)
 
     DidSyncAllCookies()
 
     TestProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebKit::WebPageProxyIdentifier pageID) -> (bool handled) Synchronous
     TerminateUnresponsiveServiceWorkerProcesses(WebCore::ProcessIdentifier processIdentifier)
-
-    SetIsHoldingLockedFiles(bool isHoldingLockedFiles)
 
     # Diagnostic messages logging
     LogDiagnosticMessage(WebKit::WebPageProxyIdentifier pageID, String message, String description, enum:bool WebCore::ShouldSample shouldSample)
@@ -64,6 +63,10 @@ messages -> NetworkProcessProxy LegacyReceiver NotRefCounted {
     RegisterServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier)
     UnregisterServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier)
 #endif
+
+    SetWebProcessHasUploads(WebCore::ProcessIdentifier processID, bool hasUpload)
+
+    GetAppBoundDomains(PAL::SessionID sessionID) -> (HashSet<WebCore::RegistrableDomain> appBoundDomains) Async
 
     RequestStorageSpace(PAL::SessionID sessionID, struct WebCore::ClientOrigin origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired) -> (Optional<uint64_t> newQuota) Async
     

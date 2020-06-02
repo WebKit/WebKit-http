@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #if PLATFORM(MAC)
 
 #import "AppKitSPI.h"
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
+#import <pal/spi/mac/NSTextInputContextSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
 

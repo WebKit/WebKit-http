@@ -100,9 +100,11 @@ struct TestOptions {
     bool enableLazyImageLoading { false };
     bool allowsLinkPreview { true };
     bool enableCaptureVideoInUIProcess { false };
-    bool enableCaptureVideoInGPUProcess { true };
-    bool enableCaptureAudioInGPUProcess { true };
+    bool enableCaptureVideoInGPUProcess { false };
+    bool enableCaptureAudioInGPUProcess { false };
     bool allowTopNavigationToDataURLs { true };
+    bool enableInAppBrowserPrivacy { false };
+    bool isAppBoundWebView { false };
 
     double contentInsetTop { 0 };
 
@@ -110,6 +112,7 @@ struct TestOptions {
     std::string applicationManifest;
     std::string jscOptions;
     std::string additionalSupportedImageTypes;
+    std::string standaloneWebApplicationURL;
     HashMap<String, bool> experimentalFeatures;
     HashMap<String, bool> internalDebugFeatures;
     String contentMode;
@@ -168,7 +171,10 @@ struct TestOptions {
             || enableCaptureVideoInUIProcess != options.enableCaptureVideoInUIProcess
             || enableCaptureVideoInGPUProcess != options.enableCaptureVideoInGPUProcess
             || enableCaptureAudioInGPUProcess != options.enableCaptureAudioInGPUProcess
-            || allowTopNavigationToDataURLs != options.allowTopNavigationToDataURLs)
+            || allowTopNavigationToDataURLs != options.allowTopNavigationToDataURLs
+            || enableInAppBrowserPrivacy != options.enableInAppBrowserPrivacy
+            || standaloneWebApplicationURL != options.standaloneWebApplicationURL
+            || isAppBoundWebView != options.isAppBoundWebView)
             return false;
 
         if (!contextOptions.hasSameInitializationOptions(options.contextOptions))

@@ -53,17 +53,14 @@
 #import "_WKFrameHandleInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKWebAuthenticationPanelInternal.h"
+#import <AVFoundation/AVCaptureDevice.h>
+#import <AVFoundation/AVMediaFormat.h>
 #import <WebCore/FontAttributes.h>
 #import <WebCore/SecurityOriginData.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/URL.h>
 
-#if HAVE(AUTHORIZATION_STATUS_FOR_MEDIA_TYPE)
-#import <AVFoundation/AVCaptureDevice.h>
-#import <AVFoundation/AVMediaFormat.h>
-
 #import <pal/cocoa/AVFoundationSoftLink.h>
-#endif
 
 namespace WebKit {
 
@@ -916,8 +913,8 @@ static void requestUserMediaAuthorizationForFrame(const WebFrameProxy& frame, AP
         return;
     }
 
-    URL requestFrameURL { URL(), frame.url() };
-    URL mainFrameURL { URL(), mainFrame->url() };
+    URL requestFrameURL { frame.url() };
+    URL mainFrameURL { mainFrame->url() };
 
     [delegate _webView:&webView requestUserMediaAuthorizationForDevices:devices url:requestFrameURL mainFrameURL:mainFrameURL decisionHandler:decisionHandler.get()];
 }
@@ -940,7 +937,6 @@ void UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebPageProx
         return;
     }
 
-#if HAVE(AUTHORIZATION_STATUS_FOR_MEDIA_TYPE)
     bool usingMockCaptureDevices = page.preferences().mockCaptureDevicesEnabled();
     auto requestCameraAuthorization = makeBlockPtr([this, &frame, protectedRequest = makeRef(request), webView = RetainPtr<WKWebView>(m_uiDelegate.m_webView), topLevelOrigin = makeRef(topLevelOrigin), usingMockCaptureDevices]() mutable {
 
@@ -995,9 +991,6 @@ void UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebPageProx
         }
     } else
         requestCameraAuthorization();
-#else
-    requestUserMediaAuthorizationForFrame(frame, topLevelOrigin, request, (id <WKUIDelegatePrivate>)m_uiDelegate.m_delegate.get(), *m_uiDelegate.m_webView);
-#endif
 #endif
 }
 
@@ -1034,8 +1027,8 @@ void UIDelegate::UIClient::checkUserMediaPermissionForOrigin(WebPageProxy& page,
         protectedRequest->setUserMediaAccessInfo(authorized);
     });
 
-    URL requestFrameURL { URL(), frame.url() };
-    URL mainFrameURL { URL(), mainFrame->url() };
+    URL requestFrameURL { frame.url() };
+    URL mainFrameURL { mainFrame->url() };
 
     [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView checkUserMediaPermissionForURL:requestFrameURL mainFrameURL:mainFrameURL frameIdentifier:frame.frameID().toUInt64() decisionHandler:decisionHandler.get()];
 }

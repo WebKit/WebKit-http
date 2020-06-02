@@ -39,10 +39,6 @@ class DataReference;
 class Decoder;
 }
 
-namespace WebCore {
-class SharedBuffer;
-}
-
 namespace WebKit {
 
 class LibWebRTCSocketFactory;
@@ -69,8 +65,8 @@ public:
 private:
     bool willSend(size_t);
 
-    friend class WebRTCSocket;
-    void signalReadPacket(const WebCore::SharedBuffer&, rtc::SocketAddress&&, int64_t);
+    friend class LibWebRTCNetwork;
+    void signalReadPacket(const uint8_t*, size_t, rtc::SocketAddress&&, int64_t);
     void signalSentPacket(int, int64_t);
     void signalAddressReady(const rtc::SocketAddress&);
     void signalConnect();
@@ -88,8 +84,6 @@ private:
     State GetState() const final { return m_state; }
     int GetOption(rtc::Socket::Option, int*) final;
     int SetOption(rtc::Socket::Option, int) final;
-
-    static void sendOnMainThread(Function<void(IPC::Connection&)>&&);
 
     LibWebRTCSocketFactory& m_factory;
     WebCore::LibWebRTCSocketIdentifier m_identifier;

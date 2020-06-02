@@ -27,23 +27,18 @@
 #include "WasmEntryPlan.h"
 
 #include "WasmBinding.h"
-#include "WasmFaultSignalHandler.h"
-#include "WasmMemory.h"
-#include "WasmSignatureInlines.h"
-#include <wtf/CrossThreadCopier.h>
 #include <wtf/DataLog.h>
 #include <wtf/Locker.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/SystemTracing.h>
-#include <wtf/text/StringConcatenateNumbers.h>
 
 #if ENABLE(WEBASSEMBLY)
 
 namespace JSC { namespace Wasm {
 
 namespace WasmEntryPlanInternal {
-static const bool verbose = false;
+static constexpr bool verbose = false;
 }
 
 EntryPlan::EntryPlan(Context* context, Ref<ModuleInformation> info, AsyncWork work, CompletionTask&& task)

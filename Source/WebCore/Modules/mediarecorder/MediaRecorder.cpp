@@ -44,7 +44,7 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(MediaRecorder);
 
-creatorFunction MediaRecorder::m_customCreator = nullptr;
+MediaRecorder::CreatorFunction MediaRecorder::m_customCreator = nullptr;
 
 ExceptionOr<Ref<MediaRecorder>> MediaRecorder::create(Document& document, Ref<MediaStream>&& stream, Options&& options)
 {
@@ -59,15 +59,15 @@ ExceptionOr<Ref<MediaRecorder>> MediaRecorder::create(Document& document, Ref<Me
     return recorder;
 }
 
-void MediaRecorder::setCustomPrivateRecorderCreator(creatorFunction creator)
+void MediaRecorder::setCustomPrivateRecorderCreator(CreatorFunction creator)
 {
     m_customCreator = creator;
 }
 
-std::unique_ptr<MediaRecorderPrivate> MediaRecorder::createMediaRecorderPrivate(Document& document, const MediaStreamPrivate& stream)
+std::unique_ptr<MediaRecorderPrivate> MediaRecorder::createMediaRecorderPrivate(Document& document, MediaStreamPrivate& stream)
 {
     if (m_customCreator)
-        return m_customCreator();
+        return m_customCreator(stream);
 
 #if PLATFORM(COCOA)
     auto* page = document.page();
@@ -91,12 +91,12 @@ MediaRecorder::MediaRecorder(Document& document, Ref<MediaStream>&& stream, std:
     m_tracks = WTF::map(m_stream->getTracks(), [] (auto&& track) -> Ref<MediaStreamTrackPrivate> {
         return track->privateTrack();
     });
-    m_stream->addObserver(this);
+    m_stream->privateStream().addObserver(*this);
 }
 
 MediaRecorder::~MediaRecorder()
 {
-    m_stream->removeObserver(this);
+    m_stream->privateStream().removeObserver(*this);
     stopRecordingInternal();
 }
 
@@ -194,7 +194,7 @@ void MediaRecorder::stopRecordingInternal()
     m_private->stopRecording();
 }
 
-void MediaRecorder::didAddOrRemoveTrack()
+void MediaRecorder::handleTrackChange()
 {
     queueTaskKeepingObjectAlive(*this, TaskSource::Networking, [this] {
         if (!m_isActive || state() == RecordingState::Inactive)
@@ -220,16 +220,6 @@ void MediaRecorder::trackEnded(MediaStreamTrackPrivate&)
         return;
 
     stopRecording();
-}
-
-void MediaRecorder::sampleBufferUpdated(MediaStreamTrackPrivate& track, MediaSample& mediaSample)
-{
-    m_private->sampleBufferUpdated(track, mediaSample);
-}
-
-void MediaRecorder::audioSamplesAvailable(MediaStreamTrackPrivate& track, const MediaTime& mediaTime, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t sampleCount)
-{
-    m_private->audioSamplesAvailable(track, mediaTime, audioData, description, sampleCount);
 }
 
 bool MediaRecorder::virtualHasPendingActivity() const

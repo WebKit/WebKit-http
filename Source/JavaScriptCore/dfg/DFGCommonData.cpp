@@ -32,10 +32,8 @@
 #include "DFGNode.h"
 #include "DFGPlan.h"
 #include "InlineCallFrame.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include "TrackedReferences.h"
-#include "VM.h"
-
 #include <wtf/NeverDestroyed.h>
 
 namespace JSC { namespace DFG {

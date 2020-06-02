@@ -96,17 +96,20 @@ function mac_process_webcontent_or_plugin_entitlements()
 function maccatalyst_process_webcontent_entitlements()
 {
     plistbuddy Add :com.apple.security.cs.allow-jit bool YES
+    plistbuddy Add :com.apple.runningboard.assertions.webkit bool YES
 }
 
 function maccatalyst_process_gpu_entitlements()
 {
     plistbuddy Add :com.apple.security.network.client bool YES
+    plistbuddy Add :com.apple.runningboard.assertions.webkit bool YES
 }
 
 function maccatalyst_process_network_entitlements()
 {
     plistbuddy Add :com.apple.private.network.socket-delegate bool YES
     plistbuddy Add :com.apple.security.network.client bool YES
+    plistbuddy Add :com.apple.runningboard.assertions.webkit bool YES
 
     plistbuddy Add :com.apple.private.tcc.manager.check-by-audit-token array
     plistbuddy Add :com.apple.private.tcc.manager.check-by-audit-token:0 string kTCCServiceWebKitIntelligentTrackingPrevention
@@ -162,6 +165,7 @@ function ios_family_process_gpu_entitlements()
     plistbuddy Add :com.apple.private.coremedia.pidinheritance.allow bool YES
     plistbuddy Add :com.apple.private.memorystatus bool YES
     plistbuddy Add :com.apple.private.network.socket-delegate bool YES
+    plistbuddy Add :com.apple.runningboard.assertions.webkit bool YES
 
     plistbuddy Add :com.apple.tcc.delegated-services array
     plistbuddy Add :com.apple.tcc.delegated-services:0 string kTCCServiceCamera
@@ -179,6 +183,7 @@ function ios_family_process_network_entitlements()
     plistbuddy Add :com.apple.private.dmd.policy bool YES
     plistbuddy Add :com.apple.private.memorystatus bool YES
     plistbuddy Add :com.apple.private.network.socket-delegate bool YES
+    plistbuddy Add :com.apple.runningboard.assertions.webkit bool YES
 
     plistbuddy Add :com.apple.private.tcc.manager.check-by-audit-token array
     plistbuddy Add :com.apple.private.tcc.manager.check-by-audit-token:0 string kTCCServiceWebKitIntelligentTrackingPrevention
@@ -200,9 +205,10 @@ function ios_family_process_plugin_entitlements()
 rm -f "${WK_PROCESSED_XCENT_FILE}"
 plistbuddy Clear dict
 
+# Simulator entitlements should be added to Resources/ios/XPCService-ios-simulator.entitlements
 if [[ "${WK_PLATFORM_NAME}" =~ .*simulator ]]
 then
-    [[ "${RC_XBS}" != YES ]] && plistbuddy Add :com.apple.security.get-task-allow bool YES
+    cp "${CODE_SIGN_ENTITLEMENTS}" "${WK_PROCESSED_XCENT_FILE}"
 elif [[ "${WK_PLATFORM_NAME}" == macosx ]]
 then
     [[ "${RC_XBS}" != YES ]] && plistbuddy Add :com.apple.security.get-task-allow bool YES

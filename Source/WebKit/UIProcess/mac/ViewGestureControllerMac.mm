@@ -144,7 +144,7 @@ void ViewGestureController::handleMagnificationGestureEvent(NSEvent *event, Floa
 
         // FIXME: We drop the first frame of the gesture on the floor, because we don't have the visible content bounds yet.
         m_magnification = m_webPageProxy.pageScaleFactor();
-        m_webPageProxy.process().send(Messages::ViewGestureGeometryCollector::CollectGeometryForMagnificationGesture(), m_webPageProxy.webPageID());
+        m_webPageProxy.send(Messages::ViewGestureGeometryCollector::CollectGeometryForMagnificationGesture());
         m_lastMagnificationGestureWasSmartMagnification = false;
 
         return;
@@ -198,7 +198,7 @@ void ViewGestureController::handleSmartMagnificationGesture(FloatPoint origin)
     if (m_activeGestureType != ViewGestureType::None)
         return;
 
-    m_webPageProxy.process().send(Messages::ViewGestureGeometryCollector::CollectGeometryForSmartMagnificationGesture(origin), m_webPageProxy.webPageID());
+    m_webPageProxy.send(Messages::ViewGestureGeometryCollector::CollectGeometryForSmartMagnificationGesture(origin));
 }
 
 static float maximumRectangleComponentDelta(FloatRect a, FloatRect b)
@@ -609,9 +609,18 @@ void ViewGestureController::removeSwipeSnapshot()
         return;
     }
 
+    resetState();
+}
+
+void ViewGestureController::resetState()
+{
     if (m_currentSwipeSnapshot)
         m_currentSwipeSnapshot->setVolatile(true);
     m_currentSwipeSnapshot = nullptr;
+
+    if (m_swipeCancellationTracker)
+        [m_swipeCancellationTracker setIsCancelled:YES];
+    m_swipeCancellationTracker = nil;
 
     for (const auto& layer : m_currentSwipeLiveLayers)
         [layer setTransform:CATransform3DIdentity];
@@ -635,6 +644,12 @@ void ViewGestureController::removeSwipeSnapshot()
     m_backgroundColorForCurrentSnapshot = Color();
 
     didEndGesture();
+}
+
+void ViewGestureController::reset()
+{
+    removeSwipeSnapshot();
+    resetState();
 }
 
 double ViewGestureController::magnification() const

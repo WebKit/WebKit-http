@@ -28,6 +28,7 @@
 #include "DrawingAreaProxy.h"
 #include "RemoteLayerTreeHost.h"
 #include "TransactionID.h"
+#include <WebCore/AnimationFrameRate.h>
 #include <WebCore/FloatPoint.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntSize.h>
@@ -71,7 +72,7 @@ private:
     void dispatchAfterEnsuringDrawing(WTF::Function<void (CallbackBase::Error)>&&) override;
 
 #if PLATFORM(MAC)
-    void setViewExposedRect(Optional<WebCore::FloatRect>) override;
+    void didChangeViewExposedRect() override;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -97,6 +98,7 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // Message handlers
+    void setPreferredFramesPerSecond(WebCore::FramesPerSecond);
     void willCommitLayerTree(TransactionID);
     void commitLayerTree(const RemoteLayerTreeTransaction&, const RemoteScrollingCoordinatorTransaction&);
     

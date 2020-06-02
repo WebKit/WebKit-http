@@ -66,7 +66,9 @@ public:
 
     WEBCORE_EXPORT void click();
 
-    void accessKeyAction(bool sendMouseEvents) override;
+    bool accessKeyAction(bool sendMouseEvents) override;
+
+    String accessKeyLabel() const;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     bool rendererIsEverNeeded() final;

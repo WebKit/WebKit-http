@@ -1,3 +1,291 @@
+2020-06-01  David Kilzer  <ddkilzer@apple.com>
+
+        Don't use casts to convert between WebCore::DragDestinationAction and {Web,WK}DragDestinationAction types
+        <https://webkit.org/b/212507>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (kit):
+        - Add conversion function to avoid casting.
+        (WebDragClient::willPerformDragDestinationAction):
+        - Make use of kit() conversion function.
+
+2020-06-01  Sam Weinig  <weinig@apple.com>
+
+        Extended Color: Replace Color constructors taking numeric values with type specific factory functions
+        https://bugs.webkit.org/show_bug.cgi?id=212576
+
+        Reviewed by Tim Horton.
+
+        Replaces all remaining implicit and explicit uses of the Color constructors taking numeric
+        values with explicit calls to makeSimpleColor/makeSimpleColorFromFloats/makeExtendedColor,
+        giving us a consistent way to create colors. Also addes use constexpr SimpleColors where possible.
+
+        * WebView.cpp:
+        (compositionToUnderlines):
+
+2020-06-01  Rob Buis  <rbuis@igalia.com>
+
+        Rename ResourceResponseBase::isHTTP to isInHTTPFamily
+        https://bugs.webkit.org/show_bug.cgi?id=208782
+
+        Reviewed by Sam Weinig.
+
+        Adapt to API change.
+
+        * Plugins/PluginStream.cpp:
+        (WebCore::PluginStream::startStream):
+        * WebURLResponse.cpp:
+        (WebURLResponse::QueryInterface):
+        (WebURLResponse::allHeaderFields):
+        (WebURLResponse::localizedStringForStatusCode):
+        (WebURLResponse::statusCode):
+
+2020-05-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] ASSERT(m_eglDisplay == EGL_NO_DISPLAY) fails in ~PlatformDisplay()
+        https://bugs.webkit.org/show_bug.cgi?id=212065
+
+        Reviewed by Don Olmstead.
+
+        * WebKitDLL.cpp:
+        (shutDownWebKit): Don't call PlatformDisplay::shutDownEglDisplays().
+
+2020-05-12  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Neuter WKFrameIsFrameSet() / WKPageGetFrameSetLargestFrame() C API
+        https://bugs.webkit.org/show_bug.cgi?id=211808
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidBecomeFrameset): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2020-05-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][WK1] requestAnimationFrame doesn't work since r244182 in Accelerated Compositing mode
+        https://bugs.webkit.org/show_bug.cgi?id=211798
+
+        Reviewed by Don Olmstead.
+
+        Page::updateRendering() should be called for every frames instead
+        of FrameView::updateLayoutAndStyleIfNeededRecursive for rAF after
+        r244182.
+
+        WinCairo doesn't destory m_acceleratedCompositingContext after it
+        was created. WebView::flushPendingGraphicsLayerChangesSoon should
+        check if accelerated compositing mode is enabled by using
+        isAcceleratedCompositing() not by null check of
+        m_acceleratedCompositingContext.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::flushAndRenderLayers): Call Page::updateRendering() instead of updateLayoutAndStyleIfNeededRecursive.
+        * WebView.cpp:
+        (WebView::flushPendingGraphicsLayerChangesSoon): Check isAcceleratedCompositing().
+
+2020-05-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][WK1] requestAnimationFrame doesn't work since r261113
+        https://bugs.webkit.org/show_bug.cgi?id=211702
+
+        Reviewed by Darin Adler.
+
+        Since r261113 (Bug 204713), WinCairo WK1 is failing some rAF tests
+        even though AppleWin isn't.
+
+        WinCairo also should do m_page->updateRendering() in
+        WebView::flushPendingGraphicsLayerChangesSoon as well as AppleWin.
+
+        * WebView.cpp:
+        (WebView::flushPendingGraphicsLayerChangesSoon): Call
+        updateRendering.
+
+2020-04-27  Antoine Quint  <graouts@apple.com>
+
+        Rename CSSAnimationController accessors from animation() to legacyAnimation()
+        https://bugs.webkit.org/show_bug.cgi?id=211082
+
+        Reviewed by Simon Fraser.
+
+        * WebFrame.cpp:
+        (WebFrame::resumeAnimations):
+        (WebFrame::suspendAnimations):
+        (WebFrame::pauseAnimation):
+        (WebFrame::pauseTransition):
+        (WebFrame::numberOfActiveAnimations):
+
+2020-04-27  Rob Buis  <rbuis@igalia.com>
+
+        Make loadURLIntoChildFrame private and non-exported
+        https://bugs.webkit.org/show_bug.cgi?id=211051
+
+        Reviewed by Darin Adler.
+
+        Adapt createFrame to strictly create a subframe and
+        not load anything.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createFrame):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2020-04-27  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] CallData/ConstructData should include CallType/ConstructType
+        https://bugs.webkit.org/show_bug.cgi?id=211059
+
+        Reviewed by Darin Adler.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::NPN_Invoke):
+
+2020-04-21  Darin Adler  <darin@apple.com>
+
+        Stop using live ranges in functions that return range of the selection
+        https://bugs.webkit.org/show_bug.cgi?id=210396
+
+        Reviewed by Sam Weinig.
+
+        * WebView.cpp:
+        (WebView::prepareCandidateWindow): Updated since toNormalizedRange
+        returns a SimpleRange.
+        (WebView::onIMERequestCharPosition): Ditto.
+        (WebView::onIMERequestReconvertString): Ditto.
+
+2020-04-25  Darin Adler  <darin@apple.com>
+
+        Move URL to use StringView when returning substrings of the URL
+        https://bugs.webkit.org/show_bug.cgi?id=210431
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/PluginDatabase.cpp:
+        (WebCore::PluginDatabase::PluginDatabase): Moved initialization of
+        m_persistentMetadataCacheIsLoaded to the class definition.
+        (WebCore::PluginDatabase::MIMETypeForExtension const): Take StringView.
+        (WebCore::PluginDatabase::findPlugin): Use StringView.
+
+        * Plugins/PluginDatabase.h: Changed MIMETypeForExtension to take
+        a StringView. Took out some unneeded declarations. Initialized
+        m_persistentMetadataCacheIsLoaded here in the class definition.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::objectContentType): Use StringView a little more.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle): Streamlined the implementation a bit.
+        (WebContextMenuClient::lookUpInDictionary): Added "using namespace WebCore".
+
+2020-04-24  Antoine Quint  <graouts@apple.com>
+
+        Update the css/css-animations WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=210964
+
+        Reviewed by Dean Jackson.
+
+        Expose the CSSCustomPropertiesAndValues experimental feature such that it may be set in DumpRenderTree.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-04-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Classes marked final should not use protected access specifier
+        https://bugs.webkit.org/show_bug.cgi?id=210775
+
+        Reviewed by Daniel Bates.
+
+        * DefaultDownloadDelegate.h:
+        * DefaultPolicyDelegate.h:
+        * MemoryStream.h:
+        * WebApplicationCache.h:
+        * WebArchive.h:
+        * WebBackForwardList.h:
+        * WebCache.h:
+        * WebCoreStatistics.h:
+        * WebDataSource.h:
+        * WebElementPropertyBag.h:
+        * WebError.h:
+        * WebFrame.h:
+        * WebFramePolicyListener.h:
+        * WebHTMLRepresentation.h:
+        * WebHistoryItem.h:
+        * WebJavaScriptCollector.h:
+        * WebKitClassFactory.h:
+        * WebKitStatistics.h:
+        * WebMutableURLRequest.h:
+        * WebNotification.h:
+        * WebNotificationCenter.h:
+        * WebPreferences.h:
+        * WebResource.h:
+        * WebURLAuthenticationChallenge.h:
+        * WebURLCredential.h:
+        * WebURLProtectionSpace.h:
+        * WebURLResponse.h:
+
+2020-04-18  Rob Buis  <rbuis@igalia.com>
+
+        Reduce parameter list of the FrameLoadRequest constructor
+        https://bugs.webkit.org/show_bug.cgi?id=210668
+
+        Reviewed by Darin Adler.
+
+        Adapt to API change.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::start):
+        (WebCore::PluginView::performRequest):
+        (WebCore::PluginView::getURLNotify):
+        (WebCore::PluginView::getURL):
+        (WebCore::PluginView::handlePost):
+        * WebFrame.cpp:
+        (WebFrame::loadRequest):
+        (WebFrame::loadData):
+
+2020-04-17  Rob Buis  <rbuis@igalia.com>
+
+        Move allowPlugins to FrameLoader
+        https://bugs.webkit.org/show_bug.cgi?id=205876
+
+        Reviewed by Darin Adler.
+
+        Adapt to API change.
+
+        * WebView.cpp:
+        (WebView::canShowMIMEType):
+
+2020-04-08  Daniel Bates  <dabates@apple.com>
+
+        Should find touch-action elements inside non-composited iframes
+        https://bugs.webkit.org/show_bug.cgi?id=210041
+        <rdar://problem/61323558>
+
+        Reviewed by Simon Fraser.
+
+        Pass EventRegionContext through. It is unused as it's not applicable for plugin painting.
+
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::paint):
+
+2020-04-03  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to make WKUserScripts wait for a notification
+        https://bugs.webkit.org/show_bug.cgi?id=209845
+        <rdar://problem/60342299>
+
+        Reviewed by Chris Dumez.
+
+        * WebView.cpp:
+        (WebView::addUserScriptToGroup):
+        (WebView::addUserStyleSheetToGroup):
+
 2020-04-01  Darin Adler  <darin@apple.com>
 
         Remove all uses of live ranges from TextIterator

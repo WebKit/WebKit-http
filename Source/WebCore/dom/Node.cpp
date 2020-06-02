@@ -64,6 +64,7 @@
 #include "RenderBox.h"
 #include "RenderTextControl.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGElement.h"
 #include "ScopedEventQueue.h"
 #include "ScriptDisallowedScope.h"
@@ -77,6 +78,7 @@
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include <JavaScriptCore/HeapInlines.h>
+#include <wtf/HexNumber.h>
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/SHA1.h>
@@ -1101,12 +1103,6 @@ const RenderStyle* Node::computedStyle(PseudoId pseudoElementSpecifier)
     return composedParent->computedStyle(pseudoElementSpecifier);
 }
 
-int Node::maxCharacterOffset() const
-{
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
 // FIXME: Shouldn't these functions be in the editing code?  Code that asks questions about HTML in the core DOM class
 // is obviously misplaced.
 bool Node::canStartSelection() const
@@ -1749,6 +1745,13 @@ FloatPoint Node::convertFromPage(const FloatPoint& p) const
 
     // No parent - no conversion needed
     return p;
+}
+
+String Node::debugDescription() const
+{
+    StringBuilder builder;
+    builder.append(nodeName(), " 0x"_s, hex(reinterpret_cast<uintptr_t>(this), Lowercase));
+    return builder.toString();
 }
 
 #if ENABLE(TREE_DEBUGGING)
@@ -2408,6 +2411,9 @@ void Node::dispatchDOMActivateEvent(Event& underlyingClickEvent)
 
 bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().legacyBeforeLoadEventEnabled())
+        return true;
+
     if (!document().hasListenerType(Document::BEFORELOAD_LISTENER))
         return true;
 
@@ -2552,13 +2558,6 @@ void Node::removedLastRef()
     delete this;
 }
 
-void Node::textRects(Vector<IntRect>& rects) const
-{
-    auto range = Range::create(document());
-    range->selectNodeContents(const_cast<Node&>(*this));
-    range->absoluteTextRects(rects);
-}
-
 unsigned Node::connectedSubframeCount() const
 {
     return hasRareData() ? rareData()->connectedSubframeCount() : 0;
@@ -2617,17 +2616,37 @@ void* Node::opaqueRootSlow() const
     return const_cast<void*>(static_cast<const void*>(node));
 }
 
+static size_t depth(Node& node)
+{
+    size_t depth = 0;
+    auto ancestor = &node;
+    while ((ancestor = ancestor->parentNode()))
+        ++depth;
+    return depth;
+}
+
+RefPtr<Node> commonInclusiveAncestor(Node& a, Node& b)
+{
+    // This first check isn't needed for correctness, but it is cheap and likely to be
+    // common enough to be worth optimizing so we don't have to walk to the root.
+    if (&a == &b)
+        return &a;
+    auto [depthA, depthB] = std::make_tuple(depth(a), depth(b));
+    auto [x, y, difference] = depthA > depthB
+        ? std::make_tuple(&a, &b, depthA - depthB)
+        : std::make_tuple(&b, &a, depthB - depthA);
+    for (decltype(difference) i = 0; i < difference; ++i)
+        x = x->parentNode();
+    while (x != y) {
+        x = x->parentNode();
+        y = y->parentNode();
+    }
+    return x;
+}
+
 TextStream& operator<<(TextStream& ts, const Node& node)
 {
-#if ENABLE(TREE_DEBUGGING)
-    const size_t FormatBufferSize = 512;
-    char s[FormatBufferSize];
-    node.formatForDebugger(s, FormatBufferSize);
-    ts << "node " << &node << " " << s;
-#else
-    ts << "node " << &node << " " << node.nodeName();
-#endif
-
+    ts << "node " << &node << " " << node.debugDescription();
     return ts;
 }
 

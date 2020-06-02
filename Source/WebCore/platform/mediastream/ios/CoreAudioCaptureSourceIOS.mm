@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "CoreAudioCaptureSourceIOS.h"
+#import "config.h"
+#import "CoreAudioCaptureSourceIOS.h"
 
 #if ENABLE(MEDIA_STREAM) && PLATFORM(IOS_FAMILY)
 
@@ -100,12 +100,6 @@ CoreAudioCaptureSourceFactory& CoreAudioCaptureSourceFactory::singleton()
 {
     static NeverDestroyed<CoreAudioCaptureSourceFactoryIOS> factory;
     return factory.get();
-}
-
-void CoreAudioCaptureSourceFactory::setAudioCapturePageState(bool interrupted, bool pageMuted)
-{
-    if (auto* activeSource = this->activeSource())
-        activeSource->setInterrupted(interrupted, pageMuted);
 }
 
 }

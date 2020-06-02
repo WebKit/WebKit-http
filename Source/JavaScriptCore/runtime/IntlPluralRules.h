@@ -25,20 +25,11 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "JSObject.h"
 #include <unicode/unum.h>
 #include <unicode/upluralrules.h>
-#include <unicode/uvernum.h>
-
-#define HAVE_ICU_PLURALRULES_KEYWORDS (U_ICU_VERSION_MAJOR_NUM >= 59)
-#define HAVE_ICU_PLURALRULES_WITH_FORMAT (U_ICU_VERSION_MAJOR_NUM >= 59)
 
 namespace JSC {
-
-class IntlPluralRulesConstructor;
-class JSBoundFunction;
 
 class IntlPluralRules final : public JSNonFinalObject {
 public:
@@ -63,15 +54,16 @@ public:
     DECLARE_INFO;
 
     void initializePluralRules(JSGlobalObject*, JSValue locales, JSValue options);
-    JSValue select(JSGlobalObject*, double value);
-    JSObject* resolvedOptions(JSGlobalObject*);
+    JSValue select(JSGlobalObject*, double value) const;
+    JSObject* resolvedOptions(JSGlobalObject*) const;
 
-protected:
+private:
     IntlPluralRules(VM&, Structure*);
     void finishCreation(VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-private:
+    static Vector<String> localeData(const String&, size_t);
+
     struct UPluralRulesDeleter {
         void operator()(UPluralRules*) const;
     };
@@ -79,7 +71,6 @@ private:
         void operator()(UNumberFormat*) const;
     };
 
-    bool m_initializedPluralRules { false };
     std::unique_ptr<UPluralRules, UPluralRulesDeleter> m_pluralRules;
     std::unique_ptr<UNumberFormat, UNumberFormatDeleter> m_numberFormat;
 
@@ -93,5 +84,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

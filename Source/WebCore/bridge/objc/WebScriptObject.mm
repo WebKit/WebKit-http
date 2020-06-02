@@ -58,7 +58,6 @@ using namespace JSC::Bindings;
 using namespace WebCore;
 
 using JSC::CallData;
-using JSC::CallType;
 using JSC::Identifier;
 using JSC::JSLockHolder;
 using JSC::JSObject;
@@ -347,9 +346,8 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
     UNUSED_PARAM(scope);
 
     JSC::JSValue function = [self _imp]->get(lexicalGlobalObject, Identifier::fromString(vm, String(name)));
-    CallData callData;
-    CallType callType = getCallData(vm, function, callData);
-    if (callType == CallType::None)
+    auto callData = getCallData(vm, function);
+    if (callData.type == CallData::Type::None)
         return nil;
 
     MarkedArgumentBuffer argList;
@@ -360,7 +358,7 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
         return nil;
 
     NakedPtr<JSC::Exception> exception;
-    JSC::JSValue result = JSExecState::profiledCall(lexicalGlobalObject, JSC::ProfilingReason::Other, function, callType, callData, [self _imp], argList, exception);
+    JSC::JSValue result = JSExecState::profiledCall(lexicalGlobalObject, JSC::ProfilingReason::Other, function, callData, [self _imp], argList, exception);
 
     if (exception) {
         addExceptionToConsole(lexicalGlobalObject, exception);
@@ -586,7 +584,7 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
         return asString(value)->value(rootObject->globalObject());
 
     if (value.isNumber())
-        return [NSNumber numberWithDouble:value.asNumber()];
+        return @(value.asNumber());
 
     if (value.isBoolean())
         return [NSNumber numberWithBool:value.asBoolean()];
@@ -647,13 +645,11 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
 
 @implementation WebUndefined
 
-+ (id)allocWithZone:(NSZone *)unusedZone
++ (instancetype)allocWithZone:(NSZone *)zone
 {
-    UNUSED_PARAM(unusedZone);
-
     static NeverDestroyed<RetainPtr<WebUndefined>> sharedUndefined;
     if (!sharedUndefined.get())
-        sharedUndefined.get() = adoptNS([super allocWithZone:nullptr]);
+        sharedUndefined.get() = adoptNS([super allocWithZone:zone]);
     return [sharedUndefined.get() retain];
 }
 
@@ -662,7 +658,7 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
     return @"undefined";
 }
 
-- (id)initWithCoder:(NSCoder *)unusedCoder
+- (nullable instancetype)initWithCoder:(NSCoder *)unusedCoder
 {
     UNUSED_PARAM(unusedCoder);
 
@@ -681,7 +677,7 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
     return self;
 }
 
-- (id)retain
+- (instancetype)retain
 {
     return self;
 }
@@ -695,7 +691,7 @@ static void getListFromNSArray(JSC::JSGlobalObject* lexicalGlobalObject, NSArray
     return NSUIntegerMax;
 }
 
-- (id)autorelease
+- (instancetype)autorelease
 {
     return self;
 }
@@ -709,7 +705,7 @@ IGNORE_WARNINGS_END
 
 + (WebUndefined *)undefined
 {
-    return [[WebUndefined allocWithZone:NULL] autorelease];
+    return [[[WebUndefined alloc] init] autorelease];
 }
 
 @end

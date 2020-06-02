@@ -26,14 +26,11 @@
 
 #pragma once
 
-#if ENABLE(INTL)
-
 #include "InternalFunction.h"
 #include "IntlObject.h"
 
 namespace JSC {
 
-class IntlNumberFormat;
 class IntlNumberFormatPrototype;
 
 class IntlNumberFormatConstructor final : public InternalFunction {
@@ -46,16 +43,10 @@ public:
 
     DECLARE_INFO;
 
-    Structure* numberFormatStructure(VM&) const { return globalObject()->numberFormatStructure(); }
-
-protected:
-    void finishCreation(VM&, IntlNumberFormatPrototype*);
-
 private:
     IntlNumberFormatConstructor(VM&, Structure*);
+    void finishCreation(VM&, IntlNumberFormatPrototype*);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(IntlNumberFormatConstructor, InternalFunction);
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

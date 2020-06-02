@@ -61,7 +61,7 @@ void BaseChooserOnlyDateAndTimeInputType::handleDOMActivateEvent(Event&)
 
 void BaseChooserOnlyDateAndTimeInputType::createShadowSubtree()
 {
-    static NeverDestroyed<AtomString> valueContainerPseudo("-webkit-date-and-time-value", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> valueContainerPseudo("-webkit-date-and-time-value", AtomString::ConstructFromLiteral);
 
     ASSERT(element());
     auto valueContainer = HTMLDivElement::create(element()->document());
@@ -130,11 +130,11 @@ void BaseChooserOnlyDateAndTimeInputType::handleKeyupEvent(KeyboardEvent& event)
     BaseClickableWithKeyInputType::handleKeyupEvent(*this, event);
 }
 
-void BaseChooserOnlyDateAndTimeInputType::accessKeyAction(bool sendMouseEvents)
+bool BaseChooserOnlyDateAndTimeInputType::accessKeyAction(bool sendMouseEvents)
 {
     BaseDateAndTimeInputType::accessKeyAction(sendMouseEvents);
     ASSERT(element());
-    BaseClickableWithKeyInputType::accessKeyAction(*element(), sendMouseEvents);
+    return BaseClickableWithKeyInputType::accessKeyAction(*element(), sendMouseEvents);
 }
 
 bool BaseChooserOnlyDateAndTimeInputType::isMouseFocusable() const

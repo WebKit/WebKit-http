@@ -27,12 +27,8 @@
 #include "JSArrayBufferConstructor.h"
 
 #include "BuiltinNames.h"
-#include "Error.h"
-#include "ExceptionHelpers.h"
-#include "GetterSetter.h"
 #include "JSArrayBuffer.h"
-#include "JSArrayBufferPrototype.h"
-#include "JSGlobalObject.h"
+#include "JSArrayBufferView.h"
 #include "JSCInlines.h"
 
 namespace JSC {
@@ -79,9 +75,10 @@ EncodedJSValue JSC_HOST_CALL JSGenericArrayBufferConstructor<sharingMode>::const
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSGenericArrayBufferConstructor* constructor = jsCast<JSGenericArrayBufferConstructor*>(callFrame->jsCallee());
-
-    Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), constructor->globalObject()->arrayBufferStructure(sharingMode));
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* arrayBufferStructure = newTarget == callFrame->jsCallee()
+        ? globalObject->arrayBufferStructure(sharingMode)
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->arrayBufferStructure(sharingMode));
     RETURN_IF_EXCEPTION(scope, { });
 
     unsigned length;

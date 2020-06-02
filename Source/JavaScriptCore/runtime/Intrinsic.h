@@ -26,6 +26,7 @@
 #pragma once
 
 #include "IterationKind.h"
+#include <wtf/Optional.h>
 
 namespace JSC {
 
@@ -118,12 +119,17 @@ enum Intrinsic : uint8_t {
     JSMapGetIntrinsic,
     JSMapHasIntrinsic,
     JSMapSetIntrinsic,
+    JSMapValuesIntrinsic,
+    JSMapKeysIntrinsic,
+    JSMapEntriesIntrinsic,
     JSMapBucketHeadIntrinsic,
     JSMapBucketNextIntrinsic,
     JSMapBucketKeyIntrinsic,
     JSMapBucketValueIntrinsic,
     JSSetHasIntrinsic,
     JSSetAddIntrinsic,
+    JSSetValuesIntrinsic,
+    JSSetEntriesIntrinsic,
     JSSetBucketHeadIntrinsic,
     JSSetBucketNextIntrinsic,
     JSSetBucketKeyIntrinsic,
@@ -186,6 +192,8 @@ enum Intrinsic : uint8_t {
     DataViewSetFloat32,
     DataViewSetFloat64,
 };
+
+Optional<IterationKind> interationKindForIntrinsic(Intrinsic);
 
 const char* intrinsicName(Intrinsic);
 

@@ -35,6 +35,7 @@
 #include "ScrollAnimator.h"
 #include "Scrollbar.h"
 #include "ScrollbarTheme.h"
+#include <wtf/HexNumber.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/TextStream.h>
 
@@ -206,13 +207,13 @@ IntPoint ScrollView::contentsScrollPosition() const
     return scrollPosition();
 }
 
-void ScrollView::setContentsScrollPosition(const IntPoint& position, ScrollClamping clamping)
+void ScrollView::setContentsScrollPosition(const IntPoint& position, ScrollClamping clamping, AnimatedScroll animated)
 {
 #if PLATFORM(IOS_FAMILY)
     if (platformWidget())
         setActualScrollPosition(position);
 #endif
-    setScrollPosition(position, clamping);
+    setScrollPosition(position, clamping, animated);
 }
 
 FloatRect ScrollView::exposedContentRect() const
@@ -513,7 +514,7 @@ void ScrollView::completeUpdatesAfterScrollTo(const IntSize& scrollDelta)
     updateCompositingLayersAfterScrolling();
 }
 
-void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollClamping clamping, bool/* animated*/)
+void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollClamping clamping, AnimatedScroll/* animated*/)
 {
     LOG_WITH_STREAM(Scrolling, stream << "ScrollView::setScrollPosition " << scrollPosition);
 
@@ -525,13 +526,12 @@ void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollC
         return;
     }
 
-    ScrollPosition newScrollPosition = (!delegatesScrolling() && clamping == ScrollClamping::Clamped) ? adjustScrollPositionWithinRange(scrollPosition) : scrollPosition;
-
-    if ((!delegatesScrolling() || currentScrollType() == ScrollType::User) && currentScrollBehaviorStatus() == ScrollBehaviorStatus::NotInAnimation && newScrollPosition == this->scrollPosition())
-        return;
-
     if (currentScrollBehaviorStatus() == ScrollBehaviorStatus::InNonNativeAnimation)
         scrollAnimator().cancelAnimations();
+
+    ScrollPosition newScrollPosition = (!delegatesScrolling() && clamping == ScrollClamping::Clamped) ? adjustScrollPositionWithinRange(scrollPosition) : scrollPosition;
+    if ((!delegatesScrolling() || currentScrollType() == ScrollType::User) && currentScrollBehaviorStatus() == ScrollBehaviorStatus::NotInAnimation && newScrollPosition == this->scrollPosition())
+        return;
 
     if (!requestScrollPositionUpdate(newScrollPosition, currentScrollType(), clamping))
         updateScrollbars(newScrollPosition);
@@ -591,11 +591,19 @@ void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
     if (m_inUpdateScrollbars || prohibitsScrolling() || platformWidget())
         return;
     
-    if (!managesScrollbars()) {
-        if (scrollOriginChanged()) {
-            ScrollableArea::scrollToOffsetWithoutAnimation(scrollOffsetFromPosition(desiredPosition));
+    auto scrollToPosition = [&](ScrollPosition desiredPosition) {
+        auto adjustedScrollPosition = desiredPosition;
+        if (!isRubberBandInProgress())
+            adjustedScrollPosition = adjustScrollPositionWithinRange(adjustedScrollPosition);
+
+        if (adjustedScrollPosition != scrollPosition() || scrollOriginChanged()) {
+            ScrollableArea::scrollToOffsetWithoutAnimation(scrollOffsetFromPosition(adjustedScrollPosition));
             resetScrollOriginChanged();
         }
+    };
+
+    if (!managesScrollbars()) {
+        scrollToPosition(desiredPosition);
         return;
     }
 
@@ -772,14 +780,7 @@ void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
             invalidateScrollCornerRect(oldScrollCornerRect);
     }
 
-    IntPoint adjustedScrollPosition = desiredPosition;
-    if (!isRubberBandInProgress())
-        adjustedScrollPosition = adjustScrollPositionWithinRange(adjustedScrollPosition);
-
-    if (adjustedScrollPosition != scrollPosition() || scrollOriginChanged()) {
-        ScrollableArea::scrollToOffsetWithoutAnimation(scrollOffsetFromPosition(adjustedScrollPosition));
-        resetScrollOriginChanged();
-    }
+    scrollToPosition(desiredPosition);
 
     // Make sure the scrollbar offsets are up to date.
     if (m_horizontalScrollbar)
@@ -1236,14 +1237,14 @@ void ScrollView::paintPanScrollIcon(GraphicsContext& context)
     context.drawImage(panScrollIcon, iconGCPoint);
 }
 
-void ScrollView::paint(GraphicsContext& context, const IntRect& rect, SecurityOriginPaintPolicy securityOriginPaintPolicy)
+void ScrollView::paint(GraphicsContext& context, const IntRect& rect, SecurityOriginPaintPolicy securityOriginPaintPolicy, EventRegionContext* eventRegionContext)
 {
     if (platformWidget()) {
         Widget::paint(context, rect);
         return;
     }
 
-    if (context.paintingDisabled() && !context.performingPaintInvalidation())
+    if (context.paintingDisabled() && !context.performingPaintInvalidation() && !eventRegionContext)
         return;
 
     notifyPageThatContentAreaWillPaint();
@@ -1268,7 +1269,7 @@ void ScrollView::paint(GraphicsContext& context, const IntRect& rect, SecurityOr
             context.clip(visibleContentRect(LegacyIOSDocumentVisibleRect));
         }
 
-        paintContents(context, documentDirtyRect, securityOriginPaintPolicy);
+        paintContents(context, documentDirtyRect, securityOriginPaintPolicy, eventRegionContext);
     }
 
 #if ENABLE(RUBBER_BANDING)
@@ -1532,6 +1533,11 @@ IntPoint ScrollView::locationOfContents() const
     return result;
 }
 
+String ScrollView::debugDescription() const
+{
+    return makeString("ScrollView 0x", hex(reinterpret_cast<uintptr_t>(this), Lowercase));
+}
+
 #if !PLATFORM(COCOA)
 
 void ScrollView::platformAddChild(Widget*)
@@ -1541,10 +1547,6 @@ void ScrollView::platformAddChild(Widget*)
 void ScrollView::platformRemoveChild(Widget*)
 {
 }
-
-#endif
-
-#if !PLATFORM(COCOA)
 
 void ScrollView::platformSetScrollbarsSuppressed(bool)
 {
@@ -1557,10 +1559,6 @@ void ScrollView::platformSetScrollOrigin(const IntPoint&, bool, bool)
 void ScrollView::platformSetScrollbarOverlayStyle(ScrollbarOverlayStyle)
 {
 }
-
-#endif
-
-#if !PLATFORM(COCOA)
 
 void ScrollView::platformSetScrollbarModes()
 {
@@ -1652,6 +1650,6 @@ bool ScrollView::platformIsOffscreen() const
     return false;
 }
 
-#endif
+#endif // !PLATFORM(COCOA)
 
 }

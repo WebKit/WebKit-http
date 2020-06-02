@@ -90,6 +90,12 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage& webPage, c
 
     updateLayerHostingContext();
     setColorSpace(parameters.colorSpace);
+
+    if (auto viewExposedRect = parameters.viewExposedRect)
+        setViewExposedRect(viewExposedRect);
+
+    if (!parameters.isProcessSwap)
+        sendEnterAcceleratedCompositingModeIfNeeded();
 }
 
 TiledCoreAnimationDrawingArea::~TiledCoreAnimationDrawingArea()
@@ -97,23 +103,34 @@ TiledCoreAnimationDrawingArea::~TiledCoreAnimationDrawingArea()
     invalidateRenderingUpdateRunLoopObserver();
 }
 
-void TiledCoreAnimationDrawingArea::sendEnterAcceleratedCompositingModeIfNeeded()
+void TiledCoreAnimationDrawingArea::sendDidFirstLayerFlushIfNeeded()
 {
     if (!m_rootLayer)
         return;
 
-    if (!m_needsSendEnterAcceleratedCompositingMode)
+    if (!m_needsSendDidFirstLayerFlush)
         return;
-    m_needsSendEnterAcceleratedCompositingMode = false;
+    m_needsSendDidFirstLayerFlush = false;
 
     // Let the first commit complete before sending.
-    RunLoop::main().dispatch([this, weakThis = makeWeakPtr(*this)] {
+    [CATransaction addCommitHandler:[this, weakThis = makeWeakPtr(*this)] {
         if (!weakThis)
             return;
         LayerTreeContext layerTreeContext;
         layerTreeContext.contextID = m_layerHostingContext->contextID();
-        send(Messages::DrawingAreaProxy::EnterAcceleratedCompositingMode(0, layerTreeContext));
-    });
+        send(Messages::DrawingAreaProxy::DidFirstLayerFlush(0, layerTreeContext));
+    } forPhase:kCATransactionPhasePostCommit];
+}
+
+void TiledCoreAnimationDrawingArea::sendEnterAcceleratedCompositingModeIfNeeded()
+{
+    if (!m_needsSendEnterAcceleratedCompositingMode)
+        return;
+    m_needsSendEnterAcceleratedCompositingMode = false;
+
+    LayerTreeContext layerTreeContext;
+    layerTreeContext.contextID = m_layerHostingContext->contextID();
+    send(Messages::DrawingAreaProxy::EnterAcceleratedCompositingMode(0, layerTreeContext));
 }
 
 void TiledCoreAnimationDrawingArea::setNeedsDisplay()
@@ -122,11 +139,6 @@ void TiledCoreAnimationDrawingArea::setNeedsDisplay()
 
 void TiledCoreAnimationDrawingArea::setNeedsDisplayInRect(const IntRect& rect)
 {
-}
-
-void TiledCoreAnimationDrawingArea::scroll(const IntRect& scrollRect, const IntSize& scrollDelta)
-{
-    updateScrolledExposedRect();
 }
 
 void TiledCoreAnimationDrawingArea::setRootCompositingLayer(GraphicsLayer* graphicsLayer)
@@ -453,24 +465,20 @@ void TiledCoreAnimationDrawingArea::updateRendering(UpdateRenderingType flushTyp
         }
 
         FloatRect visibleRect = [m_hostingLayer frame];
-        if (m_scrolledViewExposedRect)
-            visibleRect.intersect(m_scrolledViewExposedRect.value());
+        if (auto exposedRect = m_webPage.mainFrameView()->viewExposedRect())
+            visibleRect.intersect(*exposedRect);
 
         // Because our view-relative overlay root layer is not attached to the main GraphicsLayer tree, we need to flush it manually.
         if (m_viewOverlayRootLayer)
             m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
         addCommitHandlers();
-        
-        bool didFlushAllFrames = m_webPage.mainFrameView()->flushCompositingStateIncludingSubframes();
 
-#if ENABLE(ASYNC_SCROLLING)
-        if (auto* scrollingCoordinator = m_webPage.corePage()->scrollingCoordinator()) {
-            scrollingCoordinator->commitTreeStateIfNeeded();
-            if (flushType == UpdateRenderingType::Normal)
-                scrollingCoordinator->applyScrollingTreeLayerPositions();
-        }
-#endif
+        OptionSet<FinalizeRenderingUpdateFlags> flags;
+        if (flushType == UpdateRenderingType::Normal)
+            flags.add(FinalizeRenderingUpdateFlags::ApplyScrollingTreeLayerPositions);
+
+        m_webPage.finalizeRenderingUpdate(flags);
 
         // If we have an active transient zoom, we want the zoom to win over any changes
         // that WebCore makes to the relevant layers, so re-apply our changes after flushing.
@@ -482,10 +490,8 @@ void TiledCoreAnimationDrawingArea::updateRendering(UpdateRenderingType flushTyp
             m_pendingCallbackIDs.clear();
         }
 
-        if (didFlushAllFrames) {
-            sendEnterAcceleratedCompositingModeIfNeeded();
-            invalidateRenderingUpdateRunLoopObserver();
-        }
+        sendDidFirstLayerFlushIfNeeded();
+        invalidateRenderingUpdateRunLoopObserver();
     }
 }
 
@@ -526,7 +532,7 @@ void TiledCoreAnimationDrawingArea::suspendPainting()
 
     // This is a signal to media frameworks; it does not actively pause anything.
     [m_hostingLayer setValue:@YES forKey:@"NSCAViewRenderPaused"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:@{ @"layer": m_hostingLayer.get() }];
 }
 
 void TiledCoreAnimationDrawingArea::resumePainting()
@@ -539,13 +545,15 @@ void TiledCoreAnimationDrawingArea::resumePainting()
     m_isPaintingSuspended = false;
 
     [m_hostingLayer setValue:@NO forKey:@"NSCAViewRenderPaused"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:@{ @"layer": m_hostingLayer.get() }];
 }
 
 void TiledCoreAnimationDrawingArea::setViewExposedRect(Optional<FloatRect> viewExposedRect)
 {
     m_viewExposedRect = viewExposedRect;
-    updateScrolledExposedRect();
+
+    if (FrameView* frameView = m_webPage.mainFrameView())
+        frameView->setViewExposedRect(m_viewExposedRect);
 }
 
 FloatRect TiledCoreAnimationDrawingArea::exposedContentRect() const
@@ -557,24 +565,6 @@ FloatRect TiledCoreAnimationDrawingArea::exposedContentRect() const
 void TiledCoreAnimationDrawingArea::setExposedContentRect(const FloatRect&)
 {
     ASSERT_NOT_REACHED();
-}
-
-void TiledCoreAnimationDrawingArea::updateScrolledExposedRect()
-{
-    FrameView* frameView = m_webPage.mainFrameView();
-    if (!frameView)
-        return;
-
-    m_scrolledViewExposedRect = m_viewExposedRect;
-
-#if !PLATFORM(IOS_FAMILY)
-    if (m_viewExposedRect) {
-        ScrollOffset scrollOffset = frameView->scrollOffsetFromPosition(frameView->scrollPosition());
-        m_scrolledViewExposedRect.value().moveBy(scrollOffset);
-    }
-#endif
-
-    frameView->setViewExposedRect(m_scrolledViewExposedRect);
 }
 
 void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, bool flushSynchronously, const WTF::MachSendRight& fencePort)

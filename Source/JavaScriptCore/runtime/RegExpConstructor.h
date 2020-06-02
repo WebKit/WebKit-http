@@ -49,15 +49,13 @@ public:
 
     DECLARE_INFO;
 
-protected:
-    void finishCreation(VM&, RegExpPrototype*, GetterSetter* species);
-
 private:
     RegExpConstructor(VM&, Structure*);
+    void finishCreation(VM&, RegExpPrototype*, GetterSetter* species);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(RegExpConstructor, InternalFunction);
 
-JSObject* constructRegExp(JSGlobalObject*, const ArgList&, JSObject* callee = nullptr, JSValue newTarget = jsUndefined());
+JSObject* constructRegExp(JSGlobalObject*, const ArgList&, JSObject* callee = nullptr, JSValue newTarget = JSValue());
 
 ALWAYS_INLINE bool isRegExp(VM& vm, JSGlobalObject* globalObject, JSValue value)
 {

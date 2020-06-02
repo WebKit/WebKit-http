@@ -41,51 +41,43 @@ public:
     size_t length() const { return m_bufferEnd - m_buffer; }
     size_t currentOffset() const { return m_bufferPosition - m_buffer; }
 
-    WTF_EXPORT_PRIVATE bool verifyChecksum();
+    WTF_EXPORT_PRIVATE WARN_UNUSED_RETURN bool verifyChecksum();
 
-    WTF_EXPORT_PRIVATE bool decodeFixedLengthData(uint8_t*, size_t);
+    WTF_EXPORT_PRIVATE WARN_UNUSED_RETURN bool decodeFixedLengthData(uint8_t*, size_t);
 
-    WTF_EXPORT_PRIVATE bool decode(bool&);
-    WTF_EXPORT_PRIVATE bool decode(uint8_t&);
-    WTF_EXPORT_PRIVATE bool decode(uint16_t&);
-    WTF_EXPORT_PRIVATE bool decode(uint32_t&);
-    WTF_EXPORT_PRIVATE bool decode(uint64_t&);
-    WTF_EXPORT_PRIVATE bool decode(int16_t&);
-    WTF_EXPORT_PRIVATE bool decode(int32_t&);
-    WTF_EXPORT_PRIVATE bool decode(int64_t&);
-    WTF_EXPORT_PRIVATE bool decode(float&);
-    WTF_EXPORT_PRIVATE bool decode(double&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<bool>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<uint8_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<uint16_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<uint32_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<uint64_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<int16_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<int32_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<int64_t>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<float>&);
+    WTF_EXPORT_PRIVATE Decoder& operator>>(Optional<double>&);
 
-    template<typename E> auto decode(E& e) -> std::enable_if_t<std::is_enum<E>::value, bool>
+    template<typename T, std::enable_if_t<!std::is_arithmetic<typename std::remove_const<T>>::value && !std::is_enum<T>::value>* = nullptr>
+    Decoder& operator>>(Optional<T>& result)
     {
-        uint64_t value;
-        if (!decode(value))
-            return false;
-        if (!isValidEnum<E>(value))
-            return false;
-
-        e = static_cast<E>(value);
-        return true;
+        result = Coder<T>::decode(*this);
+        return *this;
     }
 
-    template<typename T> bool decodeEnum(T& result)
+    template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
+    Decoder& operator>>(Optional<E>& result)
     {
-        static_assert(sizeof(T) <= 8, "Enum type T must not be larger than 64 bits!");
-
-        uint64_t value;
-        if (!decode(value))
-            return false;
-        
-        result = static_cast<T>(value);
-        return true;
+        static_assert(sizeof(E) <= 8, "Enum type T must not be larger than 64 bits!");
+        Optional<uint64_t> value;
+        *this >> value;
+        if (!value)
+            return *this;
+        if (!isValidEnum<E>(*value))
+            return *this;
+        result = static_cast<E>(*value);
+        return *this;
     }
 
-    template<typename T> auto decode(T& t) -> std::enable_if_t<!std::is_enum<T>::value, bool>
-    {
-        return Coder<T>::decode(*this, t);
-    }
-
-    template<typename T>
+    template<typename T> WARN_UNUSED_RETURN
     bool bufferIsLargeEnoughToContain(size_t numElements) const
     {
         static_assert(std::is_arithmetic<T>::value, "Type T must have a fixed, known encoded size!");
@@ -99,8 +91,8 @@ public:
     static constexpr bool isIPCDecoder = false;
 
 private:
-    WTF_EXPORT_PRIVATE bool bufferIsLargeEnoughToContain(size_t) const;
-    template<typename Type> bool decodeNumber(Type&);
+    WTF_EXPORT_PRIVATE WARN_UNUSED_RETURN bool bufferIsLargeEnoughToContain(size_t) const;
+    template<typename Type> Decoder& decodeNumber(Optional<Type>&);
 
     const uint8_t* m_buffer;
     const uint8_t* m_bufferPosition;

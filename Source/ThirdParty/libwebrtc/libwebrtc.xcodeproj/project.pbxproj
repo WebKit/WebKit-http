@@ -29,6 +29,16 @@
 		410091DC242E0BBC00C5EDA2 /* video_codec_type.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091D7242E0BBB00C5EDA2 /* video_codec_type.h */; };
 		410091DD242E0BBC00C5EDA2 /* recordable_encoded_frame.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091D8242E0BBB00C5EDA2 /* recordable_encoded_frame.h */; };
 		410091DE242E0BBC00C5EDA2 /* video_frame_type.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091D9242E0BBB00C5EDA2 /* video_frame_type.h */; };
+		410091E6242E2AA300C5EDA2 /* rtp_format_h265.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091E0242E2AA100C5EDA2 /* rtp_format_h265.cc */; };
+		410091E7242E2AA300C5EDA2 /* rtp_format_h265.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091E1242E2AA200C5EDA2 /* rtp_format_h265.h */; };
+		410091ED242E317400C5EDA2 /* h265_vps_sps_pps_tracker.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091EB242E317300C5EDA2 /* h265_vps_sps_pps_tracker.h */; };
+		410091F9242E362200C5EDA2 /* h265_sps_parser.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091F1242E362100C5EDA2 /* h265_sps_parser.h */; };
+		410091FD242E362200C5EDA2 /* h265_common.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091F5242E362100C5EDA2 /* h265_common.h */; };
+		410091FE242E362200C5EDA2 /* h265_vps_parser.h in Headers */ = {isa = PBXBuildFile; fileRef = 410091F6242E362200C5EDA2 /* h265_vps_parser.h */; };
+		410091FF242E362200C5EDA2 /* h265_common.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091F7242E362200C5EDA2 /* h265_common.cc */; };
+		41009209242E3A4600C5EDA2 /* RTCVideoDecoderH265.h in Headers */ = {isa = PBXBuildFile; fileRef = 41009200242E3A4300C5EDA2 /* RTCVideoDecoderH265.h */; };
+		4100920A242E3A4600C5EDA2 /* RTCH265ProfileLevelId.mm in Sources */ = {isa = PBXBuildFile; fileRef = 41009201242E3A4400C5EDA2 /* RTCH265ProfileLevelId.mm */; };
+		4100920E242E3A4600C5EDA2 /* RTCH265ProfileLevelId.h in Headers */ = {isa = PBXBuildFile; fileRef = 41009205242E3A4500C5EDA2 /* RTCH265ProfileLevelId.h */; };
 		4102F6A121273262006AE8D7 /* remix_resample.cc in Sources */ = {isa = PBXBuildFile; fileRef = 4102F69721273260006AE8D7 /* remix_resample.cc */; };
 		4102F6A221273262006AE8D7 /* audio_level.h in Headers */ = {isa = PBXBuildFile; fileRef = 4102F69821273260006AE8D7 /* audio_level.h */; };
 		4102F6A421273262006AE8D7 /* audio_level.cc in Sources */ = {isa = PBXBuildFile; fileRef = 4102F69A21273261006AE8D7 /* audio_level.cc */; };
@@ -1964,6 +1974,14 @@
 		41E02CD0212735B700C27CD6 /* bitrate_settings.h in Headers */ = {isa = PBXBuildFile; fileRef = 41E02CCB212735B700C27CD6 /* bitrate_settings.h */; };
 		41E02CD32127360700C27CD6 /* sample_counter.h in Headers */ = {isa = PBXBuildFile; fileRef = 41E02CD12127360600C27CD6 /* sample_counter.h */; };
 		41E02CD42127360700C27CD6 /* sample_counter.cc in Sources */ = {isa = PBXBuildFile; fileRef = 41E02CD22127360700C27CD6 /* sample_counter.cc */; };
+		41E84BCE24373BDE00D34E41 /* h265_pps_parser.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091F3242E362100C5EDA2 /* h265_pps_parser.cc */; };
+		41E84BCF24373BE200D34E41 /* h265_sps_parser.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091F0242E362000C5EDA2 /* h265_sps_parser.cc */; };
+		41E84BD024373BE600D34E41 /* h265_vps_parser.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091F4242E362100C5EDA2 /* h265_vps_parser.cc */; };
+		41E84BD124373C0700D34E41 /* h265_vps_sps_pps_tracker.cc in Sources */ = {isa = PBXBuildFile; fileRef = 410091EC242E317300C5EDA2 /* h265_vps_sps_pps_tracker.cc */; };
+		41E84BD224373C1400D34E41 /* RTCVideoDecoderH265.mm in Sources */ = {isa = PBXBuildFile; fileRef = 41009207242E3A4500C5EDA2 /* RTCVideoDecoderH265.mm */; };
+		41E84BD324373C1A00D34E41 /* RTCVideoEncoderH265.mm in Sources */ = {isa = PBXBuildFile; fileRef = 41009206242E3A4500C5EDA2 /* RTCVideoEncoderH265.mm */; };
+		41E84BD424373C2900D34E41 /* RTCCodecSpecificInfoH265.mm in Sources */ = {isa = PBXBuildFile; fileRef = 41009208242E3A4600C5EDA2 /* RTCCodecSpecificInfoH265.mm */; };
+		41E84BD524373F7200D34E41 /* WebKitDecoder.mm in Sources */ = {isa = PBXBuildFile; fileRef = 41E84BCA2434C4A300D34E41 /* WebKitDecoder.mm */; };
 		41EA53A51EFC2C14002FF04C /* hmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 41EA53A41EFC2BFD002FF04C /* hmac.c */; };
 		41EA53AB1EFC2C4D002FF04C /* digest.c in Sources */ = {isa = PBXBuildFile; fileRef = 41EA53A71EFC2C4D002FF04C /* digest.c */; };
 		41EA53AC1EFC2C4D002FF04C /* digests.c in Sources */ = {isa = PBXBuildFile; fileRef = 41EA53A81EFC2C4D002FF04C /* digests.c */; };
@@ -3926,6 +3944,27 @@
 		410091D7242E0BBB00C5EDA2 /* video_codec_type.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = video_codec_type.h; sourceTree = "<group>"; };
 		410091D8242E0BBB00C5EDA2 /* recordable_encoded_frame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = recordable_encoded_frame.h; sourceTree = "<group>"; };
 		410091D9242E0BBB00C5EDA2 /* video_frame_type.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = video_frame_type.h; sourceTree = "<group>"; };
+		410091E0242E2AA100C5EDA2 /* rtp_format_h265.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rtp_format_h265.cc; sourceTree = "<group>"; };
+		410091E1242E2AA200C5EDA2 /* rtp_format_h265.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rtp_format_h265.h; sourceTree = "<group>"; };
+		410091EB242E317300C5EDA2 /* h265_vps_sps_pps_tracker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = h265_vps_sps_pps_tracker.h; sourceTree = "<group>"; };
+		410091EC242E317300C5EDA2 /* h265_vps_sps_pps_tracker.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h265_vps_sps_pps_tracker.cc; sourceTree = "<group>"; };
+		410091F0242E362000C5EDA2 /* h265_sps_parser.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h265_sps_parser.cc; sourceTree = "<group>"; };
+		410091F1242E362100C5EDA2 /* h265_sps_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = h265_sps_parser.h; sourceTree = "<group>"; };
+		410091F2242E362100C5EDA2 /* h265_pps_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = h265_pps_parser.h; sourceTree = "<group>"; };
+		410091F3242E362100C5EDA2 /* h265_pps_parser.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h265_pps_parser.cc; sourceTree = "<group>"; };
+		410091F4242E362100C5EDA2 /* h265_vps_parser.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h265_vps_parser.cc; sourceTree = "<group>"; };
+		410091F5242E362100C5EDA2 /* h265_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = h265_common.h; sourceTree = "<group>"; };
+		410091F6242E362200C5EDA2 /* h265_vps_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = h265_vps_parser.h; sourceTree = "<group>"; };
+		410091F7242E362200C5EDA2 /* h265_common.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h265_common.cc; sourceTree = "<group>"; };
+		41009200242E3A4300C5EDA2 /* RTCVideoDecoderH265.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RTCVideoDecoderH265.h; sourceTree = "<group>"; };
+		41009201242E3A4400C5EDA2 /* RTCH265ProfileLevelId.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RTCH265ProfileLevelId.mm; sourceTree = "<group>"; };
+		41009202242E3A4400C5EDA2 /* RTCCodecSpecificInfoH265.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RTCCodecSpecificInfoH265.h; sourceTree = "<group>"; };
+		41009203242E3A4400C5EDA2 /* RTCCodecSpecificInfoH265+Private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "RTCCodecSpecificInfoH265+Private.h"; sourceTree = "<group>"; };
+		41009204242E3A4500C5EDA2 /* RTCVideoEncoderH265.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RTCVideoEncoderH265.h; sourceTree = "<group>"; };
+		41009205242E3A4500C5EDA2 /* RTCH265ProfileLevelId.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RTCH265ProfileLevelId.h; sourceTree = "<group>"; };
+		41009206242E3A4500C5EDA2 /* RTCVideoEncoderH265.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RTCVideoEncoderH265.mm; sourceTree = "<group>"; };
+		41009207242E3A4500C5EDA2 /* RTCVideoDecoderH265.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RTCVideoDecoderH265.mm; sourceTree = "<group>"; };
+		41009208242E3A4600C5EDA2 /* RTCCodecSpecificInfoH265.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RTCCodecSpecificInfoH265.mm; sourceTree = "<group>"; };
 		4100CDE521CACFD000F9B87D /* LPC_fit.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = LPC_fit.c; path = silk/LPC_fit.c; sourceTree = "<group>"; };
 		4100CDE821CAD03300F9B87D /* vq_sse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vq_sse.h; path = x86/vq_sse.h; sourceTree = "<group>"; };
 		4100CDEB21CAD1F500F9B87D /* pitch_sse4_1.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pitch_sse4_1.c; path = x86/pitch_sse4_1.c; sourceTree = "<group>"; };
@@ -6097,6 +6136,8 @@
 		41E59E9323ACB6520095A94B /* system_state.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_state.h; sourceTree = "<group>"; };
 		41E59E9423ACC1230095A94B /* vp8_rtcd_no_acceleration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vp8_rtcd_no_acceleration.h; sourceTree = "<group>"; };
 		41E59E9523ACC1230095A94B /* vpx_dsp_rtcd_no_acceleration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vpx_dsp_rtcd_no_acceleration.h; sourceTree = "<group>"; };
+		41E84BC92434C4A200D34E41 /* WebKitDecoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebKitDecoder.h; sourceTree = "<group>"; };
+		41E84BCA2434C4A300D34E41 /* WebKitDecoder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebKitDecoder.mm; sourceTree = "<group>"; };
 		41EA53A41EFC2BFD002FF04C /* hmac.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = hmac.c; sourceTree = "<group>"; };
 		41EA53A71EFC2C4D002FF04C /* digest.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = digest.c; sourceTree = "<group>"; };
 		41EA53A81EFC2C4D002FF04C /* digests.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = digests.c; sourceTree = "<group>"; };
@@ -7857,6 +7898,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		410091EF242E360800C5EDA2 /* h265 */ = {
+			isa = PBXGroup;
+			children = (
+				410091F7242E362200C5EDA2 /* h265_common.cc */,
+				410091F5242E362100C5EDA2 /* h265_common.h */,
+				410091F3242E362100C5EDA2 /* h265_pps_parser.cc */,
+				410091F2242E362100C5EDA2 /* h265_pps_parser.h */,
+				410091F0242E362000C5EDA2 /* h265_sps_parser.cc */,
+				410091F1242E362100C5EDA2 /* h265_sps_parser.h */,
+				410091F4242E362100C5EDA2 /* h265_vps_parser.cc */,
+				410091F6242E362200C5EDA2 /* h265_vps_parser.h */,
+			);
+			path = h265;
+			sourceTree = "<group>";
+		};
 		4105EB64212E018C008C0C20 /* libvpx */ = {
 			isa = PBXGroup;
 			children = (
@@ -9121,20 +9177,29 @@
 				417953B2216982410028266B /* RTCCodecSpecificInfoH264+Private.h */,
 				416225F1216981F300A91C9B /* RTCCodecSpecificInfoH264.h */,
 				416225ED216981F200A91C9B /* RTCCodecSpecificInfoH264.mm */,
+				41009203242E3A4400C5EDA2 /* RTCCodecSpecificInfoH265+Private.h */,
+				41009202242E3A4400C5EDA2 /* RTCCodecSpecificInfoH265.h */,
+				41009208242E3A4600C5EDA2 /* RTCCodecSpecificInfoH265.mm */,
 				417953B3216982420028266B /* RTCDefaultVideoDecoderFactory.h */,
 				417953AD2169823E0028266B /* RTCDefaultVideoDecoderFactory.m */,
 				416225F7216981F400A91C9B /* RTCDefaultVideoEncoderFactory.h */,
 				417953AF2169823F0028266B /* RTCDefaultVideoEncoderFactory.m */,
 				411521D42169821F000ABAF7 /* RTCH264ProfileLevelId.h */,
 				411521D621698220000ABAF7 /* RTCH264ProfileLevelId.mm */,
+				41009205242E3A4500C5EDA2 /* RTCH265ProfileLevelId.h */,
+				41009201242E3A4400C5EDA2 /* RTCH265ProfileLevelId.mm */,
 				416225F2216981F300A91C9B /* RTCVideoDecoderFactoryH264.h */,
 				417953B0216982400028266B /* RTCVideoDecoderFactoryH264.m */,
 				416225F3216981F300A91C9B /* RTCVideoDecoderH264.h */,
 				416225F4216981F300A91C9B /* RTCVideoDecoderH264.mm */,
+				41009200242E3A4300C5EDA2 /* RTCVideoDecoderH265.h */,
+				41009207242E3A4500C5EDA2 /* RTCVideoDecoderH265.mm */,
 				416225EF216981F200A91C9B /* RTCVideoEncoderFactoryH264.h */,
 				417953B1216982400028266B /* RTCVideoEncoderFactoryH264.m */,
 				416225EC216981F200A91C9B /* RTCVideoEncoderH264.h */,
 				416225F6216981F400A91C9B /* RTCVideoEncoderH264.mm */,
+				41009204242E3A4500C5EDA2 /* RTCVideoEncoderH265.h */,
+				41009206242E3A4500C5EDA2 /* RTCVideoEncoderH265.mm */,
 				416225EE216981F200A91C9B /* UIDevice+H264Profile.h */,
 				417953AE2169823F0028266B /* UIDevice+H264Profile.mm */,
 			);
@@ -9822,6 +9887,8 @@
 				41ECEAF920646663009D5141 /* EncoderUtilities.h */,
 				41ECEAFA20646663009D5141 /* VideoProcessingSoftLink.cpp */,
 				41ECEAFB20646664009D5141 /* VideoProcessingSoftLink.h */,
+				41E84BC92434C4A200D34E41 /* WebKitDecoder.h */,
+				41E84BCA2434C4A300D34E41 /* WebKitDecoder.mm */,
 				4158649623BE05E800A0A61E /* WebKitEncoder.h */,
 				4158649723BE05E900A0A61E /* WebKitEncoder.mm */,
 				41ECEABB206403C1009D5141 /* WebKitUtilities.h */,
@@ -11709,6 +11776,7 @@
 			children = (
 				4131C42A234C7D700028A615 /* generic_frame_descriptor */,
 				5CDD83411E43256400621E92 /* h264 */,
+				410091EF242E360800C5EDA2 /* h265 */,
 				41109AA41E5FA18100C0955A /* include */,
 				5CDD83651E4325C200621E92 /* libyuv */,
 				5C4B4C101E431F75002651C8 /* bitrate_adjuster.cc */,
@@ -12632,6 +12700,8 @@
 				5CD285E91E6A639F0094FDC8 /* h264_sprop_parameter_sets.h */,
 				5CDD839A1E439A6F00621E92 /* h264_sps_pps_tracker.cc */,
 				5CDD839B1E439A6F00621E92 /* h264_sps_pps_tracker.h */,
+				410091EC242E317300C5EDA2 /* h265_vps_sps_pps_tracker.cc */,
+				410091EB242E317300C5EDA2 /* h265_vps_sps_pps_tracker.h */,
 				5CDD839C1E439A6F00621E92 /* histogram.cc */,
 				5CDD839D1E439A6F00621E92 /* histogram.h */,
 				5CDD839E1E439A6F00621E92 /* inter_frame_delay.cc */,
@@ -13322,6 +13392,8 @@
 				5CDD883B1E43BE3C00621E92 /* rtp_format.h */,
 				5CDD882E1E43BE3C00621E92 /* rtp_format_h264.cc */,
 				5CDD882F1E43BE3C00621E92 /* rtp_format_h264.h */,
+				410091E0242E2AA100C5EDA2 /* rtp_format_h265.cc */,
+				410091E1242E2AA200C5EDA2 /* rtp_format_h265.h */,
 				5CDD88301E43BE3C00621E92 /* rtp_format_video_generic.cc */,
 				5CDD88311E43BE3C00621E92 /* rtp_format_video_generic.h */,
 				5CDD88351E43BE3C00621E92 /* rtp_format_vp8.cc */,
@@ -15101,6 +15173,10 @@
 				4131BF96234B88A60028A615 /* h264_profile_level_id.h in Headers */,
 				5CD285EB1E6A639F0094FDC8 /* h264_sprop_parameter_sets.h in Headers */,
 				5CDD83DA1E439A6F00621E92 /* h264_sps_pps_tracker.h in Headers */,
+				410091FD242E362200C5EDA2 /* h265_common.h in Headers */,
+				410091F9242E362200C5EDA2 /* h265_sps_parser.h in Headers */,
+				410091FE242E362200C5EDA2 /* h265_vps_parser.h in Headers */,
+				410091ED242E317400C5EDA2 /* h265_vps_sps_pps_tracker.h in Headers */,
 				41FCBB7221B1FF7400A5DF27 /* hdr_metadata.h in Headers */,
 				4131C087234B898D0028A615 /* helpers.h in Headers */,
 				417953BD2169824B0028266B /* helpers.h in Headers */,
@@ -15538,6 +15614,7 @@
 				413A245A1FE1991A00373E99 /* RTCFileLogger.h in Headers */,
 				413A24561FE1991A00373E99 /* RTCFileVideoCapturer.h in Headers */,
 				417953C32169824B0028266B /* RTCH264ProfileLevelId.h in Headers */,
+				4100920E242E3A4600C5EDA2 /* RTCH265ProfileLevelId.h in Headers */,
 				417953F9216984BE0028266B /* RTCI420Buffer.h in Headers */,
 				413A244E1FE1991A00373E99 /* RTCIceCandidate.h in Headers */,
 				413A245E1FE1991A00373E99 /* RTCIceServer.h in Headers */,
@@ -15595,6 +15672,7 @@
 				4144B3E02169A070004363AC /* RTCVideoDecoderFactory.h in Headers */,
 				417953C52169824B0028266B /* RTCVideoDecoderFactoryH264.h in Headers */,
 				417953C62169824B0028266B /* RTCVideoDecoderH264.h in Headers */,
+				41009209242E3A4600C5EDA2 /* RTCVideoDecoderH265.h in Headers */,
 				413A24651FE1991A00373E99 /* RTCVideoDecoderVP8.h in Headers */,
 				413F4D7022B0BAEF006A7A6B /* RTCVideoDecoderVP8.h in Headers */,
 				413A24601FE1991A00373E99 /* RTCVideoDecoderVP9.h in Headers */,
@@ -15629,6 +15707,7 @@
 				5CDD8AB71E43C00F00621E92 /* rtp_file_source.h in Headers */,
 				5CDD88B11E43BE3C00621E92 /* rtp_format.h in Headers */,
 				5CDD88A51E43BE3C00621E92 /* rtp_format_h264.h in Headers */,
+				410091E7242E2AA300C5EDA2 /* rtp_format_h265.h in Headers */,
 				5CDD88A71E43BE3C00621E92 /* rtp_format_video_generic.h in Headers */,
 				5CDD88AC1E43BE3C00621E92 /* rtp_format_vp8.h in Headers */,
 				5CDD88AF1E43BE3C00621E92 /* rtp_format_vp9.h in Headers */,
@@ -17647,6 +17726,11 @@
 				4131BF98234B88A60028A615 /* h264_profile_level_id.cc in Sources */,
 				5CD285EA1E6A639F0094FDC8 /* h264_sprop_parameter_sets.cc in Sources */,
 				5CDD83D91E439A6F00621E92 /* h264_sps_pps_tracker.cc in Sources */,
+				410091FF242E362200C5EDA2 /* h265_common.cc in Sources */,
+				41E84BCE24373BDE00D34E41 /* h265_pps_parser.cc in Sources */,
+				41E84BCF24373BE200D34E41 /* h265_sps_parser.cc in Sources */,
+				41E84BD024373BE600D34E41 /* h265_vps_parser.cc in Sources */,
+				41E84BD124373C0700D34E41 /* h265_vps_sps_pps_tracker.cc in Sources */,
 				41FCBB7121B1FF7400A5DF27 /* hdr_metadata.cc in Sources */,
 				4131C068234B898D0028A615 /* helpers.cc in Sources */,
 				417953BC2169824B0028266B /* helpers.cc in Sources */,
@@ -18001,12 +18085,14 @@
 				4131BF33234B88200028A615 /* rtc_stats_traversal.cc in Sources */,
 				419C841D1FE24AEF0040C30F /* rtc_stream_config.cc in Sources */,
 				417953CC216982DB0028266B /* RTCCodecSpecificInfoH264.mm in Sources */,
+				41E84BD424373C2900D34E41 /* RTCCodecSpecificInfoH265.mm in Sources */,
 				413E678B216987B900EF37ED /* RTCCVPixelBuffer.mm in Sources */,
 				417953B5216982420028266B /* RTCDefaultVideoDecoderFactory.m in Sources */,
 				417953B7216982420028266B /* RTCDefaultVideoEncoderFactory.m in Sources */,
 				4144B3F5216B081B004363AC /* RTCEncodedImage+Private.mm in Sources */,
 				417953FA216984BE0028266B /* RTCEncodedImage.m in Sources */,
 				4144B3D621698A1A004363AC /* RTCH264ProfileLevelId.mm in Sources */,
+				4100920A242E3A4600C5EDA2 /* RTCH265ProfileLevelId.mm in Sources */,
 				4144B3D32169896D004363AC /* RTCNativeI420Buffer.mm in Sources */,
 				4144B3D121698967004363AC /* RTCNativeMutableI420Buffer.mm in Sources */,
 				419C82B91FE20DCD0040C30F /* rtcp_demuxer.cc in Sources */,
@@ -18027,9 +18113,11 @@
 				413E67982169883900EF37ED /* RTCVideoCodecInfo.m in Sources */,
 				417953B8216982420028266B /* RTCVideoDecoderFactoryH264.m in Sources */,
 				417953C72169824B0028266B /* RTCVideoDecoderH264.mm in Sources */,
+				41E84BD224373C1400D34E41 /* RTCVideoDecoderH265.mm in Sources */,
 				413E67682169854B00EF37ED /* RTCVideoDecoderVP8.mm in Sources */,
 				417953B9216982420028266B /* RTCVideoEncoderFactoryH264.m in Sources */,
 				417953CA2169824B0028266B /* RTCVideoEncoderH264.mm in Sources */,
+				41E84BD324373C1A00D34E41 /* RTCVideoEncoderH265.mm in Sources */,
 				413E67A32169889500EF37ED /* RTCVideoEncoderQpThresholds.m in Sources */,
 				4144B3F7216B09CB004363AC /* RTCVideoEncoderSettings+Private.mm in Sources */,
 				4131C565234C95610028A615 /* RTCVideoEncoderSettings.m in Sources */,
@@ -18047,6 +18135,7 @@
 				4189391E242A704E007FDC41 /* rtp_descriptor_authentication.cc in Sources */,
 				5CDD88B01E43BE3C00621E92 /* rtp_format.cc in Sources */,
 				5CDD88A41E43BE3C00621E92 /* rtp_format_h264.cc in Sources */,
+				410091E6242E2AA300C5EDA2 /* rtp_format_h265.cc in Sources */,
 				5CDD88A61E43BE3C00621E92 /* rtp_format_video_generic.cc in Sources */,
 				5CDD88AB1E43BE3C00621E92 /* rtp_format_vp8.cc in Sources */,
 				5CDD88AE1E43BE3C00621E92 /* rtp_format_vp9.cc in Sources */,
@@ -18347,6 +18436,7 @@
 				5C4B4C801E431F9C002651C8 /* wav_file.cc in Sources */,
 				5C4B4C831E431F9C002651C8 /* wav_header.cc in Sources */,
 				4131C0F9234B89E20028A615 /* weak_ptr.cc in Sources */,
+				41E84BD524373F7200D34E41 /* WebKitDecoder.mm in Sources */,
 				4158649923BE05E900A0A61E /* WebKitEncoder.mm in Sources */,
 				41ECEABE20640498009D5141 /* WebKitUtilities.mm in Sources */,
 				5CDD8CAA1E43C6F700621E92 /* webrtc_cng.cc in Sources */,
@@ -18462,7 +18552,6 @@
 				CLANG_WARN_STRICT_PROTOTYPES = NO;
 				CLANG_X86_VECTOR_INSTRUCTIONS = default;
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USE_HEADERMAP = NO;
 			};
@@ -18475,7 +18564,6 @@
 				CLANG_WARN_STRICT_PROTOTYPES = NO;
 				CLANG_X86_VECTOR_INSTRUCTIONS = default;
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USE_HEADERMAP = NO;
 			};
@@ -18488,7 +18576,6 @@
 				CLANG_WARN_STRICT_PROTOTYPES = NO;
 				CLANG_X86_VECTOR_INSTRUCTIONS = default;
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USE_HEADERMAP = NO;
 			};
@@ -18605,7 +18692,6 @@
 					"Source/third_party/abseil-cpp",
 					Source/third_party/rnnoise,
 				);
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -18627,7 +18713,6 @@
 					"Source/third_party/abseil-cpp",
 					Source/third_party/rnnoise,
 				);
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Production;
@@ -18681,7 +18766,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B4A8F1E42C431002651C8 /* opus.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -18690,7 +18774,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B4A8F1E42C431002651C8 /* opus.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -18699,7 +18782,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B4A8F1E42C431002651C8 /* opus.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Production;
@@ -18732,7 +18814,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B43B01E42877A002651C8 /* boringssl.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -18741,7 +18822,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B43B01E42877A002651C8 /* boringssl.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -18750,7 +18830,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5C4B43B01E42877A002651C8 /* boringssl.xcconfig */;
 			buildSettings = {
-				OTHER_CFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Production;
@@ -18771,7 +18850,6 @@
 					"$(SDKROOT)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
 				);
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				OTHER_CFLAGS = "";
 			};
 			name = Production;
 		};
@@ -18811,7 +18889,6 @@
 					"$(SDKROOT)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
 				);
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				OTHER_CFLAGS = "";
 			};
 			name = Release;
 		};

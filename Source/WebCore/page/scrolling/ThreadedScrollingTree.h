@@ -31,6 +31,7 @@
 #include "ScrollingTree.h"
 #include <wtf/Condition.h>
 #include <wtf/RefPtr.h>
+#include <wtf/RunLoop.h>
 
 namespace WebCore {
 
@@ -44,26 +45,25 @@ class ThreadedScrollingTree : public ScrollingTree {
 public:
     virtual ~ThreadedScrollingTree();
 
-    void commitTreeState(std::unique_ptr<ScrollingStateTree>) override;
+    WheelEventHandlingResult handleWheelEvent(const PlatformWheelEvent&) override;
 
-    ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) override;
-
-    // Can be called from any thread. Will try to handle the wheel event on the scrolling thread.
-    // Returns true if the wheel event can be handled on the scrolling thread and false if the
-    // event must be sent again to the WebCore event handler.
-    ScrollingEventResult tryToHandleWheelEvent(const PlatformWheelEvent&) override;
+    bool handleWheelEventAfterMainThread(const PlatformWheelEvent&);
 
     void invalidate() override;
 
-    void incrementPendingCommitCount();
-    void decrementPendingCommitCount();
+    WEBCORE_EXPORT void displayDidRefresh(PlatformDisplayID);
+
+    void willStartRenderingUpdate();
+    void didCompleteRenderingUpdate();
+
+    Lock& treeMutex() { return m_treeMutex; }
 
 protected:
     explicit ThreadedScrollingTree(AsyncScrollingCoordinator&);
 
     void scrollingTreeNodeDidScroll(ScrollingTreeScrollingNode&, ScrollingLayerPositionAction = ScrollingLayerPositionAction::Sync) override;
 #if PLATFORM(MAC)
-    void handleWheelEventPhase(PlatformWheelEventPhase) override;
+    void handleWheelEventPhase(ScrollingNodeID, PlatformWheelEventPhase) override;
     void setActiveScrollSnapIndices(ScrollingNodeID, unsigned horizontalIndex, unsigned verticalIndex) override;
     void scrollingTreeNodeRequestsScroll(ScrollingNodeID, const FloatPoint& /*scrollPosition*/, ScrollType, ScrollClamping) override;
 #endif
@@ -77,15 +77,30 @@ protected:
 
 private:
     bool isThreadedScrollingTree() const override { return true; }
-    void applyLayerPositions() override;
+    void propagateSynchronousScrollingReasons(const HashSet<ScrollingNodeID>&) override;
+
+    void displayDidRefreshOnScrollingThread();
+    void waitForRenderingUpdateCompletionOrTimeout();
+
+    void scheduleDelayedRenderingUpdateDetectionTimer(Seconds);
+    void delayedRenderingUpdateDetectionTimerFired();
+
+    Seconds maxAllowableRenderingUpdateDurationForSynchronization();
 
     RefPtr<AsyncScrollingCoordinator> m_scrollingCoordinator;
 
-    void waitForPendingCommits();
+    enum class SynchronizationState : uint8_t {
+        Idle,
+        WaitingForRenderingUpdate,
+        InRenderingUpdate,
+        Desynchronized,
+    };
 
-    Lock m_pendingCommitCountMutex;
-    unsigned m_pendingCommitCount { 0 };
-    Condition m_commitCondition;
+    SynchronizationState m_state { SynchronizationState::Idle };
+    Condition m_stateCondition;
+
+    // Dynamically allocated because it has to use the ScrollingThread's runloop.
+    std::unique_ptr<RunLoop::Timer<ThreadedScrollingTree>> m_delayedRenderingUpdateDetectionTimer;
 };
 
 } // namespace WebCore

@@ -521,28 +521,34 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
     return configuration;
 }
 
+void TestController::configureWebsiteDataStoreTemporaryDirectories(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
+        String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
+        auto randomNumber = cryptographicallyRandomNumber();
+
+        WKWebsiteDataStoreConfigurationSetApplicationCacheDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "ApplicationCache", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetNetworkCacheDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "Cache", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetCacheStorageDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "CacheStorage", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetIndexedDBDatabaseDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "Databases", pathSeparator, "IndexedDB", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetLocalStorageDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "LocalStorage", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetWebSQLDatabaseDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "Databases", pathSeparator, "WebSQL", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetMediaKeysStorageDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "MediaKeys", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetResourceLoadStatisticsDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "ResourceLoadStatistics", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetServiceWorkerRegistrationDirectory(configuration, toWK(makeString(temporaryFolder, pathSeparator, "ServiceWorkers", pathSeparator, randomNumber)).get());
+        WKWebsiteDataStoreConfigurationSetPerOriginStorageQuota(configuration, 400 * 1024);
+        WKWebsiteDataStoreConfigurationSetNetworkCacheSpeculativeValidationEnabled(configuration, true);
+        WKWebsiteDataStoreConfigurationSetStaleWhileRevalidateEnabled(configuration, true);
+        WKWebsiteDataStoreConfigurationSetTestingSessionEnabled(configuration, true);
+    }
+}
+
 WKWebsiteDataStoreRef TestController::defaultWebsiteDataStore()
 {
     static WKWebsiteDataStoreRef dataStore = nullptr;
     if (!dataStore) {
         auto configuration = adoptWK(WKWebsiteDataStoreConfigurationCreate());
-        if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
-            String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
-
-            WKWebsiteDataStoreConfigurationSetApplicationCacheDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ApplicationCache").get());
-            WKWebsiteDataStoreConfigurationSetNetworkCacheDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Cache").get());
-            WKWebsiteDataStoreConfigurationSetCacheStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "CacheStorage").get());
-            WKWebsiteDataStoreConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Databases" + pathSeparator + "IndexedDB").get());
-            WKWebsiteDataStoreConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "LocalStorage").get());
-            WKWebsiteDataStoreConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Databases" + pathSeparator + "WebSQL").get());
-            WKWebsiteDataStoreConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "MediaKeys").get());
-            WKWebsiteDataStoreConfigurationSetResourceLoadStatisticsDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ResourceLoadStatistics").get());
-            WKWebsiteDataStoreConfigurationSetServiceWorkerRegistrationDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ServiceWorkers").get());
-            WKWebsiteDataStoreConfigurationSetPerOriginStorageQuota(configuration.get(), 400 * 1024);
-            WKWebsiteDataStoreConfigurationSetNetworkCacheSpeculativeValidationEnabled(configuration.get(), true);
-            WKWebsiteDataStoreConfigurationSetStaleWhileRevalidateEnabled(configuration.get(), true);
-            WKWebsiteDataStoreConfigurationSetTestingSessionEnabled(configuration.get(), true);
-        }
+        configureWebsiteDataStoreTemporaryDirectories(configuration.get());
         dataStore = WKWebsiteDataStoreCreateWithConfiguration(configuration.get());
     }
     return dataStore;
@@ -550,7 +556,7 @@ WKWebsiteDataStoreRef TestController::defaultWebsiteDataStore()
 
 WKWebsiteDataStoreRef TestController::websiteDataStore()
 {
-    return WKPageConfigurationGetWebsiteDataStore(adoptWK(WKPageCopyPageConfiguration(m_mainWebView->page())).get());
+    return m_websiteDataStore.get();
 }
 
 WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(const TestOptions& options)
@@ -623,7 +629,6 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(co
     
     if (options.useEphemeralSession) {
         auto ephemeralDataStore = adoptWK(WKWebsiteDataStoreCreateNonPersistentDataStore());
-        WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(ephemeralDataStore.get(), true);
         WKPageConfigurationSetWebsiteDataStore(pageConfiguration.get(), ephemeralDataStore.get());
     }
 
@@ -635,18 +640,16 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(co
 void TestController::createWebViewWithOptions(const TestOptions& options)
 {
 #if PLATFORM(COCOA)
-    if (m_hasSetApplicationBundleIdentifier) {
-        // Exit if the application bundle identifier has already been set, since it can only be set once.
-        exit(1);
-    }
     if (!options.applicationBundleIdentifier.isEmpty()) {
-        clearApplicationBundleIdentifierTestingOverride();
+        // The bundle identifier can only be set once per test, and is cleared between tests.
+        RELEASE_ASSERT(!m_hasSetApplicationBundleIdentifier);
         setApplicationBundleIdentifier(options.applicationBundleIdentifier);
         m_hasSetApplicationBundleIdentifier = true;
     }
 #endif
 
     auto configuration = generatePageConfiguration(options);
+    platformInitializeDataStore(configuration.get(), options);
 
     // Some preferences (notably mock scroll bars setting) currently cannot be re-applied to an existing view, so we need to set them now.
     // FIXME: Migrate these preferences to WKContextConfigurationRef.
@@ -792,8 +795,10 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
     // something else for specific tests that need to run at a different window scale.
     m_mainWebView->changeWindowScaleIfNeeded(1);
     
-    if (!options.applicationBundleIdentifier.isEmpty())
+    if (!options.applicationBundleIdentifier.isEmpty()) {
         reinitializeAppBoundDomains();
+        updateBundleIdentifierInNetworkProcess(options.applicationBundleIdentifier);
+    }
 }
 
 void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test)
@@ -938,7 +943,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetBeaconAPIEnabled(preferences, true);
     WKPreferencesSetDirectoryUploadEnabled(preferences, true);
 
-    WKHTTPCookieStoreDeleteAllCookies(WKWebsiteDataStoreGetHTTPCookieStore(TestController::defaultWebsiteDataStore()), nullptr, nullptr);
+    WKHTTPCookieStoreDeleteAllCookies(WKWebsiteDataStoreGetHTTPCookieStore(websiteDataStore()), nullptr, nullptr);
 
     WKPreferencesSetMockCaptureDevicesEnabled(preferences, true);
     
@@ -1024,8 +1029,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     WKContextResetServiceWorkerFetchTimeoutForTesting(TestController::singleton().context());
 
+    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(websiteDataStore(), true);
+    WKContextSetStorageAccessAPIEnabled(platformContext(), true);
     WKWebsiteDataStoreClearAllDeviceOrientationPermissions(websiteDataStore());
-    WKWebsiteDataStoreClearAllDeviceOrientationPermissions(TestController::defaultWebsiteDataStore());
 
     clearIndexedDatabases();
     clearLocalStorage();
@@ -1042,6 +1048,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     WKContextSetUseSeparateServiceWorkerProcess(TestController::singleton().context(), false);
 
     WKPageSetMockCameraOrientation(m_mainWebView->page(), 0);
+    resetMockMediaDevices();
 
     // FIXME: This function should also ensure that there is only one page open.
 
@@ -1130,22 +1137,37 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     statisticsResetToConsistentState();
     clearLoadedThirdPartyDomains();
-
+    clearAppBoundSession();
     clearAdClickAttribution();
 
     m_didReceiveServerRedirectForProvisionalNavigation = false;
     m_serverTrustEvaluationCallbackCallsCount = 0;
     m_shouldDismissJavaScriptAlertsAsynchronously = false;
 
+    auto loadAboutBlank = [this] {
+        m_doneResetting = false;
+        WKPageLoadURL(m_mainWebView->page(), blankURL());
+        runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
+        return m_doneResetting;
+    };
+
     // Reset main page back to about:blank
-    m_doneResetting = false;
-    WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
-    if (!m_doneResetting)
-        return false;
+    if (!loadAboutBlank()) {
+        WTFLogAlways("Failed to load 'about:blank', terminating process and trying again.");
+        WKPageTerminate(m_mainWebView->page());
+        if (!loadAboutBlank()) {
+            WTFLogAlways("Failed to load 'about:blank' again after termination.");
+            return false;
+        }
+    }
     
-    if (resetStage == ResetStage::AfterTest)
+    if (resetStage == ResetStage::AfterTest) {
         updateLiveDocumentsAfterTest();
+#if PLATFORM(COCOA)
+        clearApplicationBundleIdentifierTestingOverride();
+#endif
+        clearBundleIdentifierInNetworkProcess();
+    }
 
     return m_doneResetting;
 }
@@ -1359,6 +1381,11 @@ static std::string parseStringTestHeaderValueAsRelativePath(const std::string& v
     return toSTD(adoptWK(WKURLCopyPath(relativeURL.get())));
 }
 
+static std::string parseStringTestHeaderValueAsURL(const std::string& value)
+{
+    return toSTD(adoptWK(WKURLCopyString(createTestURL(value.c_str()))));
+}
+
 static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std::string& pathOrURL, const std::string& absolutePath)
 {
     std::string filename = absolutePath;
@@ -1512,7 +1539,12 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableCaptureAudioInGPUProcess = parseBooleanTestHeaderValue(value);
         else if (key == "allowTopNavigationToDataURLs")
             testOptions.allowTopNavigationToDataURLs = parseBooleanTestHeaderValue(value);
-        
+        else if (key == "enableInAppBrowserPrivacy")
+            testOptions.enableInAppBrowserPrivacy = parseBooleanTestHeaderValue(value);
+        else if (key == "standaloneWebApplicationURL")
+            testOptions.standaloneWebApplicationURL = parseStringTestHeaderValueAsURL(value);
+        else if (key == "isAppBoundWebView")
+            testOptions.isAppBoundWebView = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -2215,7 +2247,7 @@ void TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef 
 
     auto setHTTPCookieAcceptPolicy = [&] (WKHTTPCookieAcceptPolicy policy, CompletionHandler<void(WKTypeRef)>&& completionHandler) {
         auto context = new CompletionHandler<void(WKTypeRef)>(WTFMove(completionHandler));
-        WKHTTPCookieStoreSetHTTPCookieAcceptPolicy(WKWebsiteDataStoreGetHTTPCookieStore(TestController::defaultWebsiteDataStore()), policy, context, [] (void* context) {
+        WKHTTPCookieStoreSetHTTPCookieAcceptPolicy(WKWebsiteDataStoreGetHTTPCookieStore(websiteDataStore()), policy, context, [] (void* context) {
             auto completionHandlerPointer = static_cast<CompletionHandler<void(WKTypeRef)>*>(context);
             (*completionHandlerPointer)(nullptr);
             delete completionHandlerPointer;
@@ -3098,6 +3130,11 @@ void TestController::platformWillRunTest(const TestInvocation&)
 {
 }
 
+void TestController::platformInitializeDataStore(WKPageConfigurationRef, const TestOptions&)
+{
+    m_websiteDataStore = defaultWebsiteDataStore();
+}
+
 void TestController::platformCreateWebView(WKPageConfigurationRef configuration, const TestOptions& options)
 {
     m_mainWebView = makeUnique<PlatformWebView>(configuration, options);
@@ -3110,7 +3147,7 @@ PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parent
 
 WKContextRef TestController::platformAdjustContext(WKContextRef context, WKContextConfigurationRef contextConfiguration)
 {
-    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(WKContextGetWebsiteDataStore(context), true);
+    WKContextSetPrimaryWebsiteDataStore(context, defaultWebsiteDataStore());
     return context;
 }
 
@@ -3132,19 +3169,46 @@ void TestController::getAllStorageAccessEntries()
 {
 }
 
+struct LoadedThirdPartyDomainsCallbackContext {
+    explicit LoadedThirdPartyDomainsCallbackContext(TestController& controller)
+        : testController(controller)
+    {
+    }
+
+    TestController& testController;
+    bool done { false };
+    Vector<String> result;
+};
+
+static void loadedThirdPartyDomainsCallback(WKArrayRef domains, void* userData)
+{
+    auto* context = static_cast<LoadedThirdPartyDomainsCallbackContext*>(userData);
+    context->done = true;
+
+    if (domains) {
+        auto size = WKArrayGetSize(domains);
+        context->result.reserveInitialCapacity(size);
+        for (size_t index = 0; index < size; ++index)
+            context->result.uncheckedAppend(toWTFString(static_cast<WKStringRef>(WKArrayGetItemAtIndex(domains, index))));
+    }
+
+    context->testController.notifyDone();
+}
+
 void TestController::loadedThirdPartyDomains()
 {
+    LoadedThirdPartyDomainsCallbackContext context(*this);
+    WKPageLoadedThirdPartyDomains(m_mainWebView->page(), loadedThirdPartyDomainsCallback, &context);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didReceiveLoadedThirdPartyDomains(WTFMove(context.result));
 }
 
 void TestController::clearLoadedThirdPartyDomains()
 {
+    WKPageClearLoadedThirdPartyDomains(m_mainWebView->page());
 }
 
-void TestController::getWebViewCategory()
-{
-}
-
-#endif
+#endif // !PLATFORM(COCOA)
 
 struct ClearServiceWorkerRegistrationsCallbackContext {
     explicit ClearServiceWorkerRegistrationsCallbackContext(TestController& controller)
@@ -3167,7 +3231,7 @@ void TestController::clearServiceWorkerRegistrations()
 {
     ClearServiceWorkerRegistrationsCallbackContext context(*this);
 
-    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(TestController::defaultWebsiteDataStore(), &context, clearServiceWorkerRegistrationsCallback);
+    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(websiteDataStore(), &context, clearServiceWorkerRegistrationsCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3193,7 +3257,7 @@ void TestController::clearDOMCache(WKStringRef origin)
     ClearDOMCacheCallbackContext context(*this);
 
     auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
-    WKWebsiteDataStoreRemoveFetchCacheForOrigin(TestController::defaultWebsiteDataStore(), cacheOrigin.get(), &context, clearDOMCacheCallback);
+    WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore(), cacheOrigin.get(), &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3201,7 +3265,7 @@ void TestController::clearDOMCaches()
 {
     ClearDOMCacheCallbackContext context(*this);
 
-    WKWebsiteDataStoreRemoveAllFetchCaches(TestController::defaultWebsiteDataStore(), &context, clearDOMCacheCallback);
+    WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore(), &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3285,7 +3349,7 @@ static void fetchCacheOriginsCallback(WKArrayRef origins, void* userData)
 bool TestController::hasDOMCache(WKStringRef origin)
 {
     FetchCacheOriginsCallbackContext context(*this, origin);
-    WKWebsiteDataStoreGetFetchCacheOrigins(TestController::defaultWebsiteDataStore(), &context, fetchCacheOriginsCallback);
+    WKWebsiteDataStoreGetFetchCacheOrigins(websiteDataStore(), &context, fetchCacheOriginsCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3313,7 +3377,7 @@ static void fetchCacheSizeForOriginCallback(uint64_t size, void* userData)
 uint64_t TestController::domCacheSize(WKStringRef origin)
 {
     FetchCacheSizeForOriginCallbackContext context(*this);
-    WKWebsiteDataStoreGetFetchCacheSizeForOrigin(TestController::defaultWebsiteDataStore(), origin, &context, fetchCacheSizeForOriginCallback);
+    WKWebsiteDataStoreGetFetchCacheSizeForOrigin(websiteDataStore(), origin, &context, fetchCacheSizeForOriginCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3366,6 +3430,22 @@ static void resourceStatisticsBooleanResultCallback(bool result, void* userData)
     context->testController.notifyDone();
 }
 
+void TestController::clearStatisticsDataForDomain(WKStringRef domain)
+{
+    ResourceStatisticsCallbackContext context(*this);
+
+    WKWebsiteDataStoreRemoveITPDataForDomain(websiteDataStore(), domain, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+}
+
+bool TestController::doesStatisticsDomainIDExistInDatabase(unsigned domainID)
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreDoesStatisticsDomainIDExistInDatabase(websiteDataStore(), domainID, &context, resourceStatisticsBooleanResultCallback);
+    runUntil(context.done, noTimeout);
+    return context.result;
+}
+
 void TestController::setStatisticsEnabled(bool value)
 {
     WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(websiteDataStore(), value);
@@ -3409,6 +3489,14 @@ void TestController::setStatisticsMergeStatistic(WKStringRef host, WKStringRef t
     WKWebsiteDataStoreSetStatisticsMergeStatistic(websiteDataStore(), host, topFrameDomain1, topFrameDomain2, lastSeen, hadUserInteraction, mostRecentUserInteraction, isGrandfathered, isPrevalent, isVeryPrevalent, dataRecordsRemoved, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didMergeStatistic();
+}
+
+void TestController::setStatisticsExpiredStatistic(WKStringRef host, bool hadUserInteraction, bool isScheduledForAllButCookieDataRemoval, bool isPrevalent)
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetStatisticsExpiredStatistic(websiteDataStore(), host, hadUserInteraction, isScheduledForAllButCookieDataRemoval, isPrevalent, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetExpiredStatistic();
 }
 
 void TestController::setStatisticsPrevalentResource(WKStringRef host, bool value)
@@ -3711,6 +3799,30 @@ void TestController::setStatisticsToSameSiteStrictCookies(WKStringRef hostName)
     m_currentInvocation->didSetToSameSiteStrictCookies();
 }
 
+struct AppBoundDomainsCallbackContext {
+    explicit AppBoundDomainsCallbackContext(TestController& controller)
+        : testController(controller)
+    {
+    }
+
+    bool done { false };
+    TestController& testController;
+};
+
+static void didSetAppBoundDomainsCallback(void* callbackContext)
+{
+    auto* context = static_cast<AppBoundDomainsCallbackContext*>(callbackContext);
+    context->done = true;
+}
+
+void TestController::setAppBoundDomains(WKArrayRef originURLs)
+{
+    AppBoundDomainsCallbackContext context(*this);
+    WKWebsiteDataStoreSetAppBoundDomainsForTesting(originURLs, &context, didSetAppBoundDomainsCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetAppBoundDomains();
+}
+
 void TestController::statisticsResetToConsistentState()
 {
     ResourceStatisticsCallbackContext context(*this);
@@ -3783,18 +3895,30 @@ bool TestController::hasAppBoundSession()
     return context.result;
 }
 
-
-void TestController::setInAppBrowserPrivacyEnabled(bool value)
+void TestController::clearAppBoundSession()
 {
     InAppBrowserPrivacyCallbackContext context(*this);
-    WKWebsiteDataStoreSetInAppBrowserPrivacyEnabled(TestController::websiteDataStore(), value, &context, inAppBrowserPrivacyVoidResultCallback);
+    WKWebsiteDataStoreClearAppBoundSession(TestController::websiteDataStore(), &context, inAppBrowserPrivacyVoidResultCallback);
     runUntil(context.done, noTimeout);
-    m_currentInvocation->didSetInAppBrowserPrivacyEnabled();
 }
 
 void TestController::reinitializeAppBoundDomains()
 {
     WKWebsiteDataStoreReinitializeAppBoundDomains(TestController::websiteDataStore());
+}
+
+void TestController::updateBundleIdentifierInNetworkProcess(const String& bundleIdentifier)
+{
+    InAppBrowserPrivacyCallbackContext context(*this);
+    WKWebsiteDataStoreUpdateBundleIdentifierInNetworkProcess(TestController::websiteDataStore(), adoptWK(WKStringCreateWithUTF8CString(bundleIdentifier.utf8().data())).get(), &context, inAppBrowserPrivacyVoidResultCallback);
+    runUntil(context.done, noTimeout);
+}
+
+void TestController::clearBundleIdentifierInNetworkProcess()
+{
+    InAppBrowserPrivacyCallbackContext context(*this);
+    WKWebsiteDataStoreClearBundleIdentifierInNetworkProcess(TestController::websiteDataStore(), &context, inAppBrowserPrivacyVoidResultCallback);
+    runUntil(context.done, noTimeout);
 }
 
 #if !PLATFORM(COCOA)

@@ -8,6 +8,9 @@ test/annexB/built-ins/Function/createdynfn-html-open-comment-params.js:
 test/annexB/built-ins/Function/createdynfn-no-line-terminator-html-close-comment-body.js:
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
+test/annexB/built-ins/String/prototype/replaceAll/custom-replacer-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«», «null») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«», «null») to be true'
 test/annexB/language/eval-code/direct/func-block-decl-eval-func-skip-early-err-block.js:
   default: 'Test262Error: An initialized binding is not created prior to evaluation Expected a ReferenceError to be thrown but no exception was thrown at all'
 test/annexB/language/eval-code/direct/func-block-decl-eval-func-skip-early-err-for-in.js:
@@ -298,9 +301,18 @@ test/annexB/language/eval-code/indirect/global-switch-dflt-eval-global-skip-earl
   default: 'Test262Error: An initialized binding is not created following evaluation Expected a ReferenceError to be thrown but no exception was thrown at all'
 test/annexB/language/eval-code/indirect/global-switch-dflt-eval-global-skip-early-err-try.js:
   default: 'Test262Error: An initialized binding is not created prior to evaluation Expected a ReferenceError to be thrown but no exception was thrown at all'
+test/annexB/language/expressions/assignment/dstr/array-pattern-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+test/annexB/language/expressions/assignment/dstr/object-pattern-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
 test/annexB/language/expressions/yield/star-iterable-return-emulates-undefined-throws-when-called.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+test/annexB/language/expressions/yield/star-iterable-throw-emulates-undefined-throws-when-called.js:
+  default: 'Test262Error: Expected SameValue(«1», «0») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«1», «0») to be true'
 test/annexB/language/function-code/block-decl-func-skip-arguments.js:
   default: 'Test262Error: Expected SameValue(«function arguments() {}», «[object Arguments]») to be true'
 test/annexB/language/function-code/block-decl-func-skip-early-err-block.js:
@@ -609,90 +621,21 @@ test/annexB/language/global-code/switch-dflt-global-skip-early-err-try.js:
   default: 'Test262Error: An initialized binding is not created prior to evaluation Expected a ReferenceError to be thrown but no exception was thrown at all'
 test/annexB/language/global-code/switch-dflt-global-skip-early-err.js:
   default: "SyntaxError: Cannot declare a function that shadows a let/const/class/function variable 'f' in strict mode."
+test/annexB/language/statements/const/dstr/array-pattern-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+test/annexB/language/statements/const/dstr/object-pattern-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+test/annexB/language/statements/for-await-of/iterator-close-return-emulates-undefined-throws-when-called.js:
+  default: "Test262:AsyncTestFailure:Test262Error: Test262Error: expected TypeError because `iter[Symbol.asyncIterator]() returned a non-object: Test262Error: shouldn't touch Symbol.iterator Expected SameValue(«function Test262Error(message) {"
+  strict mode: "Test262:AsyncTestFailure:Test262Error: Test262Error: expected TypeError because `iter[Symbol.asyncIterator]() returned a non-object: Test262Error: shouldn't touch Symbol.iterator Expected SameValue(«function Test262Error(message) {"
 test/annexB/language/statements/for-of/iterator-close-return-emulates-undefined-throws-when-called.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Array/proto-from-ctor-realm-one.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-test/built-ins/Array/proto-from-ctor-realm-two.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-test/built-ins/Array/proto-from-ctor-realm-zero.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«», «») to be true'
-test/built-ins/Array/prototype/concat/arg-length-exceeding-integer-limit.js:
-  default: 'Test262Error: Expected a TypeError but got a RangeError'
-  strict mode: 'Test262Error: Expected a TypeError but got a RangeError'
-test/built-ins/Array/prototype/concat/arg-length-near-integer-limit.js:
-  default: 'Test262Error: Expected a Test262Error but got a RangeError'
-  strict mode: 'Test262Error: Expected a Test262Error but got a RangeError'
-test/built-ins/Array/prototype/concat/is-concat-spreadable-get-order.js:
-  default: 'Test262Error: Expected [isConcatSpreadable, constructor, isConcatSpreadable] and [constructor, isConcatSpreadable] to have the same contents. '
-  strict mode: 'Test262Error: Expected [isConcatSpreadable, constructor, isConcatSpreadable] and [constructor, isConcatSpreadable] to have the same contents. '
-test/built-ins/Array/prototype/indexOf/length-near-integer-limit.js:
-  default: 'Test262Error: Expected SameValue(«-1», «9007199254740990») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«-1», «9007199254740990») to be true'
-test/built-ins/Array/prototype/pop/S15.4.4.6_A2_T2.js:
-  default: 'Test262Error: #4: var obj = {}; obj.length = Number.POSITIVE_INFINITY; obj.pop = Array.prototype.pop; obj.pop(); obj.length === 9007199254740990. Actual: 4294967294'
-  strict mode: 'Test262Error: #4: var obj = {}; obj.length = Number.POSITIVE_INFINITY; obj.pop = Array.prototype.pop; obj.pop(); obj.length === 9007199254740990. Actual: 4294967294'
-test/built-ins/Array/prototype/pop/S15.4.4.6_A3_T1.js:
-  default: 'Test262Error: #1: var obj = {}; obj.pop = Array.prototype.pop; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; obj.pop() === "y". Actual: undefined'
-  strict mode: 'Test262Error: #1: var obj = {}; obj.pop = Array.prototype.pop; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; obj.pop() === "y". Actual: undefined'
-test/built-ins/Array/prototype/pop/clamps-to-integer-limit.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967294», «9007199254740990») to be true'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967294», «9007199254740990») to be true'
-test/built-ins/Array/prototype/pop/length-near-integer-limit.js:
-  default: "Test262Error: arrayLike['9007199254740990'] is returned from pop() Expected SameValue(«undefined», «9007199254740990») to be true"
-  strict mode: "Test262Error: arrayLike['9007199254740990'] is returned from pop() Expected SameValue(«undefined», «9007199254740990») to be true"
-test/built-ins/Array/prototype/push/S15.4.4.7_A2_T2.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Array/prototype/push/clamps-to-integer-limit.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-test/built-ins/Array/prototype/push/throws-if-integer-limit-exceeded.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Array/prototype/reverse/length-exceeding-integer-limit-with-proxy.js:
-  default: 'Test262Error: Expected [Get:length, Has:0, Get:0, Has:4294967294, Delete:0, Set:4294967294, GetOwnPropertyDescriptor:4294967294, DefineProperty:4294967294, Has:1, Has:4294967293, Delete:1, Delete:4294967293, Has:2, Get:2, Has:4294967292, Delete:2, Set:4294967292, GetOwnPropertyDescriptor:4294967292, DefineProperty:4294967292, Has:3, Has:4294967291, Delete:3, Delete:4294967291, Has:4, Get:4] and [Get:length, Has:0, Get:0, Has:9007199254740990, Get:9007199254740990, Set:0, GetOwnPropertyDescriptor:0, DefineProperty:0, Set:9007199254740990, GetOwnPropertyDescriptor:9007199254740990, DefineProperty:9007199254740990, Has:1, Has:9007199254740989, Has:2, Get:2, Has:9007199254740988, Delete:2, Set:9007199254740988, GetOwnPropertyDescriptor:9007199254740988, DefineProperty:9007199254740988, Has:3, Has:9007199254740987, Get:9007199254740987, Set:3, GetOwnPropertyDescriptor:3, DefineProperty:3, Delete:9007199254740987, Has:4, Get:4] to have the same contents. '
-  strict mode: 'Test262Error: Expected [Get:length, Has:0, Get:0, Has:4294967294, Delete:0, Set:4294967294, GetOwnPropertyDescriptor:4294967294, DefineProperty:4294967294, Has:1, Has:4294967293, Delete:1, Delete:4294967293, Has:2, Get:2, Has:4294967292, Delete:2, Set:4294967292, GetOwnPropertyDescriptor:4294967292, DefineProperty:4294967292, Has:3, Has:4294967291, Delete:3, Delete:4294967291, Has:4, Get:4] and [Get:length, Has:0, Get:0, Has:9007199254740990, Get:9007199254740990, Set:0, GetOwnPropertyDescriptor:0, DefineProperty:0, Set:9007199254740990, GetOwnPropertyDescriptor:9007199254740990, DefineProperty:9007199254740990, Has:1, Has:9007199254740989, Has:2, Get:2, Has:9007199254740988, Delete:2, Set:9007199254740988, GetOwnPropertyDescriptor:9007199254740988, DefineProperty:9007199254740988, Has:3, Has:9007199254740987, Get:9007199254740987, Set:3, GetOwnPropertyDescriptor:3, DefineProperty:3, Delete:9007199254740987, Has:4, Get:4] to have the same contents. '
-test/built-ins/Array/prototype/slice/length-exceeding-integer-limit-proxied-array.js:
-  default: 'Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. slice(9007199254740989)'
-  strict mode: 'Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. slice(9007199254740989)'
-test/built-ins/Array/prototype/slice/length-exceeding-integer-limit.js:
-  default: 'Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. slice(9007199254740989)'
-  strict mode: 'Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. slice(9007199254740989)'
-test/built-ins/Array/prototype/splice/S15.4.4.12_A3_T1.js:
-  default: 'Test262Error: #1: var obj = {}; obj.splice = Array.prototype.splice; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; var arr = obj.splice(4294967295,1); arr.length === 1. Actual: 0'
-  strict mode: 'Test262Error: #1: var obj = {}; obj.splice = Array.prototype.splice; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; var arr = obj.splice(4294967295,1); arr.length === 1. Actual: 0'
-test/built-ins/Array/prototype/splice/clamps-length-to-integer-limit.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-test/built-ins/Array/prototype/splice/create-proxy.js:
-  default: 'TypeError: Attempted to assign to readonly property.'
-  strict mode: 'TypeError: Attempted to assign to readonly property.'
-test/built-ins/Array/prototype/splice/create-species-length-exceeding-integer-limit.js:
-  default: 'Test262Error: length and deleteCount were correctly clamped to 2^53-1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-  strict mode: 'Test262Error: length and deleteCount were correctly clamped to 2^53-1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-test/built-ins/Array/prototype/splice/length-and-deleteCount-exceeding-integer-limit.js:
-  default: "Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. arrayLike['9007199254740989'] and arrayLike['9007199254740990'] are removed"
-  strict mode: "Test262Error: Expected [] and [9007199254740989, 9007199254740990] to have the same contents. arrayLike['9007199254740989'] and arrayLike['9007199254740990'] are removed"
-test/built-ins/Array/prototype/splice/length-exceeding-integer-limit-shrink-array.js:
-  default: "Test262Error: Expected [] and [9007199254740987] to have the same contents. arrayLike['9007199254740987'] is removed"
-  strict mode: "Test262Error: Expected [] and [9007199254740987] to have the same contents. arrayLike['9007199254740987'] is removed"
-test/built-ins/Array/prototype/splice/property-traps-order-with-species.js:
-  default: 'Test262Error: Expected [defineProperty, defineProperty, set, getOwnPropertyDescriptor, defineProperty] and [defineProperty, defineProperty] to have the same contents. '
-  strict mode: 'Test262Error: Expected [defineProperty, defineProperty, set, getOwnPropertyDescriptor, defineProperty] and [defineProperty, defineProperty] to have the same contents. '
-test/built-ins/Array/prototype/splice/throws-if-integer-limit-exceeded.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected a TypeError but got a Error'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected a TypeError but got a Error'
-test/built-ins/Array/prototype/unshift/clamps-to-integer-limit.js:
-  default: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-  strict mode: 'Test262Error: Length is 2**53 - 1 Expected SameValue(«4294967295», «9007199254740991») to be true'
-test/built-ins/ArrayBuffer/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object ArrayBuffer]», «[object ArrayBuffer]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object ArrayBuffer]», «[object ArrayBuffer]») to be true'
+test/annexB/language/statements/function/default-parameters-emulates-undefined.js:
+  default: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«undefined», «[object Function]») to be true'
 test/built-ins/ArrayBuffer/prototype/byteLength/detached-buffer.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
@@ -723,78 +666,9 @@ test/built-ins/ArrayBuffer/prototype/slice/species.js:
 test/built-ins/ArrayIteratorPrototype/next/detach-typedarray-in-progress.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
-test/built-ins/AsyncFunction/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object AsyncFunction]», «[object AsyncFunction]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object AsyncFunction]», «[object AsyncFunction]») to be true'
-test/built-ins/AsyncGeneratorFunction/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object AsyncGeneratorFunction]», «[object AsyncGeneratorFunction]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object AsyncGeneratorFunction]», «[object AsyncGeneratorFunction]») to be true'
-test/built-ins/BigInt/asIntN/arithmetic.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asIntN/bigint-tobigint-errors.js:
-  default: 'Test262Error: ToBigInt: no argument => undefined => TypeError Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: ToBigInt: no argument => undefined => TypeError Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/BigInt/asIntN/bigint-tobigint-toprimitive.js:
-  default: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-  strict mode: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-test/built-ins/BigInt/asIntN/bigint-tobigint-wrapped-values.js:
-  default: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asIntN/bigint-tobigint.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asIntN/bits-toindex-errors.js:
-  default: 'Test262Error: ToIndex: throw when integerIndex < 0 Expected a RangeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: ToIndex: throw when integerIndex < 0 Expected a RangeError to be thrown but no exception was thrown at all'
-test/built-ins/BigInt/asIntN/bits-toindex-toprimitive.js:
-  default: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «-1») to be true'
-  strict mode: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «-1») to be true'
-test/built-ins/BigInt/asIntN/bits-toindex-wrapped-values.js:
-  default: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asIntN/bits-toindex.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asIntN/order-of-steps.js:
-  default: 'Test262Error: Expected SameValue(«0», «2») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«0», «2») to be true'
-test/built-ins/BigInt/asUintN/arithmetic.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asUintN/bigint-tobigint-errors.js:
-  default: 'Test262Error: ToBigInt: no argument => undefined => TypeError Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: ToBigInt: no argument => undefined => TypeError Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/BigInt/asUintN/bigint-tobigint-toprimitive.js:
-  default: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-  strict mode: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-test/built-ins/BigInt/asUintN/bigint-tobigint-wrapped-values.js:
-  default: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asUintN/bigint-tobigint.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asUintN/bits-toindex-errors.js:
-  default: 'Test262Error: ToIndex: throw when integerIndex < 0 Expected a RangeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: ToIndex: throw when integerIndex < 0 Expected a RangeError to be thrown but no exception was thrown at all'
-test/built-ins/BigInt/asUintN/bits-toindex-toprimitive.js:
-  default: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-  strict mode: 'Test262Error: ToPrimitive: @@toPrimitive takes precedence Expected SameValue(«undefined», «1») to be true'
-test/built-ins/BigInt/asUintN/bits-toindex-wrapped-values.js:
-  default: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: ToPrimitive: unbox object with internal slot Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asUintN/bits-toindex.js:
-  default: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«undefined», «0») to be true'
-test/built-ins/BigInt/asUintN/order-of-steps.js:
-  default: 'Test262Error: Expected SameValue(«0», «2») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«0», «2») to be true'
-test/built-ins/BigInt/constructor-integer.js:
-  default: 'RangeError: Not safe integer'
-  strict mode: 'RangeError: Not safe integer'
-test/built-ins/Boolean/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«false», «false») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«false», «false») to be true'
+test/built-ins/AsyncGeneratorPrototype/return/return-suspendedYield-promise.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: AsyncGeneratorResolve(generator, resultValue, true) Expected SameValue(«[object Promise]», «unwrapped-value») to be true'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: AsyncGeneratorResolve(generator, resultValue, true) Expected SameValue(«[object Promise]», «unwrapped-value») to be true'
 test/built-ins/DataView/custom-proto-access-detaches-buffer.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
@@ -804,9 +678,6 @@ test/built-ins/DataView/detached-buffer.js:
 test/built-ins/DataView/length.js:
   default: 'Test262Error: descriptor value should be 1'
   strict mode: 'Test262Error: descriptor value should be 1'
-test/built-ins/DataView/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object DataView]», «[object DataView]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object DataView]», «[object DataView]») to be true'
 test/built-ins/DataView/prototype/byteLength/detached-buffer.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
@@ -909,18 +780,6 @@ test/built-ins/DataView/prototype/setUint8/detached-buffer-before-outofrange-byt
 test/built-ins/DataView/prototype/setUint8/detached-buffer.js:
   default: 'Test262Error: Expected a TypeError but got a RangeError'
   strict mode: 'Test262Error: Expected a TypeError but got a RangeError'
-test/built-ins/Date/proto-from-ctor-realm-one.js:
-  default: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/built-ins/Date/proto-from-ctor-realm-two.js:
-  default: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/built-ins/Date/proto-from-ctor-realm-zero.js:
-  default: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/built-ins/Error/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«Error», «Error») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«Error», «Error») to be true'
 test/built-ins/Function/call-bind-this-realm-undef.js:
   default: 'Test262Error: implicit undefined Expected SameValue(«[object global]», «[object Undefined]») to be true'
   strict mode: 'Test262Error: implicit undefined Expected SameValue(«[object global]», «[object Undefined]») to be true'
@@ -939,9 +798,6 @@ test/built-ins/Function/internals/Construct/derived-return-val-realm.js:
 test/built-ins/Function/internals/Construct/derived-this-uninitialized-realm.js:
   default: 'Test262Error: Expected a ReferenceError but got a ReferenceError'
   strict mode: 'Test262Error: Expected a ReferenceError but got a ReferenceError'
-test/built-ins/Function/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«function () {'
-  strict mode: 'Test262Error: Expected SameValue(«function () {'
 test/built-ins/Function/prototype/bind/length-exceeds-int32.js:
   default: 'Test262Error: Expected SameValue(«0», «2147483648») to be true'
   strict mode: 'Test262Error: Expected SameValue(«0», «2147483648») to be true'
@@ -1080,45 +936,27 @@ test/built-ins/Function/prototype/toString/setter-object.js:
 test/built-ins/Function/prototype/toString/unicode.js:
   default: "Test262Error: Conforms to NativeFunction Syntax: 'function a(\\u{62}, \\u0063) { \\u0062 = \\u{00063}; return b; }'.(function \\u0061(\\u{62}, \\u0063) { \\u0062 = \\u{00063}; return b; })"
   strict mode: "Test262Error: Conforms to NativeFunction Syntax: 'function a(\\u{62}, \\u0063) { \\u0062 = \\u{00063}; return b; }'.(function \\u0061(\\u{62}, \\u0063) { \\u0062 = \\u{00063}; return b; })"
-test/built-ins/GeneratorFunction/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object GeneratorFunction]», «[object GeneratorFunction]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object GeneratorFunction]», «[object GeneratorFunction]») to be true'
 test/built-ins/JSON/parse/reviver-object-non-configurable-prop-create.js:
   default: 'Test262Error: Expected SameValue(«22», «2») to be true'
   strict mode: 'Test262Error: Expected SameValue(«22», «2») to be true'
-test/built-ins/Map/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Map]», «[object Map]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Map]», «[object Map]») to be true'
-test/built-ins/NativeErrors/EvalError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«EvalError», «EvalError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«EvalError», «EvalError») to be true'
-test/built-ins/NativeErrors/RangeError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«RangeError», «RangeError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«RangeError», «RangeError») to be true'
-test/built-ins/NativeErrors/ReferenceError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«ReferenceError», «ReferenceError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«ReferenceError», «ReferenceError») to be true'
-test/built-ins/NativeErrors/SyntaxError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«SyntaxError», «SyntaxError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«SyntaxError», «SyntaxError») to be true'
-test/built-ins/NativeErrors/TypeError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«TypeError», «TypeError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«TypeError», «TypeError») to be true'
-test/built-ins/NativeErrors/URIError/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«URIError», «URIError») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«URIError», «URIError») to be true'
-test/built-ins/Number/bigint-conversion.js:
-  default: "TypeError: Conversion from 'BigInt' to 'number' is not allowed."
-  strict mode: "TypeError: Conversion from 'BigInt' to 'number' is not allowed."
-test/built-ins/Number/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«0», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«0», «0») to be true'
+test/built-ins/Object/assign/strings-and-symbol-order-proxy.js:
+  default: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
+  strict mode: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
+test/built-ins/Object/defineProperties/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
 test/built-ins/Object/entries/order-after-define-property.js:
   default: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
   strict mode: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
+test/built-ins/Object/freeze/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
 test/built-ins/Object/getOwnPropertyDescriptors/order-after-define-property.js:
   default: 'Test262Error: Expected [Symbol(b), Symbol(a)] and [Symbol(a), Symbol(b)] to have the same contents. '
   strict mode: 'Test262Error: Expected [Symbol(b), Symbol(a)] and [Symbol(a), Symbol(b)] to have the same contents. '
+test/built-ins/Object/getOwnPropertyDescriptors/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
 test/built-ins/Object/getOwnPropertyNames/order-after-define-property.js:
   default: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
   strict mode: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
@@ -1132,49 +970,58 @@ test/built-ins/Object/internals/DefineOwnProperty/consistent-value-function-call
 test/built-ins/Object/internals/DefineOwnProperty/consistent-value-regexp-dollar1.js:
   default: 'Test262Error: Expected SameValue(«», «x») to be true'
   strict mode: 'Test262Error: Expected SameValue(«», «x») to be true'
+test/built-ins/Object/isFrozen/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+test/built-ins/Object/isSealed/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
 test/built-ins/Object/keys/order-after-define-property.js:
   default: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
   strict mode: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
-test/built-ins/Object/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/built-ins/Object/prototype/toString/proxy-function.js:
-  default: 'Test262Error: function proxy Expected SameValue(«[object Object]», «[object Function]») to be true'
-  strict mode: 'Test262Error: function proxy Expected SameValue(«[object Object]», «[object Function]») to be true'
-test/built-ins/Object/prototype/toString/symbol-tag-non-str-builtin.js:
-  default: 'Test262Error: Expected SameValue(«[object Math]», «[object Object]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Math]», «[object Object]») to be true'
-test/built-ins/Object/prototype/toString/symbol-tag-non-str-proxy-function.js:
-  default: 'Test262Error: generator function proxy without Symbol.toStringTag Expected SameValue(«[object Object]», «[object Function]») to be true'
-  strict mode: 'Test262Error: generator function proxy without Symbol.toStringTag Expected SameValue(«[object Object]», «[object Function]») to be true'
+test/built-ins/Object/seal/proxy-no-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
+  strict mode: 'Test262Error: Expected [0, Symbol(), foo] and [0, foo, Symbol()] to have the same contents. '
 test/built-ins/Object/values/order-after-define-property.js:
   default: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
   strict mode: 'Test262Error: Expected [b, a] and [a, b] to have the same contents. '
 test/built-ins/Promise/all/invoke-resolve-get-error-close.js:
   default: 'Test262Error: Expected SameValue(«0», «1») to be true'
   strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
-test/built-ins/Promise/all/resolve-element-function-nonconstructor.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/Promise/all/resolve-not-callable-close.js:
+  default: 'Test262Error: Expected SameValue(«0», «1») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
 test/built-ins/Promise/allSettled/invoke-resolve-get-error-close.js:
   default: 'Test262Error: Expected SameValue(«0», «1») to be true'
   strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
-test/built-ins/Promise/allSettled/reject-element-function-nonconstructor.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Promise/allSettled/resolve-element-function-nonconstructor.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/Promise/allSettled/resolve-not-callable-close.js:
+  default: 'Test262Error: Expected SameValue(«0», «1») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
+test/built-ins/Promise/any/invoke-resolve-get-error-close.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected SameValue(«0», «1») to be true'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected SameValue(«0», «1») to be true'
+test/built-ins/Promise/any/resolve-not-callable-close.js:
+  default: 'Test262Error: Expected SameValue(«0», «1») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
+test/built-ins/Promise/create-resolving-functions-reject.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
+test/built-ins/Promise/create-resolving-functions-resolve.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
 test/built-ins/Promise/executor-function-nonconstructor.js:
   default: 'Test262Error: Expected SameValue(«true», «false») to be true'
   strict mode: 'Test262Error: Expected SameValue(«true», «false») to be true'
-test/built-ins/Promise/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Promise]», «[object Promise]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Promise]», «[object Promise]») to be true'
 test/built-ins/Promise/prototype/finally/invokes-then-with-function.js:
   default: 'Test262Error: fulfillment handler is not constructor'
   strict mode: 'Test262Error: fulfillment handler is not constructor'
+test/built-ins/Promise/prototype/finally/resolved-observable-then-calls-argument.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected true but got false'
 test/built-ins/Promise/race/invoke-resolve-get-error-close.js:
+  default: 'Test262Error: Expected SameValue(«0», «1») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
+test/built-ins/Promise/race/resolve-not-callable-close.js:
   default: 'Test262Error: Expected SameValue(«0», «1») to be true'
   strict mode: 'Test262Error: Expected SameValue(«0», «1») to be true'
 test/built-ins/Promise/reject-function-nonconstructor.js:
@@ -1219,30 +1066,9 @@ test/built-ins/Proxy/construct/return-not-object-throws-undefined-realm.js:
 test/built-ins/Proxy/construct/trap-is-not-callable-realm.js:
   default: 'Test262Error: Expected a TypeError but got a TypeError'
   strict mode: 'Test262Error: Expected a TypeError but got a TypeError'
-test/built-ins/Proxy/defineProperty/trap-is-undefined-target-is-proxy.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Proxy/getOwnPropertyDescriptor/trap-is-missing-target-is-proxy.js:
-  default: "TypeError: undefined is not an object (evaluating 'originalDesc.enumerable')"
-  strict mode: "TypeError: undefined is not an object (evaluating 'originalDesc.enumerable')"
-test/built-ins/Proxy/getOwnPropertyDescriptor/trap-is-null-target-is-proxy.js:
-  default: "TypeError: undefined is not an object (evaluating 'originalDesc.value')"
-  strict mode: "TypeError: undefined is not an object (evaluating 'originalDesc.value')"
-test/built-ins/Proxy/getOwnPropertyDescriptor/trap-is-undefined-target-is-proxy.js:
-  default: "TypeError: undefined is not an object (evaluating 'originalDesc.value')"
-  strict mode: "TypeError: undefined is not an object (evaluating 'originalDesc.value')"
 test/built-ins/Proxy/ownKeys/trap-is-undefined-target-is-proxy.js:
   default: 'Test262Error: Expected [length, foo, 0, Symbol()] and [Symbol(), length, foo, 0] to have the same contents. '
   strict mode: 'Test262Error: Expected [length, foo, 0, Symbol()] and [Symbol(), length, foo, 0] to have the same contents. '
-test/built-ins/Proxy/set/trap-is-missing-target-is-proxy.js:
-  default: 'Test262Error: Expected SameValue(«0», «1») to be true'
-  strict mode: 'TypeError: Attempting to change configurable attribute of unconfigurable property.'
-test/built-ins/Proxy/set/trap-is-null-target-is-proxy.js:
-  default: 'Test262Error: Expected [1, 2, 3] and [] to have the same contents. '
-  strict mode: 'TypeError: Attempting to change configurable attribute of unconfigurable property.'
-test/built-ins/Proxy/set/trap-is-undefined-target-is-proxy.js:
-  default: 'Test262Error: Expected true but got false'
-  strict mode: 'Test262Error: Expected true but got false'
 test/built-ins/Reflect/ownKeys/order-after-define-property.js:
   default: 'Test262Error: Expected [Symbol(b), Symbol(a)] and [Symbol(a), Symbol(b)] to have the same contents. '
   strict mode: 'Test262Error: Expected [Symbol(b), Symbol(a)] and [Symbol(a), Symbol(b)] to have the same contents. '
@@ -1639,18 +1465,9 @@ test/built-ins/RegExp/property-escapes/generated/XID_Continue.js:
 test/built-ins/RegExp/property-escapes/generated/XID_Start.js:
   default: 'Test262Error: `\p{XID_Start}` should match U+001CFA (`ᳺ`)'
   strict mode: 'Test262Error: `\p{XID_Start}` should match U+001CFA (`ᳺ`)'
-test/built-ins/RegExp/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«/(?:)/», «/(?:)/») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«/(?:)/», «/(?:)/») to be true'
 test/built-ins/RegExp/prototype/Symbol.match/builtin-infer-unicode.js:
   default: 'Test262Error: Expected SameValue(«�», «null») to be true'
   strict mode: 'Test262Error: Expected SameValue(«�», «null») to be true'
-test/built-ins/RegExp/prototype/Symbol.search/set-lastindex-init-samevalue.js:
-  default: 'Test262Error: Expected SameValue(«-0», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«-0», «0») to be true'
-test/built-ins/RegExp/prototype/Symbol.search/set-lastindex-restore-samevalue.js:
-  default: 'Test262Error: Expected SameValue(«-0», «0») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«-0», «0») to be true'
 test/built-ins/RegExp/prototype/Symbol.search/u-lastindex-advance.js:
   default: 'Test262Error: Expected SameValue(«1», «-1») to be true'
   strict mode: 'Test262Error: Expected SameValue(«1», «-1») to be true'
@@ -1684,15 +1501,6 @@ test/built-ins/RegExp/prototype/unicode/cross-realm.js:
 test/built-ins/RegExp/quantifier-integer-limit.js:
   default: 'SyntaxError: Invalid regular expression: number too large in {} quantifier'
   strict mode: 'SyntaxError: Invalid regular expression: number too large in {} quantifier'
-test/built-ins/RegExp/unicode_restricted_octal_escape.js:
-  default: 'Test262Error: RegExp("[\1]", "u"):  Expected a SyntaxError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: RegExp("[\1]", "u"):  Expected a SyntaxError to be thrown but no exception was thrown at all'
-test/built-ins/Set/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Set]», «[object Set]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object Set]», «[object Set]») to be true'
-test/built-ins/String/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«», «») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«», «») to be true'
 test/built-ins/ThrowTypeError/extensible.js:
   default: 'Test262Error: Expected SameValue(«true», «false») to be true'
   strict mode: 'Test262Error: Expected SameValue(«true», «false») to be true'
@@ -1758,21 +1566,9 @@ test/built-ins/TypedArrayConstructors/ctors/buffer-arg/detachedbuffer.js:
 test/built-ins/TypedArrayConstructors/ctors/buffer-arg/length-to-number-detachbuffer.js:
   default: 'Test262Error: Expected a TypeError but got a RangeError (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a TypeError but got a RangeError (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/ctors/buffer-arg/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/ctors/length-arg/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/ctors/no-args/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/ctors/object-arg/length-excessive-throws.js:
   default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/ctors/object-arg/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/ctors/typedarray-arg/detached-when-species-retrieved-different-type.js:
   default: 'Test262Error: TypeError thrown for detached source buffer Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: TypeError thrown for detached source buffer Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
@@ -1800,9 +1596,6 @@ test/built-ins/TypedArrayConstructors/ctors/typedarray-arg/other-ctor-buffer-cto
 test/built-ins/TypedArrayConstructors/ctors/typedarray-arg/other-ctor-buffer-ctor-species-prototype-throws.js:
   default: 'Test262Error: Expected a Test262Error to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a Test262Error to be thrown but no exception was thrown at all (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/ctors/typedarray-arg/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected SameValue(«[object Float64ArrayPrototype]», «[object Float64ArrayPrototype]») to be true (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/ctors/typedarray-arg/same-ctor-buffer-ctor-access-throws.js:
   default: 'Test262Error: Expected a Test262Error to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a Test262Error to be thrown but no exception was thrown at all (Testing with Float64Array.)'
@@ -1836,27 +1629,12 @@ test/built-ins/TypedArrayConstructors/from/new-instance-using-custom-ctor.js:
 test/built-ins/TypedArrayConstructors/from/set-value-abrupt-completion.js:
   default: 'Test262Error: interrupted source iteration Expected SameValue(«1», «[object Object]») to be true (Testing with Float64Array.)'
   strict mode: 'Test262Error: interrupted source iteration Expected SameValue(«1», «[object Object]») to be true (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/conversion-operation-consistent-nan.js:
-  default: 'TypeError: Attempting to store non-enumerable or non-writable property on a typed array at index: 0 (Testing with Float32Array.)'
-  strict mode: 'TypeError: Attempting to store non-enumerable or non-writable property on a typed array at index: 0 (Testing with Float32Array.)'
-test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/conversion-operation.js:
-  default: 'TypeError: Attempting to store non-enumerable or non-writable property on a typed array at index: 0 (Testing with Float64Array.)'
-  strict mode: 'TypeError: Attempting to store non-enumerable or non-writable property on a typed array at index: 0 (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/desc-value-throws.js:
-  default: 'Test262Error: Expected a Test262Error but got a TypeError (Testing with Float64Array.)'
-  strict mode: 'Test262Error: Expected a Test262Error but got a TypeError (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/detached-buffer-realm.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/detached-buffer.js:
   default: 'Test262Error: Throws TypeError on valid numeric index if instance has a detached buffer Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Throws TypeError on valid numeric index if instance has a detached buffer Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/set-value.js:
-  default: 'Test262Error: set value for sample[0] returns true Expected SameValue(«false», «true») to be true (Testing with Float64Array.)'
-  strict mode: 'Test262Error: set value for sample[0] returns true Expected SameValue(«false», «true») to be true (Testing with Float64Array.)'
-test/built-ins/TypedArrayConstructors/internals/DefineOwnProperty/tonumber-value-detached-buffer.js:
-  default: 'Test262Error: detaching a ArrayBuffer during defining an element of a typed array viewing it should throw Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
-  strict mode: 'Test262Error: detaching a ArrayBuffer during defining an element of a typed array viewing it should throw Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
 test/built-ins/TypedArrayConstructors/internals/Get/key-is-not-integer.js:
   default: 'Test262Error: OrdinaryGet was called! Ref: 9.1.8.1 3.c (Testing with Float64Array.)'
   strict mode: 'Test262Error: OrdinaryGet was called! Ref: 9.1.8.1 3.c (Testing with Float64Array.)'
@@ -1905,108 +1683,114 @@ test/built-ins/TypedArrayConstructors/of/custom-ctor.js:
 test/built-ins/TypedArrayConstructors/of/new-instance-using-custom-ctor.js:
   default: 'TypeError: TypedArray.of requires its this argument to subclass a TypedArray constructor (Testing with Float64Array.)'
   strict mode: 'TypeError: TypedArray.of requires its this argument to subclass a TypedArray constructor (Testing with Float64Array.)'
-test/built-ins/WeakMap/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object WeakMap]», «[object WeakMap]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object WeakMap]», «[object WeakMap]») to be true'
-test/built-ins/WeakRef/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object WeakRef]», «[object WeakRef]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object WeakRef]», «[object WeakRef]») to be true'
-test/built-ins/WeakSet/proto-from-ctor-realm.js:
-  default: 'Test262Error: Expected SameValue(«[object WeakSet]», «[object WeakSet]») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«[object WeakSet]», «[object WeakSet]») to be true'
-test/intl402/BigInt/prototype/toLocaleString/de-DE.js:
-  default: 'RangeError: toString() radix argument must be between 2 and 36'
-  strict mode: 'RangeError: toString() radix argument must be between 2 and 36'
-test/intl402/BigInt/prototype/toLocaleString/default-options-object-prototype.js:
-  default: 'RangeError: toString() radix argument must be between 2 and 36'
-  strict mode: 'RangeError: toString() radix argument must be between 2 and 36'
-test/intl402/BigInt/prototype/toLocaleString/en-US.js:
-  default: 'RangeError: toString() radix argument must be between 2 and 36'
-  strict mode: 'RangeError: toString() radix argument must be between 2 and 36'
-test/intl402/BigInt/prototype/toLocaleString/returns-same-results-as-NumberFormat.js:
-  default: "TypeError: Conversion from 'BigInt' to 'number' is not allowed."
-  strict mode: "TypeError: Conversion from 'BigInt' to 'number' is not allowed."
-test/intl402/BigInt/prototype/toLocaleString/throws-same-exceptions-as-NumberFormat.js:
-  default: "Test262Error: BigInt.prototype.toLocaleString didn't throw exception for locales null. Expected a TypeError but got a RangeError"
-  strict mode: "Test262Error: BigInt.prototype.toLocaleString didn't throw exception for locales null. Expected a TypeError but got a RangeError"
 test/intl402/Collator/missing-unicode-ext-value-defaults-to-true.js:
-  default: 'Test262Error: "kn" should be returned in locale. Expected SameValue(«false», «true») to be true'
-  strict mode: 'Test262Error: "kn" should be returned in locale. Expected SameValue(«false», «true») to be true'
-test/intl402/Collator/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
+  default: "Test262Error: \"kn-true\" is returned in locale, but shouldn't be. Expected SameValue(«7», «-1») to be true"
+  strict mode: "Test262Error: \"kn-true\" is returned in locale, but shouldn't be. Expected SameValue(«7», «-1») to be true"
 test/intl402/Collator/usage-de.js:
   default: 'Test262Error: Expected [Ä, AE] and [AE, Ä] to have the same contents. search'
   strict mode: 'Test262Error: Expected [Ä, AE] and [AE, Ä] to have the same contents. search'
-test/intl402/DateTimeFormat/constructor-calendar-numberingSystem-order.js:
-  default: 'Test262Error: Expected [localeMatcher, hour12] and [localeMatcher, calendar, numberingSystem, hour12] to have the same contents. '
-  strict mode: 'Test262Error: Expected [localeMatcher, hour12] and [localeMatcher, calendar, numberingSystem, hour12] to have the same contents. '
-test/intl402/DateTimeFormat/invalid-numbering-system-calendar-options.js:
-  default: 'Test262Error: Invalid numberingSystem value ab was not rejected. Expected a RangeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Invalid numberingSystem value ab was not rejected. Expected a RangeError to be thrown but no exception was thrown at all'
-test/intl402/DateTimeFormat/numbering-system-calendar-options.js:
-  default: "Test262Error: Options value for property numberingSystem doesn't override locale extension key nu. Expected SameValue(«arab», «latn») to be true"
-  strict mode: "Test262Error: Options value for property numberingSystem doesn't override locale extension key nu. Expected SameValue(«arab», «latn») to be true"
-test/intl402/DateTimeFormat/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/intl402/DateTimeFormat/prototype/format/related-year-zh.js:
-  default: 'Test262Error: Expected SameValue(«36年», «2019己亥年») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«36年», «2019己亥年») to be true'
-test/intl402/DateTimeFormat/prototype/formatToParts/pattern-on-calendar.js:
-  default: 'Test262Error: Expected SameValue(«false», «true») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«false», «true») to be true'
-test/intl402/DateTimeFormat/prototype/formatToParts/related-year-zh.js:
-  default: 'Test262Error: undefined: length Expected SameValue(«2», «3») to be true'
-  strict mode: 'Test262Error: undefined: length Expected SameValue(«2», «3») to be true'
-test/intl402/DateTimeFormat/prototype/formatToParts/related-year.js:
-  default: 'Test262Error: Expected SameValue(«false», «true») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«false», «true») to be true'
 test/intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js:
   default: 'Test262Error: Expected SameValue(«h24», «h23») to be true'
   strict mode: 'Test262Error: Expected SameValue(«h24», «h23») to be true'
 test/intl402/Intl/getCanonicalLocales/canonicalized-tags.js:
   default: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
   strict mode: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
+test/intl402/Intl/getCanonicalLocales/complex-language-subtag-replacement.js:
+  default: 'Test262Error: Expected SameValue(«sh», «sr-Latn») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«sh», «sr-Latn») to be true'
+test/intl402/Intl/getCanonicalLocales/complex-region-subtag-replacement.js:
+  default: 'Test262Error: Expected SameValue(«ru-SU», «ru-RU») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«ru-SU», «ru-RU») to be true'
 test/intl402/Intl/getCanonicalLocales/grandfathered.js:
   default: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
   strict mode: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
 test/intl402/Intl/getCanonicalLocales/invalid-tags.js:
-  default: 'Test262Error: Test data "de-gregory-gregory" is a canonicalized and structurally valid language tag.'
-  strict mode: 'Test262Error: Test data "de-gregory-gregory" is a canonicalized and structurally valid language tag.'
+  default: 'Test262Error: Language tag: no-nyn Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Language tag: no-nyn Expected a RangeError to be thrown but no exception was thrown at all'
 test/intl402/Intl/getCanonicalLocales/non-iana-canon.js:
-  default: 'Test262Error: The value of Intl.getCanonicalLocales(tag)[0] equals the value of `canonical` Expected SameValue(«aar-x-private», «aa-x-private») to be true'
-  strict mode: 'Test262Error: The value of Intl.getCanonicalLocales(tag)[0] equals the value of `canonical` Expected SameValue(«aar-x-private», «aa-x-private») to be true'
+  default: 'Test262Error: The value of Intl.getCanonicalLocales(tag)[0] equals the value of `canonical` Expected SameValue(«en-US-u-va-posix», «posix») to be true'
+  strict mode: 'Test262Error: The value of Intl.getCanonicalLocales(tag)[0] equals the value of `canonical` Expected SameValue(«en-US-u-va-posix», «posix») to be true'
 test/intl402/Intl/getCanonicalLocales/preferred-grandfathered.js:
-  default: 'Test262Error: Expected SameValue(«cel-gaulish», «xtg-x-cel-gaulish») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«cel-gaulish», «xtg-x-cel-gaulish») to be true'
+  default: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«cmn», «zh») to be true'
 test/intl402/Intl/getCanonicalLocales/preferred-variant.js:
-  default: 'Test262Error: Expected SameValue(«ja-Latn-alalc97», «ja-Latn-hepburn-heploc») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«ja-Latn-alalc97», «ja-Latn-hepburn-heploc») to be true'
-test/intl402/NumberFormat/constructor-numberingSystem-order.js:
-  default: 'Test262Error: Expected [localeMatcher, style] and [localeMatcher, numberingSystem, style] to have the same contents. '
-  strict mode: 'Test262Error: Expected [localeMatcher, style] and [localeMatcher, numberingSystem, style] to have the same contents. '
-test/intl402/NumberFormat/constructor-options-throwing-getters.js:
-  default: 'Test262Error: Exception from numberingSystem getter should be propagated Expected a CustomError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Exception from numberingSystem getter should be propagated Expected a CustomError to be thrown but no exception was thrown at all'
-test/intl402/NumberFormat/invalid-numbering-system-options.js:
-  default: 'Test262Error: Invalid numberingSystem value ab was not rejected. Expected a RangeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Invalid numberingSystem value ab was not rejected. Expected a RangeError to be thrown but no exception was thrown at all'
-test/intl402/NumberFormat/numbering-system-options.js:
-  default: "Test262Error: Options value for property numberingSystem doesn't override locale extension key nu. Expected SameValue(«arab», «latn») to be true"
-  strict mode: "Test262Error: Options value for property numberingSystem doesn't override locale extension key nu. Expected SameValue(«arab», «latn») to be true"
-test/intl402/NumberFormat/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-test/intl402/PluralRules/proto-from-ctor-realm.js:
-  default: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
-  strict mode: 'Test262Error: newTarget.prototype is undefined Expected SameValue(«[object Object]», «[object Object]») to be true'
+  default: 'Test262Error: Expected SameValue(«ja-Latn-alalc97», «ja-Latn-alalc97-hepburn») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«ja-Latn-alalc97», «ja-Latn-alalc97-hepburn») to be true'
+test/intl402/Intl/getCanonicalLocales/transformed-ext-canonical.js:
+  default: 'Test262Error: Expected SameValue(«sl-t-sl-rozaj-biske-1994», «sl-t-sl-1994-biske-rozaj») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«sl-t-sl-rozaj-biske-1994», «sl-t-sl-1994-biske-rozaj») to be true'
+test/intl402/Intl/getCanonicalLocales/transformed-ext-invalid.js:
+  default: 'Test262Error: en-t-root Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: en-t-root Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-region.js:
+  default: 'Test262Error: Expected SameValue(«und-u-rg-no23», «und-u-rg-no50») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«und-u-rg-no23», «und-u-rg-no50») to be true'
+test/intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-subdivision.js:
+  default: 'Test262Error: Expected SameValue(«und-NO-u-sd-no23», «und-NO-u-sd-no50») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«und-NO-u-sd-no23», «und-NO-u-sd-no50») to be true'
+test/intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-yes-to-true.js:
+  default: 'Test262Error: Expected SameValue(«und-u-kb-true», «und-u-kb») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«und-u-kb-true», «und-u-kb») to be true'
+test/intl402/Intl/getCanonicalLocales/unicode-ext-key-with-digit.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/constructor-apply-options-canonicalizes-twice.js:
+  default: 'Test262Error: Expected SameValue(«ru-Armn-SU», «ru-Armn-AM») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«ru-Armn-SU», «ru-Armn-AM») to be true'
+test/intl402/Locale/constructor-non-iana-canon.js:
+  default: 'Test262Error: new Intl.Locale("mo").maximize().toString() returns "ro-Latn-RO" Expected SameValue(«ro», «ro-Latn-RO») to be true'
+  strict mode: 'Test262Error: new Intl.Locale("mo").maximize().toString() returns "ro-Latn-RO" Expected SameValue(«ro», «ro-Latn-RO») to be true'
+test/intl402/Locale/constructor-options-language-valid-undefined.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/constructor-options-language-valid.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/constructor-options-numeric-undefined.js:
+  default: 'Test262Error: new Intl.Locale("en-u-kn-true", {numeric: undefined}).toString() returns "en-u-kn" Expected SameValue(«en-u-kn-true», «en-u-kn») to be true'
+  strict mode: 'Test262Error: new Intl.Locale("en-u-kn-true", {numeric: undefined}).toString() returns "en-u-kn" Expected SameValue(«en-u-kn-true», «en-u-kn») to be true'
+test/intl402/Locale/constructor-options-numeric-valid.js:
+  default: 'Test262Error: new Intl.Locale("en", {numeric: true}).toString() returns "true" Expected SameValue(«en-u-kn-true», «en-u-kn») to be true'
+  strict mode: 'Test262Error: new Intl.Locale("en", {numeric: true}).toString() returns "true" Expected SameValue(«en-u-kn-true», «en-u-kn») to be true'
+test/intl402/Locale/constructor-options-region-valid.js:
+  default: "Test262Error: new Intl.Locale('en', {region: \"554\"}).toString() returns \"en-NZ\" Expected SameValue(«en-554», «en-NZ») to be true"
+  strict mode: "Test262Error: new Intl.Locale('en', {region: \"554\"}).toString() returns \"en-NZ\" Expected SameValue(«en-554», «en-NZ») to be true"
+test/intl402/Locale/constructor-parse-twice.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/constructor-tag.js:
+  default: 'Test262Error: new Intl.Locale("sl-ROZAJ-BISKE-1994").toString() returns "sl-1994-biske-rozaj" Expected SameValue(«sl-rozaj-biske-1994», «sl-1994-biske-rozaj») to be true'
+  strict mode: 'Test262Error: new Intl.Locale("sl-ROZAJ-BISKE-1994").toString() returns "sl-1994-biske-rozaj" Expected SameValue(«sl-rozaj-biske-1994», «sl-1994-biske-rozaj») to be true'
+test/intl402/Locale/extensions-grandfathered.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/extensions-private.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/getters-grandfathered.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/getters.js:
+  default: 'Test262Error: Expected SameValue(«de-Latn-DE-u-ca-gregory-co-phonebk-hc-h23-kf-true-kn-false-nu-latn», «de-Latn-DE-u-ca-gregory-co-phonebk-hc-h23-kf-kn-false-nu-latn») to be true'
+  strict mode: 'Test262Error: Expected SameValue(«de-Latn-DE-u-ca-gregory-co-phonebk-hc-h23-kf-true-kn-false-nu-latn», «de-Latn-DE-u-ca-gregory-co-phonebk-hc-h23-kf-kn-false-nu-latn») to be true'
+test/intl402/Locale/invalid-tag-throws.js:
+  default: 'Test262Error: no-nyn is an invalid tag value Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: no-nyn is an invalid tag value Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/likely-subtags-grandfathered.js:
+  default: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a RangeError to be thrown but no exception was thrown at all'
+test/intl402/Locale/likely-subtags.js:
+  default: 'Test262Error: "en-u-co".maximize() should be "en-Latn-US-u-co" Expected SameValue(«en-Latn-US-u-co-yes», «en-Latn-US-u-co») to be true'
+  strict mode: 'Test262Error: "en-u-co".maximize() should be "en-Latn-US-u-co" Expected SameValue(«en-Latn-US-u-co-yes», «en-Latn-US-u-co») to be true'
+test/intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js:
+  default: 'Test262Error: "und".minimize() should be "en" Expected SameValue(«en-u-va-posix», «en») to be true'
+  strict mode: 'Test262Error: "und".minimize() should be "en" Expected SameValue(«en-u-va-posix», «en») to be true'
+test/intl402/RelativeTimeFormat/constructor/constructor/locales-valid.js:
+  default: 'Test262Error: Grandfathered Expected a RangeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Grandfathered Expected a RangeError to be thrown but no exception was thrown at all'
 test/intl402/language-tags-invalid.js:
-  default: 'Test262Error: Test data "de-gregory-gregory" is a canonicalized and structurally valid language tag.'
-  strict mode: 'Test262Error: Test data "de-gregory-gregory" is a canonicalized and structurally valid language tag.'
-test/intl402/supportedLocalesOf-returned-array-elements-are-not-frozen.js:
-  default: 'Test262Error: Property 0 of object returned by SupportedLocales is not writable. Expected SameValue(«false», «true») to be true (Testing with Collator.)'
-  strict mode: 'Test262Error: Property 0 of object returned by SupportedLocales is not writable. Expected SameValue(«false», «true») to be true (Testing with Collator.)'
+  default: 'Test262Error: Invalid language tag no-nyn was not rejected. Expected a RangeError to be thrown but no exception was thrown at all (Testing with Collator.)'
+  strict mode: 'Test262Error: Invalid language tag no-nyn was not rejected. Expected a RangeError to be thrown but no exception was thrown at all (Testing with Collator.)'
 test/language/arguments-object/mapped/nonconfigurable-nonenumerable-nonwritable-descriptors-set-by-arguments.js:
   default: 'Test262Error: Expected obj[0] to have enumerable:false.'
 test/language/arguments-object/mapped/nonconfigurable-nonenumerable-nonwritable-descriptors-set-by-param.js:
@@ -2143,9 +1927,6 @@ test/language/block-scope/syntax/redeclaration/var-redeclaration-attempt-after-f
   default: 'Test262: This statement should not be evaluated.'
 test/language/block-scope/syntax/redeclaration/var-redeclaration-attempt-after-generator.js:
   default: 'Test262: This statement should not be evaluated.'
-test/language/eval-code/direct/new.target-arrow.js:
-  default: 'Test262Error: Expected SameValue(«function ReferenceError() {'
-  strict mode: 'Test262Error: Expected SameValue(«function ReferenceError() {'
 test/language/eval-code/direct/non-definable-function-with-function.js:
   default: 'Test262Error: Expected SameValue(«[object Object]», «undefined») to be true'
 test/language/eval-code/direct/non-definable-function-with-variable.js:
@@ -2354,6 +2135,18 @@ test/language/expressions/async-generator/generator-created-after-decl-inst.js:
   strict mode: 'Test262Error: Expected SameValue(«[object AsyncGenerator]», «[object AsyncGenerator]») to be false'
 test/language/expressions/async-generator/named-eval-var-scope-syntax-err.js:
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
+test/language/expressions/await/async-await-interleaved.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Await: 1, Promise: 1, Promise: 2, Await: 2] and [Await: 1, Promise: 1, Await: 2, Promise: 2] to have the same contents. Async/await and promises should be interleaved'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Await: 1, Promise: 1, Promise: 2, Await: 2] and [Await: 1, Promise: 1, Await: 2, Promise: 2] to have the same contents. Async/await and promises should be interleaved'
+test/language/expressions/await/async-generator-interleaved.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [await, 1, 2, await] and [await, 1, await, 2] to have the same contents. Async/await and promises should be interleaved'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [await, 1, 2, await] and [await, 1, await, 2] to have the same contents. Async/await and promises should be interleaved'
+test/language/expressions/await/await-monkey-patched-promise.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Promise: 1, Promise: 2, Await: 42] and [Promise: 1, Await: 42, Promise: 2] to have the same contents. Async/await and promises should be interleaved'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Promise: 1, Promise: 2, Await: 42] and [Promise: 1, Await: 42, Promise: 2] to have the same contents. Async/await and promises should be interleaved'
+test/language/expressions/await/for-await-of-interleaved.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Promise: 6, Promise: 5, Promise: 4, Await: 3, Promise: 3, Promise: 2, Promise: 1, Await: 2, Promise: 0] and [Promise: 6, Promise: 5, Await: 3, Promise: 4, Promise: 3, Await: 2, Promise: 2, Promise: 1, Await: 1, Promise: 0] to have the same contents. Async/await and promises should be interleaved'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [Promise: 6, Promise: 5, Promise: 4, Await: 3, Promise: 3, Promise: 2, Promise: 1, Await: 2, Promise: 0] and [Promise: 6, Promise: 5, Await: 3, Promise: 4, Promise: 3, Await: 2, Promise: 2, Promise: 1, Await: 1, Promise: 0] to have the same contents. Async/await and promises should be interleaved'
 test/language/expressions/call/eval-realm-indirect.js:
   default: 'Test262Error: Expected SameValue(«inside», «outside») to be true'
 test/language/expressions/call/eval-spread-empty-leading.js:
@@ -2693,6 +2486,35 @@ test/language/expressions/compound-assignment/S11.13.2_A7.9_T4.js:
 test/language/expressions/conditional/in-branch-1.js:
   default: "SyntaxError: Unexpected keyword 'in'. Expected ':' in ternary operator."
   strict mode: "SyntaxError: Unexpected keyword 'in'. Expected ':' in ternary operator."
+test/language/expressions/dynamic-import/catch/nested-async-gen-await-eval-script-code-target.js:
+  module: 'Test262:AsyncTestFailure:Test262Error: [object Object]'
+test/language/expressions/dynamic-import/catch/nested-async-gen-return-await-eval-script-code-target.js:
+  module: 'Test262:AsyncTestFailure:Test262Error: [object Object]'
+test/language/expressions/dynamic-import/for-await-resolution-and-error-agen-yield.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: f Expected SameValue(«null», «foo») to be true'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: f Expected SameValue(«null», «foo») to be true'
+test/language/expressions/dynamic-import/namespace/await-ns-define-own-property.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: No change requested, Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: No change requested, Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
+test/language/expressions/dynamic-import/namespace/await-ns-get-nested-namespace-dflt-direct.js:
+  default: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+  strict mode: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/expressions/dynamic-import/namespace/await-ns-get-nested-namespace-dflt-indirect.js:
+  module: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/expressions/dynamic-import/namespace/await-ns-get-nested-namespace-props-nrml.js:
+  default: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+  strict mode: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/expressions/dynamic-import/namespace/promise-then-ns-define-own-property.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: No change requested, Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: No change requested, Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
+test/language/expressions/dynamic-import/namespace/promise-then-ns-get-nested-namespace-dflt-direct.js:
+  default: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+  strict mode: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/expressions/dynamic-import/namespace/promise-then-ns-get-nested-namespace-dflt-indirect.js:
+  module: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/expressions/dynamic-import/namespace/promise-then-ns-get-nested-namespace-props-nrml.js:
+  default: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+  strict mode: "Test262:AsyncTestFailure:SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/expressions/function/eval-var-scope-syntax-err.js:
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
 test/language/expressions/function/scope-body-lex-distinct.js:
@@ -2719,6 +2541,12 @@ test/language/expressions/import.meta/syntax/invalid-assignment-target-for-of-lo
 test/language/expressions/instanceof/prototype-getter-with-primitive.js:
   default: "Test262Error: getter for 'prototype' called"
   strict mode: "Test262Error: getter for 'prototype' called"
+test/language/expressions/logical-assignment/lgcl-and-assignment-operator-non-simple-lhs.js:
+  default: 'Test262: This statement should not be evaluated.'
+test/language/expressions/logical-assignment/lgcl-nullish-assignment-operator-non-simple-lhs.js:
+  default: 'Test262: This statement should not be evaluated.'
+test/language/expressions/logical-assignment/lgcl-or-assignment-operator-non-simple-lhs.js:
+  default: 'Test262: This statement should not be evaluated.'
 test/language/expressions/new/ctorExpr-fn-ref-before-args-eval-fn-wrapup.js:
   default: "TypeError: 1 is not a constructor (evaluating 'new x(x = 1)')"
   strict mode: "TypeError: 1 is not a constructor (evaluating 'new x(x = 1)')"
@@ -2853,6 +2681,9 @@ test/language/expressions/object/covered-ident-name-prop-name-literal-while-esca
 test/language/expressions/object/covered-ident-name-prop-name-literal-with-escaped.js:
   default: "SyntaxError: Unexpected escaped characters in keyword token: 'w\\u0069th'"
   strict mode: "SyntaxError: Unexpected escaped characters in keyword token: 'w\\u0069th'"
+test/language/expressions/object/dstr/object-rest-proxy-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
+  strict mode: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
 test/language/expressions/object/ident-name-method-def-break-escaped.js:
   default: "SyntaxError: Unexpected escaped characters in keyword token: 'bre\\u0061k'"
   strict mode: "SyntaxError: Unexpected escaped characters in keyword token: 'bre\\u0061k'"
@@ -3109,6 +2940,9 @@ test/language/expressions/object/method-definition/gen-meth-eval-var-scope-synta
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
 test/language/expressions/object/method-definition/meth-eval-var-scope-syntax-err.js:
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
+test/language/expressions/object/object-spread-proxy-ownkeys-returned-keys-order.js:
+  default: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
+  strict mode: 'Test262Error: Expected [foo, 0, Symbol()] and [Symbol(), foo, 0] to have the same contents. '
 test/language/expressions/object/scope-gen-meth-body-lex-distinct.js:
   default: 'Test262Error: Expected a SyntaxError to be thrown but no exception was thrown at all'
 test/language/expressions/object/scope-gen-meth-param-rest-elem-var-open.js:
@@ -3183,9 +3017,6 @@ test/language/expressions/super/call-poisoned-underscore-proto.js:
 test/language/expressions/super/prop-poisoned-underscore-proto.js:
   default: 'Test262Error: should not be called'
   strict mode: 'Test262Error: should not be called'
-test/language/expressions/unsigned-right-shift/bigint-toprimitive.js:
-  default: 'Test262Error: 0n >>> {[Symbol.toPrimitive]: function() {throw new MyError();}} throws MyError Expected a MyError but got a TypeError'
-  strict mode: 'Test262Error: 0n >>> {[Symbol.toPrimitive]: function() {throw new MyError();}} throws MyError Expected a MyError but got a TypeError'
 test/language/expressions/yield/star-iterable.js:
   default: 'Test262Error: First result `done` flag Expected SameValue(«false», «undefined») to be true'
   strict mode: 'Test262Error: First result `done` flag Expected SameValue(«false», «undefined») to be true'
@@ -3228,6 +3059,8 @@ test/language/module-code/eval-rqstd-order.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/module-code/eval-self-once.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
+test/language/module-code/export-star-as-dflt.js:
+  module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/module-code/instn-once.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/module-code/instn-star-as-props-dflt-skip.js:
@@ -3240,8 +3073,6 @@ test/language/module-code/namespace/internals/get-nested-namespace-dflt-skip.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/module-code/namespace/internals/get-nested-namespace-props-nrml.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
-test/language/module-code/namespace/internals/set.js:
-  module: 'Test262Error: Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
 test/language/module-code/parse-err-hoist-lex-fun.js:
   module: 'Test262: This statement should not be evaluated.'
 test/language/module-code/parse-err-hoist-lex-gen.js:
@@ -3251,6 +3082,15 @@ test/language/statements/async-generator/eval-var-scope-syntax-err.js:
 test/language/statements/async-generator/generator-created-after-decl-inst.js:
   default: 'Test262Error: Expected SameValue(«[object AsyncGenerator]», «[object AsyncGenerator]») to be false'
   strict mode: 'Test262Error: Expected SameValue(«[object AsyncGenerator]», «[object AsyncGenerator]») to be false'
+test/language/statements/async-generator/return-undefined-implicit-and-explicit.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [tick 1, g1 ret, tick 2, g2 ret, g3 ret, g4 ret] and [tick 1, g1 ret, g2 ret, tick 2, g3 ret, g4 ret] to have the same contents. Ticks for implicit and explicit return undefined'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [tick 1, g1 ret, tick 2, g2 ret, g3 ret, g4 ret] and [tick 1, g1 ret, g2 ret, tick 2, g3 ret, g4 ret] to have the same contents. Ticks for implicit and explicit return undefined'
+test/language/statements/async-generator/yield-return-then-getter-ticks.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2] and [start, tick 1, get then, tick 2] to have the same contents. Ticks for return with thenable getter'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2] and [start, tick 1, get then, tick 2] to have the same contents. Ticks for return with thenable getter'
+test/language/statements/async-generator/yield-star-return-then-getter-ticks.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2, get return, tick 3, tick 4] and [start, tick 1, tick 2, get then, tick 3, get return, get then, tick 4] to have the same contents. Ticks for return with thenable getter'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2, get return, tick 3, tick 4] and [start, tick 1, tick 2, get then, tick 3, get return, get then, tick 4] to have the same contents. Ticks for return with thenable getter'
 test/language/statements/class/class-name-ident-await-escaped.js:
   default: "SyntaxError: Unexpected escaped characters in keyword token: 'aw\\u0061it'"
   strict mode: "SyntaxError: Unexpected escaped characters in keyword token: 'aw\\u0061it'"
@@ -3405,11 +3245,11 @@ test/language/statements/class/poisoned-underscore-proto.js:
 test/language/statements/class/subclass/builtin-objects/ArrayBuffer/regular-subclassing.js:
   default: 'Test262Error: Expected true but got false'
   strict mode: 'Test262Error: Expected true but got false'
-test/language/statements/class/subclass/class-definition-superclass-generator.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
 test/language/statements/do-while/let-array-with-newline.js:
   default: 'Test262: This statement should not be evaluated.'
+test/language/statements/for-await-of/async-from-sync-iterator-continuation-abrupt-completion-get-constructor.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2] and [start, tick 1, tick 2, catch] to have the same contents. '
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [start, tick 1, tick 2] and [start, tick 1, tick 2, catch] to have the same contents. '
 test/language/statements/for-await-of/async-func-decl-dstr-array-elem-nested-array-invalid.js:
   default: 'Test262: This statement should not be evaluated.'
   strict mode: 'Test262: This statement should not be evaluated.'
@@ -3420,6 +3260,12 @@ test/language/statements/for-await-of/async-func-decl-dstr-array-elem-target-sim
   strict mode: 'Test262: This statement should not be evaluated.'
 test/language/statements/for-await-of/let-array-with-newline.js:
   default: 'Test262: This statement should not be evaluated.'
+test/language/statements/for-await-of/ticks-with-async-iter-resolved-promise-and-constructor-lookup-two.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [pre, tick 1, tick 2, loop] and [pre, constructor, tick 1, loop, constructor, tick 2, post] to have the same contents. Ticks and constructor lookups'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [pre, tick 1, tick 2, loop] and [pre, constructor, tick 1, loop, constructor, tick 2, post] to have the same contents. Ticks and constructor lookups'
+test/language/statements/for-await-of/ticks-with-sync-iter-resolved-promise-and-constructor-lookup.js:
+  default: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [pre, tick 1, tick 2, tick 3, loop, tick 4] and [pre, constructor, constructor, tick 1, tick 2, loop, constructor, tick 3, tick 4, post] to have the same contents. Ticks and constructor lookups'
+  strict mode: 'Test262:AsyncTestFailure:Test262Error: Test262Error: Expected [pre, tick 1, tick 2, tick 3, loop, tick 4] and [pre, constructor, constructor, tick 1, tick 2, loop, constructor, tick 3, tick 4, post] to have the same contents. Ticks and constructor lookups'
 test/language/statements/for-in/12.6.4-2.js:
   default: 'Test262Error: accessedProp Expected SameValue(«true», «false») to be true'
   strict mode: 'Test262Error: accessedProp Expected SameValue(«true», «false») to be true'

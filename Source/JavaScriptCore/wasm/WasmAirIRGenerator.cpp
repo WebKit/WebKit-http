@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,27 +32,22 @@
 #include "AirGenerate.h"
 #include "AirHelpers.h"
 #include "AirOpcodeUtils.h"
-#include "AirValidate.h"
 #include "AllowMacroScratchRegisterUsageIf.h"
-#include "B3CCallValue.h"
 #include "B3CheckSpecial.h"
 #include "B3CheckValue.h"
 #include "B3PatchpointSpecial.h"
 #include "B3Procedure.h"
 #include "B3ProcedureInlines.h"
 #include "BinarySwitch.h"
-#include "DisallowMacroScratchRegisterUsage.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 #include "JSWebAssemblyInstance.h"
 #include "ScratchRegisterAllocator.h"
-#include "VirtualRegister.h"
 #include "WasmCallingConvention.h"
 #include "WasmContextInlines.h"
 #include "WasmExceptionType.h"
 #include "WasmFunctionParser.h"
 #include "WasmInstance.h"
 #include "WasmMemory.h"
-#include "WasmOMGPlan.h"
 #include "WasmOSREntryData.h"
 #include "WasmOpcodeOrigin.h"
 #include "WasmOperations.h"
@@ -60,7 +55,6 @@
 #include "WasmThunks.h"
 #include <limits>
 #include <wtf/Box.h>
-#include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC { namespace Wasm {
@@ -899,7 +893,8 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
         }
     }
 
-    emitEntryTierUpCheck();
+    if (wasmFunctionSizeCanBeOMGCompiled(m_info.functions[m_functionIndex].data.size()))
+        emitEntryTierUpCheck();
 }
 
 B3::Type AirIRGenerator::toB3ResultType(BlockSignature returnType)
@@ -1826,7 +1821,7 @@ void AirIRGenerator::emitLoopTierUpCheck(uint32_t loopIndex, const Stack& enclos
             forceOSREntry.link(&jit);
             tierUp.link(&jit);
 
-            jit.probe(operationWasmTriggerOSREntryNow, osrEntryDataPtr);
+            jit.probe(tagCFunction<JITProbePtrTag>(operationWasmTriggerOSREntryNow), osrEntryDataPtr);
             jit.branchTestPtr(CCallHelpers::Zero, GPRInfo::argumentGPR0).linkTo(tierUpResume, &jit);
             jit.farJump(GPRInfo::argumentGPR1, WasmEntryPtrTag);
         });

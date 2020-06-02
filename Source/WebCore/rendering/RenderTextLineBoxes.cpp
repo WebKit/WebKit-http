@@ -312,7 +312,7 @@ VisiblePosition RenderTextLineBoxes::positionForPoint(const RenderText& renderer
             box = box->nextTextBox();
 
         auto& rootBox = box->root();
-        LayoutUnit top = std::min(rootBox.selectionTop(), rootBox.lineTop());
+        LayoutUnit top = std::min(rootBox.selectionTop(RootInlineBox::ForHitTesting::Yes), rootBox.lineTop());
         if (pointBlockDirection > top || (!blocksAreFlipped && pointBlockDirection == top)) {
             LayoutUnit bottom = rootBox.selectionBottom();
             if (rootBox.nextRootBox())
@@ -549,11 +549,13 @@ bool RenderTextLineBoxes::dirtyRange(RenderText& renderer, unsigned start, unsig
         firstRootBox->markDirty();
         dirtiedLines = true;
     }
+
     for (auto* current = firstRootBox; current && current != lastRootBox; current = current->nextRootBox()) {
-        if (current->lineBreakObj() == &renderer && current->lineBreakPos() > end)
+        auto lineBreakPos = current->lineBreakPos();
+        if (current->lineBreakObj() == &renderer && (lineBreakPos > end || (start != end && lineBreakPos == end)))
             current->setLineBreakPos(current->lineBreakPos() + lengthDelta);
     }
-    
+
     // If the text node is empty, dirty the line where new text will be inserted.
     if (!m_first && renderer.parent()) {
         renderer.parent()->dirtyLinesFromChangedChild(renderer);

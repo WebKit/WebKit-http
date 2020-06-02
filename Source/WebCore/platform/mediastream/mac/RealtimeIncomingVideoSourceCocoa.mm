@@ -25,23 +25,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "RealtimeIncomingVideoSourceCocoa.h"
+#import "config.h"
+#import "RealtimeIncomingVideoSourceCocoa.h"
 
 #if USE(LIBWEBRTC)
 
-#include "Logging.h"
-#include "MediaSampleAVFObjC.h"
-#include "RealtimeVideoUtilities.h"
-#include <pal/cf/CoreMediaSoftLink.h>
+#import "Logging.h"
+#import "MediaSampleAVFObjC.h"
+#import "RealtimeVideoUtilities.h"
+#import <wtf/cf/TypeCastsCF.h>
 
 ALLOW_UNUSED_PARAMETERS_BEGIN
-
-#include <webrtc/sdk/WebKit/WebKitUtilities.h>
-
+#import <webrtc/sdk/WebKit/WebKitUtilities.h>
 ALLOW_UNUSED_PARAMETERS_END
 
-#include <wtf/cf/TypeCastsCF.h>
+#import <pal/cf/CoreMediaSoftLink.h>
 
 namespace WebCore {
 using namespace PAL;
@@ -144,10 +142,8 @@ void RealtimeIncomingVideoSourceCocoa::OnFrame(const webrtc::VideoFrame& frame)
         return;
     }
 
-    // FIXME: Convert timing information from VideoFrame to CMSampleTimingInfo.
-    // For the moment, we will pretend that frames should be rendered asap.
     CMSampleTimingInfo timingInfo;
-    timingInfo.presentationTimeStamp = kCMTimeInvalid;
+    timingInfo.presentationTimeStamp = CMTimeMake(frame.timestamp_us(), 1000000);
     timingInfo.decodeTimeStamp = kCMTimeInvalid;
     timingInfo.duration = kCMTimeInvalid;
 
@@ -167,12 +163,6 @@ void RealtimeIncomingVideoSourceCocoa::OnFrame(const webrtc::VideoFrame& frame)
     }
 
     auto sample = adoptCF(sampleBuffer);
-
-    CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, true);
-    for (CFIndex i = 0; i < CFArrayGetCount(attachmentsArray); ++i) {
-        CFMutableDictionaryRef attachments = checked_cf_cast<CFMutableDictionaryRef>(CFArrayGetValueAtIndex(attachmentsArray, i));
-        CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
-    }
 
     unsigned width = frame.width();
     unsigned height = frame.height();
@@ -195,19 +185,8 @@ void RealtimeIncomingVideoSourceCocoa::OnFrame(const webrtc::VideoFrame& frame)
         break;
     }
 
-    callOnMainThread([protectedThis = makeRef(*this), sample = WTFMove(sample), width, height, rotation] {
-        protectedThis->processNewSample(sample.get(), width, height, rotation);
-    });
-}
-
-void RealtimeIncomingVideoSourceCocoa::processNewSample(CMSampleBufferRef sample, unsigned width, unsigned height, MediaSample::VideoRotation rotation)
-{
-    m_buffer = sample;
-    auto size = this->size();
-    if (WTF::safeCast<int>(width) != size.width() || WTF::safeCast<int>(height) != size.height())
-        setIntrinsicSize(IntSize(width, height));
-
-    videoSampleAvailable(MediaSampleAVFObjC::create(sample, rotation));
+    setIntrinsicSize(IntSize(width, height));
+    videoSampleAvailable(MediaSampleAVFObjC::create(sample.get(), rotation));
 }
 
 } // namespace WebCore

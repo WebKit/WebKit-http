@@ -44,6 +44,7 @@
 #include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/SQLiteDatabase.h>
 #include <WebCore/SQLiteStatement.h>
+#include <WebCore/SQLiteTransaction.h>
 #include <WebCore/UserGestureIndicator.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/CrossThreadCopier.h>
@@ -134,22 +135,17 @@ constexpr auto getAllSubStatisticsUnderDomainQuery = "SELECT topFrameDomainID FR
     "UNION ALL SELECT topFrameDomainID FROM SubresourceUnderTopFrameDomains WHERE subresourceDomainID = ?"
     "UNION ALL SELECT toDomainID FROM SubresourceUniqueRedirectsTo WHERE subresourceDomainID = ?"_s;
 
-const char* tables[] = {
-    "ObservedDomains",
-    "TopLevelDomains",
-    "StorageAccessUnderTopFrameDomains",
-    "TopFrameUniqueRedirectsTo",
-    "TopFrameUniqueRedirectsToSinceSameSiteStrictEnforcement",
-    "TopFrameUniqueRedirectsFrom",
-    "TopFrameLinkDecorationsFrom",
-    "TopFrameLoadedThirdPartyScripts",
-    "SubframeUnderTopFrameDomains",
-    "SubresourceUnderTopFrameDomains",
-    "SubresourceUniqueRedirectsTo",
-    "SubresourceUniqueRedirectsFrom"
-};
+// EXISTS for testing queries
+constexpr auto linkDecorationExistsQuery = "SELECT EXISTS (SELECT * FROM TopFrameLinkDecorationsFrom WHERE toDomainID = ? OR fromDomainID = ?)"_s;
+constexpr auto scriptLoadExistsQuery = "SELECT EXISTS (SELECT * FROM TopFrameLoadedThirdPartyScripts WHERE topFrameDomainID = ? OR subresourceDomainID = ?)"_s;
+constexpr auto subFrameExistsQuery = "SELECT EXISTS (SELECT * FROM SubframeUnderTopFrameDomains WHERE subFrameDomainID = ? OR topFrameDomainID = ?)"_s;
+constexpr auto subResourceExistsQuery = "SELECT EXISTS (SELECT * FROM SubresourceUnderTopFrameDomains WHERE subresourceDomainID = ? OR topFrameDomainID = ?)"_s;
+constexpr auto uniqueRedirectExistsQuery = "SELECT EXISTS (SELECT * FROM SubresourceUniqueRedirectsTo WHERE subresourceDomainID = ? OR toDomainID = ?)"_s;
+constexpr auto observedDomainsExistsQuery = "SELECT EXISTS (SELECT * FROM ObservedDomains WHERE domainID = ?)"_s;
 
-// CREATE TABLE Queries
+// DELETE Queries
+constexpr auto removeAllDataQuery = "DELETE FROM ObservedDomains WHERE domainID = ?"_s;
+
 constexpr auto createObservedDomain = "CREATE TABLE ObservedDomains ("
     "domainID INTEGER PRIMARY KEY, registrableDomain TEXT NOT NULL UNIQUE ON CONFLICT FAIL, lastSeen REAL NOT NULL, "
     "hadUserInteraction INTEGER NOT NULL, mostRecentUserInteractionTime REAL NOT NULL, grandfathered INTEGER NOT NULL, "
@@ -179,27 +175,27 @@ constexpr auto createTopLevelDomains = "CREATE TABLE TopLevelDomains ("
 constexpr auto createStorageAccessUnderTopFrameDomains = "CREATE TABLE StorageAccessUnderTopFrameDomains ("
     "domainID INTEGER NOT NULL, topLevelDomainID INTEGER NOT NULL ON CONFLICT FAIL, "
     "CONSTRAINT fkDomainID FOREIGN KEY(domainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(topLevelDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(topLevelDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
     
 constexpr auto createTopFrameUniqueRedirectsTo = "CREATE TABLE TopFrameUniqueRedirectsTo ("
     "sourceDomainID INTEGER NOT NULL, toDomainID INTEGER NOT NULL, "
-    "FOREIGN KEY(sourceDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(toDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(sourceDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
+    "FOREIGN KEY(toDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
 
 constexpr auto createTopFrameUniqueRedirectsToSinceSameSiteStrictEnforcement = "CREATE TABLE TopFrameUniqueRedirectsToSinceSameSiteStrictEnforcement ("
     "sourceDomainID INTEGER NOT NULL, toDomainID INTEGER NOT NULL, "
-    "FOREIGN KEY(sourceDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(toDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(sourceDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
+    "FOREIGN KEY(toDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
 
 constexpr auto createTopFrameUniqueRedirectsFrom = "CREATE TABLE TopFrameUniqueRedirectsFrom ("
     "targetDomainID INTEGER NOT NULL, fromDomainID INTEGER NOT NULL, "
-    "FOREIGN KEY(targetDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(fromDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(targetDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
+    "FOREIGN KEY(fromDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
 
 constexpr auto createTopFrameLinkDecorationsFrom = "CREATE TABLE TopFrameLinkDecorationsFrom ("
     "toDomainID INTEGER NOT NULL, lastUpdated REAL NOT NULL, fromDomainID INTEGER NOT NULL, "
-    "FOREIGN KEY(toDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(fromDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(toDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
+    "FOREIGN KEY(fromDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
 
 constexpr auto createTopFrameLoadedThirdPartyScripts = "CREATE TABLE TopFrameLoadedThirdPartyScripts ("
     "topFrameDomainID INTEGER NOT NULL, subresourceDomainID INTEGER NOT NULL, "
@@ -209,12 +205,12 @@ constexpr auto createTopFrameLoadedThirdPartyScripts = "CREATE TABLE TopFrameLoa
 constexpr auto createSubframeUnderTopFrameDomains = "CREATE TABLE SubframeUnderTopFrameDomains ("
     "subFrameDomainID INTEGER NOT NULL, lastUpdated REAL NOT NULL, topFrameDomainID INTEGER NOT NULL, "
     "FOREIGN KEY(subFrameDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(topFrameDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(topFrameDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
     
 constexpr auto createSubresourceUnderTopFrameDomains = "CREATE TABLE SubresourceUnderTopFrameDomains ("
     "subresourceDomainID INTEGER NOT NULL, lastUpdated REAL NOT NULL, topFrameDomainID INTEGER NOT NULL, "
     "FOREIGN KEY(subresourceDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
-    "FOREIGN KEY(topFrameDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+    "FOREIGN KEY(topFrameDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
     
 constexpr auto createSubresourceUniqueRedirectsTo = "CREATE TABLE SubresourceUniqueRedirectsTo ("
     "subresourceDomainID INTEGER NOT NULL, lastUpdated REAL NOT NULL, toDomainID INTEGER NOT NULL, "
@@ -225,6 +221,10 @@ constexpr auto createSubresourceUniqueRedirectsFrom = "CREATE TABLE SubresourceU
     "subresourceDomainID INTEGER NOT NULL, fromDomainID INTEGER NOT NULL, "
     "FOREIGN KEY(subresourceDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
     "FOREIGN KEY(fromDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
+
+constexpr auto createOperatingDates = "CREATE TABLE OperatingDates ("
+    "year INTEGER NOT NULL, month INTEGER NOT NULL, monthDay INTEGER NOT NULL);"_s;
+
 
 // CREATE UNIQUE INDEX Queries
 constexpr auto createUniqueIndexStorageAccessUnderTopFrameDomains = "CREATE UNIQUE INDEX IF NOT EXISTS StorageAccessUnderTopFrameDomains_domainID_topLevelDomainID on StorageAccessUnderTopFrameDomains ( domainID, topLevelDomainID );"_s;
@@ -237,6 +237,7 @@ constexpr auto createUniqueIndexSubframeUnderTopFrameDomains = "CREATE UNIQUE IN
 constexpr auto createUniqueIndexSubresourceUnderTopFrameDomains = "CREATE UNIQUE INDEX IF NOT EXISTS SubresourceUnderTopFrameDomains_subresourceDomainID_topFrameDomainID on SubresourceUnderTopFrameDomains ( subresourceDomainID, topFrameDomainID );"_s;
 constexpr auto createUniqueIndexSubresourceUniqueRedirectsTo = "CREATE UNIQUE INDEX IF NOT EXISTS SubresourceUniqueRedirectsTo_subresourceDomainID_toDomainID on SubresourceUniqueRedirectsTo ( subresourceDomainID, toDomainID );"_s;
 constexpr auto createUniqueIndexSubresourceUniqueRedirectsFrom = "CREATE UNIQUE INDEX IF NOT EXISTS SubresourceUniqueRedirectsFrom_subresourceDomainID_fromDomainID on SubresourceUnderTopFrameDomains ( subresourceDomainID, fromDomainID );"_s;
+constexpr auto createUniqueIndexOperatingDates = "CREATE UNIQUE INDEX IF NOT EXISTS OperatingDates_year_month_monthDay on OperatingDates ( year, month, monthDay );"_s;
 
 const unsigned minimumPrevalentResourcesForTelemetry = 3;
 
@@ -250,70 +251,67 @@ static const String ObservedDomainsTableSchemaV1Alternate()
     return "CREATE TABLE \"ObservedDomains\" (domainID INTEGER PRIMARY KEY, registrableDomain TEXT NOT NULL UNIQUE ON CONFLICT FAIL, lastSeen REAL NOT NULL, hadUserInteraction INTEGER NOT NULL, mostRecentUserInteractionTime REAL NOT NULL, grandfathered INTEGER NOT NULL, isPrevalent INTEGER NOT NULL, isVeryPrevalent INTEGER NOT NULL, dataRecordsRemoved INTEGER NOT NULL,timesAccessedAsFirstPartyDueToUserInteraction INTEGER NOT NULL, timesAccessedAsFirstPartyDueToStorageAccessAPI INTEGER NOT NULL,isScheduledForAllButCookieDataRemoval INTEGER NOT NULL)";
 }
 
+static bool needsNewCreateTableSchema(const String& schema)
+{
+    return schema.contains("REFERENCES TopLevelDomains");
+}
+
+static const HashMap<String, String>& createTableQueries()
+{
+    static auto createTableQueries = makeNeverDestroyed(HashMap<String, String> {
+        { "ObservedDomains"_s, createObservedDomain},
+        { "TopLevelDomains"_s, createTopLevelDomains},
+        { "StorageAccessUnderTopFrameDomains"_s, createStorageAccessUnderTopFrameDomains},
+        { "TopFrameUniqueRedirectsTo"_s, createTopFrameUniqueRedirectsTo},
+        { "TopFrameUniqueRedirectsToSinceSameSiteStrictEnforcement"_s, createTopFrameUniqueRedirectsToSinceSameSiteStrictEnforcement},
+        { "TopFrameUniqueRedirectsFrom"_s, createTopFrameUniqueRedirectsFrom},
+        { "TopFrameLinkDecorationsFrom"_s, createTopFrameLinkDecorationsFrom},
+        { "TopFrameLoadedThirdPartyScripts"_s, createTopFrameLoadedThirdPartyScripts},
+        { "SubframeUnderTopFrameDomains"_s, createSubframeUnderTopFrameDomains},
+        { "SubresourceUnderTopFrameDomains"_s, createSubresourceUnderTopFrameDomains},
+        { "SubresourceUniqueRedirectsTo"_s, createSubresourceUniqueRedirectsTo},
+        { "SubresourceUniqueRedirectsFrom"_s, createSubresourceUniqueRedirectsFrom},
+        { "OperatingDates"_s, createOperatingDates}
+    });
+    
+    return createTableQueries;
+}
+
+
 ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue, ShouldIncludeLocalhost shouldIncludeLocalhost, const String& storageDirectoryPath, PAL::SessionID sessionID)
     : ResourceLoadStatisticsStore(store, workQueue, shouldIncludeLocalhost)
     , m_storageDirectoryPath(storageDirectoryPath + "/observations.db")
-    , m_observedDomainCount(m_database, observedDomainCountQuery)
-    , m_insertObservedDomainStatement(m_database, insertObservedDomainQuery)
-    , m_insertTopLevelDomainStatement(m_database, insertTopLevelDomainQuery)
-    , m_domainIDFromStringStatement(m_database, domainIDFromStringQuery)
-    , m_topFrameLinkDecorationsFromExists(m_database, topFrameLinkDecorationsFromExistsQuery)
-    , m_topFrameLoadedThirdPartyScriptsExists(m_database, topFrameLoadedThirdPartyScriptsExistsQuery)
-    , m_subframeUnderTopFrameDomainExists(m_database, subframeUnderTopFrameDomainExistsQuery)
-    , m_subresourceUnderTopFrameDomainExists(m_database, subresourceUnderTopFrameDomainExistsQuery)
-    , m_subresourceUniqueRedirectsToExists(m_database, subresourceUniqueRedirectsToExistsQuery)
-    , m_mostRecentUserInteractionStatement(m_database, mostRecentUserInteractionQuery)
-    , m_updateLastSeenStatement(m_database, updateLastSeenQuery)
-    , m_updateDataRecordsRemovedStatement(m_database, updateDataRecordsRemovedQuery)
-    , m_updatePrevalentResourceStatement(m_database, updatePrevalentResourceQuery)
-    , m_isPrevalentResourceStatement(m_database, isPrevalentResourceQuery)
-    , m_updateVeryPrevalentResourceStatement(m_database, updateVeryPrevalentResourceQuery)
-    , m_isVeryPrevalentResourceStatement(m_database, isVeryPrevalentResourceQuery)
-    , m_clearPrevalentResourceStatement(m_database, clearPrevalentResourceQuery)
-    , m_hadUserInteractionStatement(m_database, hadUserInteractionQuery)
-    , m_updateGrandfatheredStatement(m_database, updateGrandfatheredQuery)
-    , m_updateIsScheduledForAllButCookieDataRemovalStatement(m_database, updateIsScheduledForAllButCookieDataRemovalQuery)
-    , m_isGrandfatheredStatement(m_database, isGrandfatheredQuery)
-    , m_findExpiredUserInteractionStatement(m_database, findExpiredUserInteractionQuery)
-    , m_countPrevalentResourcesStatement(m_database, countPrevalentResourcesQuery)
-    , m_countPrevalentResourcesWithUserInteractionStatement(m_database, countPrevalentResourcesWithUserInteractionQuery)
-    , m_countPrevalentResourcesWithoutUserInteractionStatement(m_database, countPrevalentResourcesWithoutUserInteractionQuery)
-    , m_getResourceDataByDomainNameStatement(m_database, getResourceDataByDomainNameQuery)
-    , m_getAllDomainsStatement(m_database, getAllDomainsQuery)
-    , m_domainStringFromDomainIDStatement(m_database, domainStringFromDomainIDQuery)
-    , m_getAllSubStatisticsStatement(m_database, getAllSubStatisticsUnderDomainQuery)
-    , m_storageAccessExistsStatement(m_database, storageAccessExistsQuery)
-    , m_getMostRecentlyUpdatedTimestampStatement(m_database, getMostRecentlyUpdatedTimestampQuery)
     , m_sessionID(sessionID)
 {
     ASSERT(!RunLoop::isMain());
 
-    openAndDropOldDatabaseIfNecessary();
-    
+    openAndUpdateSchemaIfNecessary();
+    enableForeignKeys();
+
     // Since we are using a workerQueue, the sequential dispatch blocks may be called by different threads.
     m_database.disableThreadingChecks();
-
-    if (!m_database.tableExists("ObservedDomains"_s)) {
-        if (!createSchema()) {
-            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::createSchema failed, error message: %" PUBLIC_LOG_STRING ", database path: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
-            ASSERT_NOT_REACHED();
-            return;
-        }
-    }
     
     if (!m_database.turnOnIncrementalAutoVacuum())
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::turnOnIncrementalAutoVacuum failed, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
-
-    if (!prepareStatements()) {
-        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::prepareStatements failed, error message: %" PUBLIC_LOG_STRING ", database path: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
-        ASSERT_NOT_REACHED();
-        return;
-    }
 
     workQueue.dispatchAfter(5_s, [weakThis = makeWeakPtr(*this)] {
         if (weakThis)
             weakThis->calculateAndSubmitTelemetry();
     });
+
+    includeTodayAsOperatingDateIfNecessary();
+}
+
+ResourceLoadStatisticsDatabaseStore::~ResourceLoadStatisticsDatabaseStore()
+{
+    close();
+}
+
+void ResourceLoadStatisticsDatabaseStore::close()
+{
+    destroyStatements();
+    if (m_database.isOpen())
+        m_database.close();
 }
 
 void ResourceLoadStatisticsDatabaseStore::openITPDatabase()
@@ -327,48 +325,156 @@ void ResourceLoadStatisticsDatabaseStore::openITPDatabase()
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::open failed, error message: %" PUBLIC_LOG_STRING ", database path: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
         ASSERT_NOT_REACHED();
     }
+    
+    SQLiteStatement setBusyTimeout(m_database, "PRAGMA busy_timeout = 5000");
+    if (setBusyTimeout.prepare() != SQLITE_OK || setBusyTimeout.step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::setBusyTimeout failed, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (m_isNewResourceLoadStatisticsDatabaseFile) {
+        if (!createSchema()) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::createSchema failed, error message: %" PUBLIC_LOG_STRING ", database path: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
+            ASSERT_NOT_REACHED();
+            return;
+        }
+    }
 }
 
-static void resetStatement(SQLiteStatement& statement)
+Optional<Vector<String>> ResourceLoadStatisticsDatabaseStore::checkForMissingTablesInSchema()
 {
-    int resetResult = statement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-}
-
-bool ResourceLoadStatisticsDatabaseStore::isCorrectTableSchema()
-{
+    Vector<String> missingTables;
     SQLiteStatement statement(m_database, "SELECT 1 from sqlite_master WHERE type='table' and tbl_name=?");
     if (statement.prepare() != SQLITE_OK) {
-        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::isCorrectTableSchema failed to prepare, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::checkForMissingTablesInSchema failed to prepare, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
+        return WTF::nullopt;
+    }
+
+    for (auto& table : createTableQueries().keys()) {
+        if (statement.bindText(1, table) != SQLITE_OK) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::checkForMissingTablesInSchema failed to bind, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
+            return WTF::nullopt;
+        }
+        if (statement.step() != SQLITE_ROW) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::checkForMissingTablesInSchema schema is missing table: %s", this, table.ascii().data());
+            missingTables.append(String(table));
+        }
+        statement.reset();
+    }
+    if (missingTables.isEmpty())
+        return WTF::nullopt;
+
+    return missingTables;
+}
+
+void ResourceLoadStatisticsDatabaseStore::enableForeignKeys()
+{
+    SQLiteStatement enableForeignKeys(m_database, "PRAGMA foreign_keys = ON");
+    if (enableForeignKeys.prepare() != SQLITE_OK || enableForeignKeys.step() != SQLITE_DONE) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::enableForeignKeys failed, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+}
+
+bool ResourceLoadStatisticsDatabaseStore::isMigrationNecessary()
+{
+    // Check a table for a reference to TopLevelDomains, a sign of the old schema.
+    SQLiteStatement statement(m_database, "SELECT type, sql FROM sqlite_master WHERE type = 'table' AND tbl_name='TopFrameUniqueRedirectsTo'");
+    if (statement.prepare() != SQLITE_OK) {
+        LOG_ERROR("Unable to prepare statement to fetch schema.");
+        ASSERT_NOT_REACHED();
         return false;
     }
 
-    bool hasAllTables = true;
-    for (auto table : tables) {
-        if (statement.bindText(1, table) != SQLITE_OK) {
-            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::isCorrectTableSchema failed to bind, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
-            return false;
-        }
-        if (statement.step() != SQLITE_ROW) {
-            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::isCorrectTableSchema schema is missing table: %s", this, table);
-            hasAllTables = false;
-        }
-        resetStatement(statement);
-    }
-    return hasAllTables;
-}
-
-void ResourceLoadStatisticsDatabaseStore::openAndDropOldDatabaseIfNecessary()
-{
-    openITPDatabase();
-
-    if (!isCorrectTableSchema()) {
-        m_database.close();
-        // FIXME: Migrate existing data to new database file instead of deleting it (204482).
+    // If there is no table at all, or there is an error executing the fetch, delete and reopen the file.
+    if (statement.step() != SQLITE_ROW) {
+        LOG_ERROR("Error executing statement to fetch schema.");
+        close();
         FileSystem::deleteFile(m_storageDirectoryPath);
         openITPDatabase();
+        return false;
+    }
+    
+    auto oldSchema = String(statement.getColumnText(1));
+    return needsNewCreateTableSchema(oldSchema);
+}
+
+void ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesIfNecessary()
+{
+    if (!isMigrationNecessary())
+        return;
+
+    SQLiteTransaction transaction(m_database);
+    transaction.begin();
+
+    for (auto& table : createTableQueries().keys()) {
+        auto query = makeString("ALTER TABLE ", table, " RENAME TO _", table);
+        SQLiteStatement alterTable(m_database, query);
+        if (alterTable.prepare() != SQLITE_OK || alterTable.step() != SQLITE_DONE) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesWithCascadingDeletion failed to rename table, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+            return;
+        }
+    }
+
+    if (!createSchema()) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesWithCascadingDeletion failed to create schema, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
         return;
     }
+
+    for (auto& table : createTableQueries().keys()) {
+        auto query = makeString("INSERT INTO ", table, " SELECT * FROM _", table);
+        SQLiteStatement migrateTableData(m_database, query);
+        if (migrateTableData.prepare() != SQLITE_OK || migrateTableData.step() != SQLITE_DONE) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesWithCascadingDeletion failed to migrate schema, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+            return;
+        }
+        
+        auto dropQuery = makeString("DROP TABLE _", table);
+        SQLiteStatement dropTableQuery(m_database, dropQuery);
+        if (dropTableQuery.prepare() != SQLITE_OK || dropTableQuery.step() != SQLITE_DONE) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesWithCascadingDeletion failed to drop temporary tables, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+            return;
+        }
+    }
+
+    transaction.commit();
+
+    if (!createUniqueIndices()) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::migrateDataToNewTablesWithCascadingDeletion failed to create unique indices, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+}
+
+void ResourceLoadStatisticsDatabaseStore::addMissingTablesIfNecessary()
+{
+    auto missingTables = checkForMissingTablesInSchema();
+    if (!missingTables)
+        return;
+
+    for (auto& table : *missingTables) {
+        auto createTableQuery = createTableQueries().get(table);
+        if (!m_database.executeCommand(createTableQuery))
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::addMissingTables failed to execute, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
+    }
+
+    if (!createUniqueIndices()) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::addMissingTables failed to create unique indices, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+}
+
+void ResourceLoadStatisticsDatabaseStore::openAndUpdateSchemaIfNecessary()
+{
+    openITPDatabase();
+    addMissingTablesIfNecessary();
 
     String currentSchema;
     {
@@ -383,7 +489,7 @@ void ResourceLoadStatisticsDatabaseStore::openAndDropOldDatabaseIfNecessary()
         // If there is no ObservedDomains table at all, or there is an error executing the fetch, delete the file.
         if (statement.step() != SQLITE_ROW) {
             LOG_ERROR("Error executing statement to fetch schema for the Observed Domains table.");
-            m_database.close();
+            close();
             FileSystem::deleteFile(m_storageDirectoryPath);
             openITPDatabase();
             return;
@@ -394,26 +500,41 @@ void ResourceLoadStatisticsDatabaseStore::openAndDropOldDatabaseIfNecessary()
 
     ASSERT(!currentSchema.isEmpty());
 
-    // If the schema in the ResourceLoadStatistics directory is not the current schema, delete the database file.
+    // If the ObservedDomains schema in the ResourceLoadStatistics directory is not the current schema, delete the database file.
+    // FIXME: Migrate old ObservedDomains data to new table schema.
     if (currentSchema != ObservedDomainsTableSchemaV1() && currentSchema != ObservedDomainsTableSchemaV1Alternate()) {
-        m_database.close();
+        close();
         FileSystem::deleteFile(m_storageDirectoryPath);
         openITPDatabase();
+    } else
+        migrateDataToNewTablesIfNecessary();
+}
+
+SQLiteStatementAutoResetScope ResourceLoadStatisticsDatabaseStore::scopedStatement(std::unique_ptr<WebCore::SQLiteStatement>& statement, const String& query, const String& logString) const
+{
+    if (!statement) {
+        statement = makeUnique<WebCore::SQLiteStatement>(m_database, query);
+        ASSERT(m_database.isOpen());
+        if (statement->prepare() != SQLITE_OK) {
+            RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::%s failed to prepare statement, error message: %" PUBLIC_LOG_STRING, this, logString.ascii().data(), m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+        }
     }
+    return SQLiteStatementAutoResetScope { statement.get() };
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isEmpty() const
 {
     ASSERT(!RunLoop::isMain());
     
-    bool result = false;
-    if (m_observedDomainCount.step() == SQLITE_ROW)
-        result = !m_observedDomainCount.getColumnInt(0);
-    
-    int resetResult = m_observedDomainCount.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-    
-    return result;
+    auto scopedStatement = this->scopedStatement(m_observedDomainCountStatement, observedDomainCountQuery, "isEmpty"_s);
+    if (!scopedStatement
+        || scopedStatement->step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::isEmpty failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+    return !scopedStatement->getColumnInt(0);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::createUniqueIndices()
@@ -427,7 +548,8 @@ bool ResourceLoadStatisticsDatabaseStore::createUniqueIndices()
         || !m_database.executeCommand(createUniqueIndexSubframeUnderTopFrameDomains)
         || !m_database.executeCommand(createUniqueIndexSubresourceUnderTopFrameDomains)
         || !m_database.executeCommand(createUniqueIndexSubresourceUniqueRedirectsTo)
-        || !m_database.executeCommand(createUniqueIndexSubresourceUnderTopFrameDomains)) {
+        || !m_database.executeCommand(createUniqueIndexSubresourceUnderTopFrameDomains)
+        || !m_database.executeCommand(createUniqueIndexOperatingDates)) {
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::createUniqueIndices failed to execute, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
         return false;
     }
@@ -498,54 +620,59 @@ bool ResourceLoadStatisticsDatabaseStore::createSchema()
         return false;
     }
     
+    if (!m_database.executeCommand(createOperatingDates)) {
+        LOG_ERROR("Could not create OperatingDates table in database (%i) - %s", m_database.lastError(), m_database.lastErrorMsg());
+        return false;
+    }
+    
     if (!createUniqueIndices())
         return false;
 
     return true;
 }
 
-bool ResourceLoadStatisticsDatabaseStore::prepareStatements()
+void ResourceLoadStatisticsDatabaseStore::destroyStatements()
 {
     ASSERT(!RunLoop::isMain());
-        
-    if (m_observedDomainCount.prepare() != SQLITE_OK
-        || m_insertObservedDomainStatement.prepare() != SQLITE_OK
-        || m_insertTopLevelDomainStatement.prepare() != SQLITE_OK
-        || m_domainIDFromStringStatement.prepare() != SQLITE_OK
-        || m_subframeUnderTopFrameDomainExists.prepare() != SQLITE_OK
-        || m_subresourceUnderTopFrameDomainExists.prepare() != SQLITE_OK
-        || m_subresourceUniqueRedirectsToExists.prepare() != SQLITE_OK
-        || m_updateLastSeenStatement.prepare() != SQLITE_OK
-        || m_updateDataRecordsRemovedStatement.prepare() != SQLITE_OK
-        || m_mostRecentUserInteractionStatement.prepare() != SQLITE_OK
-        || m_updatePrevalentResourceStatement.prepare() != SQLITE_OK
-        || m_isPrevalentResourceStatement.prepare() != SQLITE_OK
-        || m_updateVeryPrevalentResourceStatement.prepare() != SQLITE_OK
-        || m_isVeryPrevalentResourceStatement.prepare() != SQLITE_OK
-        || m_clearPrevalentResourceStatement.prepare() != SQLITE_OK
-        || m_hadUserInteractionStatement.prepare() != SQLITE_OK
-        || m_updateGrandfatheredStatement.prepare() != SQLITE_OK
-        || m_updateIsScheduledForAllButCookieDataRemovalStatement.prepare() != SQLITE_OK
-        || m_isGrandfatheredStatement.prepare() != SQLITE_OK
-        || m_findExpiredUserInteractionStatement.prepare() != SQLITE_OK
-        || m_topFrameLinkDecorationsFromExists.prepare() != SQLITE_OK
-        || m_topFrameLoadedThirdPartyScriptsExists.prepare() != SQLITE_OK
-        || m_countPrevalentResourcesStatement.prepare() != SQLITE_OK
-        || m_countPrevalentResourcesWithUserInteractionStatement.prepare() != SQLITE_OK
-        || m_countPrevalentResourcesWithoutUserInteractionStatement.prepare() != SQLITE_OK
-        || m_getResourceDataByDomainNameStatement.prepare() != SQLITE_OK
-        || m_getAllDomainsStatement.prepare() != SQLITE_OK
-        || m_domainStringFromDomainIDStatement.prepare() != SQLITE_OK
-        || m_getAllSubStatisticsStatement.prepare() != SQLITE_OK
-        || m_storageAccessExistsStatement.prepare() != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.prepare() != SQLITE_OK
-        ) {
-        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::prepareStatements failed to prepare, error message: %" PUBLIC_LOG_STRING, this, m_database.lastErrorMsg());
-        ASSERT_NOT_REACHED();
-        return false;
-    }
 
-    return true;
+    m_observedDomainCountStatement = nullptr;
+    m_insertObservedDomainStatement = nullptr;
+    m_insertTopLevelDomainStatement = nullptr;
+    m_domainIDFromStringStatement = nullptr;
+    m_subframeUnderTopFrameDomainExistsStatement = nullptr;
+    m_subresourceUnderTopFrameDomainExistsStatement = nullptr;
+    m_subresourceUniqueRedirectsToExistsStatement = nullptr;
+    m_updateLastSeenStatement = nullptr;
+    m_updateDataRecordsRemovedStatement = nullptr;
+    m_mostRecentUserInteractionStatement = nullptr;
+    m_updatePrevalentResourceStatement = nullptr;
+    m_isPrevalentResourceStatement = nullptr;
+    m_updateVeryPrevalentResourceStatement = nullptr;
+    m_isVeryPrevalentResourceStatement = nullptr;
+    m_clearPrevalentResourceStatement = nullptr;
+    m_hadUserInteractionStatement = nullptr;
+    m_updateGrandfatheredStatement = nullptr;
+    m_updateIsScheduledForAllButCookieDataRemovalStatement = nullptr;
+    m_isGrandfatheredStatement = nullptr;
+    m_findExpiredUserInteractionStatement = nullptr;
+    m_topFrameLinkDecorationsFromExistsStatement = nullptr;
+    m_topFrameLoadedThirdPartyScriptsExistsStatement = nullptr;
+    m_countPrevalentResourcesStatement = nullptr;
+    m_countPrevalentResourcesWithUserInteractionStatement = nullptr;
+    m_countPrevalentResourcesWithoutUserInteractionStatement = nullptr;
+    m_getResourceDataByDomainNameStatement = nullptr;
+    m_getAllDomainsStatement = nullptr;
+    m_domainStringFromDomainIDStatement = nullptr;
+    m_getAllSubStatisticsStatement = nullptr;
+    m_storageAccessExistsStatement = nullptr;
+    m_getMostRecentlyUpdatedTimestampStatement = nullptr;
+    m_linkDecorationExistsStatement = nullptr;
+    m_scriptLoadExistsStatement = nullptr;
+    m_subFrameExistsStatement = nullptr;
+    m_subResourceExistsStatement = nullptr;
+    m_uniqueRedirectExistsStatement = nullptr;
+    m_observedDomainsExistsStatement = nullptr;
+    m_removeAllDataStatement = nullptr;
 }
 
 bool ResourceLoadStatisticsDatabaseStore::insertObservedDomain(const ResourceLoadStatistics& loadStatistics)
@@ -557,98 +684,65 @@ bool ResourceLoadStatisticsDatabaseStore::insertObservedDomain(const ResourceLoa
         ASSERT_NOT_REACHED();
         return false;
     }
-
-    if (m_insertObservedDomainStatement.bindText(RegistrableDomainIndex, loadStatistics.registrableDomain.string()) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindDouble(LastSeenIndex, loadStatistics.lastSeen.secondsSinceEpoch().value()) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(HadUserInteractionIndex, loadStatistics.hadUserInteraction) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindDouble(MostRecentUserInteractionTimeIndex, loadStatistics.mostRecentUserInteractionTime.secondsSinceEpoch().value()) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(GrandfatheredIndex, loadStatistics.grandfathered) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(IsPrevalentIndex, loadStatistics.isPrevalentResource) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(IsVeryPrevalentIndex, loadStatistics.isVeryPrevalentResource) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(DataRecordsRemovedIndex, loadStatistics.dataRecordsRemoved) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(TimesAccessedAsFirstPartyDueToUserInteractionIndex, loadStatistics.timesAccessedAsFirstPartyDueToUserInteraction) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(TimesAccessedAsFirstPartyDueToStorageAccessAPIIndex, loadStatistics.timesAccessedAsFirstPartyDueToStorageAccessAPI) != SQLITE_OK
-        || m_insertObservedDomainStatement.bindInt(IsScheduledForAllButCookieDataRemovalIndex, loadStatistics.gotLinkDecorationFromPrevalentResource) != SQLITE_OK) {
+    auto scopedStatement = this->scopedStatement(m_insertObservedDomainStatement, insertObservedDomainQuery, "insertObservedDomain"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(RegistrableDomainIndex, loadStatistics.registrableDomain.string()) != SQLITE_OK
+        || scopedStatement->bindDouble(LastSeenIndex, loadStatistics.lastSeen.secondsSinceEpoch().value()) != SQLITE_OK
+        || scopedStatement->bindInt(HadUserInteractionIndex, loadStatistics.hadUserInteraction) != SQLITE_OK
+        || scopedStatement->bindDouble(MostRecentUserInteractionTimeIndex, loadStatistics.mostRecentUserInteractionTime.secondsSinceEpoch().value()) != SQLITE_OK
+        || scopedStatement->bindInt(GrandfatheredIndex, loadStatistics.grandfathered) != SQLITE_OK
+        || scopedStatement->bindInt(IsPrevalentIndex, loadStatistics.isPrevalentResource) != SQLITE_OK
+        || scopedStatement->bindInt(IsVeryPrevalentIndex, loadStatistics.isVeryPrevalentResource) != SQLITE_OK
+        || scopedStatement->bindInt(DataRecordsRemovedIndex, loadStatistics.dataRecordsRemoved) != SQLITE_OK
+        || scopedStatement->bindInt(TimesAccessedAsFirstPartyDueToUserInteractionIndex, loadStatistics.timesAccessedAsFirstPartyDueToUserInteraction) != SQLITE_OK
+        || scopedStatement->bindInt(TimesAccessedAsFirstPartyDueToStorageAccessAPIIndex, loadStatistics.timesAccessedAsFirstPartyDueToStorageAccessAPI) != SQLITE_OK
+        || scopedStatement->bindInt(IsScheduledForAllButCookieDataRemovalIndex, loadStatistics.gotLinkDecorationFromPrevalentResource) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::insertObservedDomain failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return false;
     }
 
-    if (m_insertObservedDomainStatement.step() != SQLITE_DONE) {
+    if (scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::insertObservedDomain failed to commit, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return false;
     }
-
-    int resetResult = m_insertObservedDomainStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-
     return true;
 }
 
-bool ResourceLoadStatisticsDatabaseStore::relationshipExists(WebCore::SQLiteStatement& statement, Optional<unsigned> firstDomainID, const RegistrableDomain& secondDomain) const
+bool ResourceLoadStatisticsDatabaseStore::relationshipExists(SQLiteStatementAutoResetScope& statement, Optional<unsigned> firstDomainID, const RegistrableDomain& secondDomain) const
 {
     if (!firstDomainID)
         return false;
     
     ASSERT(!RunLoop::isMain());
 
-    if (statement.bindInt(1, *firstDomainID) != SQLITE_OK
-        || statement.bindText(2, secondDomain.string()) != SQLITE_OK
-        || statement.step() != SQLITE_ROW) {
+    if (!statement
+        || statement->bindInt(1, *firstDomainID) != SQLITE_OK
+        || statement->bindText(2, secondDomain.string()) != SQLITE_OK
+        || statement->step() != SQLITE_ROW) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::relationshipExists failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return false;
     }
-    bool relationshipExists = !!statement.getColumnInt(0);
-
-    int resetResult = statement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-    
-    return relationshipExists;
-}
-
-bool ResourceLoadStatisticsDatabaseStore::insertDomainRelationship(WebCore::SQLiteStatement& statement, unsigned domainID, const RegistrableDomain& topFrame)
-{
-    ASSERT(!RunLoop::isMain());
-
-    if (statement.bindInt(1, domainID) != SQLITE_OK
-        || statement.bindText(2, topFrame.string()) != SQLITE_OK
-        || statement.step() != SQLITE_DONE) {
-        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::m_insertDomainRelationshipStatement failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
-        ASSERT_NOT_REACHED();
-        return false;
-    }
-
-    int resetResult = statement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-    
-    return true;
+    return !!statement->getColumnInt(0);
 }
 
 Optional<unsigned> ResourceLoadStatisticsDatabaseStore::domainID(const RegistrableDomain& domain) const
 {
     ASSERT(!RunLoop::isMain());
 
-    unsigned domainID = 0;
-
-    if (m_domainIDFromStringStatement.bindText(1, domain.string()) != SQLITE_OK) {
+    auto scopedStatement = this->scopedStatement(m_domainIDFromStringStatement, domainIDFromStringQuery, "domainID"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(1, domain.string()) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::domainIDFromString failed, error message: %{private}s", this, m_database.lastErrorMsg());
         return WTF::nullopt;
     }
     
-    if (m_domainIDFromStringStatement.step() != SQLITE_ROW) {
-        int resetResult = m_domainIDFromStringStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
+    if (scopedStatement->step() != SQLITE_ROW)
         return WTF::nullopt;
-    }
 
-    domainID = m_domainIDFromStringStatement.getColumnInt(0);
-
-    int resetResult = m_domainIDFromStringStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-    
-    return domainID;
+    return scopedStatement->getColumnInt(0);
 }
 
 String ResourceLoadStatisticsDatabaseStore::ensureAndMakeDomainList(const HashSet<RegistrableDomain>& domainList)
@@ -739,18 +833,18 @@ void ResourceLoadStatisticsDatabaseStore::populateFromMemoryStore(const Resource
         insertDomainRelationships(statistic.value);
 }
 
-void ResourceLoadStatisticsDatabaseStore::merge(WebCore::SQLiteStatement& current, const ResourceLoadStatistics& other)
+void ResourceLoadStatisticsDatabaseStore::merge(WebCore::SQLiteStatement* current, const ResourceLoadStatistics& other)
 {
     ASSERT(!RunLoop::isMain());
 
-    auto currentRegistrableDomain = current.getColumnText(RegistrableDomainIndex);
-    auto currentLastSeen = current.getColumnDouble(LastSeenIndex);
-    auto currentMostRecentUserInteraction = current.getColumnDouble(MostRecentUserInteractionTimeIndex);
-    bool currentGrandfathered = current.getColumnInt(GrandfatheredIndex);
-    bool currentIsPrevalent = current.getColumnInt(IsPrevalentIndex);
-    bool currentIsVeryPrevalent = current.getColumnInt(IsVeryPrevalentIndex);
-    unsigned currentDataRecordsRemoved = current.getColumnInt(DataRecordsRemovedIndex);
-    bool currentIsScheduledForAllButCookieDataRemoval = current.getColumnInt(IsScheduledForAllButCookieDataRemovalIndex);
+    auto currentRegistrableDomain = current->getColumnText(RegistrableDomainIndex);
+    auto currentLastSeen = current->getColumnDouble(LastSeenIndex);
+    auto currentMostRecentUserInteraction = current->getColumnDouble(MostRecentUserInteractionTimeIndex);
+    bool currentGrandfathered = current->getColumnInt(GrandfatheredIndex);
+    bool currentIsPrevalent = current->getColumnInt(IsPrevalentIndex);
+    bool currentIsVeryPrevalent = current->getColumnInt(IsVeryPrevalentIndex);
+    unsigned currentDataRecordsRemoved = current->getColumnInt(DataRecordsRemovedIndex);
+    bool currentIsScheduledForAllButCookieDataRemoval = current->getColumnInt(IsScheduledForAllButCookieDataRemovalIndex);
 
     ASSERT(currentRegistrableDomain == other.registrableDomain.string());
 
@@ -780,15 +874,16 @@ void ResourceLoadStatisticsDatabaseStore::mergeStatistic(const ResourceLoadStati
 {
     ASSERT(!RunLoop::isMain());
 
-    if (m_getResourceDataByDomainNameStatement.bindText(1, statistic.registrableDomain.string()) != SQLITE_OK
-        || m_getResourceDataByDomainNameStatement.step() != SQLITE_ROW) {
+    auto scopedStatement = this->scopedStatement(m_getResourceDataByDomainNameStatement, getResourceDataByDomainNameQuery, "mergeStatistic"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(1, statistic.registrableDomain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_ROW) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::mergeStatistic. Statement failed to bind or domain was not found, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
 
-    merge(m_getResourceDataByDomainNameStatement, statistic);
-    resetStatement(m_getResourceDataByDomainNameStatement);
+    merge(scopedStatement.get(), statistic);
 }
 
 void ResourceLoadStatisticsDatabaseStore::mergeStatistics(Vector<ResourceLoadStatistics>&& statistics)
@@ -842,18 +937,19 @@ static SQLiteStatement makeMedianWithUIQuery(SQLiteDatabase& database)
 
 Vector<WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty> ResourceLoadStatisticsDatabaseStore::getThirdPartyDataForSpecificFirstPartyDomains(unsigned thirdPartyDomainID, const RegistrableDomain& thirdPartyDomain) const
 {
-    if (m_getAllSubStatisticsStatement.bindInt(1, thirdPartyDomainID) != SQLITE_OK
-        || m_getAllSubStatisticsStatement.bindInt(2, thirdPartyDomainID) != SQLITE_OK
-        || m_getAllSubStatisticsStatement.bindInt(3, thirdPartyDomainID) != SQLITE_OK) {
+    auto scopedStatement = this->scopedStatement(m_getAllSubStatisticsStatement, getAllSubStatisticsUnderDomainQuery, "getThirdPartyDataForSpecificFirstPartyDomains"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, thirdPartyDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(2, thirdPartyDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(3, thirdPartyDomainID) != SQLITE_OK) {
         RELEASE_LOG_ERROR(Network, "ResourceLoadStatisticsDatabaseStore::getThirdPartyDataForSpecificFirstPartyDomain, error message: %" PUBLIC_LOG_STRING, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
     }
     Vector<WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty> thirdPartyDataForSpecificFirstPartyDomains;
-    while (m_getAllSubStatisticsStatement.step() == SQLITE_ROW) {
-        RegistrableDomain firstPartyDomain = RegistrableDomain::uncheckedCreateFromRegistrableDomainString(getDomainStringFromDomainID(m_getAllSubStatisticsStatement.getColumnInt(0)));
+    while (scopedStatement->step() == SQLITE_ROW) {
+        RegistrableDomain firstPartyDomain = RegistrableDomain::uncheckedCreateFromRegistrableDomainString(getDomainStringFromDomainID(m_getAllSubStatisticsStatement->getColumnInt(0)));
         thirdPartyDataForSpecificFirstPartyDomains.appendIfNotContains(WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty { firstPartyDomain, hasStorageAccess(firstPartyDomain, thirdPartyDomain), getMostRecentlyUpdatedTimestamp(thirdPartyDomain, firstPartyDomain) });
     }
-    resetStatement(m_getAllSubStatisticsStatement);
     return thirdPartyDataForSpecificFirstPartyDomains;
 }
 
@@ -975,31 +1071,31 @@ static unsigned getMedianOfPrevalentResourcesWithUserInteraction(SQLiteDatabase&
 
 unsigned ResourceLoadStatisticsDatabaseStore::getNumberOfPrevalentResources() const
 {
-    auto stepValue = m_countPrevalentResourcesStatement.step();
+    auto scopedStatement = this->scopedStatement(m_countPrevalentResourcesStatement, countPrevalentResourcesQuery, "getNumberOfPrevalentResources"_s);
+    if (!scopedStatement)
+        return 0;
+    
+    auto stepValue = scopedStatement->step();
     if (stepValue != SQLITE_ROW && stepValue != SQLITE_DONE) {
         RELEASE_LOG_ERROR(Network, "ResourceLoadStatisticsDatabaseStore::getNumberOfPrevalentResources failed to step, error message: %" PUBLIC_LOG_STRING, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return 0;
     }
     if (stepValue == SQLITE_ROW) {
-        unsigned prevalentResourceCount = m_countPrevalentResourcesStatement.getColumnInt(0);
-        if (prevalentResourceCount >= minimumPrevalentResourcesForTelemetry) {
-            resetStatement(m_countPrevalentResourcesStatement);
+        unsigned prevalentResourceCount = scopedStatement->getColumnInt(0);
+        if (prevalentResourceCount >= minimumPrevalentResourcesForTelemetry)
             return prevalentResourceCount;
-        }
     }
-    resetStatement(m_countPrevalentResourcesStatement);
     return 0;
 }
 
 unsigned ResourceLoadStatisticsDatabaseStore::getNumberOfPrevalentResourcesWithUI() const
 {
-    if (m_countPrevalentResourcesWithUserInteractionStatement.step() == SQLITE_ROW) {
-        int count = m_countPrevalentResourcesWithUserInteractionStatement.getColumnInt(0);
-        resetStatement(m_countPrevalentResourcesWithUserInteractionStatement);
+    auto scopedStatement = this->scopedStatement(m_countPrevalentResourcesWithUserInteractionStatement, countPrevalentResourcesWithUserInteractionQuery, "getNumberOfPrevalentResourcesWithUI"_s);
+    if (scopedStatement && scopedStatement->step() == SQLITE_ROW) {
+        int count = scopedStatement->getColumnInt(0);
         return count;
     }
-    resetStatement(m_countPrevalentResourcesWithUserInteractionStatement);
     return 0;
 }
 
@@ -1113,12 +1209,11 @@ static unsigned makeStatisticQuery(SQLiteDatabase& database, PrevalentResourceDa
 
 unsigned ResourceLoadStatisticsDatabaseStore::getNumberOfPrevalentResourcesWithoutUI() const
 {
-    if (m_countPrevalentResourcesWithoutUserInteractionStatement.step() == SQLITE_ROW) {
-        int count = m_countPrevalentResourcesWithoutUserInteractionStatement.getColumnInt(0);
-        resetStatement(m_countPrevalentResourcesWithoutUserInteractionStatement);
+    auto scopedStatement = this->scopedStatement(m_countPrevalentResourcesWithoutUserInteractionStatement, countPrevalentResourcesWithoutUserInteractionQuery, "getNumberOfPrevalentResourcesWithoutUI"_s);
+    if (scopedStatement && scopedStatement->step() == SQLITE_ROW) {
+        int count = m_countPrevalentResourcesWithoutUserInteractionStatement->getColumnInt(0);
         return count;
     }
-    resetStatement(m_countPrevalentResourcesWithoutUserInteractionStatement);
     return 0;
 }
 
@@ -1374,7 +1469,8 @@ void ResourceLoadStatisticsDatabaseStore::syncStorageImmediately()
 
 bool ResourceLoadStatisticsDatabaseStore::hasStorageAccess(const TopFrameDomain& topFrameDomain, const SubFrameDomain& subFrameDomain) const
 {
-    return relationshipExists(m_storageAccessExistsStatement, domainID(subFrameDomain), topFrameDomain);
+    auto scopedStatement = this->scopedStatement(m_storageAccessExistsStatement, storageAccessExistsQuery, "hasStorageAccess"_s);
+    return relationshipExists(scopedStatement, domainID(subFrameDomain), topFrameDomain);
 }
 
 void ResourceLoadStatisticsDatabaseStore::hasStorageAccess(const SubFrameDomain& subFrameDomain, const TopFrameDomain& topFrameDomain, Optional<FrameIdentifier> frameID, PageIdentifier pageID, CompletionHandler<void(bool)>&& completionHandler)
@@ -1414,7 +1510,7 @@ void ResourceLoadStatisticsDatabaseStore::hasStorageAccess(const SubFrameDomain&
     });
 }
 
-void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameIdentifier frameID, PageIdentifier pageID, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
+void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameIdentifier frameID, PageIdentifier pageID, StorageAccessScope scope, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -1470,7 +1566,7 @@ void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& 
         return;
     }
     
-    grantStorageAccessInternal(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, userWasPromptedEarlier, [completionHandler = WTFMove(completionHandler)] (StorageAccessWasGranted wasGranted) mutable {
+    grantStorageAccessInternal(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, userWasPromptedEarlier, scope, [completionHandler = WTFMove(completionHandler)] (StorageAccessWasGranted wasGranted) mutable {
         completionHandler(wasGranted == StorageAccessWasGranted::Yes ? StorageAccessStatus::HasAccess : StorageAccessStatus::CannotRequestAccess);
     });
 }
@@ -1488,10 +1584,10 @@ void ResourceLoadStatisticsDatabaseStore::requestStorageAccessUnderOpener(Domain
         debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("[ITP] Storage access was granted for '"_s, domainInNeedOfStorageAccess.string(), "' under opener page from '"_s, openerDomain.string(), "', with user interaction in the opened window."_s));
     }
 
-    grantStorageAccessInternal(WTFMove(domainInNeedOfStorageAccess), WTFMove(openerDomain), WTF::nullopt, openerPageID, StorageAccessPromptWasShown::No, [](StorageAccessWasGranted) { });
+    grantStorageAccessInternal(WTFMove(domainInNeedOfStorageAccess), WTFMove(openerDomain), WTF::nullopt, openerPageID, StorageAccessPromptWasShown::No, StorageAccessScope::PerPage, [](StorageAccessWasGranted) { });
 }
 
-void ResourceLoadStatisticsDatabaseStore::grantStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameIdentifier frameID, PageIdentifier pageID, StorageAccessPromptWasShown promptWasShown, CompletionHandler<void(StorageAccessWasGranted)>&& completionHandler)
+void ResourceLoadStatisticsDatabaseStore::grantStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameIdentifier frameID, PageIdentifier pageID, StorageAccessPromptWasShown promptWasShown, StorageAccessScope scope, CompletionHandler<void(StorageAccessWasGranted)>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -1506,10 +1602,10 @@ void ResourceLoadStatisticsDatabaseStore::grantStorageAccess(SubFrameDomain&& su
         insertDomainRelationshipList(storageAccessUnderTopFrameDomainsQuery, HashSet<RegistrableDomain>({ topFrameDomain }), *subFrameStatus.second);
     }
 
-    grantStorageAccessInternal(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, promptWasShown, WTFMove(completionHandler));
+    grantStorageAccessInternal(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, promptWasShown, scope, WTFMove(completionHandler));
 }
 
-void ResourceLoadStatisticsDatabaseStore::grantStorageAccessInternal(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, Optional<FrameIdentifier> frameID, PageIdentifier pageID, StorageAccessPromptWasShown promptWasShownNowOrEarlier, CompletionHandler<void(StorageAccessWasGranted)>&& completionHandler)
+void ResourceLoadStatisticsDatabaseStore::grantStorageAccessInternal(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, Optional<FrameIdentifier> frameID, PageIdentifier pageID, StorageAccessPromptWasShown promptWasShownNowOrEarlier, StorageAccessScope scope, CompletionHandler<void(StorageAccessWasGranted)>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -1532,8 +1628,8 @@ void ResourceLoadStatisticsDatabaseStore::grantStorageAccessInternal(SubFrameDom
         setUserInteraction(subFrameDomain, true, WallTime::now());
     }
 
-    RunLoop::main().dispatch([subFrameDomain = subFrameDomain.isolatedCopy(), topFrameDomain = topFrameDomain.isolatedCopy(), frameID, pageID, store = makeRef(store()), completionHandler = WTFMove(completionHandler)]() mutable {
-        store->callGrantStorageAccessHandler(subFrameDomain, topFrameDomain, frameID, pageID, [completionHandler = WTFMove(completionHandler), store = store.copyRef()](StorageAccessWasGranted wasGranted) mutable {
+    RunLoop::main().dispatch([subFrameDomain = subFrameDomain.isolatedCopy(), topFrameDomain = topFrameDomain.isolatedCopy(), frameID, pageID, store = makeRef(store()), scope, completionHandler = WTFMove(completionHandler)]() mutable {
+        store->callGrantStorageAccessHandler(subFrameDomain, topFrameDomain, frameID, pageID, scope, [completionHandler = WTFMove(completionHandler), store = store.copyRef()](StorageAccessWasGranted wasGranted) mutable {
             store->statisticsQueue().dispatch([wasGranted, completionHandler = WTFMove(completionHandler)] () mutable {
                 completionHandler(wasGranted);
             });
@@ -1627,8 +1723,14 @@ void ResourceLoadStatisticsDatabaseStore::logFrameNavigation(const RegistrableDo
                     return;
                 }
                 insertDomainRelationshipList(topFrameUniqueRedirectsToQuery, HashSet<RegistrableDomain>({ targetDomain }), *redirectingDomainResult.second);
-                insertDomainRelationshipList(topFrameUniqueRedirectsToSinceSameSiteStrictEnforcementQuery, HashSet<RegistrableDomain>({ targetDomain }), *redirectingDomainResult.second);
-                RELEASE_LOG_INFO_IF(debugLoggingEnabled(), ITPDebug, "Did set %" PUBLIC_LOG_STRING " as making a top frame redirect to %" PUBLIC_LOG_STRING ".", sourceDomain.string().utf8().data(), targetDomain.string().utf8().data());
+                if (isRedirect) {
+                    insertDomainRelationshipList(topFrameUniqueRedirectsToSinceSameSiteStrictEnforcementQuery, HashSet<RegistrableDomain>({ targetDomain }), *redirectingDomainResult.second);
+
+                    if (UNLIKELY(debugLoggingEnabled())) {
+                        RELEASE_LOG_INFO(ITPDebug, "Did set %" PUBLIC_LOG_STRING " as making a top frame redirect to %" PUBLIC_LOG_STRING ".", sourceDomain.string().utf8().data(), targetDomain.string().utf8().data());
+                        debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("Did set '", sourceDomain.string(), "' as making a top frame redirect to '", targetDomain.string(), "'."));
+                    }
+                }
                 insertDomainRelationshipList(topFrameUniqueRedirectsFromQuery, HashSet<RegistrableDomain>({ sourceDomain }), *targetResult.second);
                 statisticsWereUpdated = true;
             }
@@ -1690,30 +1792,29 @@ void ResourceLoadStatisticsDatabaseStore::clearTopFrameUniqueRedirectsToSinceSam
 void ResourceLoadStatisticsDatabaseStore::setUserInteraction(const RegistrableDomain& domain, bool hadUserInteraction, WallTime mostRecentInteraction)
 {
     ASSERT(!RunLoop::isMain());
-
-    if (m_mostRecentUserInteractionStatement.bindInt(1, hadUserInteraction) != SQLITE_OK
-        || m_mostRecentUserInteractionStatement.bindDouble(2, mostRecentInteraction.secondsSinceEpoch().value()) != SQLITE_OK
-        || m_mostRecentUserInteractionStatement.bindText(3, domain.string()) != SQLITE_OK
-        || m_mostRecentUserInteractionStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_mostRecentUserInteractionStatement, mostRecentUserInteractionQuery, "setUserInteraction"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, hadUserInteraction) != SQLITE_OK
+        || scopedStatement->bindDouble(2, mostRecentInteraction.secondsSinceEpoch().value()) != SQLITE_OK
+        || scopedStatement->bindText(3, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::setUserInteraction, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
-
-    int resetResult = m_mostRecentUserInteractionStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
 void ResourceLoadStatisticsDatabaseStore::logUserInteraction(const TopFrameDomain& domain, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
-    bool didHavePreviousUserInteraction = hasHadUserInteraction(domain, OperatingDatesWindow::Long);
     auto result = ensureResourceStatisticsForRegistrableDomain(domain);
     if (!result.second) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::logUserInteraction was not completed due to failed insert attempt", this);
         return;
     }
+    bool didHavePreviousUserInteraction = hasHadUserInteraction(domain, OperatingDatesWindow::Long);
     setUserInteraction(domain, true, WallTime::now());
     if (didHavePreviousUserInteraction) {
         completionHandler();
@@ -1750,24 +1851,20 @@ void ResourceLoadStatisticsDatabaseStore::clearUserInteraction(const Registrable
 bool ResourceLoadStatisticsDatabaseStore::hasHadUserInteraction(const RegistrableDomain& domain, OperatingDatesWindow operatingDatesWindow)
 {
     ASSERT(!RunLoop::isMain());
-
-    if (m_hadUserInteractionStatement.bindText(1, domain.string()) != SQLITE_OK
-        || m_hadUserInteractionStatement.step() != SQLITE_ROW) {
-        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::m_hadUserInteractionStatement failed, error message: %{private}s", this, m_database.lastErrorMsg());
-
-        int resetResult = m_hadUserInteractionStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-        return false;
-    }
-
-    bool hadUserInteraction = !!m_hadUserInteractionStatement.getColumnInt(0);
-    if (!hadUserInteraction) {
-        int resetResult = m_hadUserInteractionStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-        return false;
-    }
     
-    WallTime mostRecentUserInteractionTime = WallTime::fromRawSeconds(m_hadUserInteractionStatement.getColumnDouble(1));
+    auto scopedStatement = this->scopedStatement(m_hadUserInteractionStatement, hadUserInteractionQuery, "hasHadUserInteraction"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(1, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::m_hadUserInteractionStatement failed, error message: %{private}s", this, m_database.lastErrorMsg());
+        return false;
+    }
+
+    bool hadUserInteraction = !!scopedStatement->getColumnInt(0);
+    if (!hadUserInteraction)
+        return false;
+    
+    WallTime mostRecentUserInteractionTime = WallTime::fromRawSeconds(scopedStatement->getColumnDouble(1));
 
     if (hasStatisticsExpired(mostRecentUserInteractionTime, operatingDatesWindow)) {
         // Drop privacy sensitive data because we no longer need it.
@@ -1776,10 +1873,6 @@ bool ResourceLoadStatisticsDatabaseStore::hasHadUserInteraction(const Registrabl
         clearUserInteraction(domain, [] { });
         hadUserInteraction = false;
     }
-    
-    int resetResult = m_hadUserInteractionStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-
     return hadUserInteraction;
 }
 
@@ -1789,28 +1882,26 @@ void ResourceLoadStatisticsDatabaseStore::setPrevalentResource(const Registrable
     if (shouldSkip(domain))
         return;
 
-    if (m_updatePrevalentResourceStatement.bindInt(1, 1) != SQLITE_OK
-        || m_updatePrevalentResourceStatement.bindText(2, domain.string()) != SQLITE_OK
-        || m_updatePrevalentResourceStatement.step() != SQLITE_DONE) {
+    auto scopedUpdatePrevalentResourceStatement = this->scopedStatement(m_updatePrevalentResourceStatement, updatePrevalentResourceQuery, "setPrevalentResource"_s);
+    if (!scopedUpdatePrevalentResourceStatement
+        || scopedUpdatePrevalentResourceStatement->bindInt(1, 1) != SQLITE_OK
+        || scopedUpdatePrevalentResourceStatement->bindText(2, domain.string()) != SQLITE_OK
+        || scopedUpdatePrevalentResourceStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::m_updatePrevalentResourceStatement failed, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
-    
-    int resetResult = m_updatePrevalentResourceStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 
+    auto scopedUpdateVeryPrevalentResourceStatement = this->scopedStatement(m_updateVeryPrevalentResourceStatement, updateVeryPrevalentResourceQuery, "setPrevalentResource updateVeryPrevalentResource"_s);
     if (newPrevalence == ResourceLoadPrevalence::VeryHigh) {
-        if (m_updateVeryPrevalentResourceStatement.bindInt(1, 1) != SQLITE_OK
-            || m_updateVeryPrevalentResourceStatement.bindText(2, domain.string()) != SQLITE_OK
-            || m_updateVeryPrevalentResourceStatement.step() != SQLITE_DONE) {
+        if (!scopedUpdateVeryPrevalentResourceStatement
+            || scopedUpdateVeryPrevalentResourceStatement->bindInt(1, 1) != SQLITE_OK
+            || scopedUpdateVeryPrevalentResourceStatement->bindText(2, domain.string()) != SQLITE_OK
+            || scopedUpdateVeryPrevalentResourceStatement->step() != SQLITE_DONE) {
             RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::m_updateVeryPrevalentResourceStatement failed, error message: %{private}s", this, m_database.lastErrorMsg());
             ASSERT_NOT_REACHED();
             return;
         }
-
-        int resetResult = m_updateVeryPrevalentResourceStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
     }
 
     StdSet<unsigned> nonPrevalentRedirectionSources;
@@ -1841,9 +1932,13 @@ void ResourceLoadStatisticsDatabaseStore::dumpResourceLoadStatistics(CompletionH
         return;
     }
 
+    auto scopedStatement = this->scopedStatement(m_getAllDomainsStatement, getAllDomainsQuery, "dumpResourceLoadStatistics"_s);
+    if (!scopedStatement)
+        return;
+    
     Vector<String> domains;
-    while (m_getAllDomainsStatement.step() == SQLITE_ROW)
-        domains.append(m_getAllDomainsStatement.getColumnText(0));
+    while (scopedStatement->step() == SQLITE_ROW)
+        domains.append(scopedStatement->getColumnText(0));
     std::sort(domains.begin(), domains.end(), WTF::codePointCompareLessThan);
 
     StringBuilder result;
@@ -1859,28 +1954,20 @@ void ResourceLoadStatisticsDatabaseStore::dumpResourceLoadStatistics(CompletionH
             result.append('\n');
         }
     }
-    resetStatement(m_getAllDomainsStatement);
     completionHandler(result.toString());
 }
 
-bool ResourceLoadStatisticsDatabaseStore::predicateValueForDomain(WebCore::SQLiteStatement& predicateStatement, const RegistrableDomain& domain) const
+bool ResourceLoadStatisticsDatabaseStore::predicateValueForDomain(SQLiteStatementAutoResetScope& predicateStatement, const RegistrableDomain& domain) const
 {
     ASSERT(!RunLoop::isMain());
-    
-    if (predicateStatement.bindText(1, domain.string()) != SQLITE_OK
-        || predicateStatement.step() != SQLITE_ROW) {
 
-        int resetResult = predicateStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-
+    if (!predicateStatement
+        || predicateStatement->bindText(1, domain.string()) != SQLITE_OK
+        || predicateStatement->step() != SQLITE_ROW) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::predicateValueForDomain failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         return false;
     }
-
-    bool result = !!predicateStatement.getColumnInt(0);
-    int resetResult = predicateStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
-    return result;
+    return !!predicateStatement->getColumnInt(0);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isPrevalentResource(const RegistrableDomain& domain) const
@@ -1890,7 +1977,8 @@ bool ResourceLoadStatisticsDatabaseStore::isPrevalentResource(const RegistrableD
     if (shouldSkip(domain))
         return false;
 
-    return predicateValueForDomain(m_isPrevalentResourceStatement, domain);
+    auto scopedStatement = this->scopedStatement(m_isPrevalentResourceStatement, isPrevalentResourceQuery, "isPrevalentResource"_s);
+    return predicateValueForDomain(scopedStatement, domain);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isVeryPrevalentResource(const RegistrableDomain& domain) const
@@ -1900,28 +1988,32 @@ bool ResourceLoadStatisticsDatabaseStore::isVeryPrevalentResource(const Registra
     if (shouldSkip(domain))
         return false;
 
-    return predicateValueForDomain(m_isVeryPrevalentResourceStatement, domain);
+    auto scopedStatement = this->scopedStatement(m_isVeryPrevalentResourceStatement, isVeryPrevalentResourceQuery, "isVeryPrevalentResource"_s);
+    return predicateValueForDomain(scopedStatement, domain);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isRegisteredAsSubresourceUnder(const SubResourceDomain& subresourceDomain, const TopFrameDomain& topFrameDomain) const
 {
     ASSERT(!RunLoop::isMain());
 
-    return relationshipExists(m_subresourceUnderTopFrameDomainExists, domainID(subresourceDomain), topFrameDomain);
+    auto scopedStatement = this->scopedStatement(m_subresourceUnderTopFrameDomainExistsStatement, subresourceUnderTopFrameDomainExistsQuery, "isRegisteredAsSubresourceUnder"_s);
+    return relationshipExists(scopedStatement, domainID(subresourceDomain), topFrameDomain);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isRegisteredAsSubFrameUnder(const SubFrameDomain& subFrameDomain, const TopFrameDomain& topFrameDomain) const
 {
     ASSERT(!RunLoop::isMain());
-
-    return relationshipExists(m_subframeUnderTopFrameDomainExists, domainID(subFrameDomain), topFrameDomain);
+    
+    auto scopedStatement = this->scopedStatement(m_subframeUnderTopFrameDomainExistsStatement, subframeUnderTopFrameDomainExistsQuery, "isRegisteredAsSubFrameUnder"_s);
+    return relationshipExists(scopedStatement, domainID(subFrameDomain), topFrameDomain);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isRegisteredAsRedirectingTo(const RedirectedFromDomain& redirectedFromDomain, const RedirectedToDomain& redirectedToDomain) const
 {
     ASSERT(!RunLoop::isMain());
 
-    return relationshipExists(m_subresourceUniqueRedirectsToExists, domainID(redirectedFromDomain), redirectedToDomain);
+    auto scopedStatement = this->scopedStatement(m_subresourceUniqueRedirectsToExistsStatement, subresourceUniqueRedirectsToExistsQuery, "isRegisteredAsRedirectingTo"_s);
+    return relationshipExists(scopedStatement, domainID(redirectedFromDomain), redirectedToDomain);
 }
 
 void ResourceLoadStatisticsDatabaseStore::clearPrevalentResource(const RegistrableDomain& domain)
@@ -1933,15 +2025,16 @@ void ResourceLoadStatisticsDatabaseStore::clearPrevalentResource(const Registrab
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::clearPrevalentResource was not completed due to failed insert attempt", this);
         return;
     }
-    if (m_clearPrevalentResourceStatement.bindText(1, domain.string()) != SQLITE_OK
-        || m_clearPrevalentResourceStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_clearPrevalentResourceStatement, clearPrevalentResourceQuery, "clearPrevalentResource"_s);
+    
+    if (!scopedStatement
+        || scopedStatement->bindText(1, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::clearPrevalentResource, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
-    
-    int resetResult = m_clearPrevalentResourceStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
 void ResourceLoadStatisticsDatabaseStore::setGrandfathered(const RegistrableDomain& domain, bool value)
@@ -1953,16 +2046,15 @@ void ResourceLoadStatisticsDatabaseStore::setGrandfathered(const RegistrableDoma
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::setGrandfathered was not completed due to failed insert attempt", this);
         return;
     }
-    if (m_updateGrandfatheredStatement.bindInt(1, value) != SQLITE_OK
-        || m_updateGrandfatheredStatement.bindText(2, domain.string()) != SQLITE_OK
-        || m_updateGrandfatheredStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_updateGrandfatheredStatement, updateGrandfatheredQuery, "setGrandfathered"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, value) != SQLITE_OK
+        || scopedStatement->bindText(2, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::setGrandfathered failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
-        return;
     }
-    
-    int resetResult = m_updateGrandfatheredStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
 void ResourceLoadStatisticsDatabaseStore::setIsScheduledForAllButCookieDataRemoval(const RegistrableDomain& domain, bool value)
@@ -1974,16 +2066,17 @@ void ResourceLoadStatisticsDatabaseStore::setIsScheduledForAllButCookieDataRemov
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::setIsScheduledForAllButCookieDataRemoval was not completed due to failed insert attempt", this);
         return;
     }
-    if (m_updateIsScheduledForAllButCookieDataRemovalStatement.bindInt(1, value) != SQLITE_OK
-        || m_updateIsScheduledForAllButCookieDataRemovalStatement.bindText(2, domain.string()) != SQLITE_OK
-        || m_updateIsScheduledForAllButCookieDataRemovalStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_updateIsScheduledForAllButCookieDataRemovalStatement, updateIsScheduledForAllButCookieDataRemovalQuery, "setIsScheduledForAllButCookieDataRemoval"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, value) != SQLITE_OK
+        || scopedStatement->bindText(2, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::setIsScheduledForAllButCookieDataRemoval failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
-        return;
     }
-
-    resetStatement(m_updateIsScheduledForAllButCookieDataRemovalStatement);
 }
+
 Seconds ResourceLoadStatisticsDatabaseStore::getMostRecentlyUpdatedTimestamp(const RegistrableDomain& subDomain, const TopFrameDomain& topFrameDomain) const
 {
     ASSERT(!RunLoop::isMain());
@@ -1993,33 +2086,33 @@ Seconds ResourceLoadStatisticsDatabaseStore::getMostRecentlyUpdatedTimestamp(con
 
     if (!subFrameDomainID || !topFrameDomainID)
         return Seconds { ResourceLoadStatistics::NoExistingTimestamp };
-
-    if (m_getMostRecentlyUpdatedTimestampStatement.bindInt(1, *subFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(2, *topFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(3, *subFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(4, *topFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(5, *subFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(6, *topFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(7, *subFrameDomainID) != SQLITE_OK
-        || m_getMostRecentlyUpdatedTimestampStatement.bindInt(8, *topFrameDomainID) != SQLITE_OK) {
+    
+    auto scopedStatement = this->scopedStatement(m_getMostRecentlyUpdatedTimestampStatement, getMostRecentlyUpdatedTimestampQuery, "getMostRecentlyUpdatedTimestamp"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, *subFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(2, *topFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(3, *subFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(4, *topFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(5, *subFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(6, *topFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(7, *subFrameDomainID) != SQLITE_OK
+        || scopedStatement->bindInt(8, *topFrameDomainID) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::getMostRecentlyUpdatedTimestamp failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return Seconds { ResourceLoadStatistics::NoExistingTimestamp  };
     }
-    if (m_getMostRecentlyUpdatedTimestampStatement.step() != SQLITE_ROW) {
-        resetStatement(m_getMostRecentlyUpdatedTimestampStatement);
+    if (scopedStatement->step() != SQLITE_ROW)
         return Seconds { ResourceLoadStatistics::NoExistingTimestamp  };
-    }
-    double mostRecentlyUpdatedTimestamp = m_getMostRecentlyUpdatedTimestampStatement.getColumnDouble(0);
-    resetStatement(m_getMostRecentlyUpdatedTimestampStatement);
-    return Seconds { mostRecentlyUpdatedTimestamp };
+
+    return Seconds { scopedStatement->getColumnDouble(0) };
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isGrandfathered(const RegistrableDomain& domain) const
 {
     ASSERT(!RunLoop::isMain());
 
-    return predicateValueForDomain(m_isGrandfatheredStatement, domain);
+    auto scopedStatement = this->scopedStatement(m_isGrandfatheredStatement, isGrandfatheredQuery, "isGrandfathered"_s);
+    return predicateValueForDomain(scopedStatement, domain);
 }
 
 void ResourceLoadStatisticsDatabaseStore::setSubframeUnderTopFrameDomain(const SubFrameDomain& subFrameDomain, const TopFrameDomain& topFrameDomain)
@@ -2104,23 +2197,19 @@ void ResourceLoadStatisticsDatabaseStore::setTopFrameUniqueRedirectFrom(const To
 std::pair<ResourceLoadStatisticsDatabaseStore::AddedRecord, Optional<unsigned>> ResourceLoadStatisticsDatabaseStore::ensureResourceStatisticsForRegistrableDomain(const RegistrableDomain& domain)
 {
     ASSERT(!RunLoop::isMain());
-
-    if (m_domainIDFromStringStatement.bindText(1, domain.string()) != SQLITE_OK) {
+    
+    auto scopedStatement = this->scopedStatement(m_domainIDFromStringStatement, domainIDFromStringQuery, "ensureResourceStatisticsForRegistrableDomain"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(1, domain.string()) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::ensureResourceStatisticsForRegistrableDomain failed, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return { AddedRecord::No, 0 };
     }
     
-    if (m_domainIDFromStringStatement.step() == SQLITE_ROW) {
-        unsigned domainID = m_domainIDFromStringStatement.getColumnInt(0);
-
-        int resetResult = m_domainIDFromStringStatement.reset();
-        ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
+    if (scopedStatement->step() == SQLITE_ROW) {
+        unsigned domainID = scopedStatement->getColumnInt(0);
         return { AddedRecord::No, domainID };
     }
-
-    int resetResult = m_domainIDFromStringStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 
     ResourceLoadStatistics newObservation(domain);
     auto result = insertObservedDomain(newObservation);
@@ -2142,6 +2231,21 @@ void ResourceLoadStatisticsDatabaseStore::clearDatabaseContents()
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::clearDatabaseContents failed, error message: %{private}s, database path: %{private}s", this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
         ASSERT_NOT_REACHED();
         return;
+    }
+}
+
+void ResourceLoadStatisticsDatabaseStore::removeDataForDomain(const RegistrableDomain& domain)
+{
+    auto domainIDToRemove = domainID(domain);
+    if (!domainIDToRemove)
+        return;
+    
+    auto scopedStatement = this->scopedStatement(m_removeAllDataStatement, removeAllDataQuery, "removeDataForDomain"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, *domainIDToRemove) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::removeDataForDomain failed, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
     }
 }
 
@@ -2272,8 +2376,8 @@ void ResourceLoadStatisticsDatabaseStore::updateCookieBlocking(CompletionHandler
 
     RegistrableDomainsToBlockCookiesFor domainsToBlock { domainsToBlockAndDeleteCookiesFor, domainsToBlockButKeepCookiesFor, domainsWithUserInteractionAsFirstParty };
 
-    if (debugLoggingEnabled() && !domainsToBlockAndDeleteCookiesFor.isEmpty() && !domainsToBlockButKeepCookiesFor.isEmpty())
-        debugLogDomainsInBatches("block", domainsToBlock);
+    if (debugLoggingEnabled() && (!domainsToBlockAndDeleteCookiesFor.isEmpty() || !domainsToBlockButKeepCookiesFor.isEmpty()))
+        debugLogDomainsInBatches("Applying cross-site tracking restrictions", domainsToBlock);
 
     RunLoop::main().dispatch([weakThis = makeWeakPtr(*this), store = makeRef(store()), domainsToBlock = crossThreadCopy(domainsToBlock), completionHandler = WTFMove(completionHandler)] () mutable {
         store->callUpdatePrevalentDomainsToBlockCookiesForHandler(domainsToBlock, [weakThis = WTFMove(weakThis), store = store.copyRef(), completionHandler = WTFMove(completionHandler)]() mutable {
@@ -2284,8 +2388,8 @@ void ResourceLoadStatisticsDatabaseStore::updateCookieBlocking(CompletionHandler
                     return;
 
                 if (UNLIKELY(weakThis->debugLoggingEnabled())) {
-                    RELEASE_LOG_INFO(ITPDebug, "Done updating cookie blocking.");
-                    weakThis->debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, "[ITP] Done updating cookie blocking."_s);
+                    RELEASE_LOG_INFO(ITPDebug, "Done applying cross-site tracking restrictions.");
+                    weakThis->debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, "[ITP] Done applying cross-site tracking restrictions."_s);
                 }
             });
         });
@@ -2321,18 +2425,17 @@ Vector<unsigned> ResourceLoadStatisticsDatabaseStore::findExpiredUserInteraction
     ASSERT(!RunLoop::isMain());
 
     Vector<unsigned> results;
-    Optional<Seconds> expirationDateTime = statisticsEpirationTime();
+    Optional<Seconds> expirationDateTime = statisticsExpirationTime();
     if (!expirationDateTime)
         return results;
-
-    if (m_findExpiredUserInteractionStatement.bindDouble(1, expirationDateTime.value().value()) != SQLITE_OK)
+    
+    auto scopedStatement = this->scopedStatement(m_findExpiredUserInteractionStatement, findExpiredUserInteractionQuery, "findExpiredUserInteractions"_s);
+    if (!scopedStatement
+        || scopedStatement->bindDouble(1, expirationDateTime.value().value()) != SQLITE_OK)
         return results;
 
-    while (m_findExpiredUserInteractionStatement.step() == SQLITE_ROW)
-        results.append(m_findExpiredUserInteractionStatement.getColumnInt(0));
-
-    int resetResult = m_findExpiredUserInteractionStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
+    while (scopedStatement->step() == SQLITE_ROW)
+        results.append(scopedStatement->getColumnInt(0));
 
     return results;
 }
@@ -2424,7 +2527,8 @@ bool ResourceLoadStatisticsDatabaseStore::shouldRemoveAllButCookiesFor(const Dom
 
 bool ResourceLoadStatisticsDatabaseStore::shouldEnforceSameSiteStrictFor(DomainData& resourceStatistic, bool shouldCheckForGrandfathering)
 {
-    if (!isSameSiteStrictEnforcementEnabled() || (shouldCheckForGrandfathering && resourceStatistic.grandfathered))
+    if ((!isSameSiteStrictEnforcementEnabled() && !shouldEnforceSameSiteStrictForSpecificDomain(resourceStatistic.registrableDomain))
+        || (shouldCheckForGrandfathering && resourceStatistic.grandfathered))
         return false;
 
     if (resourceStatistic.topFrameUniqueRedirectsToSinceSameSiteStrictEnforcement > parameters().minimumTopFrameRedirectsForSameSiteStrictEnforcement) {
@@ -2433,6 +2537,14 @@ bool ResourceLoadStatisticsDatabaseStore::shouldEnforceSameSiteStrictFor(DomainD
     }
 
     return false;
+}
+
+Optional<WallTime> ResourceLoadStatisticsDatabaseStore::mostRecentUserInteractionTime(const DomainData& statistic)
+{
+    if (statistic.mostRecentUserInteractionTime.secondsSinceEpoch().value() <= 0)
+        return WTF::nullopt;
+
+    return statistic.mostRecentUserInteractionTime;
 }
 
 RegistrableDomainsToDeleteOrRestrictWebsiteDataFor ResourceLoadStatisticsDatabaseStore::registrableDomainsToDeleteOrRestrictWebsiteDataFor()
@@ -2454,7 +2566,10 @@ RegistrableDomainsToDeleteOrRestrictWebsiteDataFor ResourceLoadStatisticsDatabas
     Vector<DomainData> domains = this->domains();
     Vector<unsigned> domainIDsToClearGrandfathering;
     for (auto& statistic : domains) {
-        oldestUserInteraction = std::min(oldestUserInteraction, statistic.mostRecentUserInteractionTime);
+        if (shouldExemptFromWebsiteDataDeletion(statistic.registrableDomain))
+            continue;
+        if (auto mostRecentUserInteractionTime = this->mostRecentUserInteractionTime(statistic))
+            oldestUserInteraction = std::min(oldestUserInteraction, *mostRecentUserInteractionTime);
         if (shouldRemoveAllWebsiteDataFor(statistic, shouldCheckForGrandfathering)) {
             toDeleteOrRestrictFor.domainsToDeleteAllCookiesFor.append(statistic.registrableDomain);
             toDeleteOrRestrictFor.domainsToDeleteAllNonCookieWebsiteDataFor.append(statistic.registrableDomain);
@@ -2465,7 +2580,11 @@ RegistrableDomainsToDeleteOrRestrictWebsiteDataFor ResourceLoadStatisticsDatabas
             }
             if (shouldEnforceSameSiteStrictFor(statistic, shouldCheckForGrandfathering)) {
                 toDeleteOrRestrictFor.domainsToEnforceSameSiteStrictFor.append(statistic.registrableDomain);
-                RELEASE_LOG_INFO_IF(debugLoggingEnabled(), ITPDebug, "Scheduled %" PUBLIC_LOG_STRING " to have its cookies set to SameSite=strict.", statistic.registrableDomain.string().utf8().data());
+
+                if (UNLIKELY(debugLoggingEnabled())) {
+                    RELEASE_LOG_INFO(ITPDebug, "Scheduled %" PUBLIC_LOG_STRING " to have its cookies set to SameSite=strict.", statistic.registrableDomain.string().utf8().data());
+                    debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("Scheduled '", statistic.registrableDomain.string(), "' to have its cookies set to SameSite=strict'."));
+                }
             }
         }
         if (shouldClearGrandfathering && statistic.grandfathered)
@@ -2473,7 +2592,7 @@ RegistrableDomainsToDeleteOrRestrictWebsiteDataFor ResourceLoadStatisticsDatabas
     }
 
     // Give the user enough time to interact with websites until we remove non-cookie website data.
-    if (!parameters().isRunningTest && now - oldestUserInteraction > parameters().minimumTimeBetweenDataRecordsRemoval)
+    if (!parameters().isRunningTest && now - oldestUserInteraction < parameters().minimumTimeBetweenDataRecordsRemoval)
         toDeleteOrRestrictFor.domainsToDeleteAllNonCookieWebsiteDataFor.clear();
 
     clearGrandfathering(WTFMove(domainIDsToClearGrandfathering));
@@ -2486,11 +2605,12 @@ void ResourceLoadStatisticsDatabaseStore::pruneStatisticsIfNeeded()
     ASSERT(!RunLoop::isMain());
 
     unsigned count = 0;
-    if (m_observedDomainCount.step() == SQLITE_ROW)
-        count = m_observedDomainCount.getColumnInt(0);
-
-    int resetResult = m_observedDomainCount.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
+    auto scopedStatement = this->scopedStatement(m_observedDomainCountStatement, observedDomainCountQuery, "pruneStatisticsIfNeeded"_s);
+    if (!scopedStatement)
+        return;
+    
+    if (scopedStatement->step() == SQLITE_ROW)
+        count = scopedStatement->getColumnInt(0);
 
     if (count <= parameters().maxStatisticsEntries)
         return;
@@ -2526,17 +2646,16 @@ void ResourceLoadStatisticsDatabaseStore::pruneStatisticsIfNeeded()
 void ResourceLoadStatisticsDatabaseStore::updateLastSeen(const RegistrableDomain& domain, WallTime lastSeen)
 {
     ASSERT(!RunLoop::isMain());
-
-    if (m_updateLastSeenStatement.bindDouble(1, lastSeen.secondsSinceEpoch().value()) != SQLITE_OK
-        || m_updateLastSeenStatement.bindText(2, domain.string()) != SQLITE_OK
-        || m_updateLastSeenStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_updateLastSeenStatement, updateLastSeenQuery, "updateLastSeen"_s);
+    if (!scopedStatement
+        || scopedStatement->bindDouble(1, lastSeen.secondsSinceEpoch().value()) != SQLITE_OK
+        || scopedStatement->bindText(2, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::updateLastSeen failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
-    
-    int resetResult = m_updateLastSeenStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
 void ResourceLoadStatisticsDatabaseStore::setLastSeen(const RegistrableDomain& domain, Seconds seconds)
@@ -2587,17 +2706,16 @@ void ResourceLoadStatisticsDatabaseStore::setVeryPrevalentResource(const Registr
 void ResourceLoadStatisticsDatabaseStore::updateDataRecordsRemoved(const RegistrableDomain& domain, int value)
 {
     ASSERT(!RunLoop::isMain());
-
-    if (m_updateDataRecordsRemovedStatement.bindInt(1, value) != SQLITE_OK
-        || m_updateDataRecordsRemovedStatement.bindText(2, domain.string()) != SQLITE_OK
-        || m_updateDataRecordsRemovedStatement.step() != SQLITE_DONE) {
+    
+    auto scopedStatement = this->scopedStatement(m_updateDataRecordsRemovedStatement, updateDataRecordsRemovedQuery, "updateDataRecordsRemoved"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, value) != SQLITE_OK
+        || scopedStatement->bindText(2, domain.string()) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_DONE) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::updateDataRecordsRemoved failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
     }
-
-    int resetResult = m_updateDataRecordsRemovedStatement.reset();
-    ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isCorrectSubStatisticsCount(const RegistrableDomain& subframeDomain, const TopFrameDomain& topFrameDomain)
@@ -2652,16 +2770,17 @@ String ResourceLoadStatisticsDatabaseStore::getDomainStringFromDomainID(unsigned
 {
     auto result = emptyString();
     
-    if (m_domainStringFromDomainIDStatement.bindInt(1, domainID) != SQLITE_OK) {
+    auto scopedStatement = this->scopedStatement(m_domainStringFromDomainIDStatement, domainStringFromDomainIDQuery, "getDomainStringFromDomainID"_s);
+    if (!scopedStatement
+        || scopedStatement->bindInt(1, domainID) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::getDomainStringFromDomainID. Statement failed to prepare or bind, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return result;
     }
     
-    if (m_domainStringFromDomainIDStatement.step() == SQLITE_ROW)
-        result = m_domainStringFromDomainIDStatement.getColumnText(0);
+    if (scopedStatement->step() == SQLITE_ROW)
+        result = m_domainStringFromDomainIDStatement->getColumnText(0);
     
-    resetStatement(m_domainStringFromDomainIDStatement);
     return result;
 }
 
@@ -2728,8 +2847,10 @@ static bool hasHadRecentUserInteraction(WTF::Seconds interactionTimeSeconds)
 
 void ResourceLoadStatisticsDatabaseStore::resourceToString(StringBuilder& builder, const String& domain) const
 {
-    if (m_getResourceDataByDomainNameStatement.bindText(1, domain) != SQLITE_OK
-        || m_getResourceDataByDomainNameStatement.step() != SQLITE_ROW) {
+    auto scopedStatement = this->scopedStatement(m_getResourceDataByDomainNameStatement, getResourceDataByDomainNameQuery, "resourceToString"_s);
+    if (!scopedStatement
+        || scopedStatement->bindText(1, domain) != SQLITE_OK
+        || scopedStatement->step() != SQLITE_ROW) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::resourceToString. Statement failed to bind or domain was not found, error message: %{private}s", this, m_database.lastErrorMsg());
         ASSERT_NOT_REACHED();
         return;
@@ -2740,15 +2861,15 @@ void ResourceLoadStatisticsDatabaseStore::resourceToString(StringBuilder& builde
     builder.append('\n');
     
     // User interaction
-    appendBoolean(builder, "hadUserInteraction", m_getResourceDataByDomainNameStatement.getColumnInt(HadUserInteractionIndex));
+    appendBoolean(builder, "hadUserInteraction", m_getResourceDataByDomainNameStatement->getColumnInt(HadUserInteractionIndex));
     builder.append('\n');
     builder.appendLiteral("    mostRecentUserInteraction: ");
-    if (hasHadRecentUserInteraction(Seconds(m_getResourceDataByDomainNameStatement.getColumnDouble(MostRecentUserInteractionTimeIndex))))
+    if (hasHadRecentUserInteraction(Seconds(m_getResourceDataByDomainNameStatement->getColumnDouble(MostRecentUserInteractionTimeIndex))))
         builder.appendLiteral("within 24 hours");
     else
         builder.appendLiteral("-1");
     builder.append('\n');
-    appendBoolean(builder, "grandfathered", m_getResourceDataByDomainNameStatement.getColumnInt(GrandfatheredIndex));
+    appendBoolean(builder, "grandfathered", m_getResourceDataByDomainNameStatement->getColumnInt(GrandfatheredIndex));
     builder.append('\n');
 
     // Storage access
@@ -2761,7 +2882,7 @@ void ResourceLoadStatisticsDatabaseStore::resourceToString(StringBuilder& builde
     appendSubStatisticList(builder, "TopFrameLinkDecorationsFrom", domain);
     appendSubStatisticList(builder, "TopFrameLoadedThirdPartyScripts", domain);
 
-    appendBoolean(builder, "IsScheduledForAllButCookieDataRemoval", m_getResourceDataByDomainNameStatement.getColumnInt(IsScheduledForAllButCookieDataRemovalIndex));
+    appendBoolean(builder, "IsScheduledForAllButCookieDataRemoval", m_getResourceDataByDomainNameStatement->getColumnInt(IsScheduledForAllButCookieDataRemovalIndex));
     builder.append('\n');
 
     // Subframe stats
@@ -2773,15 +2894,219 @@ void ResourceLoadStatisticsDatabaseStore::resourceToString(StringBuilder& builde
     appendSubStatisticList(builder, "SubresourceUniqueRedirectsFrom", domain);
 
     // Prevalent Resource
-    appendBoolean(builder, "isPrevalentResource", m_getResourceDataByDomainNameStatement.getColumnInt(IsPrevalentIndex));
+    appendBoolean(builder, "isPrevalentResource", m_getResourceDataByDomainNameStatement->getColumnInt(IsPrevalentIndex));
     builder.append('\n');
-    appendBoolean(builder, "isVeryPrevalentResource", m_getResourceDataByDomainNameStatement.getColumnInt(IsVeryPrevalentIndex));
+    appendBoolean(builder, "isVeryPrevalentResource", m_getResourceDataByDomainNameStatement->getColumnInt(IsVeryPrevalentIndex));
     builder.append('\n');
     builder.appendLiteral("    dataRecordsRemoved: ");
-    builder.appendNumber(m_getResourceDataByDomainNameStatement.getColumnInt(DataRecordsRemovedIndex));
+    builder.appendNumber(m_getResourceDataByDomainNameStatement->getColumnInt(DataRecordsRemovedIndex));
     builder.append('\n');
+}
 
-    resetStatement(m_getResourceDataByDomainNameStatement);
+bool ResourceLoadStatisticsDatabaseStore::domainIDExistsInDatabase(int domainID)
+{
+    auto scopedLinkDecorationExistsStatement = this->scopedStatement(m_linkDecorationExistsStatement, linkDecorationExistsQuery, "domainIDExistsInDatabase"_s);
+    auto scopedScriptLoadExistsStatement = this->scopedStatement(m_scriptLoadExistsStatement, scriptLoadExistsQuery, "domainIDExistsInDatabase linkDecorationExistsStatement"_s);
+    auto scopedSubFrameExistsStatement = this->scopedStatement(m_subFrameExistsStatement, subFrameExistsQuery, "domainIDExistsInDatabase subFrameExistsStatement"_s);
+    auto scopedSubResourceExistsStatement = this->scopedStatement(m_subResourceExistsStatement, subResourceExistsQuery, "domainIDExistsInDatabase subResourceExistsStatement"_s);
+    auto scopedUniqueRedirectExistsStatement = this->scopedStatement(m_uniqueRedirectExistsStatement, uniqueRedirectExistsQuery, "domainIDExistsInDatabase uniqueRedirectExistsStatement"_s);
+    auto scopedObservedDomainsExistsStatement = this->scopedStatement(m_observedDomainsExistsStatement, observedDomainsExistsQuery, "domainIDExistsInDatabase observedDomainsExistsStatement"_s);
+    
+    if (!scopedLinkDecorationExistsStatement
+        || !scopedScriptLoadExistsStatement
+        || !scopedSubFrameExistsStatement
+        || !scopedSubResourceExistsStatement
+        || !scopedUniqueRedirectExistsStatement
+        || !scopedObservedDomainsExistsStatement
+        || m_linkDecorationExistsStatement->bindInt(1, domainID) != SQLITE_OK
+        || m_linkDecorationExistsStatement->bindInt(2, domainID) != SQLITE_OK
+        || m_scriptLoadExistsStatement->bindInt(1, domainID) != SQLITE_OK
+        || m_scriptLoadExistsStatement->bindInt(2, domainID) != SQLITE_OK
+        || m_subFrameExistsStatement->bindInt(1, domainID) != SQLITE_OK
+        || m_subFrameExistsStatement->bindInt(2, domainID) != SQLITE_OK
+        || m_subResourceExistsStatement->bindInt(1, domainID) != SQLITE_OK
+        || m_subResourceExistsStatement->bindInt(2, domainID) != SQLITE_OK
+        || m_uniqueRedirectExistsStatement->bindInt(1, domainID) != SQLITE_OK
+        || m_uniqueRedirectExistsStatement->bindInt(2, domainID) != SQLITE_OK
+        || m_observedDomainsExistsStatement->bindInt(1, domainID) != SQLITE_OK) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::domainIDExistsInDatabase failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    if (m_linkDecorationExistsStatement->step() != SQLITE_ROW
+        || m_scriptLoadExistsStatement->step() != SQLITE_ROW
+        || m_subFrameExistsStatement->step() != SQLITE_ROW
+        || m_subResourceExistsStatement->step() != SQLITE_ROW
+        || m_uniqueRedirectExistsStatement->step() != SQLITE_ROW
+        || m_observedDomainsExistsStatement->step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::domainIDExistsInDatabase failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    return m_linkDecorationExistsStatement->getColumnInt(0) || m_scriptLoadExistsStatement->getColumnInt(0) || m_subFrameExistsStatement->getColumnInt(0) || m_subResourceExistsStatement->getColumnInt(0) || m_uniqueRedirectExistsStatement->getColumnInt(0) || m_observedDomainsExistsStatement->getColumnInt(0);
+}
+
+void ResourceLoadStatisticsDatabaseStore::updateOperatingDatesParameters()
+{
+    SQLiteStatement countOperatingDatesStatement(m_database, "SELECT COUNT(*) FROM OperatingDates;"_s);
+    SQLiteStatement getMostRecentOperatingDateStatement(m_database, "SELECT * FROM OperatingDates ORDER BY year DESC, month DESC, monthDay DESC LIMIT 1;"_s);
+    SQLiteStatement getLeastRecentOperatingDateStatement(m_database, "SELECT * FROM OperatingDates ORDER BY year, month, monthDay LIMIT 1;"_s);
+
+    if (countOperatingDatesStatement.prepare() != SQLITE_OK
+        || countOperatingDatesStatement.step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::updateOperatingDatesParameters countOperatingDatesStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    m_operatingDatesSize = countOperatingDatesStatement.getColumnInt(0);
+
+    if (getMostRecentOperatingDateStatement.prepare() != SQLITE_OK
+        || getMostRecentOperatingDateStatement.step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::updateOperatingDatesParameters getFirstOperatingDateStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    m_mostRecentOperatingDate = OperatingDate(getMostRecentOperatingDateStatement.getColumnInt(0), getMostRecentOperatingDateStatement.getColumnInt(1), getMostRecentOperatingDateStatement.getColumnInt(2));
+
+    if (getLeastRecentOperatingDateStatement.prepare() != SQLITE_OK
+        || getLeastRecentOperatingDateStatement.step() != SQLITE_ROW) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::updateOperatingDatesParameters getLeastRecentOperatingDateStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    m_leastRecentOperatingDate = OperatingDate(getLeastRecentOperatingDateStatement.getColumnInt(0), getLeastRecentOperatingDateStatement.getColumnInt(1), getLeastRecentOperatingDateStatement.getColumnInt(2));
+}
+
+Optional<Seconds> ResourceLoadStatisticsDatabaseStore::statisticsExpirationTime() const
+{
+    ASSERT(!RunLoop::isMain());
+
+    if (this->parameters().timeToLiveUserInteraction)
+        return WallTime::now().secondsSinceEpoch() - this->parameters().timeToLiveUserInteraction.value();
+
+    if (m_operatingDatesSize >= operatingDatesWindowLong)
+        return m_leastRecentOperatingDate.secondsSinceEpoch();
+
+    return WTF::nullopt;
+}
+
+void ResourceLoadStatisticsDatabaseStore::includeTodayAsOperatingDateIfNecessary()
+{
+    ASSERT(!RunLoop::isMain());
+    
+    auto today = OperatingDate::today();
+    if (m_operatingDatesSize > 0) {
+        if (today <= m_mostRecentOperatingDate)
+            return;
+    }
+
+    int rowsToPrune = m_operatingDatesSize - operatingDatesWindowLong + 1;
+    if (rowsToPrune > 0) {
+        SQLiteStatement deleteLeastRecentOperatingDateStatement(m_database, "DELETE FROM OperatingDates ORDER BY year, month, monthDay LIMIT ?;"_s);
+        if (deleteLeastRecentOperatingDateStatement.prepare() != SQLITE_OK
+            || deleteLeastRecentOperatingDateStatement.bindInt(1, rowsToPrune) != SQLITE_OK
+            || deleteLeastRecentOperatingDateStatement.step() != SQLITE_DONE) {
+            RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::includeTodayAsOperatingDateIfNecessary deleteLeastRecentOperatingDateStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+        }
+    }
+    
+    SQLiteStatement insertOperatingDateStatement(m_database, "INSERT OR IGNORE INTO OperatingDates (year, month, monthDay) SELECT ?, ?, ?;"_s);
+    if (insertOperatingDateStatement.prepare() != SQLITE_OK
+        || insertOperatingDateStatement.bindInt(1, today.year()) != SQLITE_OK
+        || insertOperatingDateStatement.bindInt(2, today.month()) != SQLITE_OK
+        || insertOperatingDateStatement.bindInt(3, today.monthDay()) != SQLITE_OK
+        || insertOperatingDateStatement.step() != SQLITE_DONE) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::includeTodayAsOperatingDateIfNecessary insertOperatingDateStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+    }
+
+    updateOperatingDatesParameters();
+}
+
+bool ResourceLoadStatisticsDatabaseStore::hasStatisticsExpired(WallTime mostRecentUserInteractionTime, OperatingDatesWindow operatingDatesWindow) const
+{
+    ASSERT(!RunLoop::isMain());
+
+    unsigned operatingDatesWindowInDays = 0;
+    switch (operatingDatesWindow) {
+    case OperatingDatesWindow::Long:
+        operatingDatesWindowInDays = operatingDatesWindowLong;
+        break;
+    case OperatingDatesWindow::Short:
+        operatingDatesWindowInDays = operatingDatesWindowShort;
+        break;
+    case OperatingDatesWindow::ForLiveOnTesting:
+        return WallTime::now() > mostRecentUserInteractionTime + operatingTimeWindowForLiveOnTesting;
+    case OperatingDatesWindow::ForReproTesting:
+        return true;
+    }
+
+    if (m_operatingDatesSize >= operatingDatesWindowInDays) {
+        if (OperatingDate::fromWallTime(mostRecentUserInteractionTime) < m_leastRecentOperatingDate)
+            return true;
+    }
+
+    // If we don't meet the real criteria for an expired statistic, check the user setting for a tighter restriction (mainly for testing).
+    if (this->parameters().timeToLiveUserInteraction) {
+        if (WallTime::now() > mostRecentUserInteractionTime + this->parameters().timeToLiveUserInteraction.value())
+            return true;
+    }
+    return false;
+}
+
+void ResourceLoadStatisticsDatabaseStore::insertExpiredStatisticForTesting(const RegistrableDomain& domain, bool hasUserInteraction, bool isScheduledForAllButCookieDataRemoval, bool isPrevalent)
+{
+    // Populate the Operating Dates table with enough days to require pruning.
+    double daysAgoInSeconds = 0;
+    for (unsigned i = 1; i <= operatingDatesWindowLong; i++) {
+        double daysToSubtract = Seconds::fromHours(24 * i).value();
+        daysAgoInSeconds = WallTime::now().secondsSinceEpoch().value() - daysToSubtract;
+        auto dateToInsert = OperatingDate::fromWallTime(WallTime::fromRawSeconds(daysAgoInSeconds));
+
+        SQLiteStatement insertOperatingDateStatement(m_database, "INSERT OR IGNORE INTO OperatingDates (year, month, monthDay) SELECT ?, ?, ?;"_s);
+        if (insertOperatingDateStatement.prepare() != SQLITE_OK
+            || insertOperatingDateStatement.bindInt(1, dateToInsert.year()) != SQLITE_OK
+            || insertOperatingDateStatement.bindInt(2, dateToInsert.month()) != SQLITE_OK
+            || insertOperatingDateStatement.bindInt(3, dateToInsert.monthDay()) != SQLITE_OK
+            || insertOperatingDateStatement.step() != SQLITE_DONE) {
+            RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::insertExpiredStatisticForTesting insertOperatingDateStatement failed to step, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+        }
+        insertOperatingDateStatement.reset();
+    }
+
+    updateOperatingDatesParameters();
+
+    // Make sure mostRecentUserInteractionTime is the least recent of all entries.
+    daysAgoInSeconds -= Seconds::fromHours(24).value();
+    auto scopedInsertObservedDomainStatement = this->scopedStatement(m_insertObservedDomainStatement, insertObservedDomainQuery, "insertExpiredStatisticForTesting"_s);
+    if (scopedInsertObservedDomainStatement->bindText(RegistrableDomainIndex, domain.string()) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindDouble(LastSeenIndex, daysAgoInSeconds) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(HadUserInteractionIndex, hasUserInteraction) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindDouble(MostRecentUserInteractionTimeIndex, daysAgoInSeconds) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(GrandfatheredIndex, false) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(IsPrevalentIndex, isPrevalent) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(IsVeryPrevalentIndex, false) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(DataRecordsRemovedIndex, 0) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(TimesAccessedAsFirstPartyDueToUserInteractionIndex, 0) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(TimesAccessedAsFirstPartyDueToStorageAccessAPIIndex, 0) != SQLITE_OK
+        || scopedInsertObservedDomainStatement->bindInt(IsScheduledForAllButCookieDataRemovalIndex, isScheduledForAllButCookieDataRemoval) != SQLITE_OK) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::insertExpiredStatisticForTesting failed to bind, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (scopedInsertObservedDomainStatement->step() != SQLITE_DONE) {
+        RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::insertExpiredStatisticForTesting failed to commit, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
+        return;
+    }
 }
 
 } // namespace WebKit

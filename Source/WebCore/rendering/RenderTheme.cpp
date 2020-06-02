@@ -670,7 +670,7 @@ Color RenderTheme::inactiveListBoxSelectionForegroundColor(OptionSet<StyleColor:
 Color RenderTheme::platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const
 {
     // Use a blue color by default if the platform theme doesn't define anything.
-    return Color(0, 0, 255);
+    return makeSimpleColor(0, 0, 255);
 }
 
 Color RenderTheme::platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const
@@ -683,7 +683,7 @@ Color RenderTheme::platformInactiveSelectionBackgroundColor(OptionSet<StyleColor
 {
     // Use a grey color by default if the platform theme doesn't define anything.
     // This color matches Firefox's inactive color.
-    return Color(176, 176, 176);
+    return makeSimpleColor(176, 176, 176);
 }
 
 Color RenderTheme::platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const
@@ -1347,30 +1347,17 @@ Color RenderTheme::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Opti
     }
 }
 
-Color RenderTheme::activeTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
+Color RenderTheme::textSearchHighlightColor(OptionSet<StyleColor::Options> options) const
 {
     auto& cache = colorCache(options);
-    if (!cache.activeTextSearchHighlightColor.isValid())
-        cache.activeTextSearchHighlightColor = platformActiveTextSearchHighlightColor(options);
-    return cache.activeTextSearchHighlightColor;
+    if (!cache.textSearchHighlightColor.isValid())
+        cache.textSearchHighlightColor = platformTextSearchHighlightColor(options);
+    return cache.textSearchHighlightColor;
 }
 
-Color RenderTheme::inactiveTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
+Color RenderTheme::platformTextSearchHighlightColor(OptionSet<StyleColor::Options>) const
 {
-    auto& cache = colorCache(options);
-    if (!cache.inactiveTextSearchHighlightColor.isValid())
-        cache.inactiveTextSearchHighlightColor = platformInactiveTextSearchHighlightColor(options);
-    return cache.inactiveTextSearchHighlightColor;
-}
-
-Color RenderTheme::platformActiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const
-{
-    return Color(255, 150, 50); // Orange.
-}
-
-Color RenderTheme::platformInactiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const
-{
-    return Color(255, 255, 0); // Yellow.
+    return Color::yellow;
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1461,7 +1448,7 @@ void RenderTheme::paintSystemPreviewBadge(Image& image, const PaintInfo& paintIn
 
     auto markerRect = FloatRect {rect.x() + rect.width() - 24, rect.y() + 8, 16, 16 };
     auto roundedMarkerRect = FloatRoundedRect { markerRect, FloatRoundedRect::Radii { 8 } };
-    auto color = Color { 255, 0, 0 };
+    auto color = makeSimpleColor(255, 0, 0);
     context.fillRoundedRect(roundedMarkerRect, color);
 }
 #endif
@@ -1472,7 +1459,7 @@ Color RenderTheme::platformTapHighlightColor() const
 {
     // This color is expected to be drawn on a semi-transparent overlay,
     // making it more transparent than its alpha value indicates.
-    return Color(0, 0, 0, 102);
+    return makeSimpleColor(0, 0, 0, 102);
 }
 
 #endif

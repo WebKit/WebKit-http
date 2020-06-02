@@ -46,7 +46,7 @@ RemoteMediaResourceProxy::~RemoteMediaResourceProxy()
 {
 }
 
-void RemoteMediaResourceProxy::responseReceived(WebCore::PlatformMediaResource&, const WebCore::ResourceResponse& response, CompletionHandler<void(WebCore::PolicyChecker::ShouldContinue)>&& completionHandler)
+void RemoteMediaResourceProxy::responseReceived(WebCore::PlatformMediaResource&, const WebCore::ResourceResponse& response, CompletionHandler<void(WebCore::ShouldContinuePolicyCheck)>&& completionHandler)
 {
     m_connection->sendWithAsyncReply(Messages::RemoteMediaResourceManager::ResponseReceived(m_id, response, m_platformMediaResource.didPassAccessControlCheck()), [completionHandler = WTFMove(completionHandler)](auto shouldContinue) mutable {
         completionHandler(shouldContinue);
@@ -86,9 +86,9 @@ void RemoteMediaResourceProxy::loadFailed(WebCore::PlatformMediaResource&, const
     m_connection->send(Messages::RemoteMediaResourceManager::LoadFailed(m_id, error), 0);
 }
 
-void RemoteMediaResourceProxy::loadFinished(WebCore::PlatformMediaResource&)
+void RemoteMediaResourceProxy::loadFinished(WebCore::PlatformMediaResource&, const WebCore::NetworkLoadMetrics& metrics)
 {
-    m_connection->send(Messages::RemoteMediaResourceManager::LoadFinished(m_id), 0);
+    m_connection->send(Messages::RemoteMediaResourceManager::LoadFinished(m_id, metrics), 0);
 }
 
 }

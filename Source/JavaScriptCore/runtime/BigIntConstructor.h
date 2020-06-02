@@ -52,12 +52,12 @@ public:
         return Structure::create(vm, globalObject, proto, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
-protected:
-    void finishCreation(VM&, BigIntPrototype*);
-
 private:
     BigIntConstructor(VM&, Structure*);
+    void finishCreation(VM&, BigIntPrototype*);
 };
 STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(BigIntConstructor, InternalFunction);
+
+JS_EXPORT_PRIVATE JSValue toBigInt(JSGlobalObject*, JSValue);
 
 } // namespace JSC

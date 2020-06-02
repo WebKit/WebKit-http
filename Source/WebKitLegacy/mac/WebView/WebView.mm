@@ -112,7 +112,6 @@
 #import "WebStorageNamespaceProvider.h"
 #import "WebTextCompletionController.h"
 #import "WebTextIterator.h"
-#import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebValidationMessageClient.h"
 #import "WebViewGroup.h"
@@ -140,6 +139,7 @@
 #import <WebCore/CookieJar.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DeprecatedGlobalSettings.h>
+#import <WebCore/DictationAlternative.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
@@ -192,6 +192,7 @@
 #import <WebCore/PageGroup.h>
 #import <WebCore/PathUtilities.h>
 #import <WebCore/PlatformEventFactoryMac.h>
+#import <WebCore/PlatformScreen.h>
 #import <WebCore/ProgressTracker.h>
 #import <WebCore/RenderTheme.h>
 #import <WebCore/RenderView.h>
@@ -221,6 +222,7 @@
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
+#import <WebCore/WebViewVisualIdentificationOverlay.h>
 #import <WebCore/Widget.h>
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/DOMExtensions.h>
@@ -242,7 +244,6 @@
 #import <wtf/FileSystem.h>
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
-#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/RAMSize.h>
 #import <wtf/RefCountedLeakCounter.h>
@@ -253,6 +254,7 @@
 #import <wtf/StdLibExtras.h>
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/WorkQueue.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
 #if !PLATFORM(IOS_FAMILY)
@@ -272,7 +274,6 @@
 #import <pal/spi/mac/LookupSPI.h>
 #import <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
 #else
-#import "MemoryMeasure.h"
 #import "WebCaretChangeListener.h"
 #import "WebChromeClientIOS.h"
 #import "WebDefaultFormDelegate.h"
@@ -307,7 +308,6 @@
 #import <WebCore/WebSQLiteDatabaseTrackerClient.h>
 #import <WebCore/WebVideoFullscreenControllerAVKit.h>
 #import <libkern/OSAtomic.h>
-#import <pal/ios/ManagedConfigurationSoftLink.h>
 #import <pal/spi/ios/ManagedConfigurationSPI.h>
 #import <pal/spi/ios/MobileGestaltSPI.h>
 #import <wtf/FastMalloc.h>
@@ -321,7 +321,7 @@
 #endif
 
 #if USE(QUICK_LOOK)
-#include <WebCore/QuickLook.h>
+#import <WebCore/QuickLook.h>
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -346,14 +346,21 @@
 #if ENABLE(DATA_INTERACTION)
 #import <UIKit/UIColor.h>
 #import <UIKit/UIImage.h>
+#endif
+
+#if ENABLE(DATA_INTERACTION)
 #import <pal/ios/UIKitSoftLink.h>
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#import <pal/ios/ManagedConfigurationSoftLink.h>
 #endif
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 SOFT_LINK_FRAMEWORK(AVKit)
 SOFT_LINK_CLASS(AVKit, AVTouchBarPlaybackControlsProvider)
 SOFT_LINK_CLASS(AVKit, AVTouchBarScrubber)
-#endif // HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#endif
 
 #if !PLATFORM(IOS_FAMILY)
 
@@ -548,27 +555,41 @@ static const char webViewIsOpen[] = "At least one WebView is still open.";
 @class _WebSafeForwarder;
 
 @interface _WebSafeAsyncForwarder : NSObject {
-    _WebSafeForwarder *_forwarder;
+    __weak _WebSafeForwarder *_forwarder;
 }
-- (id)initWithForwarder:(_WebSafeForwarder *)forwarder;
+- (instancetype)initWithForwarder:(_WebSafeForwarder *)forwarder;
 @end
 #endif
 
 @interface _WebSafeForwarder : NSObject
 {
-    id target; // Non-retained. Don't retain delegates.
-    id defaultTarget;
+    // Do not not change _target and _defaultTarget to __weak. See <rdar://problem/62624078>.
+    __unsafe_unretained id _target;
+    __unsafe_unretained id _defaultTarget;
 #if PLATFORM(IOS_FAMILY)
-    _WebSafeAsyncForwarder *asyncForwarder;
-    dispatch_once_t asyncForwarderPred;
+    _WebSafeAsyncForwarder *_asyncForwarder;
 #endif
 }
 - (instancetype)initWithTarget:(id)target defaultTarget:(id)defaultTarget;
 #if PLATFORM(IOS_FAMILY)
+@property (nonatomic, readonly, strong) id asyncForwarder;
 - (void)clearTarget;
-- (id)asyncForwarder;
 #endif
 @end
+
+#if ENABLE(DRAG_SUPPORT)
+static OptionSet<WebCore::DragDestinationAction> coreDragDestinationActionMask(WebDragDestinationAction actionMask)
+{
+    OptionSet<WebCore::DragDestinationAction> result;
+    if (actionMask & WebDragDestinationActionDHTML)
+        result.add(WebCore::DragDestinationAction::DHTML);
+    if (actionMask & WebDragDestinationActionEdit)
+        result.add(WebCore::DragDestinationAction::Edit);
+    if (actionMask & WebDragDestinationActionLoad)
+        result.add(WebCore::DragDestinationAction::Load);
+    return result;
+}
+#endif // ENABLE(DRAG_SUPPORT)
 
 WebCore::FindOptions coreOptions(WebFindOptions options)
 {
@@ -692,11 +713,7 @@ private:
     _dataInteractionImage = [PAL::allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
     _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
-
-    NSMutableArray *textRectsInBoundingRectCoordinates = [NSMutableArray array];
-    for (auto rect : indicatorData.textRectsInBoundingRectCoordinates)
-        [textRectsInBoundingRectCoordinates addObject:[NSValue valueWithCGRect:rect]];
-    _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
+    _textRectsInBoundingRectCoordinates = createNSArray(indicatorData.textRectsInBoundingRectCoordinates).leakRef();
     _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
     if (indicatorData.contentImageWithHighlight)
         _contentImageWithHighlight = [PAL::allocUIImageInstance() initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored];
@@ -711,7 +728,7 @@ private:
         }
     }
 
-    if (indicatorData.options & WebCore::TextIndicatorOptionComputeEstimatedBackgroundColor)
+    if (indicatorData.options.contains(WebCore::TextIndicatorOption::ComputeEstimatedBackgroundColor))
         _estimatedBackgroundColor = [PAL::allocUIColorInstance() initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)];
 
     return self;
@@ -1227,7 +1244,7 @@ static NSString *leakOutlookQuirksUserScriptContents()
 -(void)_injectOutlookQuirksScript
 {
     static NSString *outlookQuirksScriptContents = leakOutlookQuirksUserScriptContents();
-    _private->group->userContentController().addUserScript(*core([WebScriptWorld world]), makeUnique<WebCore::UserScript>(outlookQuirksScriptContents, URL(), Vector<String>(), Vector<String>(), WebCore::InjectAtDocumentEnd, WebCore::InjectInAllFrames));
+    _private->group->userContentController().addUserScript(*core([WebScriptWorld world]), makeUnique<WebCore::UserScript>(outlookQuirksScriptContents, URL(), Vector<String>(), Vector<String>(), WebCore::UserScriptInjectionTime::DocumentEnd, WebCore::UserContentInjectedFrames::InjectInAllFrames, WebCore::WaitForNotificationBeforeInjecting::No));
 
 }
 #endif
@@ -1600,6 +1617,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
 
     _private->page->settings().setContentDispositionAttachmentSandboxEnabled(true);
+
+#if PLATFORM(MAC)
+    [WebViewVisualIdentificationOverlay installForWebViewIfNeeded:self kind:@"WebView" deprecated:YES];
+#endif
 }
 
 - (id)_initWithFrame:(NSRect)f frameName:(NSString *)frameName groupName:(NSString *)groupName
@@ -1903,8 +1924,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 - (WebCore::DragData)dragDataForSession:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
     auto dragOperationMask = static_cast<WebCore::DragOperation>(operation);
-    auto dragDestinationMask = static_cast<WebCore::DragDestinationAction>([self dragDestinationActionMaskForSession:session]);
-    return { session, WebCore::roundedIntPoint(clientPosition), WebCore::roundedIntPoint(globalPosition), dragOperationMask, WebCore::DragApplicationNone, dragDestinationMask };
+    auto dragDestinationActionMask = coreDragDestinationActionMask([self dragDestinationActionMaskForSession:session]);
+    return { session, WebCore::roundedIntPoint(clientPosition), WebCore::roundedIntPoint(globalPosition), dragOperationMask, WebCore::DragApplicationNone, dragDestinationActionMask };
 }
 
 - (uint64_t)_enteredDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
@@ -1920,12 +1941,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
     return _private->page->dragController().dragUpdated(dragData);
 }
+
 - (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
     WebThreadLock();
     auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
     _private->page->dragController().dragExited(dragData);
 }
+
 - (void)_performDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
     [self _tryToPerformDataInteraction:session client:clientPosition global:globalPosition operation:operation];
@@ -1956,15 +1979,24 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     if (!page)
         return;
 
-    static auto defaultEditDragTextIndicatorOptions = WebCore::TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | WebCore::TextIndicatorOptionExpandClipBeyondVisibleRect | WebCore::TextIndicatorOptionPaintAllContent | WebCore::TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | WebCore::TextIndicatorOptionPaintBackgrounds | WebCore::TextIndicatorOptionUseSelectionRectForSizing | WebCore::TextIndicatorOptionIncludeSnapshotWithSelectionHighlight | WebCore::TextIndicatorOptionRespectTextColor;
+    constexpr OptionSet<WebCore::TextIndicatorOption> defaultEditDragTextIndicatorOptions {
+        WebCore::TextIndicatorOption::IncludeSnapshotOfAllVisibleContentWithoutSelection,
+        WebCore::TextIndicatorOption::ExpandClipBeyondVisibleRect,
+        WebCore::TextIndicatorOption::PaintAllContent,
+        WebCore::TextIndicatorOption::IncludeMarginIfRangeMatchesSelection,
+        WebCore::TextIndicatorOption::PaintBackgrounds,
+        WebCore::TextIndicatorOption::UseSelectionRectForSizing,
+        WebCore::TextIndicatorOption::IncludeSnapshotWithSelectionHighlight,
+        WebCore::TextIndicatorOption::RespectTextColor
+    };
     auto& frame = page->focusController().focusedOrMainFrame();
     if (auto range = frame.selection().selection().toNormalizedRange()) {
-        if (auto textIndicator = WebCore::TextIndicator::createWithRange(*range, defaultEditDragTextIndicatorOptions, WebCore::TextIndicatorPresentationTransition::None, WebCore::FloatSize()))
+        if (auto textIndicator = WebCore::TextIndicator::createWithRange(createLiveRange(*range), defaultEditDragTextIndicatorOptions, WebCore::TextIndicatorPresentationTransition::None, WebCore::FloatSize()))
             _private->dataOperationTextIndicator = adoptNS([[WebUITextIndicatorData alloc] initWithImage:nil textIndicatorData:textIndicator->data() scale:page->deviceScaleFactor()]);
     }
 }
 
-#elif __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#elif PLATFORM(IOS)
 
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
@@ -2034,6 +2066,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 }
 
 #endif
+
 #endif // PLATFORM(IOS_FAMILY)
 
 static NSMutableSet *knownPluginMIMETypes()
@@ -2064,11 +2097,7 @@ static NSMutableSet *knownPluginMIMETypes()
 #if PLATFORM(IOS_FAMILY)
 #define WebPDFView ([WebView _getPDFViewClass])
 #endif
-#if PLATFORM(MACCATALYST)
-    if (!viewClass || !repClass) {
-#else
     if (!viewClass || !repClass || [[WebPDFView supportedMIMETypes] containsObject:MIMEType]) {
-#endif
 #if PLATFORM(IOS_FAMILY)
 #undef WebPDFView
 #endif
@@ -2349,7 +2378,7 @@ static bool fastDocumentTeardownEnabled()
         return;
     }
 
-#if ENABLE(VIDEO) && !PLATFORM(IOS_FAMILY)
+#if ENABLE(VIDEO_PRESENTATION_MODE) && !PLATFORM(IOS_FAMILY)
     [self _exitVideoFullscreen];
 #endif
 
@@ -2918,7 +2947,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setLoadsImagesAutomatically([preferences loadsImagesAutomatically]);
     settings.setLoadsSiteIconsIgnoringImageLoadingSetting([preferences loadsSiteIconsIgnoringImageLoadingPreference]);
 
-    WebCore::setAdditionalSupportedImageTypes(WebCore::webCoreStringVectorFromNSStringArray([preferences additionalSupportedImageTypes]));
+    WebCore::setAdditionalSupportedImageTypes(makeVector<String>([preferences additionalSupportedImageTypes]));
 
 #if PLATFORM(IOS_FAMILY)
     settings.setShouldPrintBackgrounds(true);
@@ -3132,6 +3161,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setCSSLogicalEnabled([preferences cssLogicalEnabled]);
 
+    RuntimeEnabledFeatures::sharedFeatures().setLineHeightUnitsEnabled([preferences lineHeightUnitsEnabled]);
+
     RuntimeEnabledFeatures::sharedFeatures().setAdClickAttributionEnabled([preferences adClickAttributionEnabled]);
 
     settings.setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
@@ -3189,6 +3220,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled([preferences webAnimationsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsCompositeOperationsEnabled([preferences webAnimationsCompositeOperationsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsMutableTimelinesEnabled([preferences webAnimationsMutableTimelinesEnabled]);
+
+    RuntimeEnabledFeatures::sharedFeatures().setCSSCustomPropertiesAndValuesEnabled([preferences CSSCustomPropertiesAndValuesEnabled]);
 
 #if ENABLE(INTERSECTION_OBSERVER)
     RuntimeEnabledFeatures::sharedFeatures().setIntersectionObserverEnabled(preferences.intersectionObserverEnabled);
@@ -4348,6 +4381,7 @@ IGNORE_WARNINGS_END
 #endif // PLATFORM(IOS_FAMILY)
 
 #if ENABLE(TOUCH_EVENTS)
+
 - (NSArray *)_touchEventRegions
 {
     auto* frame = [self _mainCoreFrame];
@@ -4361,38 +4395,33 @@ IGNORE_WARNINGS_END
     Vector<WebCore::IntRect> rects;
     document->getTouchRects(rects);
 
-    if (rects.size() == 0)
+    if (rects.isEmpty())
         return nil;
 
-    NSMutableArray *eventRegionArray = [[[NSMutableArray alloc] initWithCapacity:rects.size()] autorelease];
-
     NSView <WebDocumentView> *documentView = [[[self mainFrame] frameView] documentView];
-    Vector<WebCore::IntRect>::const_iterator end = rects.end();
-    for (Vector<WebCore::IntRect>::const_iterator it = rects.begin(); it != end; ++it) {
-        const WebCore::IntRect& rect = *it;
+    return createNSArray(rects, [&] (auto& rect) -> RetainPtr<WebEventRegion> {
         if (rect.isEmpty())
-            continue;
+            return nil;
 
         // The touch rectangles are in the coordinate system of the document (inside the WebHTMLView), which is not
         // the same as the coordinate system of the WebView. UIWebView currently expects view coordinates, so we'll
         // convert them here now.
-        WebCore::IntRect viewRect = WebCore::IntRect([documentView convertRect:rect toView:self]);
+        auto viewRect = [documentView convertRect:rect toView:self];
 
         // The event region wants this points in this order:
         //  p2------p3
         //  |       |
         //  p1------p4
-        //
-        WebEventRegion *eventRegion = [[WebEventRegion alloc] initWithPoints:WebCore::FloatPoint(viewRect.x(), viewRect.maxY())
-            : WebCore::FloatPoint(viewRect.x(), viewRect.y()) : WebCore::FloatPoint(viewRect.maxX(), viewRect.y()) : WebCore::FloatPoint(viewRect.maxX(), viewRect.maxY())];
-        if (eventRegion) {
-            [eventRegionArray addObject:eventRegion];
-            [eventRegion release];
-        }
-    }
 
-    return eventRegionArray;
+        auto p1 = CGPointMake(CGRectGetMinX(viewRect), CGRectGetMaxY(viewRect));
+        auto p2 = CGPointMake(CGRectGetMinX(viewRect), CGRectGetMinY(viewRect));
+        auto p3 = CGPointMake(CGRectGetMaxX(viewRect), CGRectGetMinY(viewRect));
+        auto p4 = CGPointMake(CGRectGetMaxX(viewRect), CGRectGetMaxY(viewRect));
+
+        return adoptNS([[WebEventRegion alloc] initWithPoints:p1 :p2 :p3 :p4]);
+    }).autorelease();
 }
+
 #endif // ENABLE(TOUCH_EVENTS)
 
 // For backwards compatibility with the WebBackForwardList API, we honor both
@@ -4414,16 +4443,14 @@ IGNORE_WARNINGS_END
 
 - (WebTextIterator *)textIteratorForRect:(NSRect)rect
 {
-    WebCore::IntPoint rectStart(rect.origin.x, rect.origin.y);
-    WebCore::IntPoint rectEnd(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height);
-
     auto* coreFrame = [self _mainCoreFrame];
     if (!coreFrame)
         return nil;
 
-    WebCore::VisibleSelection selectionInsideRect(coreFrame->visiblePositionForPoint(rectStart), coreFrame->visiblePositionForPoint(rectEnd));
-
-    return [[[WebTextIterator alloc] initWithRange:kit(selectionInsideRect.toNormalizedRange().get())] autorelease];
+    auto intRect = WebCore::enclosingIntRect(rect);
+    auto range = WebCore::VisibleSelection(coreFrame->visiblePositionForPoint(intRect.minXMinYCorner()),
+        coreFrame->visiblePositionForPoint(intRect.maxXMaxYCorner())).toNormalizedRange();
+    return [[[WebTextIterator alloc] initWithRange:kit(createLiveRange(range).get())] autorelease];
 }
 
 #if !PLATFORM(IOS_FAMILY)
@@ -4523,7 +4550,7 @@ IGNORE_WARNINGS_END
         auto* validationBubble = _private->formValidationBubble.get();
         String message = validationBubble ? validationBubble->message() : emptyString();
         double fontSize = validationBubble ? validationBubble->fontSize() : 0;
-        return @{ userInterfaceItem: @{ @"message": (NSString *)message, @"fontSize": [NSNumber numberWithDouble:fontSize] } };
+        return @{ userInterfaceItem: @{ @"message": (NSString *)message, @"fontSize": @(fontSize) } };
     }
 
     return nil;
@@ -4565,20 +4592,14 @@ IGNORE_WARNINGS_END
         view->resetTrackedRepaints();
 }
 
-- (NSArray*)trackedRepaintRects
+- (NSArray *)trackedRepaintRects
 {
-    auto* coreFrame = [self _mainCoreFrame];
-    auto* view = coreFrame->view();
+    auto view = self._mainCoreFrame->view();
     if (!view || !view->isTrackingRepaints())
         return nil;
-
-    const Vector<WebCore::FloatRect>& repaintRects = view->trackedRepaintRects();
-    NSMutableArray* rectsArray = [[NSMutableArray alloc] initWithCapacity:repaintRects.size()];
-
-    for (unsigned i = 0; i < repaintRects.size(); ++i)
-        [rectsArray addObject:[NSValue valueWithRect:snappedIntRect(WebCore::LayoutRect(repaintRects[i]))]];
-
-    return [rectsArray autorelease];
+    return createNSArray(view->trackedRepaintRects(), [] (auto& rect) {
+        return [NSValue valueWithRect:snappedIntRect(WebCore::LayoutRect { rect })];
+    }).autorelease();
 }
 
 #if !PLATFORM(IOS_FAMILY)
@@ -4639,22 +4660,6 @@ IGNORE_WARNINGS_END
 #endif
 }
 
-static Vector<String> toStringVector(NSArray* patterns)
-{
-    Vector<String> patternsVector;
-
-    NSUInteger count = [patterns count];
-    if (!count)
-        return patternsVector;
-
-    for (NSUInteger i = 0; i < count; ++i) {
-        id entry = [patterns objectAtIndex:i];
-        if ([entry isKindOfClass:[NSString class]])
-            patternsVector.append(String((NSString *)entry));
-    }
-    return patternsVector;
-}
-
 + (void)_addUserScriptToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url
                     whitelist:(NSArray *)whitelist blacklist:(NSArray *)blacklist
                 injectionTime:(WebUserScriptInjectionTime)injectionTime
@@ -4676,7 +4681,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     if (!world)
         return;
 
-    auto userScript = makeUnique<WebCore::UserScript>(source, url, toStringVector(whitelist), toStringVector(blacklist), injectionTime == WebInjectAtDocumentStart ? WebCore::InjectAtDocumentStart : WebCore::InjectAtDocumentEnd, injectedFrames == WebInjectInAllFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
+    auto userScript = makeUnique<WebCore::UserScript>(source, url, makeVector<String>(whitelist), makeVector<String>(blacklist), injectionTime == WebInjectAtDocumentStart ? WebCore::UserScriptInjectionTime::DocumentStart : WebCore::UserScriptInjectionTime::DocumentEnd, injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::WaitForNotificationBeforeInjecting::No);
     viewGroup->userContentController().addUserScript(*core(world), WTFMove(userScript));
 }
 
@@ -4699,7 +4704,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     if (!world)
         return;
 
-    auto styleSheet = makeUnique<WebCore::UserStyleSheet>(source, url, toStringVector(whitelist), toStringVector(blacklist), injectedFrames == WebInjectInAllFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly, WebCore::UserStyleUserLevel);
+    auto styleSheet = makeUnique<WebCore::UserStyleSheet>(source, url, makeVector<String>(whitelist), makeVector<String>(blacklist), injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::UserStyleUserLevel);
     viewGroup->userContentController().addUserStyleSheet(*core(world), WTFMove(styleSheet), WebCore::InjectInExistingDocuments);
 }
 
@@ -4791,44 +4796,6 @@ static Vector<String> toStringVector(NSArray* patterns)
     [self _flushCompositingChanges];
     [CATransaction flush];
     [CATransaction synchronize];
-}
-
-- (BOOL)allowsNewCSSAnimationsWhileSuspended
-{
-    auto* frame = core([self mainFrame]);
-    if (frame)
-        return frame->animation().allowsNewAnimationsWhileSuspended();
-
-    return false;
-}
-
-- (void)setAllowsNewCSSAnimationsWhileSuspended:(BOOL)allowed
-{
-    auto* frame = core([self mainFrame]);
-    if (frame)
-        frame->animation().setAllowsNewAnimationsWhileSuspended(allowed);
-}
-
-- (BOOL)cssAnimationsSuspended
-{
-    // should ask the page!
-    auto* frame = core([self mainFrame]);
-    if (frame)
-        return frame->animation().isSuspended();
-
-    return false;
-}
-
-- (void)setCSSAnimationsSuspended:(BOOL)suspended
-{
-    auto* frame = core([self mainFrame]);
-    if (suspended == frame->animation().isSuspended())
-        return;
-
-    if (suspended)
-        frame->animation().suspendAnimations();
-    else
-        frame->animation().resumeAnimations();
 }
 
 + (void)_setDomainRelaxationForbidden:(BOOL)forbidden forURLScheme:(NSString *)scheme
@@ -5345,34 +5312,34 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 // Used to send messages to delegates that implement informal protocols.
 
-- (instancetype)initWithTarget:(id)t defaultTarget:(id)dt
+- (instancetype)initWithTarget:(id)target defaultTarget:(id)defaultTarget
 {
-    self = [super init];
-    if (!self)
+    if (!(self = [super init]))
         return nil;
-    target = t; // Non retained.
-    defaultTarget = dt;
+    _target = target;
+    _defaultTarget = defaultTarget;
+#if PLATFORM(IOS_FAMILY)
+    _asyncForwarder = [[_WebSafeAsyncForwarder alloc] initWithForwarder:self];
+#endif
     return self;
 }
 
 #if PLATFORM(IOS_FAMILY)
-- (id)asyncForwarder
-{
-    dispatch_once(&asyncForwarderPred, ^{
-        asyncForwarder = [[_WebSafeAsyncForwarder alloc] initWithForwarder:self];
-    });
-    return asyncForwarder;
-}
+@synthesize asyncForwarder=_asyncForwarder;
 
 - (void)dealloc
 {
-    [asyncForwarder release];
+    _target = nil;
+    _defaultTarget = nil;
+    [_asyncForwarder release];
+    _asyncForwarder = nil;
+
     [super dealloc];
 }
 
 - (void)clearTarget
 {
-    target = nil;
+    _target = nil;
 }
 #endif
 
@@ -5385,17 +5352,17 @@ static Vector<String> toStringVector(NSArray* patterns)
         return;
     }
 #endif
-    if ([target respondsToSelector:[invocation selector]]) {
+    if ([_target respondsToSelector:invocation.selector]) {
         @try {
-            [invocation invokeWithTarget:target];
+            [invocation invokeWithTarget:_target];
         } @catch(id exception) {
-            ReportDiscardedDelegateException([invocation selector], exception);
+            ReportDiscardedDelegateException(invocation.selector, exception);
         }
         return;
     }
 
-    if ([defaultTarget respondsToSelector:[invocation selector]])
-        [invocation invokeWithTarget:defaultTarget];
+    if ([_defaultTarget respondsToSelector:invocation.selector])
+        [invocation invokeWithTarget:_defaultTarget];
 
     // Do nothing quietly if method not implemented.
 }
@@ -5403,13 +5370,13 @@ static Vector<String> toStringVector(NSArray* patterns)
 #if PLATFORM(IOS_FAMILY)
 - (BOOL)respondsToSelector:(SEL)aSelector
 {
-    return [defaultTarget respondsToSelector:aSelector];
+    return [_defaultTarget respondsToSelector:aSelector];
 }
 #endif
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [defaultTarget methodSignatureForSelector:aSelector];
+    return [_defaultTarget methodSignatureForSelector:aSelector];
 }
 
 @end
@@ -5417,7 +5384,7 @@ static Vector<String> toStringVector(NSArray* patterns)
 #if PLATFORM(IOS_FAMILY)
 @implementation _WebSafeAsyncForwarder
 
-- (id)initWithForwarder:(_WebSafeForwarder *)forwarder
+- (instancetype)initWithForwarder:(_WebSafeForwarder *)forwarder
 {
     if (!(self = [super init]))
         return nil;
@@ -6097,7 +6064,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)doWindowDidChangeScreen
 {
     if (_private && _private->page)
-        _private->page->chrome().windowScreenDidChange((WebCore::PlatformDisplayID)[[[[[self window] screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
+        _private->page->chrome().windowScreenDidChange(WebCore::displayID(self.window.screen), WTF::nullopt);
 }
 
 - (void)_windowChangedKeyState
@@ -6732,7 +6699,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         NSPoint point = [documentView convertPoint:windowPoint fromView:nil];
         return [(NSView <WebDocumentElement> *)documentView elementAtPoint:point];
     }
-    return [NSDictionary dictionaryWithObject:[frameView webFrame] forKey:WebElementFrameKey];
+    return @{ WebElementFrameKey: [frameView webFrame] };
 }
 
 - (NSDictionary *)elementAtPoint:(NSPoint)point
@@ -6771,9 +6738,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     return static_cast<WebCore::DragApplicationFlags>(flags);
 }
 
-- (WebCore::DragDestinationAction)actionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+- (OptionSet<WebCore::DragDestinationAction>)actionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
 {
-    return (WebCore::DragDestinationAction)[[self _UIDelegateForwarder] webView:self dragDestinationActionMaskForDraggingInfo:draggingInfo];
+    return coreDragDestinationActionMask([[self _UIDelegateForwarder] webView:self dragDestinationActionMaskForDraggingInfo:draggingInfo]);
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)draggingInfo
@@ -7020,7 +6987,7 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
     if ([documentView conformsToProtocol:@protocol(WebDocumentSelection)]) {
         return [(NSView <WebDocumentSelection> *)documentView pasteboardTypesForSelection];
     }
-    return [NSArray array];
+    return @[];
 }
 
 - (void)writeSelectionWithPasteboardTypes:(NSArray *)types toPasteboard:(NSPasteboard *)pasteboard
@@ -7042,7 +7009,7 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
     } else if ([[element objectForKey:WebElementIsSelectedKey] boolValue]) {
         return [self pasteboardTypesForSelection];
     }
-    return [NSArray array];
+    return @[];
 }
 
 - (void)writeElement:(NSDictionary *)element withPasteboardTypes:(NSArray *)types toPasteboard:(NSPasteboard *)pasteboard
@@ -8013,7 +7980,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(JSC::JSGlobalObject* lexicalGlo
 - (NSArray *)rectsForTextMatches
 {
     if (_private->closed)
-        return [NSArray array];
+        return @[];
 
     NSMutableArray *result = [NSMutableArray array];
     WebFrame *frame = [self mainFrame];
@@ -8346,7 +8313,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(JSC::JSGlobalObject* lexicalGlo
     auto* coreFrame = core([self _selectedOrMainFrame]);
     if (!coreFrame)
         return nil;
-    return kit(coreFrame->selection().toNormalizedRange().get());
+    return kit(createLiveRange(coreFrame->selection().selection().toNormalizedRange()).get());
 }
 
 - (NSSelectionAffinity)selectionAffinity
@@ -9070,7 +9037,7 @@ FORWARD(toggleUnderline)
     }
 
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithUniqueName];
-    [pasteboard declareTypes:[NSArray arrayWithObject:WebCore::legacyStringPasteboardType()] owner:nil];
+    [pasteboard declareTypes:@[WebCore::legacyStringPasteboardType()] owner:nil];
     NSMutableString *s = [selectedString mutableCopy];
     const unichar nonBreakingSpaceCharacter = 0xA0;
     NSString *nonBreakingSpaceString = [NSString stringWithCharacters:&nonBreakingSpaceCharacter length:1];
@@ -9319,8 +9286,21 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
+
+#if ENABLE(VIDEO_PRESENTATION_MODE)
+
+- (void)_setMockVideoPresentationModeEnabled:(BOOL)enabled
+{
+    _private->mockVideoPresentationModeEnabled = enabled;
+}
+
 - (void)_enterVideoFullscreenForVideoElement:(NakedPtr<WebCore::HTMLVideoElement>)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode
 {
+    if (_private->mockVideoPresentationModeEnabled) {
+        videoElement->didBecomeFullscreenElement();
+        return;
+    }
+
     if (_private->fullscreenController) {
         if ([_private->fullscreenController videoElement] == videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
@@ -9331,12 +9311,11 @@ bool LayerFlushController::flushLayers()
 
         // First exit Fullscreen for the old videoElement.
         [_private->fullscreenController videoElement]->exitFullscreen();
-        // This previous call has to trigger _exitFullscreen,
-        // which has to clear _private->fullscreenController.
-        ASSERT(!_private->fullscreenController);
+        _private->fullscreenControllersExiting.append(std::exchange(_private->fullscreenController, nil));
     }
+
     if (!_private->fullscreenController) {
-        _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
+        _private->fullscreenController = adoptNS([[WebVideoFullscreenController alloc] init]);
         [_private->fullscreenController setVideoElement:videoElement];
 #if PLATFORM(IOS_FAMILY)
         [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate] mode:mode];
@@ -9350,14 +9329,27 @@ bool LayerFlushController::flushLayers()
 
 - (void)_exitVideoFullscreen
 {
-    if (!_private->fullscreenController)
+    if (_private->mockVideoPresentationModeEnabled)
         return;
-    [_private->fullscreenController exitFullscreen];
-    [_private->fullscreenController release];
+
+    if (!_private->fullscreenController && _private->fullscreenControllersExiting.isEmpty())
+        return;
+
+    if (!_private->fullscreenControllersExiting.isEmpty()) {
+        auto controller = _private->fullscreenControllersExiting.first();
+        _private->fullscreenControllersExiting.remove(0);
+
+        [controller exitFullscreen];
+        return;
+    }
+
+    auto fullscreenController = _private->fullscreenController;
     _private->fullscreenController = nil;
+
+    [fullscreenController exitFullscreen];
 }
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if PLATFORM(MAC)
 - (BOOL)_hasActiveVideoForControlsInterface
 {
     if (!_private->playbackSessionModel)
@@ -9397,7 +9389,11 @@ bool LayerFlushController::flushLayers()
     _private->playbackSessionInterface = nullptr;
     [self updateTouchBar];
 }
-#endif // PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+
+#endif // PLATFORM(MAC)
+
+#endif // ENABLE(VIDEO_PRESENTATION_MODE)
+
 #endif // ENABLE(VIDEO)
 
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS_FAMILY)
@@ -9437,18 +9433,15 @@ bool LayerFlushController::flushLayers()
 }
 #endif
 
-#if USE(DICTATION_ALTERNATIVES)
 - (void)_getWebCoreDictationAlternatives:(Vector<WebCore::DictationAlternative>&)alternatives fromTextAlternatives:(const Vector<WebCore::TextAlternativeWithRange>&)alternativesWithRange
 {
-    for (size_t i = 0; i < alternativesWithRange.size(); ++i) {
-        const WebCore::TextAlternativeWithRange& alternativeWithRange = alternativesWithRange[i];
-        uint64_t dictationContext = _private->m_alternativeTextUIController->addAlternatives(alternativeWithRange.alternatives);
-        if (dictationContext)
-            alternatives.append(WebCore::DictationAlternative(alternativeWithRange.range.location, alternativeWithRange.range.length, dictationContext));
+    for (auto& alternativeWithRange : alternativesWithRange) {
+        if (auto dictationContext = _private->m_alternativeTextUIController->addAlternatives(alternativeWithRange.alternatives.get()))
+            alternatives.append({ alternativeWithRange.range, dictationContext });
     }
 }
 
-- (void)_showDictationAlternativeUI:(const WebCore::FloatRect&)boundingBoxOfDictatedText forDictationContext:(uint64_t)dictationContext
+- (void)_showDictationAlternativeUI:(const WebCore::FloatRect&)boundingBoxOfDictatedText forDictationContext:(WebCore::DictationContext)dictationContext
 {
 #if USE(AUTOCORRECTION_PANEL)
     _private->m_alternativeTextUIController->showAlternatives(self, [self _convertRectFromRootView:boundingBoxOfDictatedText], dictationContext, ^(NSString* acceptedAlternative) {
@@ -9457,16 +9450,15 @@ bool LayerFlushController::flushLayers()
 #endif
 }
 
-- (void)_removeDictationAlternatives:(uint64_t)dictationContext
+- (void)_removeDictationAlternatives:(WebCore::DictationContext)dictationContext
 {
     _private->m_alternativeTextUIController->removeAlternatives(dictationContext);
 }
 
-- (Vector<String>)_dictationAlternatives:(uint64_t)dictationContext
+- (Vector<String>)_dictationAlternatives:(WebCore::DictationContext)dictationContext
 {
     return _private->m_alternativeTextUIController->alternativesForContext(dictationContext);
 }
-#endif
 
 #if ENABLE(SERVICE_CONTROLS)
 - (WebSelectionServiceController&)_selectionServiceController
@@ -9868,10 +9860,8 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const WebCore::RenderStyle
         [_private->_plainTextTouchBar setCustomizationIdentifier:@"WebPlainTextTouchBar"];
     }
 
-    if ([NSSpellChecker isAutomaticTextCompletionEnabled] && !_private->_isCustomizingTouchBar) {
-        BOOL shouldShowCandidateList = !coreFrame->selection().selection().isRange() || coreFrame->editor().ignoreSelectionChanges();
-        [self.candidateList updateWithInsertionPointVisibility:shouldShowCandidateList];
-    }
+    if ([NSSpellChecker isAutomaticTextCompletionEnabled] && !_private->_isCustomizingTouchBar && !coreFrame->editor().ignoreSelectionChanges())
+        [self.candidateList updateWithInsertionPointVisibility:!coreFrame->selection().selection().isRange()];
 
     if (coreFrame->selection().selection().isInPasswordField()) {
         // We don't request candidates for password fields. If the user was previously in a non-password field, then the
@@ -10155,17 +10145,16 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const WebCore::RenderStyle
 @end
 
 @implementation WebView (WebViewFontSelection)
+
 + (void)_setFontWhitelist:(NSArray *)whitelist
 {
 #if !PLATFORM(MAC)
     UNUSED_PARAM(whitelist);
 #else
-    Vector<String> vector;
-    for (NSString *string in whitelist)
-        vector.append(string);
-    WebCore::FontCache::setFontWhitelist(vector);
+    WebCore::FontCache::setFontWhitelist(makeVector<String>(whitelist));
 #endif
 }
+
 @end
 
 #if PLATFORM(IOS_FAMILY)
@@ -10205,19 +10194,20 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const WebCore::RenderStyle
     auto* page = core(self);
     if (!page)
         return @[];
-    auto coreElements = page->editableElementsInRect(rect);
-    if (coreElements.isEmpty())
-        return @[];
-    auto result = adoptNS([[NSMutableArray alloc] initWithCapacity:coreElements.size()]);
-    for (auto& coreElement : coreElements)
-        [result addObject:kit(coreElement.ptr())];
-    return result.autorelease();
+    return createNSArray(page->editableElementsInRect(rect), [] (auto& coreElement) {
+        return kit(coreElement.ptr());
+    }).autorelease();
 }
 
 - (void)revealCurrentSelection
 {
     if (auto* page = core(self))
         page->revealCurrentSelection();
+}
+
+- (void)_installVisualIdentificationOverlayForViewIfNeeded:(id)view kind:(NSString *)kind
+{
+    [WebViewVisualIdentificationOverlay installForWebViewIfNeeded:static_cast<UIView *>(view) kind:kind deprecated:YES];
 }
 
 @end

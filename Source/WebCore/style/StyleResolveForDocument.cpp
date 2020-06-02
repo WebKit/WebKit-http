@@ -30,7 +30,6 @@
 #include "StyleResolveForDocument.h"
 
 #include "CSSFontSelector.h"
-#include "ConstantPropertyMap.h"
 #include "Document.h"
 #include "FontCascade.h"
 #include "Frame.h"
@@ -43,6 +42,7 @@
 #include "RenderStyle.h"
 #include "RenderView.h"
 #include "Settings.h"
+#include "StyleAdjuster.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 
@@ -72,6 +72,8 @@ RenderStyle resolveForDocument(const Document& document)
     if (document.inDesignMode())
         documentStyle.setTextSizeAdjust(TextSizeAdjustment(NoTextSizeAdjustment));
 #endif
+
+    Adjuster::adjustEventListenerRegionTypesForRootStyle(documentStyle, document);
 
     Element* docElement = document.documentElement();
     RenderObject* docElementRenderer = docElement ? docElement->renderer() : nullptr;
@@ -124,9 +126,6 @@ RenderStyle resolveForDocument(const Document& document)
     documentStyle.setFontDescription(WTFMove(fontDescription));
 
     documentStyle.fontCascade().update(&const_cast<Document&>(document).fontSelector());
-
-    for (auto& it : document.constantProperties().values())
-        documentStyle.setInheritedCustomPropertyValue(it.key, makeRef(it.value.get()));
 
     return documentStyle;
 }

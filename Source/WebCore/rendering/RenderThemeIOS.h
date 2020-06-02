@@ -31,9 +31,7 @@
 #include "RenderThemeCocoa.h"
 
 #if USE(SYSTEM_PREVIEW)
-#if HAVE(IOSURFACE)
 #include "IOSurface.h"
-#endif
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -67,7 +65,7 @@ public:
 
     WEBCORE_EXPORT static void setFocusRingColor(const Color&);
 
-protected:
+private:
     LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
     
     FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const override;
@@ -157,7 +155,6 @@ private:
     String extraDefaultStyleSheet() final;
 #endif
 
-    const Color& shadowColor() const;
     FloatRect addRoundedBorderClip(const RenderObject& box, GraphicsContext&, const IntRect&);
 
     Color systemColor(CSSValueID, OptionSet<StyleColor::Options>) const override;
@@ -169,10 +166,8 @@ private:
 
 #if USE(SYSTEM_PREVIEW)
     RetainPtr<CIContext> m_ciContext;
-#if HAVE(IOSURFACE)
     std::unique_ptr<IOSurface> m_largeBadgeSurface;
     std::unique_ptr<IOSurface> m_smallBadgeSurface;
-#endif
 #endif
 
     bool m_shouldMockBoldSystemFontForAccessibility { false };

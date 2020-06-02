@@ -29,6 +29,7 @@
 #include "config.h"
 #include "AccessibilityRenderObject.h"
 
+#include "AXLogger.h"
 #include "AXObjectCache.h"
 #include "AccessibilityImageMapLink.h"
 #include "AccessibilityLabel.h"
@@ -40,6 +41,7 @@
 #include "Editing.h"
 #include "Editor.h"
 #include "ElementIterator.h"
+#include "EventHandler.h"
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -633,10 +635,10 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
         // If possible, use a text iterator to get the text, so that whitespace
         // is handled consistently.
         Document* nodeDocument = nullptr;
-        RefPtr<Range> textRange;
+        Optional<SimpleRange> textRange;
         if (Node* node = m_renderer->node()) {
             nodeDocument = &node->document();
-            textRange = rangeOfContents(*node);
+            textRange = makeRangeSelectingNodeContents(*node);
         } else {
             // For anonymous blocks, we work around not having a direct node to create a range from
             // defining one based in the two external positions defining the boundaries of the subtree.
@@ -650,7 +652,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
                 Position endPosition = positionInParentAfterNode(lastChildRenderer->node());
 
                 nodeDocument = &firstNodeInBlock->document();
-                textRange = Range::create(*nodeDocument, startPosition, endPosition);
+                textRange = { { *makeBoundaryPoint(startPosition), *makeBoundaryPoint(endPosition) } };
             }
         }
 
@@ -925,9 +927,8 @@ IntPoint AccessibilityRenderObject::linkClickPoint()
 IntPoint AccessibilityRenderObject::clickPoint()
 {
     // Headings are usually much wider than their textual content. If the mid point is used, often it can be wrong.
-    AccessibilityChildrenVector children = this->children();
-    if (isHeading() && children.size() == 1)
-        return children[0]->clickPoint();
+    if (isHeading() && children().size() == 1)
+        return children().first()->clickPoint();
 
     if (isLink())
         return linkClickPoint();
@@ -944,26 +945,27 @@ IntPoint AccessibilityRenderObject::clickPoint()
     
 AccessibilityObject* AccessibilityRenderObject::internalLinkElement() const
 {
-    Element* element = anchorElement();
+    auto element = anchorElement();
+
     // Right now, we do not support ARIA links as internal link elements
     if (!is<HTMLAnchorElement>(element))
         return nullptr;
-    HTMLAnchorElement& anchor = downcast<HTMLAnchorElement>(*element);
-    
-    URL linkURL = anchor.href();
-    String fragmentIdentifier = linkURL.fragmentIdentifier();
+    auto& anchor = downcast<HTMLAnchorElement>(*element);
+
+    auto linkURL = anchor.href();
+    auto fragmentIdentifier = linkURL.fragmentIdentifier();
     if (fragmentIdentifier.isEmpty())
         return nullptr;
-    
+
     // check if URL is the same as current URL
-    URL documentURL = m_renderer->document().url();
+    auto documentURL = m_renderer->document().url();
     if (!equalIgnoringFragmentIdentifier(documentURL, linkURL))
         return nullptr;
-    
-    Node* linkedNode = m_renderer->document().findAnchor(fragmentIdentifier);
+
+    auto linkedNode = m_renderer->document().findAnchor(fragmentIdentifier.toStringWithoutCopying());
     if (!linkedNode)
         return nullptr;
-    
+
     // The element we find may not be accessible, so find the first accessible object.
     return firstAccessibleObjectFromNode(linkedNode);
 }
@@ -1039,33 +1041,46 @@ bool AccessibilityRenderObject::hasPopup() const
     });
 }
 
-bool AccessibilityRenderObject::supportsARIADropping() const 
+bool AccessibilityRenderObject::supportsDropping() const 
 {
-    const AtomString& dropEffect = getAttribute(aria_dropeffectAttr);
-    return !dropEffect.isEmpty();
+    return determineDropEffects().size();
 }
 
-bool AccessibilityRenderObject::supportsARIADragging() const
+bool AccessibilityRenderObject::supportsDragging() const
 {
     const AtomString& grabbed = getAttribute(aria_grabbedAttr);
-    return equalLettersIgnoringASCIICase(grabbed, "true") || equalLettersIgnoringASCIICase(grabbed, "false");
+    return equalLettersIgnoringASCIICase(grabbed, "true") || equalLettersIgnoringASCIICase(grabbed, "false") || hasAttribute(draggableAttr);
 }
 
-bool AccessibilityRenderObject::isARIAGrabbed()
+bool AccessibilityRenderObject::isGrabbed()
 {
+#if ENABLE(DRAG_SUPPORT)
+    if (mainFrame() && mainFrame()->eventHandler().draggingElement() == element())
+        return true;
+#endif
+
     return elementAttributeValue(aria_grabbedAttr);
 }
 
-Vector<String> AccessibilityRenderObject::determineARIADropEffects()
+Vector<String> AccessibilityRenderObject::determineDropEffects() const
 {
+    // Order is aria-dropeffect, dropzone, webkitdropzone
     const AtomString& dropEffects = getAttribute(aria_dropeffectAttr);
-    if (dropEffects.isEmpty()) {
-        return { };
+    if (!dropEffects.isEmpty()) {
+        String dropEffectsString = dropEffects.string();
+        dropEffectsString.replace('\n', ' ');
+        return dropEffectsString.split(' ');
     }
     
-    String dropEffectsString = dropEffects.string();
-    dropEffectsString.replace('\n', ' ');
-    return dropEffectsString.split(' ');
+    auto dropzone = getAttribute(dropzoneAttr);
+    if (!dropzone.isEmpty())
+        return Vector<String> { dropzone };
+    
+    auto webkitdropzone = getAttribute(webkitdropzoneAttr);
+    if (!webkitdropzone.isEmpty())
+        return Vector<String> { webkitdropzone };
+    
+    return { };
 }
     
 bool AccessibilityRenderObject::exposesTitleUIElement() const
@@ -1115,14 +1130,12 @@ String AccessibilityRenderObject::applePayButtonDescription() const
         return AXApplePaySetupLabel();
     case ApplePayButtonType::Donate:
         return AXApplePayDonateLabel();
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case ApplePayButtonType::CheckOut:
         return AXApplePayCheckOutLabel();
     case ApplePayButtonType::Book:
         return AXApplePayBookLabel();
     case ApplePayButtonType::Subscribe:
         return AXApplePaySubscribeLabel();
-#endif
     }
 }
 #endif
@@ -1185,17 +1198,18 @@ bool AccessibilityRenderObject::isAllowedChildOfTree() const
     }
     return true;
 }
-    
+
 static AccessibilityObjectInclusion objectInclusionFromAltText(const String& altText)
 {
     // Don't ignore an image that has an alt tag.
     if (!altText.isAllSpecialCharacters<isHTMLSpace>())
         return AccessibilityObjectInclusion::IncludeObject;
-    
-    // The informal standard is to ignore images with zero-length alt strings.
+
+    // The informal standard is to ignore images with zero-length alt strings:
+    // https://www.w3.org/WAI/tutorials/images/decorative/.
     if (!altText.isNull())
         return AccessibilityObjectInclusion::IgnoreObject;
-    
+
     return AccessibilityObjectInclusion::DefaultBehavior;
 }
 
@@ -1230,6 +1244,7 @@ static bool webAreaIsPresentational(RenderObject* renderer)
     
 bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
+    AXTRACE("AccessibilityRenderObject::computeAccessibilityIsIgnored");
 #ifndef NDEBUG
     ASSERT(m_initialized);
 #endif
@@ -1345,10 +1360,48 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     default:
         break;
     }
-    
+
+    if (isImage()) {
+        // If the image can take focus, it should not be ignored, lest the user not be able to interact with something important.
+        if (canSetFocusAttribute())
+            return false;
+
+        // First check the RenderImage's altText (which can be set through a style sheet, or come from the Element).
+        // However, if this is not a native image, fallback to the attribute on the Element.
+        AccessibilityObjectInclusion altTextInclusion = AccessibilityObjectInclusion::DefaultBehavior;
+        bool isRenderImage = is<RenderImage>(renderer());
+        if (isRenderImage)
+            altTextInclusion = objectInclusionFromAltText(downcast<RenderImage>(*m_renderer).altText());
+        else
+            altTextInclusion = objectInclusionFromAltText(getAttribute(altAttr).string());
+
+        if (altTextInclusion == AccessibilityObjectInclusion::IgnoreObject)
+            return true;
+        if (altTextInclusion == AccessibilityObjectInclusion::IncludeObject)
+            return false;
+
+        // If an image has the title or label attributes, accessibility should be lenient and allow it to appear in the hierarchy (according to WAI-ARIA).
+        if (!getAttribute(titleAttr).isEmpty() || !getAttribute(aria_labelAttr).isEmpty())
+            return false;
+
+        if (isRenderImage) {
+            // check for one-dimensional image
+            RenderImage& image = downcast<RenderImage>(*m_renderer);
+            if (image.height() <= 1 || image.width() <= 1)
+                return true;
+
+            // check whether rendered image was stretched from one-dimensional file image
+            if (image.cachedImage()) {
+                LayoutSize imageSize = image.cachedImage()->imageSizeForRenderer(&image, image.view().zoomFactor());
+                return imageSize.height() <= 1 || imageSize.width() <= 1;
+            }
+        }
+        return false;
+    }
+
     if (ariaRoleAttribute() != AccessibilityRole::Unknown)
         return false;
-    
+
     if (roleValue() == AccessibilityRole::HorizontalRule)
         return false;
     
@@ -1362,8 +1415,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     // are also editable. Only the top level content editable region should be exposed.
     if (hasContentEditableAttributeSet())
         return false;
-    
-    
+
     // if this element has aria attributes on it, it should not be ignored.
     if (supportsARIAAttributes())
         return false;
@@ -1380,46 +1432,6 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (is<RenderBlockFlow>(*m_renderer) && m_renderer->childrenInline() && !canSetFocusAttribute())
         return !downcast<RenderBlockFlow>(*m_renderer).hasLines() && !mouseButtonListener();
     
-    // ignore images seemingly used as spacers
-    if (isImage()) {
-        
-        // If the image can take focus, it should not be ignored, lest the user not be able to interact with something important.
-        if (canSetFocusAttribute())
-            return false;
-        
-        // First check the RenderImage's altText (which can be set through a style sheet, or come from the Element).
-        // However, if this is not a native image, fallback to the attribute on the Element.
-        AccessibilityObjectInclusion altTextInclusion = AccessibilityObjectInclusion::DefaultBehavior;
-        bool isRenderImage = is<RenderImage>(renderer());
-        if (isRenderImage)
-            altTextInclusion = objectInclusionFromAltText(downcast<RenderImage>(*m_renderer).altText());
-        else
-            altTextInclusion = objectInclusionFromAltText(getAttribute(altAttr).string());
-
-        if (altTextInclusion == AccessibilityObjectInclusion::IgnoreObject)
-            return true;
-        if (altTextInclusion == AccessibilityObjectInclusion::IncludeObject)
-            return false;
-        
-        // If an image has a title attribute on it, accessibility should be lenient and allow it to appear in the hierarchy (according to WAI-ARIA).
-        if (!getAttribute(titleAttr).isEmpty())
-            return false;
-    
-        if (isRenderImage) {
-            // check for one-dimensional image
-            RenderImage& image = downcast<RenderImage>(*m_renderer);
-            if (image.height() <= 1 || image.width() <= 1)
-                return true;
-            
-            // check whether rendered image was stretched from one-dimensional file image
-            if (image.cachedImage()) {
-                LayoutSize imageSize = image.cachedImage()->imageSizeForRenderer(&image, image.view().zoomFactor());
-                return imageSize.height() <= 1 || imageSize.width() <= 1;
-            }
-        }
-        return false;
-    }
-
     if (isCanvas()) {
         if (canvasHasFallbackContent())
             return false;
@@ -1538,20 +1550,20 @@ PlainTextRange AccessibilityRenderObject::documentBasedSelectedTextRange() const
         return PlainTextRange();
 
     VisibleSelection visibleSelection = selection();
-    RefPtr<Range> currentSelectionRange = visibleSelection.toNormalizedRange();
-    if (!currentSelectionRange)
+    auto selectionRange = visibleSelection.toNormalizedRange();
+    if (!selectionRange)
         return PlainTextRange();
+
     // FIXME: The reason this does the correct thing when the selection is in the
     // shadow tree of an input element is that we get an exception below, and we
     // choose to interpret all exceptions as "does not intersect". Seems likely
     // that does not handle all cases correctly.
-    auto intersectsResult = currentSelectionRange->intersectsNode(*node);
+    auto intersectsResult = createLiveRange(*selectionRange)->intersectsNode(*node);
     if (!intersectsResult.hasException() && !intersectsResult.releaseReturnValue())
         return PlainTextRange();
 
     int start = indexForVisiblePosition(visibleSelection.start());
     int end = indexForVisiblePosition(visibleSelection.end());
-
     return PlainTextRange(start, end - start);
 }
 
@@ -1998,7 +2010,7 @@ VisiblePositionRange AccessibilityRenderObject::visiblePositionRangeForLine(unsi
     // will be a caret at visiblePos.
     FrameSelection selection;
     selection.setSelection(VisibleSelection(visiblePos));
-    selection.modify(FrameSelection::AlterationExtend, DirectionRight, LineBoundary);
+    selection.modify(FrameSelection::AlterationExtend, SelectionDirection::Right, TextGranularity::LineBoundary);
     
     return VisiblePositionRange(selection.selection().visibleStart(), selection.selection().visibleEnd());
 }
@@ -2733,6 +2745,7 @@ bool AccessibilityRenderObject::supportsExpandedTextValue() const
 
 AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 {
+    AXTRACE("AccessibilityRenderObject::determineAccessibilityRole");
     if (!m_renderer)
         return AccessibilityRole::Unknown;
 
@@ -2745,7 +2758,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     // we want to ignore the treeitem's attribute role.
     if ((m_ariaRole = determineAriaRoleAttribute()) != AccessibilityRole::Unknown && !shouldIgnoreAttributeRole())
         return m_ariaRole;
-    
+
     Node* node = m_renderer->node();
     RenderBoxModelObject* cssBox = renderBoxModelObject();
 
@@ -3340,6 +3353,7 @@ void AccessibilityRenderObject::addHiddenChildren()
     
 void AccessibilityRenderObject::updateRoleAfterChildrenCreation()
 {
+    AXTRACE("AccessibilityRenderObject::updateRoleAfterChildrenCreation");
     // If a menu does not have valid menuitem children, it should not be exposed as a menu.
     auto role = roleValue();
     if (role == AccessibilityRole::Menu) {
@@ -3409,7 +3423,7 @@ const String AccessibilityRenderObject::liveRegionStatus() const
 
 const String AccessibilityRenderObject::liveRegionRelevant() const
 {
-    static NeverDestroyed<const AtomString> defaultLiveRegionRelevant("additions text", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> defaultLiveRegionRelevant("additions text", AtomString::ConstructFromLiteral);
     const AtomString& relevant = getAttribute(aria_relevantAttr);
 
     // Default aria-relevant = "additions text".
@@ -3650,7 +3664,7 @@ String AccessibilityRenderObject::stringValueForMSAA() const
     if (isLinkable(*this)) {
         Element* anchor = anchorElement();
         if (is<HTMLAnchorElement>(anchor))
-            return downcast<HTMLAnchorElement>(*anchor).href();
+            return downcast<HTMLAnchorElement>(*anchor).href().string();
     }
 
     return stringValue();
@@ -3698,8 +3712,9 @@ bool AccessibilityRenderObject::hasPlainText() const
         && style.textDecorationsInEffect().isEmpty();
 }
 
-bool AccessibilityRenderObject::hasSameFont(RenderObject* renderer) const
+bool AccessibilityRenderObject::hasSameFont(const AXCoreObject& object) const
 {
+    auto* renderer = object.renderer();
     if (!m_renderer || !renderer)
         return false;
     
@@ -3722,16 +3737,18 @@ ApplePayButtonType AccessibilityRenderObject::applePayButtonType() const
 }
 #endif
 
-bool AccessibilityRenderObject::hasSameFontColor(RenderObject* renderer) const
+bool AccessibilityRenderObject::hasSameFontColor(const AXCoreObject& object) const
 {
+    auto* renderer = object.renderer();
     if (!m_renderer || !renderer)
         return false;
     
     return m_renderer->style().visitedDependentColor(CSSPropertyColor) == renderer->style().visitedDependentColor(CSSPropertyColor);
 }
 
-bool AccessibilityRenderObject::hasSameStyle(RenderObject* renderer) const
+bool AccessibilityRenderObject::hasSameStyle(const AXCoreObject& object) const
 {
+    auto* renderer = object.renderer();
     if (!m_renderer || !renderer)
         return false;
     

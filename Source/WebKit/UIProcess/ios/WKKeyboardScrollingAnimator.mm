@@ -184,6 +184,9 @@ static WebCore::PhysicalBoxSide boxSide(WebKit::ScrollingDirection direction)
     if (![_scrollable isKeyboardScrollable])
         return WTF::nullopt;
 
+    if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged)
+        return WTF::nullopt;
+
     NSString *charactersIgnoringModifiers = event.charactersIgnoringModifiers;
     if (!charactersIgnoringModifiers.length)
         return WTF::nullopt;
@@ -590,7 +593,6 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
     return [_delegate keyboardScrollViewAnimator:self distanceForIncrement:increment inDirection:direction];
 }
 
-#if HAVE(UI_SCROLL_VIEW_INDICATOR_FLASHING_SPI)
 static UIAxis axesForDelta(WebCore::FloatSize delta)
 {
     UIAxis axes = UIAxisNeither;
@@ -600,7 +602,6 @@ static UIAxis axesForDelta(WebCore::FloatSize delta)
         axes = static_cast<UIAxis>(axes | UIAxisVertical);
     return axes;
 }
-#endif
 
 - (void)scrollToContentOffset:(WebCore::FloatPoint)contentOffset animated:(BOOL)animated
 {
@@ -610,11 +611,7 @@ static UIAxis axesForDelta(WebCore::FloatSize delta)
     if (_delegateRespondsToWillScroll)
         [_delegate keyboardScrollViewAnimatorWillScroll:self];
     [scrollView setContentOffset:contentOffset animated:animated];
-#if HAVE(UI_SCROLL_VIEW_INDICATOR_FLASHING_SPI)
     [scrollView _flashScrollIndicatorsForAxes:axesForDelta(WebCore::FloatPoint(scrollView.contentOffset) - contentOffset) persistingPreviousFlashes:YES];
-#else
-    [scrollView _flashScrollIndicatorsPersistingPreviousFlashes:YES];
-#endif
 }
 
 - (void)scrollWithScrollToExtentAnimationTo:(CGPoint)offset

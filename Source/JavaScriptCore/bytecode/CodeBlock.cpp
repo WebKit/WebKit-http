@@ -34,20 +34,15 @@
 #include "BasicBlockLocation.h"
 #include "ByValInfo.h"
 #include "BytecodeDumper.h"
-#include "BytecodeGenerator.h"
 #include "BytecodeLivenessAnalysis.h"
+#include "BytecodeOperandsForCheckpoint.h"
 #include "BytecodeStructs.h"
-#include "BytecodeUseDef.h"
-#include "CallLinkStatus.h"
-#include "CheckpointOSRExitSideState.h"
 #include "CodeBlockInlines.h"
 #include "CodeBlockSet.h"
 #include "DFGCapabilities.h"
 #include "DFGCommon.h"
-#include "DFGDriver.h"
 #include "DFGJITCode.h"
 #include "DFGWorklist.h"
-#include "Debugger.h"
 #include "EvalCodeBlock.h"
 #include "FullCodeOrigin.h"
 #include "FunctionCodeBlock.h"
@@ -56,14 +51,11 @@
 #include "InlineCallFrame.h"
 #include "Instruction.h"
 #include "InstructionStream.h"
-#include "InterpreterInlines.h"
 #include "IsoCellSetInlines.h"
 #include "JIT.h"
 #include "JITMathIC.h"
-#include "JSBigInt.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
-#include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
 #include "JSSet.h"
@@ -72,37 +64,26 @@
 #include "LLIntData.h"
 #include "LLIntEntrypoint.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
-#include "LowLevelInterpreter.h"
 #include "MetadataTable.h"
 #include "ModuleProgramCodeBlock.h"
 #include "ObjectAllocationProfileInlines.h"
-#include "OpcodeInlines.h"
 #include "PCToCodeOriginMap.h"
-#include "PolymorphicAccess.h"
 #include "ProfilerDatabase.h"
 #include "ProgramCodeBlock.h"
 #include "ReduceWhitespace.h"
-#include "Repatch.h"
 #include "SlotVisitorInlines.h"
 #include "StackVisitor.h"
 #include "StructureStubInfo.h"
 #include "TypeLocationCache.h"
 #include "TypeProfiler.h"
 #include "VMInlines.h"
-#include <wtf/BagToHashMap.h>
-#include <wtf/CommaPrinter.h>
 #include <wtf/Forward.h>
 #include <wtf/SimpleStats.h>
 #include <wtf/StringPrintStream.h>
-#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/UniquedStringImpl.h>
 
 #if ENABLE(ASSEMBLER)
 #include "RegisterAtOffsetList.h"
-#endif
-
-#if ENABLE(DFG_JIT)
-#include "DFGOperations.h"
 #endif
 
 #if ENABLE(FTL_JIT)
@@ -205,7 +186,7 @@ void CodeBlock::dumpAssumingJITType(PrintStream& out, JITType jitType) const
         out.print(" (NeverFTLOptimize)");
     if (ownerExecutable()->didTryToEnterInLoop())
         out.print(" (DidTryToEnterInLoop)");
-    if (ownerExecutable()->isStrictMode())
+    if (ownerExecutable()->isInStrictContext())
         out.print(" (StrictMode)");
     if (m_didFailJITCompilation)
         out.print(" (JITFail)");
@@ -266,7 +247,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, unsigned bytecodeOffset, const IC
 
 namespace {
 
-class PutToScopeFireDetail : public FireDetail {
+class PutToScopeFireDetail final : public FireDetail {
 public:
     PutToScopeFireDetail(CodeBlock* codeBlock, const Identifier& ident)
         : m_codeBlock(codeBlock)
@@ -274,7 +255,7 @@ public:
     {
     }
     
-    void dump(PrintStream& out) const override
+    void dump(PrintStream& out) const final
     {
         out.print("Linking put_to_scope in ", FunctionExecutableDump(jsCast<FunctionExecutable*>(m_codeBlock->ownerExecutable())), " for ", m_ident);
     }
@@ -583,6 +564,20 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpCatch)
         LINK(OpProfileControlFlow)
 
+        case op_iterator_open: {
+            INITIALIZE_METADATA(OpIteratorOpen)
+
+            m_numberOfNonArgumentValueProfiles += 3;
+            break;
+        }
+
+        case op_iterator_next: {
+            INITIALIZE_METADATA(OpIteratorNext)
+
+            m_numberOfNonArgumentValueProfiles += 3;
+            break;
+        }
+
         case op_resolve_scope: {
             INITIALIZE_METADATA(OpResolveScope)
 
@@ -619,7 +614,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
             ASSERT(!isInitialization(bytecode.m_getPutInfo.initializationMode()));
             if (bytecode.m_getPutInfo.resolveType() == LocalClosureVar) {
-                metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), ClosureVar, bytecode.m_getPutInfo.initializationMode());
+                metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), ClosureVar, bytecode.m_getPutInfo.initializationMode(), bytecode.m_getPutInfo.ecmaMode());
                 break;
             }
 
@@ -627,9 +622,9 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             ResolveOp op = JSScope::abstractResolve(m_globalObject.get(), bytecode.m_localScopeDepth, scope, ident, Get, bytecode.m_getPutInfo.resolveType(), InitializationMode::NotInitialization);
             RETURN_IF_EXCEPTION(throwScope, false);
 
-            metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), op.type, bytecode.m_getPutInfo.initializationMode());
+            metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), op.type, bytecode.m_getPutInfo.initializationMode(), bytecode.m_getPutInfo.ecmaMode());
             if (op.type == ModuleVar)
-                metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), ClosureVar, bytecode.m_getPutInfo.initializationMode());
+                metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), ClosureVar, bytecode.m_getPutInfo.initializationMode(), bytecode.m_getPutInfo.ecmaMode());
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks || op.type == GlobalLexicalVar || op.type == GlobalLexicalVarWithVarInjectionChecks)
                 metadata.m_watchpointSet = op.watchpointSet;
             else if (op.structure)
@@ -661,7 +656,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             ResolveOp op = JSScope::abstractResolve(m_globalObject.get(), bytecode.m_symbolTableOrScopeDepth.scopeDepth(), scope, ident, Put, bytecode.m_getPutInfo.resolveType(), bytecode.m_getPutInfo.initializationMode());
             RETURN_IF_EXCEPTION(throwScope, false);
 
-            metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), op.type, bytecode.m_getPutInfo.initializationMode());
+            metadata.m_getPutInfo = GetPutInfo(bytecode.m_getPutInfo.resolveMode(), op.type, bytecode.m_getPutInfo.initializationMode(), bytecode.m_getPutInfo.ecmaMode());
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks || op.type == GlobalLexicalVar || op.type == GlobalLexicalVarWithVarInjectionChecks)
                 metadata.m_watchpointSet = op.watchpointSet;
             else if (op.type == ClosureVar || op.type == ClosureVarWithVarInjectionChecks) {
@@ -839,8 +834,8 @@ CodeBlock::~CodeBlock()
     if (UNLIKELY(vm.m_perBytecodeProfiler))
         vm.m_perBytecodeProfiler->notifyDestruction(this);
 
-    if (!vm.heap.isShuttingDown() && unlinkedCodeBlock()->didOptimize() == MixedTriState)
-        unlinkedCodeBlock()->setDidOptimize(FalseTriState);
+    if (!vm.heap.isShuttingDown() && unlinkedCodeBlock()->didOptimize() == TriState::Indeterminate)
+        unlinkedCodeBlock()->setDidOptimize(TriState::False);
 
 #if ENABLE(VERBOSE_VALUE_PROFILE)
     dumpValueProfiles();
@@ -959,7 +954,7 @@ CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
 {
 #if ENABLE(FTL_JIT)
     if (jitType() != JITType::DFGJIT)
-        return 0;
+        return nullptr;
     DFG::JITCode* jitCode = m_jitCode->dfg();
     return jitCode->osrEntryBlock();
 #else // ENABLE(FTL_JIT)
@@ -1224,14 +1219,27 @@ void CodeBlock::finalizeLLIntInlineCaches()
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=166418
         // We need to add optimizations for op_resolve_scope_for_hoisting_func_decl_in_eval to do link time scope resolution.
 
-        m_metadata->forEach<OpGetById>([&] (auto& metadata) {
-            if (metadata.m_modeMetadata.mode != GetByIdMode::Default)
+        auto clearIfNeeded = [&] (GetByIdModeMetadata& modeMetadata, ASCIILiteral opName) {
+            if (modeMetadata.mode != GetByIdMode::Default)
                 return;
-            StructureID oldStructureID = metadata.m_modeMetadata.defaultMode.structureID;
+            StructureID oldStructureID = modeMetadata.defaultMode.structureID;
             if (!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
                 return;
-            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
-            LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(metadata);
+            dataLogLnIf(Options::verboseOSR(), "Clearing ", opName, " LLInt property access.");
+            LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(modeMetadata);
+        };
+
+        m_metadata->forEach<OpIteratorOpen>([&] (auto& metadata) {
+            clearIfNeeded(metadata.m_modeMetadata, "iterator open"_s);
+        });
+
+        m_metadata->forEach<OpIteratorNext>([&] (auto& metadata) {
+            clearIfNeeded(metadata.m_doneModeMetadata, "iterator next"_s);
+            clearIfNeeded(metadata.m_valueModeMetadata, "iterator next"_s);
+        });
+
+        m_metadata->forEach<OpGetById>([&] (auto& metadata) {
+            clearIfNeeded(metadata.m_modeMetadata, "get by id"_s);
         });
 
         m_metadata->forEach<OpGetByIdDirect>([&] (auto& metadata) {
@@ -1326,9 +1334,28 @@ void CodeBlock::finalizeLLIntInlineCaches()
         auto clear = [&] () {
             auto& instruction = instructions().at(std::get<1>(pair.key));
             OpcodeID opcode = instruction->opcodeID();
-            if (opcode == op_get_by_id) {
+            switch (opcode) {
+            case op_get_by_id: {
                 dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
-                LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(instruction->as<OpGetById>().metadata(this));
+                LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(instruction->as<OpGetById>().metadata(this).m_modeMetadata);
+                break;
+            }
+            case op_iterator_open: {
+                dataLogLnIf(Options::verboseOSR(), "Clearing LLInt iterator open property access.");
+                LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(instruction->as<OpIteratorOpen>().metadata(this).m_modeMetadata);
+                break;
+            }
+            case op_iterator_next: {
+                dataLogLnIf(Options::verboseOSR(), "Clearing LLInt iterator next property access.");
+                // FIXME: We don't really want to clear both caches here but it's kinda annoying to figure out which one this is referring to...
+                // See: https://bugs.webkit.org/show_bug.cgi?id=210693
+                auto& metadata = instruction->as<OpIteratorNext>().metadata(this);
+                LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(metadata.m_doneModeMetadata);
+                LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(metadata.m_valueModeMetadata);
+                break;
+            }
+            default:
+                break;
             }
             return true;
         };
@@ -1500,6 +1527,8 @@ void CodeBlock::getICStatusMap(const ConcurrentJSLocker&, ICStatusMap& result)
                 result.add(pair.first, ICStatus()).iterator->value.putStatus = pair.second.get();
             for (auto& pair : dfgCommon->recordedStatuses.ins)
                 result.add(pair.first, ICStatus()).iterator->value.inStatus = pair.second.get();
+            for (auto& pair : dfgCommon->recordedStatuses.deletes)
+                result.add(pair.first, ICStatus()).iterator->value.deleteStatus = pair.second.get();
         }
 #endif
     }
@@ -1822,7 +1851,7 @@ HandlerInfo* CodeBlock::handlerForBytecodeIndex(BytecodeIndex bytecodeIndex, Req
 HandlerInfo* CodeBlock::handlerForIndex(unsigned index, RequiredHandler requiredHandler)
 {
     if (!m_rareData)
-        return 0;
+        return nullptr;
     return HandlerInfo::handlerForIndex<HandlerInfo>(m_rareData->m_exceptionHandlers, index, requiredHandler);
 }
 
@@ -2882,10 +2911,6 @@ void CodeBlock::tallyFrequentExitSites()
 
 void CodeBlock::notifyLexicalBindingUpdate()
 {
-    // FIXME: Currently, module code do not query to JSGlobalLexicalEnvironment. So this case should be removed once it is fixed.
-    // https://bugs.webkit.org/show_bug.cgi?id=193347
-    if (scriptMode() == JSParserScriptMode::Module)
-        return;
     JSGlobalObject* globalObject = m_globalObject.get();
     JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(globalObject->globalScope());
     SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
@@ -2999,7 +3024,7 @@ size_t CodeBlock::predictedMachineCodeSize()
     // the function is so huge that we can't even fit it into virtual memory then we
     // should probably have some other guards in place to prevent us from even getting
     // to this point.
-    if (doubleResult > std::numeric_limits<size_t>::max())
+    if (doubleResult >= maxPlusOne<size_t>)
         return 0;
     
     return static_cast<size_t>(doubleResult);
@@ -3042,6 +3067,11 @@ ValueProfile* CodeBlock::tryGetValueProfileForBytecodeIndex(BytecodeIndex byteco
         FOR_EACH_OPCODE_WITH_VALUE_PROFILE(CASE)
 
 #undef CASE
+
+    case op_iterator_open:
+        return &valueProfileFor(instruction->as<OpIteratorOpen>().metadata(this), bytecodeIndex.checkpoint());
+    case op_iterator_next:
+        return &valueProfileFor(instruction->as<OpIteratorNext>().metadata(this), bytecodeIndex.checkpoint());
 
     default:
         return nullptr;
@@ -3336,11 +3366,11 @@ Optional<BytecodeIndex> CodeBlock::bytecodeIndexFromCallSiteIndex(CallSiteIndex 
 int32_t CodeBlock::thresholdForJIT(int32_t threshold)
 {
     switch (unlinkedCodeBlock()->didOptimize()) {
-    case MixedTriState:
+    case TriState::Indeterminate:
         return threshold;
-    case FalseTriState:
+    case TriState::False:
         return threshold * 4;
-    case TrueTriState:
+    case TriState::True:
         return threshold / 2;
     }
     ASSERT_NOT_REACHED();

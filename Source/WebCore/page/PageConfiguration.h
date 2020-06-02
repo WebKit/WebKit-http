@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "ShouldRelaxThirdPartyCookieBlocking.h"
 #include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -63,6 +64,7 @@ class ProgressTrackerClient;
 class SocketProvider;
 class StorageNamespaceProvider;
 class UserContentProvider;
+class UserContentURLPattern;
 class ValidationMessageClient;
 class VisitedLinkStore;
 class WebGLStateTracker;
@@ -125,10 +127,12 @@ public:
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     RefPtr<DeviceOrientationUpdateProvider> deviceOrientationUpdateProvider;
 #endif
-    Vector<String> corsDisablingPatterns;
+    Vector<UserContentURLPattern> corsDisablingPatterns;
     UniqueRef<MediaRecorderProvider> mediaRecorderProvider;
     bool loadsSubresources { true };
     bool loadsFromNetwork { true };
+    bool userScriptsShouldWaitUntilNotification { true };
+    ShouldRelaxThirdPartyCookieBlocking shouldRelaxThirdPartyCookieBlocking { ShouldRelaxThirdPartyCookieBlocking::No };
 };
 
 }

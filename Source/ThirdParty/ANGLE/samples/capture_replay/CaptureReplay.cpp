@@ -9,6 +9,8 @@
 
 #include <functional>
 
+#include "util/frame_capture_utils.h"
+
 #define ANGLE_MACRO_STRINGIZE_AUX(a) #a
 #define ANGLE_MACRO_STRINGIZE(a) ANGLE_MACRO_STRINGIZE_AUX(a)
 #define ANGLE_MACRO_CONCAT_AUX(a, b) a##b
@@ -25,6 +27,9 @@ std::function<void()> SetupContextReplay = reinterpret_cast<void (*)()>(
 std::function<void(int)> ReplayContextFrame = reinterpret_cast<void (*)(int)>(
     ANGLE_MACRO_CONCAT(ReplayContext,
                        ANGLE_MACRO_CONCAT(ANGLE_CAPTURE_REPLAY_SAMPLE_CONTEXT_ID, Frame)));
+std::function<void()> ResetContextReplay = reinterpret_cast<void (*)()>(
+    ANGLE_MACRO_CONCAT(ResetContext,
+                       ANGLE_MACRO_CONCAT(ANGLE_CAPTURE_REPLAY_SAMPLE_CONTEXT_ID, Replay)));
 
 class CaptureReplaySample : public SampleApplication
 {
@@ -39,6 +44,10 @@ class CaptureReplaySample : public SampleApplication
         std::string exeDir = angle::GetExecutableDirectory();
         if (!angle::SetCWD(exeDir.c_str()))
             return false;
+        if (kIsBinaryDataCompressed)
+        {
+            SetBinaryDataDecompressCallback(angle::DecompressBinaryData);
+        }
         SetBinaryDataDir(ANGLE_CAPTURE_REPLAY_SAMPLE_DATA_DIR);
         SetupContextReplay();
 
@@ -53,12 +62,19 @@ class CaptureReplaySample : public SampleApplication
         // Compute the current frame, looping from kReplayFrameStart to kReplayFrameEnd.
         uint32_t frame =
             kReplayFrameStart + (mCurrentFrame % (kReplayFrameEnd - kReplayFrameStart));
+
+        if (mPreviousFrame > frame)
+        {
+            ResetContextReplay();
+        }
         ReplayContextFrame(frame);
+        mPreviousFrame = frame;
         mCurrentFrame++;
     }
 
   private:
-    uint32_t mCurrentFrame = 0;
+    uint32_t mCurrentFrame  = 0;
+    uint32_t mPreviousFrame = 0;
 };
 
 int main(int argc, char **argv)

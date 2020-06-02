@@ -26,8 +26,6 @@
 #include "config.h"
 #include "DisplayRefreshMonitor.h"
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-
 #include "DisplayRefreshMonitorClient.h"
 #include "DisplayRefreshMonitorManager.h"
 #include "Logging.h"
@@ -38,6 +36,8 @@
 #include "DisplayRefreshMonitorMac.h"
 #elif PLATFORM(GTK)
 #include "DisplayRefreshMonitorGtk.h"
+#elif PLATFORM(WIN)
+#include "DisplayRefreshMonitorWin.h"
 #endif
 
 namespace WebCore {
@@ -50,8 +50,11 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::createDefaultDisplayRefresh
 #if PLATFORM(IOS_FAMILY)
     return DisplayRefreshMonitorIOS::create(displayID);
 #endif
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) && !USE(GTK4)
     return DisplayRefreshMonitorGtk::create(displayID);
+#endif
+#if PLATFORM(WIN)
+    return DisplayRefreshMonitorWin::create(displayID);
 #endif
     UNUSED_PARAM(displayID);
     return nullptr;
@@ -130,5 +133,3 @@ void DisplayRefreshMonitor::displayDidRefresh()
 }
 
 }
-
-#endif // USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)

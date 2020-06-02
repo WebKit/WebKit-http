@@ -327,7 +327,6 @@ sub main {
         "$harnessDir/sta.js",
         "$harnessDir/assert.js",
         "$harnessDir/doneprintHandle.js",
-        "$Bin/agent.js"
     );
 
     print $deffh getHarness(\@defaultHarnessFiles);
@@ -796,8 +795,7 @@ sub runTest {
     }
 
     if (exists $data->{flags}) {
-        my @flags = $data->{flags};
-        if (grep $_ eq 'async', @flags) {
+        if (grep $_ eq 'async', @{ $data->{flags} }) {
             $args .= ' --test262-async ';
         }
     }

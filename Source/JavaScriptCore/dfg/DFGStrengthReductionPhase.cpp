@@ -28,14 +28,12 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ButterflyInlines.h"
 #include "DFGAbstractHeap.h"
 #include "DFGClobberize.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
-#include "DFGPredictionPropagationPhase.h"
-#include "DFGVariableAccessDataDump.h"
-#include "JSCInlines.h"
 #include "MathCommon.h"
 #include "RegExpObject.h"
 #include "StringPrototype.h"
@@ -125,7 +123,8 @@ private:
         case ValueBitOr:
         case ValueBitAnd:
         case ValueBitXor: {
-            if (m_node->binaryUseKind() == BigIntUse)
+            // FIXME: we should maybe support the case where one operand is always HeapBigInt and the other is always BigInt32?
+            if (m_node->binaryUseKind() == AnyBigIntUse || m_node->binaryUseKind() == BigInt32Use || m_node->binaryUseKind() == HeapBigIntUse)
                 handleCommutativity();
             break;
         }
@@ -375,7 +374,7 @@ private:
                 break;
             }
 
-            if (m_node->binaryUseKind() == BigIntUse)
+            if (m_node->binaryUseKind() == BigInt32Use || m_node->binaryUseKind() == HeapBigIntUse || m_node->binaryUseKind() == AnyBigIntUse)
                 handleCommutativity();
 
             break;

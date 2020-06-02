@@ -112,6 +112,11 @@ Optional<PolicyCheckIdentifier> PolicyCheckIdentifier::decode(Decoder& decoder)
     return PolicyCheckIdentifier { *process, policyCheck };
 }
 
+enum class ShouldContinuePolicyCheck : bool {
+    Yes,
+    No
+};
+
 enum class NewFrameOpenerPolicy : uint8_t {
     Suppress,
     Allow
@@ -169,7 +174,7 @@ enum ShouldReplaceDocumentIfJavaScriptURL {
     DoNotReplaceDocumentIfJavaScriptURL
 };
 
-enum WebGLLoadPolicy {
+enum class WebGLLoadPolicy : uint8_t {
     WebGLBlockCreation,
     WebGLAllowCreation,
     WebGLPendingCreation
@@ -217,12 +222,12 @@ Optional<SystemPreviewInfo> SystemPreviewInfo::decode(Decoder& decoder)
     return { { WTFMove(*element), WTFMove(*previewRect), WTFMove(*isPreview) } };
 }
 
-enum class LoadCompletionType : uint8_t {
+enum class LoadCompletionType : bool {
     Finish,
     Cancel
 };
 
-enum class AllowsContentJavaScript : uint8_t {
+enum class AllowsContentJavaScript : bool {
     Yes,
     No,
 };
@@ -266,11 +271,12 @@ template<> struct EnumTraits<WebCore::ShouldOpenExternalURLsPolicy> {
     >;
 };
 
-template<> struct EnumTraits<WebCore::AllowsContentJavaScript> {
+template<> struct EnumTraits<WebCore::WebGLLoadPolicy> {
     using values = EnumValues<
-        WebCore::AllowsContentJavaScript,
-        WebCore::AllowsContentJavaScript::Yes,
-        WebCore::AllowsContentJavaScript::No
+        WebCore::WebGLLoadPolicy,
+        WebCore::WebGLLoadPolicy::WebGLBlockCreation,
+        WebCore::WebGLLoadPolicy::WebGLAllowCreation,
+        WebCore::WebGLLoadPolicy::WebGLPendingCreation
     >;
 };
 

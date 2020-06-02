@@ -1,6 +1,5 @@
-var enableExceptionFuzz = $vm.enableExceptionFuzz;
-
 try {
+(function() {
 
 /*
  * Copyright (C) 2004 Baron Schwartz <baron at sequent dot org>
@@ -14,9 +13,6 @@ try {
  * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
  * details.
  */
-
-enableExceptionFuzz();
-
 
 Date.parseFunctions = {count:0};
 Date.parseRegexes = [];
@@ -426,6 +422,7 @@ for (i = 0; i < 4000; ++i) {
 // FIXME: Find a way to validate this test.
 // https://bugs.webkit.org/show_bug.cgi?id=114849
 
+})();
 } catch (e) {
     print("JSC EXCEPTION FUZZ: Caught exception: " + e);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +28,12 @@
 
 #import "APIAttachment.h"
 #import "APIUIClient.h"
+#import "Connection.h"
 #import "DataDetectionResult.h"
 #import "InsertTextOptions.h"
 #import "LoadParameters.h"
 #import "PageClient.h"
+#import "QuickLookThumbnailLoader.h"
 #import "SafeBrowsingSPI.h"
 #import "SafeBrowsingWarning.h"
 #import "SharedBufferDataReference.h"
@@ -40,15 +42,20 @@
 #import "WebProcessProxy.h"
 #import "WebsiteDataStore.h"
 #import <WebCore/DragItem.h>
+#import <WebCore/LocalCurrentGraphicsContext.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
+#import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/ValidationBubble.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/cf/TypeCastsCF.h>
 
-#if USE(DICTATION_ALTERNATIVES)
-#import <WebCore/TextAlternativeWithRange.h>
+#if ENABLE(MEDIA_USAGE)
+#import "MediaUsageManagerCocoa.h"
 #endif
+
+#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process().connection())
+#define MESSAGE_CHECK_COMPLETION(assertion, completion) MESSAGE_CHECK_COMPLETION_BASE(assertion, process().connection(), completion)
 
 namespace WebKit {
 using namespace WebCore;
@@ -62,20 +69,14 @@ void WebPageProxy::setDataDetectionResult(const DataDetectionResult& dataDetecti
 
 void WebPageProxy::saveRecentSearches(const String& name, const Vector<WebCore::RecentSearch>& searchItems)
 {
-    if (!name) {
-        // FIXME: This should be a message check.
-        return;
-    }
+    MESSAGE_CHECK(!name.isNull());
 
     WebCore::saveRecentSearches(name, searchItems);
 }
 
 void WebPageProxy::loadRecentSearches(const String& name, CompletionHandler<void(Vector<WebCore::RecentSearch>&&)>&& completionHandler)
 {
-    if (!name) {
-        // FIXME: This should be a message check.
-        return completionHandler({ });
-    }
+    MESSAGE_CHECK_COMPLETION(!name.isNull(), completionHandler({ }));
 
     completionHandler(WebCore::loadRecentSearches(name));
 }
@@ -230,7 +231,7 @@ void WebPageProxy::performDictionaryLookupAtLocation(const WebCore::FloatPoint& 
     if (!hasRunningProcess())
         return;
     
-    process().send(Messages::WebPage::PerformDictionaryLookupAtLocation(point), m_webPageID);
+    send(Messages::WebPage::PerformDictionaryLookupAtLocation(point));
 }
 
 void WebPageProxy::performDictionaryLookupOfCurrentSelection()
@@ -238,20 +239,18 @@ void WebPageProxy::performDictionaryLookupOfCurrentSelection()
     if (!hasRunningProcess())
         return;
     
-    process().send(Messages::WebPage::PerformDictionaryLookupOfCurrentSelection(), m_webPageID);
+    send(Messages::WebPage::PerformDictionaryLookupOfCurrentSelection());
 }
 
 void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<TextAlternativeWithRange>& dictationAlternativesWithRange, InsertTextOptions&& options)
 {
-#if USE(DICTATION_ALTERNATIVES)
     if (!hasRunningProcess())
         return;
 
     Vector<DictationAlternative> dictationAlternatives;
     for (const auto& alternativeWithRange : dictationAlternativesWithRange) {
-        uint64_t dictationContext = pageClient().addDictationAlternatives(alternativeWithRange.alternatives);
-        if (dictationContext)
-            dictationAlternatives.append(DictationAlternative(alternativeWithRange.range.location, alternativeWithRange.range.length, dictationContext));
+        if (auto context = pageClient().addDictationAlternatives(alternativeWithRange.alternatives.get()))
+            dictationAlternatives.append({ alternativeWithRange.range, context });
     }
 
     if (dictationAlternatives.isEmpty()) {
@@ -259,10 +258,7 @@ void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRang
         return;
     }
 
-    process().send(Messages::WebPage::InsertDictatedTextAsync { text, replacementRange, dictationAlternatives, WTFMove(options) }, m_webPageID);
-#else
-    insertTextAsync(text, replacementRange, WTFMove(options));
-#endif
+    send(Messages::WebPage::InsertDictatedTextAsync { text, replacementRange, dictationAlternatives, WTFMove(options) });
 }
     
 #if ENABLE(APPLE_PAY)
@@ -287,14 +283,14 @@ const String& WebPageProxy::paymentCoordinatorSourceApplicationSecondaryIdentifi
     return websiteDataStore().configuration().sourceApplicationSecondaryIdentifier();
 }
 
-void WebPageProxy::paymentCoordinatorAddMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference& messageReceiverName, IPC::MessageReceiver& messageReceiver)
+void WebPageProxy::paymentCoordinatorAddMessageReceiver(WebPaymentCoordinatorProxy&, IPC::ReceiverName receiverName, IPC::MessageReceiver& messageReceiver)
 {
-    process().addMessageReceiver(messageReceiverName, m_webPageID, messageReceiver);
+    process().addMessageReceiver(receiverName, m_webPageID, messageReceiver);
 }
 
-void WebPageProxy::paymentCoordinatorRemoveMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference& messageReceiverName)
+void WebPageProxy::paymentCoordinatorRemoveMessageReceiver(WebPaymentCoordinatorProxy&, IPC::ReceiverName receiverName)
 {
-    process().removeMessageReceiver(messageReceiverName, m_webPageID);
+    process().removeMessageReceiver(receiverName, m_webPageID);
 }
 
 #endif
@@ -326,17 +322,17 @@ void WebPageProxy::didResumeSpeaking(WebCore::PlatformSpeechSynthesisUtterance&)
 
 void WebPageProxy::speakingErrorOccurred(WebCore::PlatformSpeechSynthesisUtterance&)
 {
-    process().send(Messages::WebPage::SpeakingErrorOccurred(), m_webPageID);
+    send(Messages::WebPage::SpeakingErrorOccurred());
 }
 
 void WebPageProxy::boundaryEventOccurred(WebCore::PlatformSpeechSynthesisUtterance&, WebCore::SpeechBoundary speechBoundary, unsigned charIndex)
 {
-    process().send(Messages::WebPage::BoundaryEventOccurred(speechBoundary == WebCore::SpeechBoundary::SpeechWordBoundary, charIndex), m_webPageID);
+    send(Messages::WebPage::BoundaryEventOccurred(speechBoundary == WebCore::SpeechBoundary::SpeechWordBoundary, charIndex));
 }
 
 void WebPageProxy::voicesDidChange()
 {
-    process().send(Messages::WebPage::VoicesDidChange(), m_webPageID);
+    send(Messages::WebPage::VoicesDidChange());
 }
 #endif // ENABLE(SPEECH_SYNTHESIS)
 
@@ -360,4 +356,86 @@ void WebPageProxy::grantAccessToPreferenceService()
 #endif
 }
 
+#if ENABLE(MEDIA_USAGE)
+MediaUsageManager& WebPageProxy::mediaUsageManager()
+{
+    if (!m_mediaUsageManager)
+        m_mediaUsageManager = MediaUsageManager::create();
+
+    return *m_mediaUsageManager;
+}
+
+void WebPageProxy::addMediaUsageManagerSession(WebCore::MediaSessionIdentifier identifier, const String& bundleIdentifier, const URL& pageURL)
+{
+    mediaUsageManager().addMediaSession(identifier, bundleIdentifier, pageURL);
+}
+
+void WebPageProxy::updateMediaUsageManagerSessionState(WebCore::MediaSessionIdentifier identifier, const WebCore::MediaUsageInfo& info)
+{
+    mediaUsageManager().updateMediaUsage(identifier, info);
+}
+
+void WebPageProxy::removeMediaUsageManagerSession(WebCore::MediaSessionIdentifier identifier)
+{
+    mediaUsageManager().removeMediaSession(identifier);
+}
+#endif
+
+#if HAVE(QUICKLOOK_THUMBNAILING)
+
+static RefPtr<WebKit::ShareableBitmap> convertPlatformImageToBitmap(CocoaImage *image, const WebCore::IntSize& size)
+{
+    WebKit::ShareableBitmap::Configuration bitmapConfiguration;
+    auto bitmap = WebKit::ShareableBitmap::createShareable(size, bitmapConfiguration);
+    if (!bitmap)
+        return nullptr;
+
+    auto graphicsContext = bitmap->createGraphicsContext();
+    if (!graphicsContext)
+        return nullptr;
+
+    LocalCurrentGraphicsContext savedContext(*graphicsContext);
+#if PLATFORM(IOS_FAMILY)
+    [image drawInRect:CGRectMake(0, 0, bitmap->size().width(), bitmap->size().height())];
+#elif USE(APPKIT)
+    [image drawInRect:NSMakeRect(0, 0, bitmap->size().width(), bitmap->size().height()) fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1 respectFlipped:YES hints:nil];
+#endif
+
+    return bitmap;
+}
+
+void WebPageProxy::requestThumbnailWithOperation(WKQLThumbnailLoadOperation *operation)
+{
+    [operation setCompletionBlock:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            auto identifier = [operation identifier];
+            auto convertedImage = convertPlatformImageToBitmap([operation thumbnail], WebCore::IntSize(400, 400));
+            if (!convertedImage)
+                return;
+            this->updateAttachmentIcon(identifier, convertedImage);
+        });
+    }];
+        
+    [[WKQLThumbnailQueueManager sharedInstance].queue addOperation:operation];
+}
+
+
+void WebPageProxy::requestThumbnailWithFileWrapper(NSFileWrapper* fileWrapper, const String& identifier)
+{
+    auto operation = adoptNS([[WKQLThumbnailLoadOperation alloc] initWithAttachment:fileWrapper identifier:identifier]);
+    requestThumbnailWithOperation(operation.get());
+}
+
+void WebPageProxy::requestThumbnailWithPath(const String& identifier, const String& filePath)
+{
+    auto operation = adoptNS([[WKQLThumbnailLoadOperation alloc] initWithURL:filePath identifier:identifier]);
+    requestThumbnailWithOperation(operation.get());
+    
+}
+
+#endif // HAVE(QUICKLOOK_THUMBNAILING)
+
 } // namespace WebKit
+
+#undef MESSAGE_CHECK_COMPLETION
+#undef MESSAGE_CHECK

@@ -26,7 +26,6 @@
 #include "config.h"
 #include "StrictEvalActivation.h"
 
-#include "JSGlobalObject.h"
 #include "JSCInlines.h"
 
 namespace JSC {

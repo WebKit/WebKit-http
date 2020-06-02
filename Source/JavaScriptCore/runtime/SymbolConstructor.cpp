@@ -27,10 +27,7 @@
 #include "config.h"
 #include "SymbolConstructor.h"
 
-#include "Error.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
-#include "Symbol.h"
 #include "SymbolPrototype.h"
 #include <wtf/text/SymbolRegistry.h>
 
@@ -57,9 +54,10 @@ const ClassInfo SymbolConstructor::s_info = { "Function", &Base::s_info, &symbol
 */
 
 static EncodedJSValue JSC_HOST_CALL callSymbol(JSGlobalObject*, CallFrame*);
+static EncodedJSValue JSC_HOST_CALL constructSymbol(JSGlobalObject*, CallFrame*);
 
 SymbolConstructor::SymbolConstructor(VM& vm, Structure* structure)
-    : InternalFunction(vm, structure, callSymbol, nullptr)
+    : InternalFunction(vm, structure, callSymbol, constructSymbol)
 {
 }
 
@@ -89,6 +87,13 @@ static EncodedJSValue JSC_HOST_CALL callSymbol(JSGlobalObject* globalObject, Cal
     String string = description.toWTFString(globalObject);
     RETURN_IF_EXCEPTION(scope, { });
     return JSValue::encode(Symbol::createWithDescription(vm, string));
+}
+
+static EncodedJSValue JSC_HOST_CALL constructSymbol(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return throwVMError(globalObject, scope, createNotAConstructorError(globalObject, callFrame->jsCallee()));
 }
 
 EncodedJSValue JSC_HOST_CALL symbolConstructorFor(JSGlobalObject* globalObject, CallFrame* callFrame)

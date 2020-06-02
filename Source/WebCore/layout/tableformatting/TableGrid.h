@@ -28,62 +28,43 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "IntPointHash.h"
+#include "LayoutUnits.h"
 #include <wtf/HashMap.h>
 #include <wtf/IsoMalloc.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
 namespace Layout {
 class Box;
+class ContainerBox;
 
 class TableGrid {
     WTF_MAKE_ISO_ALLOCATED(TableGrid);
 public:
     TableGrid();
 
-    void appendCell(const Box&);
-    void insertCell(const Box&, const Box& before);
-    void removeCell(const Box&);
+    void appendCell(const ContainerBox&);
+    void insertCell(const ContainerBox&, const ContainerBox& before);
+    void removeCell(const ContainerBox&);
 
     void setHorizontalSpacing(LayoutUnit horizontalSpacing) { m_horizontalSpacing = horizontalSpacing; }
     LayoutUnit horizontalSpacing() const { return m_horizontalSpacing; }
-    LayoutUnit totalHorizontalSpacing() const { return (columnsContext().columns().size() + 1) * horizontalSpacing(); }
 
     void setVerticalSpacing(LayoutUnit verticalSpacing) { m_verticalSpacing = verticalSpacing; }
     LayoutUnit verticalSpacing() const { return m_verticalSpacing; }
 
-    using SlotPosition = IntPoint;
+    void setCollapsedBorder(const Edges& collapsedBorder) { m_collapsedBorder = collapsedBorder; }
+    Optional<Edges> collapsedBorder() const { return m_collapsedBorder; }
 
-    // Cell represents a <td> or <th>. It can span multiple slots in the grid.
-    using CellSize = IntSize;
-    struct CellInfo : public CanMakeWeakPtr<CellInfo> {
-        WTF_MAKE_STRUCT_FAST_ALLOCATED;
-        CellInfo(const Box& tableCellBox, SlotPosition, CellSize);
+    void setWidthConstraints(FormattingContext::IntrinsicWidthConstraints intrinsicWidthConstraints) { m_intrinsicWidthConstraints = intrinsicWidthConstraints; }
+    Optional<FormattingContext::IntrinsicWidthConstraints> widthConstraints() const { return m_intrinsicWidthConstraints; }
 
-        size_t startColumn() const { return position.x(); }
-        size_t endColumn() const { return position.x() + size.width(); }
-
-        size_t startRow() const { return position.y(); }
-        size_t endRow() const { return position.y() + size.height(); }
-
-        size_t columnSpan() const { return size.width(); }
-        size_t rowSpan() const { return size.height(); }
-
-        const Box& tableCellBox;
-        SlotPosition position;
-        CellSize size;
-    };
-    using CellList = WTF::ListHashSet<std::unique_ptr<CellInfo>>;
-    CellList& cells() { return m_cellList; }
-
-    // Column represents a vertical set of slots in the grid. A column has min/max and final width.
-    class ColumnsContext;
+    // Column represents a vertical set of slots in the grid. A column has horizontal position and width.
     class Column {
     public:
-        void setWidthConstraints(FormattingContext::IntrinsicWidthConstraints);
-        FormattingContext::IntrinsicWidthConstraints widthConstraints() const;
+        Column(const ContainerBox*);
 
         void setLogicalLeft(LayoutUnit);
         LayoutUnit logicalLeft() const;
@@ -91,90 +72,169 @@ public:
         void setLogicalWidth(LayoutUnit);
         LayoutUnit logicalWidth() const;
 
-        bool hasFixedWidth() const;
+        bool isFixedWidth() const;
 
-        const Box* columnBox() const { return m_columnBox.get(); }
+        void setHasFixedWidthCell() { m_hasFixedWidthCell = true; }
+        const ContainerBox* box() const { return m_layoutBox.get(); }
 
     private:
-        friend class ColumnsContext;
-        Column(const Box* columnBox);
+        bool hasFixedWidthCell() const { return m_hasFixedWidthCell; }
 
-        FormattingContext::IntrinsicWidthConstraints m_widthConstraints;
         LayoutUnit m_computedLogicalWidth;
         LayoutUnit m_computedLogicalLeft;
-        WeakPtr<const Box> m_columnBox;
+        WeakPtr<const ContainerBox> m_layoutBox;
+        bool m_hasFixedWidthCell { false };
 
 #if ASSERT_ENABLED
-        bool m_hasWidthConstraints { false };
         bool m_hasComputedWidth { false };
         bool m_hasComputedLeft { false };
 #endif
     };
 
-    class ColumnsContext {
+    class Columns {
     public:
         using ColumnList = Vector<Column>;
-        ColumnList& columns() { return m_columns; }
-        const ColumnList& columns() const { return m_columns; }
-        void addColumn(const Box* columnBox = nullptr);
+        ColumnList& list() { return m_columnList; }
+        const ColumnList& list() const { return m_columnList; }
+        size_t size() const { return m_columnList.size(); }
 
-        LayoutUnit logicalWidth() const { return columns().last().logicalRight() - columns().first().logicalLeft(); }
+        void addColumn(const ContainerBox&);
+        void addAnonymousColumn();
+
+        LayoutUnit logicalWidth() const { return m_columnList.last().logicalRight() - m_columnList.first().logicalLeft(); }
+        bool hasFixedColumnsOnly() const;
 
     private:
-        friend class TableGrid;
-
-        ColumnList m_columns;
+        ColumnList m_columnList;
     };
-    const ColumnsContext& columnsContext() const { return m_columnsContext; }
-    ColumnsContext& columnsContext() { return m_columnsContext; }
 
-    struct Row {
+    class Row {
     public:
-        Row(const Box&);
-
-        const Box& box() const { return m_layoutBox; }
+        Row(const ContainerBox&);
 
         void setLogicalTop(LayoutUnit logicalTop) { m_logicalTop = logicalTop; }
         LayoutUnit logicalTop() const { return m_logicalTop; }
+        LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
 
         void setLogicalHeight(LayoutUnit logicalHeight) { m_logicalHeight = logicalHeight; }
         LayoutUnit logicalHeight() const { return m_logicalHeight; }
 
-        LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
+        void setBaselineOffset(InlineLayoutUnit baselineOffset) { m_baselineOffset = baselineOffset; }
+        InlineLayoutUnit baselineOffset() const { return m_baselineOffset; }
+
+        const ContainerBox& box() const { return *m_layoutBox.get(); }
 
     private:
         LayoutUnit m_logicalTop;
         LayoutUnit m_logicalHeight;
-        const Box& m_layoutBox;
+        InlineLayoutUnit m_baselineOffset;
+        WeakPtr<const ContainerBox> m_layoutBox;
     };
-    using RowList = WTF::Vector<Row>;
-    RowList& rows() { return m_rows; }
 
-    struct SlotInfo {
+    class Rows {
+    public:
+        using RowList = Vector<Row>;
+        RowList& list() { return m_rowList; }
+        const RowList& list() const { return m_rowList; }
+
+        void addRow(const ContainerBox&);
+
+        size_t size() const { return m_rowList.size(); }
+
+    private:
+        RowList m_rowList;
+    };
+
+    // Cell represents a <td> or <th>. It can span multiple slots in the grid.
+    class Cell : public CanMakeWeakPtr<Cell> {
+        WTF_MAKE_ISO_ALLOCATED_INLINE(Cell);
+    public:
+        Cell(const ContainerBox&, SlotPosition, CellSpan);
+
+        size_t startColumn() const { return m_position.column; }
+        size_t endColumn() const { return m_position.column + m_span.column; }
+
+        size_t startRow() const { return m_position.row; }
+        size_t endRow() const { return m_position.row + m_span.row; }
+
+        size_t columnSpan() const { return m_span.column; }
+        size_t rowSpan() const { return m_span.row; }
+
+        SlotPosition position() const { return m_position; }
+        CellSpan span() const { return m_span; }
+
+        void setBaselineOffset(InlineLayoutUnit baselineOffset) { m_baselineOffset = baselineOffset; }
+        InlineLayoutUnit baselineOffset() const { return m_baselineOffset; }
+
+        bool isFixedWidth() const;
+
+        const ContainerBox& box() const { return *m_layoutBox.get(); }
+
+    private:
+        WeakPtr<const ContainerBox> m_layoutBox;
+        SlotPosition m_position;
+        CellSpan m_span;
+        InlineLayoutUnit m_baselineOffset { 0 };
+    };
+
+    class Slot {
+    public:
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
-        SlotInfo() = default;
-        SlotInfo(CellInfo&);
+        Slot() = default;
+        Slot(Cell&, bool isColumnSpanned, bool isRowSpanned);
 
-        WeakPtr<CellInfo> cell;
-        FormattingContext::IntrinsicWidthConstraints widthConstraints;
+        const Cell& cell() const { return *m_cell; }
+        Cell& cell() { return *m_cell; }
+
+        const FormattingContext::IntrinsicWidthConstraints& widthConstraints() const { return m_widthConstraints; }
+        void setWidthConstraints(const FormattingContext::IntrinsicWidthConstraints& widthConstraints) { m_widthConstraints = widthConstraints; }
+
+        // Initial slot position for a spanning cell.
+        // <td></td><td colspan=2></td> [1, 0] slot has column span of 2.
+        bool hasColumnSpan() const { return m_cell->columnSpan() > 1 && !isColumnSpanned(); }
+        bool hasRowSpan() const { return m_cell->rowSpan() > 1 && !isRowSpanned(); }
+
+        // Non-initial spanned slot.
+        // <td></td><td colspan=2></td> [2, 0] slot is column spanned by [1, 0].
+        // <td></td><td></td><td></td>
+        bool isColumnSpanned() const { return m_isColumnSpanned; }
+        bool isRowSpanned() const { return m_isRowSpanned; }
+
+    private:
+        WeakPtr<Cell> m_cell;
+        bool m_isColumnSpanned { false };
+        bool m_isRowSpanned { false };
+        FormattingContext::IntrinsicWidthConstraints m_widthConstraints;
     };
-    SlotInfo* slot(SlotPosition);
 
-    bool hasComputedWidthConstraints() const { return m_intrinsicWidthConstraints.hasValue(); }
-    FormattingContext::IntrinsicWidthConstraints widthConstraints();
+    const Columns& columns() const { return m_columns; }
+    Columns& columns() { return m_columns; }
+
+    const Rows& rows() const { return m_rows; }
+    Rows& rows() { return m_rows; }
+
+    using Cells = WTF::ListHashSet<std::unique_ptr<Cell>>;
+    Cells& cells() { return m_cells; }
+
+    Slot* slot(SlotPosition);
+    const Slot* slot(SlotPosition position) const { return m_slotMap.get(position); }
+    bool isSpanned(SlotPosition);
 
 private:
-    using SlotMap = WTF::HashMap<SlotPosition, std::unique_ptr<SlotInfo>>;
+    using SlotMap = WTF::HashMap<SlotPosition, std::unique_ptr<Slot>>;
 
+    Columns m_columns;
+    Rows m_rows;
+    Cells m_cells;
     SlotMap m_slotMap;
-    CellList m_cellList;
-    ColumnsContext m_columnsContext;
-    RowList m_rows;
+
     LayoutUnit m_horizontalSpacing;
     LayoutUnit m_verticalSpacing;
     Optional<FormattingContext::IntrinsicWidthConstraints> m_intrinsicWidthConstraints;
+    Optional<Edges> m_collapsedBorder;
 };
 
 }
 }
+
 #endif

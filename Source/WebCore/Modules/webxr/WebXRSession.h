@@ -30,12 +30,16 @@
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "JSDOMPromiseDeferred.h"
+#include "Timer.h"
 #include "WebXRInputSourceArray.h"
 #include "WebXRRenderState.h"
 #include "WebXRSpace.h"
 #include "XREnvironmentBlendMode.h"
+#include "XRFrameRequestCallback.h"
 #include "XRReferenceSpaceType.h"
+#include "XRSessionMode.h"
 #include "XRVisibilityState.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -43,8 +47,8 @@
 
 namespace WebCore {
 
-class XRFrameRequestCallback;
 class WebXRReferenceSpace;
+class WebXRSystem;
 struct XRRenderStateInit;
 
 class WebXRSession final : public RefCounted<WebXRSession>, public EventTargetWithInlineData, public ActiveDOMObject {
@@ -53,6 +57,7 @@ public:
     using RequestReferenceSpacePromise = DOMPromiseDeferred<IDLInterface<WebXRReferenceSpace>>;
     using EndPromise = DOMPromiseDeferred<void>;
 
+    static Ref<WebXRSession> create(Document&, WebXRSystem&, XRSessionMode, PlatformXR::Device&);
     virtual ~WebXRSession();
 
     using RefCounted<WebXRSession>::ref;
@@ -64,16 +69,18 @@ public:
     const WebXRInputSourceArray& inputSources() const;
 
     void updateRenderState(const XRRenderStateInit&);
-    void requestReferenceSpace(const XRReferenceSpaceType&, RequestReferenceSpacePromise&&);
+    void requestReferenceSpace(XRReferenceSpaceType, RequestReferenceSpacePromise&&);
 
-    int requestAnimationFrame(Ref<XRFrameRequestCallback>&&);
+    XRFrameRequestCallback::Id requestAnimationFrame(Ref<XRFrameRequestCallback>&&);
     void cancelAnimationFrame(int handle);
 
     void end(EndPromise&&);
 
     bool ended() const { return m_ended; }
 
-protected:
+private:
+    WebXRSession(Document&, WebXRSystem&, XRSessionMode, PlatformXR::Device&);
+
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return WebXRSessionEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
@@ -84,11 +91,30 @@ protected:
     const char* activeDOMObjectName() const override;
     void stop() override;
 
+    void shutdown();
+
+    void animationTimerFired();
+    void scheduleAnimation();
+
+    bool referenceSpaceIsSupported(XRReferenceSpaceType) const;
+
     XREnvironmentBlendMode m_environmentBlendMode;
     XRVisibilityState m_visibilityState;
-    RefPtr<WebXRRenderState> m_renderState;
     RefPtr<WebXRInputSourceArray> m_inputSources;
     bool m_ended { false };
+
+    WebXRSystem& m_xrSystem;
+    XRSessionMode m_mode;
+    WeakPtr<PlatformXR::Device> m_device;
+    RefPtr<WebXRRenderState> m_activeRenderState;
+    RefPtr<WebXRRenderState> m_pendingRenderState;
+
+    XRFrameRequestCallback::Id m_nextCallbackId { 0 };
+    Vector<Ref<XRFrameRequestCallback>> m_callbacks;
+    Vector<Ref<XRFrameRequestCallback>> m_runningCallbacks;
+
+    Timer m_animationTimer;
+    MonotonicTime m_lastAnimationFrameTimestamp;
 };
 
 } // namespace WebCore

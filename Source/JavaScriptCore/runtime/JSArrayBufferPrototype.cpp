@@ -26,12 +26,8 @@
 #include "config.h"
 #include "JSArrayBufferPrototype.h"
 
-#include "Error.h"
-#include "ExceptionHelpers.h"
 #include "JSArrayBuffer.h"
-#include "JSFunction.h"
 #include "JSCInlines.h"
-#include "TypedArrayAdaptors.h"
 
 namespace JSC {
 
@@ -102,7 +98,7 @@ static EncodedJSValue JSC_HOST_CALL sharedArrayBufferProtoGetterFuncByteLength(J
 }
 
 const ClassInfo JSArrayBufferPrototype::s_info = {
-    "ArrayBufferPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArrayBufferPrototype)
+    "ArrayBuffer", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArrayBufferPrototype)
 };
 
 JSArrayBufferPrototype::JSArrayBufferPrototype(VM& vm, Structure* structure)

@@ -52,6 +52,7 @@
 #include "ImageBitmap.h"
 #include "ImageBuffer.h"
 #include "ImageData.h"
+#include "OffscreenCanvas.h"
 #include "Path2D.h"
 #include "RenderElement.h"
 #include "RenderImage.h"
@@ -373,13 +374,9 @@ void CanvasRenderingContext2DBase::setStrokeStyle(CanvasStyle style)
     if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentColor(style))
         return;
 
-    if (style.isCurrentColor()) {
-        if (style.hasOverrideAlpha()) {
-            // FIXME: Should not use RGBA32 here.
-            style = CanvasStyle(colorWithOverrideAlpha(currentColor(canvasBase()).rgb(), style.overrideAlpha()));
-        } else
-            style = CanvasStyle(currentColor(canvasBase()));
-    } else
+    if (style.isCurrentColor())
+        style = CanvasStyle(currentColor(canvasBase()).colorWithAlphaUsingAlternativeRounding(style.overrideAlpha()));
+    else
         checkOrigin(style.canvasPattern().get());
 
     realizeSaves();
@@ -400,13 +397,9 @@ void CanvasRenderingContext2DBase::setFillStyle(CanvasStyle style)
     if (state().fillStyle.isValid() && state().fillStyle.isEquivalentColor(style))
         return;
 
-    if (style.isCurrentColor()) {
-        if (style.hasOverrideAlpha()) {
-            // FIXME: Should not use RGBA32 here.
-            style = CanvasStyle(colorWithOverrideAlpha(currentColor(canvasBase()).rgb(), style.overrideAlpha()));
-        } else
-            style = CanvasStyle(currentColor(canvasBase()));
-    } else
+    if (style.isCurrentColor())
+        style = CanvasStyle(currentColor(canvasBase()).colorWithAlphaUsingAlternativeRounding(style.overrideAlpha()));
+    else
         checkOrigin(style.canvasPattern().get());
 
     realizeSaves();
@@ -633,7 +626,7 @@ void CanvasRenderingContext2DBase::setShadowBlur(float blur)
 
 String CanvasRenderingContext2DBase::shadowColor() const
 {
-    return Color(state().shadowColor).serialized();
+    return state().shadowColor.serialized();
 }
 
 void CanvasRenderingContext2DBase::setShadowColor(const String& colorString)
@@ -1309,23 +1302,22 @@ void CanvasRenderingContext2DBase::setShadow(float width, float height, float bl
         if (!color.isValid())
             return;
     }
-    // FIXME: Should not use RGBA32 here.
-    setShadow(FloatSize(width, height), blur, colorWithOverrideAlpha(color.rgb(), alpha));
+    setShadow(FloatSize(width, height), blur, color.colorWithAlphaUsingAlternativeRounding(alpha));
 }
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float grayLevel, float alpha)
 {
-    setShadow(FloatSize(width, height), blur, Color(grayLevel, grayLevel, grayLevel, alpha));
+    setShadow(FloatSize(width, height), blur, makeSimpleColorFromFloats(grayLevel, grayLevel, grayLevel, alpha));
 }
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float r, float g, float b, float a)
 {
-    setShadow(FloatSize(width, height), blur, Color(r, g, b, a));
+    setShadow(FloatSize(width, height), blur, makeSimpleColorFromFloats(r, g, b, a));
 }
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float c, float m, float y, float k, float a)
 {
-    setShadow(FloatSize(width, height), blur, Color(c, m, y, k, a));
+    setShadow(FloatSize(width, height), blur, makeSimpleColorFromCMYKA(c, m, y, k, a));
 }
 
 void CanvasRenderingContext2DBase::clearShadow()
@@ -1464,7 +1456,13 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(HTMLImageElement& imag
         return { };
     FloatRect imageRect = FloatRect(FloatPoint(), size(imageElement, ImageSizeType::BeforeDevicePixelRatio));
 
-    auto result = drawImage(imageElement.document(), imageElement.cachedImage(), imageElement.renderer(), imageRect, srcRect, dstRect, op, blendMode);
+    auto orientation = ImageOrientation::FromImage;
+    if (auto* renderer = imageElement.renderer())
+        orientation = renderer->style().imageOrientation();
+    else if (auto* computedStyle = imageElement.computedStyle())
+        orientation = computedStyle->imageOrientation();
+
+    auto result = drawImage(imageElement.document(), imageElement.cachedImage(), imageElement.renderer(), imageRect, srcRect, dstRect, op, blendMode, orientation);
 
     if (!result.hasException())
         checkOrigin(&imageElement);
@@ -1487,7 +1485,7 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(TypedOMCSSImageValue& 
 }
 #endif
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, CachedImage* cachedImage, const RenderObject* renderer, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode)
+ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, CachedImage* cachedImage, const RenderObject* renderer, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ImageOrientation orientation)
 {
     if (!std::isfinite(dstRect.x()) || !std::isfinite(dstRect.y()) || !std::isfinite(dstRect.width()) || !std::isfinite(dstRect.height())
         || !std::isfinite(srcRect.x()) || !std::isfinite(srcRect.y()) || !std::isfinite(srcRect.width()) || !std::isfinite(srcRect.height()))
@@ -1543,7 +1541,7 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, Ca
         downcast<BitmapImage>(*image).updateFromSettings(document.settings());
     }
 
-    ImagePaintingOptions options = { op, blendMode, ImageOrientation::FromImage };
+    ImagePaintingOptions options = { op, blendMode, orientation };
 
     if (rectContainsCanvas(normalizedDstRect)) {
         c->drawImage(*image, normalizedDstRect, normalizedSrcRect, options);

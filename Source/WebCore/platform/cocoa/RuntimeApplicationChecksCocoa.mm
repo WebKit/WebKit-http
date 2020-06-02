@@ -69,7 +69,7 @@ void setApplicationBundleIdentifier(const String& bundleIdentifier)
 void clearApplicationBundleIdentifierTestingOverride()
 {
     ASSERT(RunLoop::isMain());
-    applicationBundleIdentifierOverride() = emptyString();
+    applicationBundleIdentifierOverride() = String();
 #if !ASSERT_MSG_DISABLED
     applicationBundleIdentifierOverrideWasQueried = false;
 #endif
@@ -96,7 +96,9 @@ static bool applicationBundleIsEqualTo(const String& bundleIdentifierString)
 
 bool MacApplication::isSafari()
 {
-    static bool isSafari = applicationBundleIsEqualTo("com.apple.Safari"_s) || applicationBundleIsEqualTo("com.apple.SafariTechnologyPreview"_s);
+    static bool isSafari = applicationBundleIsEqualTo("com.apple.Safari"_s)
+        || applicationBundleIsEqualTo("com.apple.SafariTechnologyPreview"_s)
+        || applicationBundleIdentifier().startsWith("com.apple.Safari.");
     return isSafari;
 }
 
@@ -255,6 +257,12 @@ bool IOSApplication::isJesusCalling()
     return isJesusCalling;
 }
 
+bool IOSApplication::isFamilyHealthApp()
+{
+    static bool isFamilyHealthApp = applicationBundleStartsWith("com.wildflowerhealth.Grow"_s) || applicationBundleStartsWith("com.wildflowerhealth.UGROW");
+    return isFamilyHealthApp;
+}
+
 bool IOSApplication::isMobileStore()
 {
     static bool isMobileStore = applicationBundleIsEqualTo("com.apple.MobileStore"_s);
@@ -361,6 +369,18 @@ bool IOSApplication::isFeedly()
 {
     static bool isFeedly = applicationBundleIsEqualTo("com.devhd.feedly"_s);
     return isFeedly;
+}
+
+bool IOSApplication::isPocketCity()
+{
+    static bool isPocketCity = applicationBundleIsEqualTo("com.codebrewgames.pocketcity"_s);
+    return isPocketCity;
+}
+
+bool IOSApplication::isEssentialSkeleton()
+{
+    static bool isEssentialSkeleton = applicationBundleIsEqualTo("com.3d4medical.EssentialSkeleton"_s);
+    return isEssentialSkeleton;
 }
 
 #endif

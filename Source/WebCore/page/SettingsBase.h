@@ -43,14 +43,12 @@
 #include <wtf/text/AtomString.h>
 #include <wtf/text/AtomStringHash.h>
 
-#if ENABLE(DATA_DETECTION)
-#include "DataDetection.h"
-#endif
-
 namespace WebCore {
 
 class FontGenericFamilies;
 class Page;
+
+enum class DataDetectorTypes : uint32_t;
 
 enum EditableLinkBehavior {
     EditableLinkDefaultBehavior,
@@ -69,6 +67,8 @@ enum TextDirectionSubmenuInclusionBehavior {
 enum DebugOverlayRegionFlags {
     NonFastScrollableRegion = 1 << 0,
     WheelEventHandlerRegion = 1 << 1,
+    TouchActionRegion = 1 << 2,
+    EditableElementRegion = 1 << 3,
 };
 
 enum class UserInterfaceDirectionPolicy {

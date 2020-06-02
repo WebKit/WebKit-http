@@ -57,15 +57,13 @@ private:
 
     AudioComponentInstance createAudioUnit(CAAudioStreamDescription&);
 
-    // Audio thread members
     AudioComponentInstance m_remoteIOUnit { nullptr };
-    std::unique_ptr<CAAudioStreamDescription> m_inputDescription;
     std::unique_ptr<CAAudioStreamDescription> m_outputDescription;
 
-    // Cross thread members
+    // Audio threads member
     RefPtr<AudioSampleDataSource> m_dataSource;
-    bool m_isAudioUnitStarted { false };
-    bool m_shouldPlay { false };
+    RefPtr<AudioSampleDataSource> m_rendererDataSource;
+    bool m_shouldUpdateRendererDataSource { false };
 };
 
 }

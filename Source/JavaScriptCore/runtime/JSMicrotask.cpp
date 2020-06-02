@@ -28,9 +28,6 @@
 
 #include "CatchScope.h"
 #include "Debugger.h"
-#include "Error.h"
-#include "Exception.h"
-#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSObjectInlines.h"
 #include "Microtask.h"
@@ -55,7 +52,7 @@ public:
     }
 
 private:
-    void run(JSGlobalObject*) override;
+    void run(JSGlobalObject*) final;
 
     Strong<Unknown> m_job;
     Strong<Unknown> m_arguments[maxArguments];
@@ -76,9 +73,8 @@ void JSMicrotask::run(JSGlobalObject* globalObject)
     VM& vm = globalObject->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
-    CallData handlerCallData;
-    CallType handlerCallType = getCallData(vm, m_job.get(), handlerCallData);
-    ASSERT(handlerCallType != CallType::None);
+    auto handlerCallData = getCallData(vm, m_job.get());
+    ASSERT(handlerCallData.type != CallData::Type::None);
 
     MarkedArgumentBuffer handlerArguments;
     for (unsigned index = 0; index < maxArguments; ++index) {
@@ -93,7 +89,7 @@ void JSMicrotask::run(JSGlobalObject* globalObject)
     if (UNLIKELY(globalObject->hasDebugger()))
         globalObject->debugger()->willRunMicrotask();
 
-    profiledCall(globalObject, ProfilingReason::Microtask, m_job.get(), handlerCallType, handlerCallData, jsUndefined(), handlerArguments);
+    profiledCall(globalObject, ProfilingReason::Microtask, m_job.get(), handlerCallData, jsUndefined(), handlerArguments);
     scope.clearException();
 }
 

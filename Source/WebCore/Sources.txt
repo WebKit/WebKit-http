@@ -34,6 +34,7 @@ loader/cache/CachedApplicationManifest.cpp
 #endif
 
 Modules/async-clipboard/Clipboard.cpp
+Modules/async-clipboard/ClipboardImageReader.cpp
 Modules/async-clipboard/ClipboardItem.cpp
 Modules/async-clipboard/ClipboardItemBindingsDataSource.cpp
 Modules/async-clipboard/ClipboardItemPasteboardDataSource.cpp
@@ -436,6 +437,7 @@ Modules/webxr/XRSessionEvent.cpp @no-unify
 
 #endif
 
+accessibility/AXLogger.cpp
 accessibility/AXObjectCache.cpp
 accessibility/AccessibilityARIAGrid.cpp
 accessibility/AccessibilityARIAGridCell.cpp
@@ -479,6 +481,7 @@ animation/CSSAnimation.cpp
 animation/CSSTransition.cpp
 animation/DeclarativeAnimation.cpp
 animation/DocumentTimeline.cpp
+animation/DocumentTimelinesController.cpp
 animation/ElementAnimationRareData.cpp
 animation/KeyframeEffect.cpp
 animation/KeyframeEffectStack.cpp
@@ -789,6 +792,7 @@ css/MediaQuery.cpp
 css/MediaQueryEvaluator.cpp
 css/MediaQueryExpression.cpp
 css/MediaQueryList.cpp
+css/MediaQueryListEvent.cpp
 css/MediaQueryMatcher.cpp
 css/MediaQueryParserContext.cpp
 css/PropertySetCSSStyleDeclaration.cpp
@@ -1037,7 +1041,6 @@ editing/CreateLinkCommand.cpp
 editing/CustomUndoStep.cpp
 editing/DeleteFromTextNodeCommand.cpp
 editing/DeleteSelectionCommand.cpp
-editing/DictationAlternative.cpp
 editing/DictationCommand.cpp
 editing/EditAction.cpp
 editing/EditCommand.cpp
@@ -1273,6 +1276,7 @@ html/TextInputType.cpp
 html/TimeInputType.cpp
 html/TimeRanges.cpp
 html/TypeAhead.cpp
+html/URLDecomposition.cpp
 html/URLInputType.cpp
 html/URLSearchParams.cpp
 html/ValidationMessage.cpp
@@ -1287,6 +1291,8 @@ html/canvas/CanvasRenderingContext2D.cpp
 html/canvas/CanvasRenderingContext2DBase.cpp
 html/canvas/CanvasStyle.cpp
 html/canvas/EXTBlendMinMax.cpp
+html/canvas/EXTColorBufferFloat.cpp
+html/canvas/EXTColorBufferHalfFloat.cpp
 html/canvas/EXTFragDepth.cpp
 html/canvas/EXTShaderTextureLOD.cpp
 html/canvas/EXTsRGB.cpp
@@ -1306,6 +1312,7 @@ html/canvas/Path2D.cpp
 html/canvas/PlaceholderRenderingContext.cpp
 html/canvas/WebGL2RenderingContext.cpp
 html/canvas/WebGLBuffer.cpp
+html/canvas/WebGLColorBufferFloat.cpp
 html/canvas/WebGLCompressedTextureASTC.cpp
 html/canvas/WebGLCompressedTextureATC.cpp
 html/canvas/WebGLCompressedTextureETC.cpp
@@ -1455,6 +1462,7 @@ layout/blockformatting/BlockFormattingContextQuirks.cpp
 layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
 layout/blockformatting/PrecomputedBlockMarginCollapse.cpp
+layout/blockformatting/tablewrapper/TableWrapperBlockFormattingContext.cpp
 layout/displaytree/DisplayBox.cpp
 layout/displaytree/DisplayInlineContent.cpp
 layout/displaytree/DisplayPainter.cpp
@@ -1487,6 +1495,7 @@ layout/tableformatting/TableFormattingContext.cpp
 layout/tableformatting/TableFormattingContextGeometry.cpp
 layout/tableformatting/TableFormattingState.cpp
 layout/tableformatting/TableGrid.cpp
+layout/tableformatting/TableLayout.cpp
 
 loader/AdClickAttribution.cpp
 loader/CanvasActivityRecord.cpp
@@ -1681,6 +1690,7 @@ page/SecurityOrigin.cpp
 page/SecurityOriginData.cpp
 page/SecurityPolicy.cpp
 page/SettingsBase.cpp
+page/ShareDataReader.cpp
 page/SocketProvider.cpp
 page/SpatialNavigation.cpp
 page/SuspendableTimer.cpp
@@ -1735,6 +1745,8 @@ page/scrolling/ScrollingThread.cpp
 page/scrolling/ScrollingTree.cpp
 page/scrolling/ScrollingTreeFrameHostingNode.cpp
 page/scrolling/ScrollingTreeFrameScrollingNode.cpp
+page/scrolling/ScrollingTreeGestureState.cpp
+page/scrolling/ScrollingTreeLatchingController.cpp
 page/scrolling/ScrollingTreeNode.cpp
 page/scrolling/ScrollingTreeOverflowScrollingNode.cpp
 page/scrolling/ScrollingTreeScrollingNode.cpp
@@ -1926,6 +1938,7 @@ platform/graphics/Region.cpp
 platform/graphics/RemoteVideoSample.cpp
 platform/graphics/RoundedRect.cpp
 platform/graphics/ShadowBlur.cpp
+platform/graphics/SimpleColor.cpp
 platform/graphics/StringTruncator.cpp
 platform/graphics/SurrogatePairAwareTextIterator.cpp
 platform/graphics/TextRun.cpp
@@ -2083,6 +2096,7 @@ platform/sql/SQLiteDatabase.cpp
 platform/sql/SQLiteDatabaseTracker.cpp
 platform/sql/SQLiteFileSystem.cpp
 platform/sql/SQLiteStatement.cpp
+platform/sql/SQLiteStatementAutoResetScope.cpp
 platform/sql/SQLiteTransaction.cpp
 
 platform/text/BidiContext.cpp
@@ -2120,6 +2134,7 @@ rendering/BreakLines.cpp
 rendering/CSSFilter.cpp
 rendering/ClipRect.cpp
 rendering/ComplexLineLayout.cpp
+rendering/ContentfulPaintChecker.cpp
 rendering/CounterNode.cpp
 rendering/EllipsisBox.cpp
 rendering/EventRegion.cpp
@@ -3107,7 +3122,7 @@ JSMediaEncodingType.cpp
 JSMediaError.cpp
 JSMediaList.cpp
 JSMediaQueryList.cpp
-JSMediaQueryListListener.cpp
+JSMediaQueryListEvent.cpp
 JSMediaRecorder.cpp
 JSMediaRecorderErrorEvent.cpp
 JSMediaRemoteControls.cpp
@@ -3198,6 +3213,7 @@ JSPerformanceNavigation.cpp
 JSPerformanceObserver.cpp
 JSPerformanceObserverCallback.cpp
 JSPerformanceObserverEntryList.cpp
+JSPerformancePaintTiming.cpp
 JSPerformanceResourceTiming.cpp
 JSPerformanceServerTiming.cpp
 JSPerformanceTiming.cpp
@@ -3629,6 +3645,8 @@ JSMediaEncryptedEvent.cpp
 
 JSANGLEInstancedArrays.cpp
 JSEXTBlendMinMax.cpp
+JSEXTColorBufferFloat.cpp
+JSEXTColorBufferHalfFloat.cpp
 JSEXTFragDepth.cpp
 JSEXTShaderTextureLOD.cpp
 JSEXTTextureFilterAnisotropic.cpp
@@ -3643,6 +3661,7 @@ JSOESVertexArrayObject.cpp
 JSWebGL2RenderingContext.cpp
 JSWebGLActiveInfo.cpp
 JSWebGLBuffer.cpp
+JSWebGLColorBufferFloat.cpp
 JSWebGLCompressedTextureASTC.cpp
 JSWebGLCompressedTextureATC.cpp
 JSWebGLCompressedTextureETC.cpp

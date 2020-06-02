@@ -24,7 +24,6 @@
 
 #include "CallData.h"
 #include "CellState.h"
-#include "ConcurrentJSLock.h"
 #include "ConstructData.h"
 #include "EnumerationMode.h"
 #include "Heap.h"
@@ -102,16 +101,14 @@ protected:
 public:
     // Querying the type.
     bool isString() const;
-    bool isBigInt() const;
+    bool isHeapBigInt() const;
     bool isSymbol() const;
     bool isObject() const;
     bool isGetterSetter() const;
     bool isCustomGetterSetter() const;
     bool isProxy() const;
-    bool isFunction(VM&);
-    bool isCallable(VM&, CallType&, CallData&);
+    bool isCallable(VM&);
     bool isConstructor(VM&);
-    bool isConstructor(VM&, ConstructType&, ConstructData&);
     bool inherits(VM&, const ClassInfo*) const;
     template<typename Target> bool inherits(VM&) const;
     bool isAPIValueWrapper() const;
@@ -152,8 +149,8 @@ public:
     // this is an object, then typeof will return "function" instead of "object". These methods
     // cannot change their minds and must be thread-safe. They are sometimes called from compiler
     // threads.
-    JS_EXPORT_PRIVATE static CallType getCallData(JSCell*, CallData&);
-    JS_EXPORT_PRIVATE static ConstructType getConstructData(JSCell*, ConstructData&);
+    JS_EXPORT_PRIVATE static CallData getCallData(JSCell*);
+    JS_EXPORT_PRIVATE static CallData getConstructData(JSCell*);
 
     // Basic conversions.
     JS_EXPORT_PRIVATE JSValue toPrimitive(JSGlobalObject*, PreferredPrimitiveType) const;
@@ -289,9 +286,6 @@ private:
     JS_EXPORT_PRIVATE void lockSlow();
     JS_EXPORT_PRIVATE void unlockSlow();
 };
-
-using ConcurrentJSCellLocker = ConcurrentJSLockerImpl<JSCellLock>;
-using GCSafeConcurrentJSCellLocker = GCSafeConcurrentJSLockerImpl<JSCellLock>;
 
 // FIXME: Refer to Subspace by reference.
 // https://bugs.webkit.org/show_bug.cgi?id=166988

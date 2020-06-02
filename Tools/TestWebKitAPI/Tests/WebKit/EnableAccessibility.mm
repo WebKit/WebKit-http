@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
@@ -67,5 +67,25 @@ TEST(WebKit, AccessibilityHasPreferencesServiceAccess)
 
     ASSERT_TRUE(sandboxAccess());
 }
+
+#if PLATFORM(IOS_FAMILY)
+TEST(WebKit, AccessibilityHasFrontboardServiceAccess)
+{
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+    configuration.get().processPool = (WKProcessPool *)context.get();
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
+
+    [webView synchronouslyLoadTestPageNamed:@"simple"];
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification object:nil userInfo:nil];
+
+    auto sandboxAccess = [&] {
+        return [webView stringByEvaluatingJavaScript:@"window.internals.hasSandboxMachLookupAccessToGlobalName('com.apple.WebKit.WebContent', 'com.apple.frontboard.systemappservices')"].boolValue;
+    };
+
+    ASSERT_TRUE(sandboxAccess());
+}
+#endif // PLATFORM(IOS_FAMILY)
 
 #endif

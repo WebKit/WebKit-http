@@ -27,7 +27,6 @@
 
 #if PLATFORM(IOS_FAMILY)
 
-#import "CSSAnimationController.h"
 #import "CommonVM.h"
 #import "ComposedTreeIterator.h"
 #import "DOMWindow.h"
@@ -68,6 +67,7 @@
 #import "WAKWindow.h"
 #import <JavaScriptCore/JSLock.h>
 #import <wtf/BlockObjCExceptions.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/TextStream.h>
 
 using namespace WebCore::HTMLNames;
@@ -730,13 +730,13 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     // There are no phrases with alternatives, so there is just one interpretation.
     if (markersInRoot.isEmpty())
-        return [NSArray arrayWithObject:plainText(rangeOfRootContents)];
+        return @[plainText(rangeOfRootContents)];
 
     // The number of interpretations will be i1 * i2 * ... * iN, where iX is the number of interpretations for the Xth phrase with alternatives.
     size_t interpretationsCount = 1;
 
     for (auto* marker : markersInRoot)
-        interpretationsCount *= marker->alternatives().size() + 1;
+        interpretationsCount *= WTF::get<Vector<String>>(marker->data()).size() + 1;
 
     Vector<Vector<UChar>> interpretations;
     interpretations.grow(interpretationsCount);
@@ -749,6 +749,8 @@ NSArray *Frame::interpretationsForCurrentRoot() const
     for (Node* node = rangeOfRootContents->firstNode(); node != pastLastNode; node = NodeTraversal::next(*node)) {
         ASSERT(node);
         for (auto* marker : document()->markers().markersFor(*node, DocumentMarker::DictationPhraseWithAlternatives)) {
+            auto& alternatives = WTF::get<Vector<String>>(marker->data());
+
             // First, add text that precede the marker.
             if (precedingTextStartPosition != createLegacyEditingPosition(node, marker->startOffset())) {
                 auto precedingTextRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(node, marker->startOffset()));
@@ -761,7 +763,7 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
             auto rangeForMarker = Range::create(*document(), createLegacyEditingPosition(node, marker->startOffset()), createLegacyEditingPosition(node, marker->endOffset()));
             String visibleTextForMarker = plainText(rangeForMarker);
-            size_t interpretationsCountForCurrentMarker = marker->alternatives().size() + 1;
+            size_t interpretationsCountForCurrentMarker = alternatives.size() + 1;
             for (size_t i = 0; i < interpretationsCount; ++i) {
                 // Determine text for the ith interpretation. It will either be the visible text, or one of its
                 // alternatives stored in the marker.
@@ -770,7 +772,7 @@ NSArray *Frame::interpretationsForCurrentRoot() const
                 if (!indexOfInterpretationForCurrentMarker)
                     append(interpretations[i], visibleTextForMarker);
                 else
-                    append(interpretations[i], marker->alternatives().at(i % marker->alternatives().size()));
+                    append(interpretations[i], alternatives[i % alternatives.size()]);
             }
 
             combinationsSoFar *= interpretationsCountForCurrentMarker;
@@ -787,11 +789,9 @@ NSArray *Frame::interpretationsForCurrentRoot() const
             append(interpretation, textAfterLastMarker);
     }
 
-    NSMutableArray *result = [NSMutableArray array];
-    for (auto& interpretation : interpretations)
-        [result addObject:adoptNS([[NSString alloc] initWithCharacters:interpretation.data() length:interpretation.size()]).get()];
-
-    return result;
+    return createNSArray(interpretations, [] (auto& interpretation) {
+        return adoptNS([[NSString alloc] initWithCharacters:reinterpret_cast<const unichar*>(interpretation.data()) length:interpretation.size()]);
+    }).autorelease();
 }
 
 void Frame::viewportOffsetChanged(ViewportOffsetChangeType changeType)

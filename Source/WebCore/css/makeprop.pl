@@ -31,8 +31,10 @@ use File::Spec;
 use Getopt::Long;
 use JSON::PP;
 
-sub addProperty($$);
+sub isLogical;
+sub skippedFromComputedStyle;
 sub isPropertyEnabled($$);
+sub addProperty($$);
 sub removeInactiveCodegenProperties($$);
 
 my $inputFile = "CSSProperties.json";
@@ -61,6 +63,7 @@ my %defines = map { $_ => 1 } split(/ /, $defines);
 my @names;
 my @internalProprerties;
 my %runtimeFlags;
+my %settingsFlags;
 my $numPredefinedProperties = 2;
 my %nameIsInherited;
 my %nameIsHighPriority;
@@ -77,7 +80,6 @@ my %styleBuilderOptions = (
     "initial" => 1,
     "longhands" => 1,
     "name-for-methods" => 1,
-    "no-default-color" => 1,
     "svg" => 1,
     "skip-builder" => 1,
     "setter" => 1,
@@ -152,6 +154,51 @@ sub removeInactiveCodegenProperties($$)
     $propertyValue->{"codegen-properties"} = $matching_codegen_options;
 }
 
+sub skippedFromComputedStyle
+{
+  my $name = shift;
+
+  if (exists($propertiesWithStyleBuilderOptions{$name}{"skip-builder"}) and not isLogical($name)) {
+    return 1;
+  }
+
+  if (grep { $_ eq $name } @internalProprerties) {
+    return 1;
+  }
+
+  if (exists($propertiesWithStyleBuilderOptions{$name}{"longhands"})) {
+    my @longhands = @{$propertiesWithStyleBuilderOptions{$name}{"longhands"}};
+    if (scalar @longhands != 1) {
+      # Skip properties if they have a non-internal longhand property.
+      foreach my $longhand (@longhands) {
+        if (!skippedFromComputedStyle($longhand)) {
+          return 1;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+sub isLogical
+{
+    my $name = shift;
+    my $value = $propertiesHashRef->{$name};
+
+    if (!exists($value->{"specification"})) {
+        return 0;
+    }
+
+    my $spec_properties = $value->{"specification"};
+    if (!exists($spec_properties->{"category"})) {
+        return 0;
+    }
+
+    return $spec_properties->{"category"} eq "css-logical-props"
+}
+
 sub isPropertyEnabled($$)
 {
     my ($name, $propertyValue) = @_;
@@ -205,6 +252,8 @@ sub addProperty($$)
                     push @internalProprerties, $name
                 } elsif ($codegenOptionName eq "runtime-flag") {
                     $runtimeFlags{$name} = $codegenProperties->{"runtime-flag"};
+                } elsif ($codegenOptionName eq "settings-flag") {
+                    $settingsFlags{$name} = $codegenProperties->{"settings-flag"};
                 } else {
                     die "Unrecognized codegen property \"$codegenOptionName\" for $name property.";
                 }
@@ -250,6 +299,7 @@ print GPERF << "EOF";
 #include \"CSSPropertyNames.h\"
 #include \"HashTools.h\"
 #include "RuntimeEnabledFeatures.h"
+#include "Settings.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/text/AtomString.h>
 #include <wtf/text/WTFString.h>
@@ -341,6 +391,26 @@ print GPERF << "EOF";
     default:
         return true;
     }
+}
+
+bool isCSSPropertyEnabledBySettings(const CSSPropertyID id, const Settings* settings)
+{
+    if (!settings)
+        return true;
+
+    switch (id) {
+EOF
+
+foreach my $name (keys %settingsFlags) {
+  print GPERF "    case CSSPropertyID::CSSProperty" . $nameToId{$name} . ":\n";
+  print GPERF "        return settings->" . $settingsFlags{$name} . "Enabled();\n";
+}
+
+print GPERF << "EOF";
+    default:
+        return true;
+    }
+    return true;
 }
 
 const char* getPropertyName(CSSPropertyID id)
@@ -476,6 +546,8 @@ print HEADER << "EOF";
 
 namespace WebCore {
 
+class Settings;
+
 enum CSSPropertyID : uint16_t {
     CSSPropertyInvalid = 0,
     CSSPropertyCustom = 1,
@@ -517,27 +589,9 @@ sub sortWithPrefixedPropertiesLast
     }
     return $a cmp $b;
 }
+
 foreach my $name (sort sortWithPrefixedPropertiesLast @names) {
-  next if (exists($propertiesWithStyleBuilderOptions{$name}{"skip-builder"}));
-  next if (grep { $_ eq $name } @internalProprerties);
-
-  # Skip properties if they have a non-internal longhand property.
-  if (exists($propertiesWithStyleBuilderOptions{$name}{"longhands"})) {
-    my @longhands = @{$propertiesWithStyleBuilderOptions{$name}{"longhands"}};
-    if (scalar @longhands != 1) {
-      my $hasNonInternalLonghand = 0;
-      foreach my $longhand (@longhands) {
-        if (!exists($propertiesWithStyleBuilderOptions{$longhand}{"skip-builder"}) && !grep { $_ eq $longhand } @internalProprerties) {
-          $hasNonInternalLonghand = 1;
-          last;
-        }
-      }
-      if ($hasNonInternalLonghand) {
-        next;
-      }
-    }
-  }
-
+  next if skippedFromComputedStyle($name);
   print HEADER "    CSSProperty" . $nameToId{$name} . ",\n";
   $numComputedPropertyIDs += 1;
 }
@@ -548,6 +602,7 @@ print HEADER << "EOF";
 
 bool isInternalCSSProperty(const CSSPropertyID);
 bool isEnabledCSSProperty(const CSSPropertyID);
+bool isCSSPropertyEnabledBySettings(const CSSPropertyID, const Settings* = nullptr);
 const char* getPropertyName(CSSPropertyID);
 const WTF::AtomString& getPropertyNameAtomString(CSSPropertyID id);
 WTF::String getPropertyNameString(CSSPropertyID id);
@@ -563,7 +618,7 @@ inline CSSPropertyID convertToCSSPropertyID(int value)
 } // namespace WebCore
 
 namespace WTF {
-template<> struct DefaultHash<WebCore::CSSPropertyID> { typedef IntHash<unsigned> Hash; };
+template<> struct DefaultHash<WebCore::CSSPropertyID> { using Hash = IntHash<unsigned>; };
 template<> struct HashTraits<WebCore::CSSPropertyID> : GenericHashTraits<WebCore::CSSPropertyID> {
     static const bool emptyValueIsZero = true;
     static void constructDeletedValue(WebCore::CSSPropertyID& slot) { slot = static_cast<WebCore::CSSPropertyID>(WebCore::lastCSSProperty + 1); }
@@ -770,9 +825,6 @@ sub generateAnimationPropertyInitialValueSetter {
   my $setter = $propertiesWithStyleBuilderOptions{$name}{"setter"};
   my $initial = $propertiesWithStyleBuilderOptions{$name}{"initial"};
   $setterContent .= $indent . "list.animation(0)." . $setter . "(Animation::" . $initial . "());\n";
-  if ($name eq "-webkit-transition-property") {
-    $setterContent .= $indent . "list.animation(0).setAnimationMode(Animation::AnimateAll);\n";
-  }
   $setterContent .= $indent . "for (size_t i = 1; i < list.size(); ++i)\n";
   $setterContent .= $indent . "    list.animation(i)." . getClearFunction($name) . "();\n";
 
@@ -793,7 +845,6 @@ sub generateAnimationPropertyInheritValueSetter {
   my $getter = $propertiesWithStyleBuilderOptions{$name}{"getter"};
   my $setter = $propertiesWithStyleBuilderOptions{$name}{"setter"};
   $setterContent .= $indent . "    list.animation(i)." . $setter . "(parentList->animation(i)." . $getter . "());\n";
-  $setterContent .= $indent . "    list.animation(i).setAnimationMode(parentList->animation(i).animationMode());\n";
   $setterContent .= $indent . "}\n";
   $setterContent .= "\n";
   $setterContent .= $indent . "// Reset any remaining animations to not have the property set.\n";
@@ -980,10 +1031,6 @@ sub generateInheritValueSetter {
     $setterContent .= $indent . "    }\n";
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"visited-link-color-support"}) {
     $setterContent .= $indent . "    Color color = " . $parentStyle . "." . $getter . "();\n";
-    if (!exists($propertiesWithStyleBuilderOptions{$name}{"no-default-color"})) {
-      $setterContent .= $indent . "    if (!color.isValid())\n";
-      $setterContent .= $indent . "        color = " . $parentStyle . ".color();\n";
-    }
     $setterContent .= generateColorValueSetter($name, "color", $indent . "    ");
     $didCallSetValue = 1;
   } elsif (exists $propertiesWithStyleBuilderOptions{$name}{"animatable"}) {

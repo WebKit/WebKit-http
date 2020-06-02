@@ -23,23 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
 #if USE(INSERTION_UNDO_GROUPING)
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <AppKit/NSTextInputContext_Private.h>
-#else
-extern "C" NSString *NSTextInsertionUndoableAttributeName;
-#endif
-
-#endif // USE(INSERTION_UNDO_GROUPING)
 
 namespace WebCore {
     
-#if USE(INSERTION_UNDO_GROUPING)
-WEBCORE_EXPORT bool shouldRegisterInsertionUndoGroup(NSAttributedString*);
-WEBCORE_EXPORT void registerInsertionUndoGroupingWithUndoManager(NSUndoManager*);
-#endif
-    
+WEBCORE_EXPORT bool shouldRegisterInsertionUndoGroup(NSAttributedString *);
+WEBCORE_EXPORT void registerInsertionUndoGroupingWithUndoManager(NSUndoManager *);
+
 } // namespace WebCore
+
+#endif

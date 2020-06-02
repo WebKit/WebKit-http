@@ -108,6 +108,7 @@ public:
     virtual bool asArray(RefPtr<Array>&);
 
     static bool parseJSON(const String& jsonInput, RefPtr<Value>& output);
+    static void escapeString(StringBuilder&, StringView);
 
     String toJSONString() const;
     virtual void writeJSON(StringBuilder& output) const;
@@ -182,7 +183,7 @@ public:
     size_t memoryCost() const final;
 
 protected:
-    virtual ~ObjectBase();
+    ~ObjectBase() override;
 
     bool asObject(RefPtr<Object>& output) override;
 
@@ -300,7 +301,7 @@ public:
     size_t memoryCost() const final;
 
 protected:
-    virtual ~ArrayBase();
+    ~ArrayBase() override;
 
     bool asArray(RefPtr<Array>&) override;
 

@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ClonedArguments.h"
 
-#include "GetterSetter.h"
 #include "InlineCallFrame.h"
 #include "JSCInlines.h"
 
@@ -46,7 +45,7 @@ ClonedArguments* ClonedArguments::createEmpty(
 {
     unsigned vectorLength = length;
     if (vectorLength > MAX_STORAGE_VECTOR_LENGTH)
-        return 0;
+        return nullptr;
 
     Butterfly* butterfly;
     if (UNLIKELY(structure->mayInterceptIndexedAccesses() || structure->storedPrototypeObject()->needsSlowPutIndexing(vm))) {
@@ -56,9 +55,9 @@ ClonedArguments* ClonedArguments::createEmpty(
         IndexingHeader indexingHeader;
         indexingHeader.setVectorLength(vectorLength);
         indexingHeader.setPublicLength(length);
-        butterfly = Butterfly::tryCreate(vm, 0, 0, structure->outOfLineCapacity(), true, indexingHeader, vectorLength * sizeof(EncodedJSValue));
+        butterfly = Butterfly::tryCreate(vm, nullptr, 0, structure->outOfLineCapacity(), true, indexingHeader, vectorLength * sizeof(EncodedJSValue));
         if (!butterfly)
-            return 0;
+            return nullptr;
 
         for (unsigned i = length; i < vectorLength; ++i)
             butterfly->contiguous().atUnsafe(i).clear();
@@ -153,7 +152,7 @@ Structure* ClonedArguments::createStructure(VM& vm, JSGlobalObject* globalObject
     Structure* structure = Structure::create(vm, globalObject, prototype, TypeInfo(ClonedArgumentsType, StructureFlags), info(), indexingType);
     structure->addPropertyWithoutTransition(
         vm, vm.propertyNames->length, static_cast<unsigned>(PropertyAttribute::DontEnum),
-        [&](const GCSafeConcurrentJSCellLocker&, PropertyOffset offset, PropertyOffset newMaxOffset) {
+        [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, PropertyOffset newMaxOffset) {
             RELEASE_ASSERT(offset == clonedArgumentsLengthPropertyOffset);
             structure->setMaxOffset(vm, newMaxOffset);
         });
@@ -178,7 +177,7 @@ bool ClonedArguments::getOwnPropertySlot(JSObject* object, JSGlobalObject* globa
 
     if (!thisObject->specialsMaterialized()) {
         FunctionExecutable* executable = jsCast<FunctionExecutable*>(thisObject->m_callee->executable());
-        bool isStrictMode = executable->isStrictMode();
+        bool isStrictMode = executable->isInStrictContext();
 
         if (ident == vm.propertyNames->callee) {
             if (isStrictMode) {
@@ -250,7 +249,7 @@ void ClonedArguments::materializeSpecials(JSGlobalObject* globalObject)
     VM& vm = globalObject->vm();
     
     FunctionExecutable* executable = jsCast<FunctionExecutable*>(m_callee->executable());
-    bool isStrictMode = executable->isStrictMode();
+    bool isStrictMode = executable->isInStrictContext();
     
     if (isStrictMode)
         putDirectAccessor(globalObject, vm.propertyNames->callee, this->globalObject(vm)->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), PropertyAttribute::DontDelete | PropertyAttribute::DontEnum | PropertyAttribute::Accessor);

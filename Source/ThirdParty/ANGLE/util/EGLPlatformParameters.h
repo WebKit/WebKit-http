@@ -15,6 +15,17 @@
 namespace angle
 {
 struct PlatformMethods;
+
+// The GLES driver type determines what shared object we use to load the GLES entry points.
+// AngleEGL loads from ANGLE's version of libEGL, libGLESv2, and libGLESv1_CM.
+// SystemEGL uses the system copies of libEGL, libGLESv2, and libGLESv1_CM.
+// SystemWGL loads Windows GL with the GLES compatiblity extensions. See util/WGLWindow.h.
+enum class GLESDriverType
+{
+    AngleEGL,
+    SystemEGL,
+    SystemWGL,
+};
 }  // namespace angle
 
 struct EGLPlatformParameters
@@ -48,8 +59,8 @@ struct EGLPlatformParameters
     auto tie() const
     {
         return std::tie(renderer, majorVersion, minorVersion, deviceType, presentPath,
-                        debugLayersEnabled, contextVirtualization, commandGraphFeature,
-                        transformFeedbackFeature, platformMethods);
+                        debugLayersEnabled, contextVirtualization, transformFeedbackFeature,
+                        allocateNonZeroMemoryFeature, platformMethods, robustness);
     }
 
     EGLint renderer                         = EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE;
@@ -59,8 +70,9 @@ struct EGLPlatformParameters
     EGLint presentPath                      = EGL_DONT_CARE;
     EGLint debugLayersEnabled               = EGL_DONT_CARE;
     EGLint contextVirtualization            = EGL_DONT_CARE;
-    EGLint commandGraphFeature              = EGL_DONT_CARE;
+    EGLint robustness                       = EGL_DONT_CARE;
     EGLint transformFeedbackFeature         = EGL_DONT_CARE;
+    EGLint allocateNonZeroMemoryFeature     = EGL_DONT_CARE;
     angle::PlatformMethods *platformMethods = nullptr;
 };
 

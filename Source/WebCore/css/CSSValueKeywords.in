@@ -977,6 +977,12 @@ ease-out
 ease-in-out
 step-start
 step-end
+jump-start
+jump-end
+jump-none
+jump-both
+// start
+// end
 
 //
 // CSS_PROP_ZOOM
@@ -1345,11 +1351,9 @@ plain
 buy
 set-up
 donate
-#if defined(ENABLE_APPLE_PAY_SESSION_V4) && ENABLE_APPLE_PAY_SESSION_V4
 check-out
 book
 subscribe
-#endif
 #endif
 
 // font-synthesis

@@ -128,21 +128,36 @@ public:
         setX(edge);
         setWidth(std::max(0.0f, width() - delta));
     }
+
     void shiftMaxXEdgeTo(float edge)
     {
         float delta = edge - maxX();
         setWidth(std::max(0.0f, width() + delta));
     }
+
     void shiftYEdgeTo(float edge)
     {
         float delta = edge - y();
         setY(edge);
         setHeight(std::max(0.0f, height() - delta));
     }
+
     void shiftMaxYEdgeTo(float edge)
     {
         float delta = edge - maxY();
         setHeight(std::max(0.0f, height() + delta));
+    }
+
+    void shiftXEdgeBy(float delta)
+    {
+        move(delta, 0);
+        setWidth(std::max(0.0f, width() - delta));
+    }
+
+    void shiftYEdgeBy(float delta)
+    {
+        move(0, delta);
+        setHeight(std::max(0.0f, height() - delta));
     }
 
     FloatPoint minXMinYCorner() const { return m_location; } // typically topLeft
@@ -288,5 +303,8 @@ WEBCORE_EXPORT IntRect roundedIntRect(const FloatRect&);
 
 WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FloatRect&);
 
-}
+#ifdef __OBJC__
+WEBCORE_EXPORT id makeNSArrayElement(const FloatRect&);
+#endif
 
+}

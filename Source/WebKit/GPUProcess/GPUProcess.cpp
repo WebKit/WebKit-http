@@ -56,7 +56,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-#include <WebCore/MockAudioSharedUnit.h>
+#include <WebCore/MockRealtimeMediaSourceCenter.h>
 #endif
 
 namespace WebKit {
@@ -124,7 +124,7 @@ void GPUProcess::initializeGPUProcess(GPUProcessCreationParameters&& parameters)
     WTF::Thread::setCurrentThreadIsUserInitiated();
     AtomString::init();
 
-#if PLATFORM(IOS_FAMILY)
+#if PLATFORM(IOS_FAMILY) || ENABLE(ROUTING_ARBITRATION)
     DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
 

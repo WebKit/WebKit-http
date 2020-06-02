@@ -88,7 +88,10 @@ public:
     JSRetainPtr<JSStringRef> textContentType() const override;
     JSRetainPtr<JSStringRef> formInputLabel() const override;
     void selectFormAccessoryPickerRow(long rowIndex) override;
+    bool selectFormAccessoryHasCheckedItemAtRow(long rowIndex) const override;
     void setTimePickerValue(long hour, long minute) override;
+    double timePickerValueHour() const override;
+    double timePickerValueMinute() const override;
     bool isPresentingModally() const override;
     double contentOffsetX() const override;
     double contentOffsetY() const override;
@@ -134,12 +137,16 @@ public:
     long numberOfStrokesInEditableImage() override;
     void setKeyboardInputModeIdentifier(JSStringRef) override;
     void toggleCapsLock(JSValueRef) override;
+    bool keyboardIsAutomaticallyShifted() const override;
     JSObjectRef attachmentInfo(JSStringRef) override;
     UIView *platformContentView() const override;
     JSObjectRef calendarType() const override;
     void setHardwareKeyboardAttached(bool) override;
     void setAllowsViewportShrinkToFit(bool) override;
     void copyText(JSStringRef) override;
+    void installTapGestureOnWindow(JSValueRef) override;
+
+    bool mayContainEditableElementsInRect(unsigned x, unsigned y, unsigned width, unsigned height) override;
 
     void setDidStartFormControlInteractionCallback(JSValueRef) override;
     void setDidEndFormControlInteractionCallback(JSValueRef) override;

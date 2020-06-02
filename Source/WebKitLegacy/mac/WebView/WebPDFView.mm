@@ -326,9 +326,7 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursiveDisplayRectIfNeededIgnoringOpacity:(NSRect)rect isVisibleRect:(BOOL)isVisibleRect rectIsVisibleRectForView:(NSView *)visibleView topView:(BOOL)topView
 {
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-    ALLOW_DEPRECATED_DECLARATIONS_END
+    CGContextRef context = [[NSGraphicsContext currentContext] CGContext];
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -341,9 +339,7 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursiveDisplayAllDirtyWithLockFocus:(BOOL)needsLockFocus visRect:(NSRect)visRect
 {
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-    ALLOW_DEPRECATED_DECLARATIONS_END
+    CGContextRef context = [[NSGraphicsContext currentContext] CGContext];
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -356,9 +352,7 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext topView:(BOOL)topView
 {
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    CGContextRef context = (CGContextRef)[graphicsContext graphicsPort];
-    ALLOW_DEPRECATED_DECLARATIONS_END
+    CGContextRef context = [graphicsContext CGContext];
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -590,13 +584,10 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (NSDictionary *)elementAtPoint:(NSPoint)point
 {
-    WebFrame *frame = [dataSource webFrame];
-    ASSERT(frame);
-    
-    return [NSDictionary dictionaryWithObjectsAndKeys:
-        frame, WebElementFrameKey, 
-        [NSNumber numberWithBool:[self _pointIsInSelection:point]], WebElementIsSelectedKey,
-        nil];
+    return @{
+        WebElementFrameKey: [dataSource webFrame],
+        WebElementIsSelectedKey: @([self _pointIsInSelection:point]),
+    };
 }
 
 - (NSDictionary *)elementAtPoint:(NSPoint)point allowShadowContent:(BOOL)allow
@@ -795,10 +786,10 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 {
     NSMutableArray *state = [NSMutableArray arrayWithCapacity:4];
     PDFDisplayMode mode = [PDFSubview displayMode];
-    [state addObject:[NSNumber numberWithInt:mode]];
+    [state addObject:@(mode)];
     if (mode == kPDFDisplaySinglePage || mode == kPDFDisplayTwoUp) {
         unsigned int pageIndex = [[PDFSubview document] indexForPage:[PDFSubview currentPage]];
-        [state addObject:[NSNumber numberWithUnsignedInt:pageIndex]];
+        [state addObject:@(pageIndex)];
     }  // else in continuous modes, scroll position gets us to the right page
     BOOL autoScaleFlag = [PDFSubview autoScales];
     [state addObject:[NSNumber numberWithBool:autoScaleFlag]];
@@ -882,7 +873,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 - (NSArray *)selectionTextRects
 {
     // FIXME: We'd need new PDFKit API/SPI to get multiple text rects for selections that intersect more than one line
-    return [NSArray arrayWithObject:[NSValue valueWithRect:[self selectionRect]]];
+    return @[[NSValue valueWithRect:[self selectionRect]]];
 }
 
 - (NSView *)selectionView
@@ -926,7 +917,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
 - (NSArray *)pasteboardTypesForSelection
 {
-    return [NSArray arrayWithObjects:WebCore::legacyRTFDPasteboardType(), WebCore::legacyRTFPasteboardType(), WebCore::legacyStringPasteboardType(), nil];
+    return @[WebCore::legacyRTFDPasteboardType(), WebCore::legacyRTFPasteboardType(), WebCore::legacyStringPasteboardType()];
 }
 
 - (void)writeSelectionWithPasteboardTypes:(NSArray *)types toPasteboard:(NSPasteboard *)pasteboard
@@ -990,7 +981,8 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
     // Call to the frame loader because this is where our security checks are made.
     auto* frame = core([dataSource webFrame]);
-    WebCore::FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, WebCore::LockHistory::No, WebCore::LockBackForwardList::No, WebCore::ReferrerPolicy::NoReferrer, WebCore::AllowNavigationToInvalidURL::Yes, WebCore::NewFrameOpenerPolicy::Allow, WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow, WebCore::InitiatedByMainFrame::Unknown };
+    WebCore::FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, WebCore::InitiatedByMainFrame::Unknown };
+    frameLoadRequest.setReferrerPolicy(WebCore::ReferrerPolicy::NoReferrer);
     frame->loader().loadFrameRequest(WTFMove(frameLoadRequest), event.get(), nullptr);
 }
 
@@ -1124,22 +1116,23 @@ static void removeUselessMenuItemSeparators(NSMutableArray *menuItems)
 - (NSMutableArray *)_menuItemsFromPDFKitForEvent:(NSEvent *)theEvent
 {
     NSMutableArray *copiedItems = [NSMutableArray array];
-    NSDictionary *actionsToTags = [[NSDictionary alloc] initWithObjectsAndKeys:
+
 IGNORE_WARNINGS_BEGIN("undeclared-selector")
-        [NSNumber numberWithInt:WebMenuItemPDFActualSize], NSStringFromSelector(@selector(_setActualSize:)),
-        [NSNumber numberWithInt:WebMenuItemPDFZoomIn], NSStringFromSelector(@selector(zoomIn:)),
-        [NSNumber numberWithInt:WebMenuItemPDFZoomOut], NSStringFromSelector(@selector(zoomOut:)),
-        [NSNumber numberWithInt:WebMenuItemPDFAutoSize], NSStringFromSelector(@selector(_setAutoSize:)),
-        [NSNumber numberWithInt:WebMenuItemPDFSinglePage], NSStringFromSelector(@selector(_setSinglePage:)),
-        [NSNumber numberWithInt:WebMenuItemPDFSinglePageScrolling], NSStringFromSelector(@selector(_setSinglePageScrolling:)),
-        [NSNumber numberWithInt:WebMenuItemPDFFacingPages], NSStringFromSelector(@selector(_setDoublePage:)),
-        [NSNumber numberWithInt:WebMenuItemPDFFacingPagesScrolling], NSStringFromSelector(@selector(_setDoublePageScrolling:)),
-        [NSNumber numberWithInt:WebMenuItemPDFContinuous], NSStringFromSelector(@selector(_toggleContinuous:)),
-        [NSNumber numberWithInt:WebMenuItemPDFNextPage], NSStringFromSelector(@selector(goToNextPage:)),
-        [NSNumber numberWithInt:WebMenuItemPDFPreviousPage], NSStringFromSelector(@selector(goToPreviousPage:)),
-IGNORE_WARNINGS_END
+    NSDictionary *actionsToTags = [[NSDictionary alloc] initWithObjectsAndKeys:
+        @(WebMenuItemPDFActualSize), NSStringFromSelector(@selector(_setActualSize:)),
+        @(WebMenuItemPDFZoomIn), NSStringFromSelector(@selector(zoomIn:)),
+        @(WebMenuItemPDFZoomOut), NSStringFromSelector(@selector(zoomOut:)),
+        @(WebMenuItemPDFAutoSize), NSStringFromSelector(@selector(_setAutoSize:)),
+        @(WebMenuItemPDFSinglePage), NSStringFromSelector(@selector(_setSinglePage:)),
+        @(WebMenuItemPDFSinglePageScrolling), NSStringFromSelector(@selector(_setSinglePageScrolling:)),
+        @(WebMenuItemPDFFacingPages), NSStringFromSelector(@selector(_setDoublePage:)),
+        @(WebMenuItemPDFFacingPagesScrolling), NSStringFromSelector(@selector(_setDoublePageScrolling:)),
+        @(WebMenuItemPDFContinuous), NSStringFromSelector(@selector(_toggleContinuous:)),
+        @(WebMenuItemPDFNextPage), NSStringFromSelector(@selector(goToNextPage:)),
+        @(WebMenuItemPDFPreviousPage), NSStringFromSelector(@selector(goToPreviousPage:)),
         nil];
-    
+IGNORE_WARNINGS_END
+
     // Leave these menu items out, since WebKit inserts equivalent ones. Note that we leave out PDFKit's "Look Up in Dictionary"
     // item here because WebKit already includes an item with the same title and purpose. We map WebKit's to PDFKit's 
     // "Look Up in Dictionary" via the implementation of -[WebPDFView _lookUpInDictionaryFromMenu:].
@@ -1265,20 +1258,13 @@ IGNORE_WARNINGS_END
     if (opath) {
         if (!written) {
             // Create a PDF file with the minimal permissions (only accessible to the current user, see 4145714)
-            NSNumber *permissions = [[NSNumber alloc] initWithInt:S_IRUSR];
-            NSDictionary *fileAttributes = [[NSDictionary alloc] initWithObjectsAndKeys:permissions, NSFilePosixPermissions, nil];
-            [permissions release];
-
-            [[NSFileManager defaultManager] createFileAtPath:opath contents:[dataSource data] attributes:fileAttributes];
-            
-            [fileAttributes release];
+            [[NSFileManager defaultManager] createFileAtPath:opath contents:[dataSource data] attributes:@{ NSFilePosixPermissions: @(S_IRUSR) }];
             written = YES;
         }
         
         ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (![[NSWorkspace sharedWorkspace] openFile:opath]) {
-            // NSWorkspace couldn't open file.  Do we need an alert
-            // here?  We ignore the error elsewhere.
+            // NSWorkspace couldn't open file. Do we need an alert here? We ignore the error elsewhere.
         }
         ALLOW_DEPRECATED_DECLARATIONS_END
     }
@@ -1345,12 +1331,7 @@ IGNORE_WARNINGS_END
 - (BOOL)_pointIsInSelection:(NSPoint)point
 {
     PDFPage *page = [PDFSubview pageForPoint:point nearest:NO];
-    if (!page)
-        return NO;
-    
-    NSRect selectionRect = [PDFSubview convertRect:[[PDFSubview currentSelection] boundsForPage:page] fromPage:page];
-    
-    return NSPointInRect(point, selectionRect);
+    return page && NSPointInRect(point, [PDFSubview convertRect:[[PDFSubview currentSelection] boundsForPage:page] fromPage:page]);
 }
 
 - (void)_scaleOrDisplayModeOrPageChanged:(NSNotification *)notification

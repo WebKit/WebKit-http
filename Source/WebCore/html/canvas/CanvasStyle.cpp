@@ -54,17 +54,15 @@ bool isCurrentColorString(const String& colorString)
 Color parseColor(const String& colorString, CanvasBase& canvasBase)
 {
 #if ENABLE(OFFSCREEN_CANVAS)
-    if (canvasBase.isOffscreenCanvas()) {
-        auto& canvas = downcast<OffscreenCanvas>(canvasBase);
-        return CSSParser::parseColorWorkerSafe(colorString, canvas.cssValuePool());
-    }
+    if (canvasBase.isOffscreenCanvas())
+        return CSSParser::parseColorWorkerSafe(colorString);
 #else
     UNUSED_PARAM(canvasBase);
 #endif
     Color color = CSSParser::parseColor(colorString);
     if (color.isValid())
         return color;
-    return CSSParser::parseSystemColor(colorString, nullptr);
+    return CSSParser::parseSystemColor(colorString);
 }
 
 Color currentColor(CanvasBase& canvasBase)
@@ -95,17 +93,17 @@ CanvasStyle::CanvasStyle(Color color)
 }
 
 CanvasStyle::CanvasStyle(float grayLevel, float alpha)
-    : m_style(Color { grayLevel, grayLevel, grayLevel, alpha })
+    : m_style(makeSimpleColorFromFloats(grayLevel, grayLevel, grayLevel, alpha))
 {
 }
 
 CanvasStyle::CanvasStyle(float r, float g, float b, float a)
-    : m_style(Color { r, g, b, a })
+    : m_style(makeSimpleColorFromFloats(r, g, b, a))
 {
 }
 
 CanvasStyle::CanvasStyle(float c, float m, float y, float k, float a)
-    : m_style(CMYKAColor { Color { c, m, y, k, a }, c, m, y, k, a })
+    : m_style(CMYKAColor { makeSimpleColorFromCMYKA(c, m, y, k, a), c, m, y, k, a })
 {
 }
 
@@ -145,7 +143,7 @@ CanvasStyle CanvasStyle::createFromStringWithOverrideAlpha(const String& colorSt
     if (!color.isValid())
         return { };
 
-    return Color { colorWithOverrideAlpha(color.rgb(), alpha) };
+    return color.colorWithAlphaUsingAlternativeRounding(alpha);
 }
 
 bool CanvasStyle::isEquivalentColor(const CanvasStyle& other) const
@@ -164,7 +162,7 @@ bool CanvasStyle::isEquivalentColor(const CanvasStyle& other) const
 
 bool CanvasStyle::isEquivalentRGBA(float r, float g, float b, float a) const
 {
-    return WTF::holds_alternative<Color>(m_style) && WTF::get<Color>(m_style) == Color { r, g, b, a };
+    return WTF::holds_alternative<Color>(m_style) && WTF::get<Color>(m_style) == makeSimpleColorFromFloats(r, g, b, a);
 }
 
 bool CanvasStyle::isEquivalentCMYKA(float c, float m, float y, float k, float a) const

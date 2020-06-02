@@ -52,7 +52,7 @@ public:
 
     ~ScriptMessageClient() { }
 
-    void didPostMessage(WebPageProxy& page, FrameInfoData&&, WebCore::SerializedScriptValue& serializedScriptValue) override
+    void didPostMessage(WebPageProxy& page, FrameInfoData&&, API::ContentWorld&, WebCore::SerializedScriptValue& serializedScriptValue) override
     {
         auto tokens = serializedScriptValue.toString().split(":");
         if (tokens.size() != 3)
@@ -60,6 +60,15 @@ public:
 
         URL requestURL { { }, page.pageLoadState().url() };
         m_inspectorProtocolHandler.inspect(requestURL.hostAndPort(), tokens[0].toUIntStrict(), tokens[1].toUIntStrict(), tokens[2]);
+    }
+    
+    bool supportsAsyncReply() override
+    {
+        return false;
+    }
+    
+    void didPostMessageWithAsyncReply(WebPageProxy&, FrameInfoData&&, API::ContentWorld&, WebCore::SerializedScriptValue&, WTF::Function<void(API::SerializedScriptValue*, const String&)>&&) override
+    {
     }
 
 private:
@@ -83,6 +92,8 @@ private:
 
 static Optional<Inspector::DebuggableType> parseDebuggableTypeFromString(const String& debuggableTypeString)
 {
+    if (debuggableTypeString == "itml"_s)
+        return Inspector::DebuggableType::ITML;
     if (debuggableTypeString == "javascript"_s)
         return Inspector::DebuggableType::JavaScript;
     if (debuggableTypeString == "page"_s)
@@ -109,7 +120,7 @@ void RemoteInspectorProtocolHandler::inspect(const String& hostAndPort, Connecti
 
 void RemoteInspectorProtocolHandler::runScript(const String& script)
 {
-    m_page.runJavaScriptInMainFrame({ script, false, WTF::nullopt, false }, 
+    m_page.runJavaScriptInMainFrame({ script, URL { }, false, WTF::nullopt, false }, 
         [](API::SerializedScriptValue*, Optional<WebCore::ExceptionDetails> exceptionDetails, CallbackBase::Error) {
             if (exceptionDetails)
                 LOG_ERROR("Exception running script \"%s\"", exceptionDetails->message.utf8().data());

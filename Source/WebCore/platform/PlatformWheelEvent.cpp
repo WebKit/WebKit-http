@@ -53,9 +53,19 @@ TextStream& operator<<(TextStream& ts, const PlatformWheelEvent& event)
     ts << "PlatformWheelEvent " << &event << " at " << event.position() << " deltaX " << event.deltaX() << " deltaY " << event.deltaY();
 
 #if ENABLE(KINETIC_SCROLLING)
-    ts << " phase \"" << event.phase() << "\" momentumum phase \"" << event.momentumPhase() << "\"";
+    ts << " phase \"" << event.phase() << "\" momentum phase \"" << event.momentumPhase() << "\"";
 #endif
 
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, WheelEventProcessingSteps steps)
+{
+    switch (steps) {
+    case WheelEventProcessingSteps::ScrollingThread: ts << "scrolling thread"; break;
+    case WheelEventProcessingSteps::MainThreadForScrolling: ts << "main thread scrolling"; break;
+    case WheelEventProcessingSteps::MainThreadForDOMEventDispatch: ts << "main thread DOM evnet dispatch"; break;
+    }
     return ts;
 }
 

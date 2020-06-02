@@ -30,6 +30,7 @@
 
 #include <wtf/Assertions.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Vector.h>
 
 namespace WTF {
 
@@ -94,8 +95,8 @@ public:
     private:
         void reset()
         {
-            m_left = 0;
-            m_right = 0;
+            m_left = nullptr;
+            m_right = nullptr;
             m_parentAndRed = 1; // initialize to red
         }
         
@@ -152,7 +153,7 @@ public:
     };
 
     RedBlackTree()
-        : m_root(0)
+        : m_root(nullptr)
     {
     }
     
@@ -295,7 +296,7 @@ public:
     
     NodeType* findLeastGreaterThanOrEqual(const KeyType& key) const
     {
-        NodeType* best = 0;
+        NodeType* best = nullptr;
         for (NodeType* current = m_root; current;) {
             if (current->key() == key)
                 return current;
@@ -311,7 +312,7 @@ public:
     
     NodeType* findGreatestLessThanOrEqual(const KeyType& key) const
     {
-        NodeType* best = 0;
+        NodeType* best = nullptr;
         for (NodeType* current = m_root; current;) {
             if (current->key() == key)
                 return current;
@@ -324,11 +325,31 @@ public:
         }
         return best;
     }
+
+    template <typename Function>
+    void iterate(Function function)
+    {
+        if (!m_root)
+            return;
+
+        Vector<NodeType*, 16> toIterate;
+        toIterate.append(m_root);
+        while (toIterate.size()) {
+            NodeType& current = *toIterate.takeLast();
+            bool iterateLeft = false;
+            bool iterateRight = false;
+            function(current, iterateLeft, iterateRight);
+            if (iterateLeft && current.left())
+                toIterate.append(current.left());
+            if (iterateRight && current.right())
+                toIterate.append(current.right());
+        }
+    }
     
     NodeType* first() const
     {
         if (!m_root)
-            return 0;
+            return nullptr;
         return treeMinimum(m_root);
     }
     
@@ -392,7 +413,7 @@ private:
         ASSERT(!z->parent());
         ASSERT(z->color() == Red);
         
-        NodeType* y = 0;
+        NodeType* y = nullptr;
         NodeType* x = m_root;
         while (x) {
             y = x;

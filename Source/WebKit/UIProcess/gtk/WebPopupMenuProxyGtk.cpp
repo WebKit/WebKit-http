@@ -29,6 +29,7 @@
 #include "NativeWebMouseEvent.h"
 #include "WebPopupItem.h"
 #include <WebCore/GtkUtilities.h>
+#include <WebCore/GtkVersioning.h>
 #include <WebCore/IntRect.h>
 #include <gtk/gtk.h>
 #include <wtf/glib/GUniquePtr.h>
@@ -88,20 +89,40 @@ bool WebPopupMenuProxyGtk::activateItemAtPath(GtkTreePath* path)
     return true;
 }
 
-void WebPopupMenuProxyGtk::treeViewRowActivatedCallback(GtkTreeView*, GtkTreePath* path, GtkTreeViewColumn*, WebPopupMenuProxyGtk* popupMenu)
+bool WebPopupMenuProxyGtk::handleKeyPress(unsigned keyval, uint32_t timestamp)
 {
-    popupMenu->activateItemAtPath(path);
+    if (keyval == GDK_KEY_Escape) {
+        hidePopupMenu();
+        return true;
+    }
+
+    return typeAheadFind(keyval, timestamp);
 }
 
-gboolean WebPopupMenuProxyGtk::treeViewButtonReleaseEventCallback(GtkWidget* treeView, GdkEventButton* event, WebPopupMenuProxyGtk* popupMenu)
+void WebPopupMenuProxyGtk::activateSelectedItem()
+{
+    if (!m_popup)
+        return;
+
+    GtkTreeModel* model;
+    GtkTreeIter iter;
+    if (!gtk_tree_selection_get_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(m_treeView)), &model, &iter))
+        return;
+
+    GUniquePtr<GtkTreePath> path(gtk_tree_model_get_path(model, &iter));
+    activateItemAtPath(path.get());
+}
+
+#if !USE(GTK4)
+gboolean WebPopupMenuProxyGtk::treeViewButtonReleaseEventCallback(GtkWidget* treeView, GdkEvent* event, WebPopupMenuProxyGtk* popupMenu)
 {
     guint button;
-    gdk_event_get_button(reinterpret_cast<GdkEvent*>(event), &button);
+    gdk_event_get_button(event, &button);
     if (button != GDK_BUTTON_PRIMARY)
         return FALSE;
 
     double x, y;
-    gdk_event_get_coords(reinterpret_cast<GdkEvent*>(event), &x, &y);
+    gdk_event_get_coords(event, &x, &y);
     GUniqueOutPtr<GtkTreePath> path;
     if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeView), x, y, &path.outPtr(), nullptr, nullptr, nullptr))
         return FALSE;
@@ -118,25 +139,21 @@ gboolean WebPopupMenuProxyGtk::buttonPressEventCallback(GtkWidget* widget, GdkEv
     return TRUE;
 }
 
-gboolean WebPopupMenuProxyGtk::keyPressEventCallback(GtkWidget* widget, GdkEventKey* event, WebPopupMenuProxyGtk* popupMenu)
+gboolean WebPopupMenuProxyGtk::keyPressEventCallback(GtkWidget* widget, GdkEvent* event, WebPopupMenuProxyGtk* popupMenu)
 {
     if (!popupMenu->m_device)
         return FALSE;
 
     guint keyval;
-    gdk_event_get_keyval(reinterpret_cast<GdkEvent*>(event), &keyval);
-    if (keyval == GDK_KEY_Escape) {
-        popupMenu->hidePopupMenu();
-        return TRUE;
-    }
-
-    if (popupMenu->typeAheadFind(event))
+    gdk_event_get_keyval(event, &keyval);
+    if (popupMenu->handleKeyPress(keyval, gdk_event_get_time(event)))
         return TRUE;
 
     // Forward the event to the tree view.
-    gtk_widget_event(popupMenu->m_treeView, reinterpret_cast<GdkEvent*>(event));
+    gtk_widget_event(popupMenu->m_treeView, event);
     return TRUE;
 }
+#endif
 
 void WebPopupMenuProxyGtk::createPopupMenu(const Vector<WebPopupItem>& items, int32_t selectedIndex)
 {
@@ -177,8 +194,13 @@ void WebPopupMenuProxyGtk::createPopupMenu(const Vector<WebPopupItem>& items, in
 
     m_treeView = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model.get()));
     auto* treeView = GTK_TREE_VIEW(m_treeView);
-    g_signal_connect(treeView, "row-activated", G_CALLBACK(treeViewRowActivatedCallback), this);
+    g_signal_connect_swapped(treeView, "row-activated", G_CALLBACK(+[](WebPopupMenuProxyGtk* popupMenu, GtkTreePath* path) {
+        popupMenu->activateItemAtPath(path);
+    }), this);
+
+#if !USE(GTK4)
     g_signal_connect_after(treeView, "button-release-event", G_CALLBACK(treeViewButtonReleaseEventCallback), this);
+#endif
     gtk_tree_view_set_tooltip_column(treeView, Columns::Tooltip);
     gtk_tree_view_set_show_expanders(treeView, FALSE);
     gtk_tree_view_set_level_indentation(treeView, 12);
@@ -211,10 +233,33 @@ void WebPopupMenuProxyGtk::createPopupMenu(const Vector<WebPopupItem>& items, in
 
     auto* swindow = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(swindow), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+#if USE(GTK4)
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(swindow), m_treeView);
+#else
     gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(swindow), GTK_SHADOW_ETCHED_IN);
     gtk_container_add(GTK_CONTAINER(swindow), m_treeView);
     gtk_widget_show(m_treeView);
+#endif
 
+#if USE(GTK4)
+    m_popup = gtk_popover_new();
+    g_signal_connect_swapped(m_popup, "closed", G_CALLBACK(+[](WebPopupMenuProxyGtk* popupMenu) {
+        popupMenu->hidePopupMenu();
+    }), this);
+    gtk_popover_set_has_arrow(GTK_POPOVER(m_popup), FALSE);
+    gtk_popover_set_position(GTK_POPOVER(m_popup), GTK_POS_BOTTOM);
+    gtk_popover_set_child(GTK_POPOVER(m_popup), swindow);
+    gtk_widget_set_parent(m_popup, m_webView);
+
+    auto* controller = gtk_event_controller_key_new();
+    g_signal_connect_swapped(controller, "key-pressed", G_CALLBACK(+[](WebPopupMenuProxyGtk* popupMenu, unsigned keyval, unsigned, GdkModifierType, GtkEventController* controller) {
+        auto* event = gtk_event_controller_get_current_event(controller);
+        if (popupMenu->typeAheadFind(keyval, gdk_event_get_time(event)))
+            return GDK_EVENT_STOP;
+        return gtk_event_controller_key_forward(GTK_EVENT_CONTROLLER_KEY(controller), popupMenu->m_treeView);
+    }), this);
+    gtk_widget_add_controller(m_popup, controller);
+#else
     m_popup = gtk_window_new(GTK_WINDOW_POPUP);
     g_signal_connect(m_popup, "button-press-event", G_CALLBACK(buttonPressEventCallback), this);
     g_signal_connect(m_popup, "key-press-event", G_CALLBACK(keyPressEventCallback), this);
@@ -222,6 +267,7 @@ void WebPopupMenuProxyGtk::createPopupMenu(const Vector<WebPopupItem>& items, in
     gtk_window_set_resizable(GTK_WINDOW(m_popup), FALSE);
     gtk_container_add(GTK_CONTAINER(m_popup), swindow);
     gtk_widget_show(swindow);
+#endif
 }
 
 void WebPopupMenuProxyGtk::show()
@@ -246,20 +292,40 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
     auto* column = gtk_tree_view_get_column(GTK_TREE_VIEW(m_treeView), Columns::Label);
     gint itemHeight;
     gtk_tree_view_column_cell_get_size(column, nullptr, nullptr, nullptr, nullptr, &itemHeight);
+#if !USE(GTK4)
     gint verticalSeparator;
     gtk_widget_style_get(m_treeView, "vertical-separator", &verticalSeparator, nullptr);
     itemHeight += verticalSeparator;
+#endif
     if (!itemHeight)
         return;
 
+#if !USE(GTK4)
+    auto* toplevel = gtk_widget_get_toplevel(m_webView);
+    if (GTK_IS_WINDOW(toplevel)) {
+        gtk_window_set_transient_for(GTK_WINDOW(m_popup), GTK_WINDOW(toplevel));
+        gtk_window_group_add_window(gtk_window_get_group(GTK_WINDOW(toplevel)), GTK_WINDOW(m_popup));
+    }
+    gtk_window_set_attached_to(GTK_WINDOW(m_popup), m_webView);
+    gtk_window_set_screen(GTK_WINDOW(m_popup), gtk_widget_get_screen(m_webView));
+#endif
+
     auto* display = gtk_widget_get_display(m_webView);
+#if USE(GTK4)
+    auto* monitor = gdk_display_get_monitor_at_surface(display, gtk_native_get_surface(gtk_widget_get_native(m_webView)));
+#else
     auto* monitor = gdk_display_get_monitor_at_window(display, gtk_widget_get_window(m_webView));
+#endif
     GdkRectangle area;
     gdk_monitor_get_workarea(monitor, &area);
     int width = std::min(rect.width(), area.width);
     size_t itemCount = std::min<size_t>(items.size(), (area.height / 3) / itemHeight);
 
+#if USE(GTK4)
+    auto* swindow = GTK_SCROLLED_WINDOW(gtk_popover_get_child(GTK_POPOVER(m_popup)));
+#else
     auto* swindow = GTK_SCROLLED_WINDOW(gtk_bin_get_child(GTK_BIN(m_popup)));
+#endif
     // Disable scrollbars when there's only one item to ensure the scrolled window doesn't take them into account when calculating its minimum size.
     gtk_scrolled_window_set_policy(swindow, GTK_POLICY_NEVER, itemCount > 1 ? GTK_POLICY_AUTOMATIC : GTK_POLICY_NEVER);
     gtk_widget_realize(m_treeView);
@@ -268,12 +334,21 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
     gtk_widget_set_size_request(m_popup, width, -1);
     gtk_scrolled_window_set_min_content_height(swindow, itemCount * itemHeight);
 
+#if USE(GTK4)
+    GdkRectangle windowRect = { rect.x(), rect.y(), rect.width(), rect.height() };
+    gtk_popover_set_pointing_to(GTK_POPOVER(m_popup), &windowRect);
+    show();
+#else
+#if GTK_CHECK_VERSION(3, 24, 0)
+    GdkRectangle windowRect = { rect.x(), rect.y(), rect.width(), rect.height() };
+    gtk_widget_translate_coordinates(m_webView, toplevel, windowRect.x, windowRect.y, &windowRect.x, &windowRect.y);
+    gdk_window_move_to_rect(gtk_widget_get_window(m_popup), &windowRect, GDK_GRAVITY_SOUTH_WEST, GDK_GRAVITY_NORTH_WEST,
+        static_cast<GdkAnchorHints>(GDK_ANCHOR_FLIP | GDK_ANCHOR_SLIDE | GDK_ANCHOR_RESIZE), 0, 0);
+#else
     GtkRequisition menuRequisition;
     gtk_widget_get_preferred_size(m_popup, &menuRequisition, nullptr);
+
     IntPoint menuPosition = convertWidgetPointToScreenPoint(m_webView, rect.location());
-    // FIXME: We can't ensure the menu will be on screen in Wayland.
-    // https://blog.gtk.org/2016/07/15/future-of-relative-window-positioning/
-    // https://gitlab.gnome.org/GNOME/gtk/issues/997
     if (menuPosition.x() + menuRequisition.width > area.x + area.width)
         menuPosition.setX(area.x + area.width - menuRequisition.width);
 
@@ -283,14 +358,7 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
     else
         menuPosition.move(0, -menuRequisition.height);
     gtk_window_move(GTK_WINDOW(m_popup), menuPosition.x(), menuPosition.y());
-
-    auto* toplevel = gtk_widget_get_toplevel(m_webView);
-    if (GTK_IS_WINDOW(toplevel)) {
-        gtk_window_set_transient_for(GTK_WINDOW(m_popup), GTK_WINDOW(toplevel));
-        gtk_window_group_add_window(gtk_window_get_group(GTK_WINDOW(toplevel)), GTK_WINDOW(m_popup));
-    }
-    gtk_window_set_attached_to(GTK_WINDOW(m_popup), m_webView);
-    gtk_window_set_screen(GTK_WINDOW(m_popup), gtk_widget_get_screen(m_webView));
+#endif
 
     const GdkEvent* event = m_client->currentlyProcessedMouseDownEvent() ? m_client->currentlyProcessedMouseDownEvent()->nativeEvent() : nullptr;
     m_device = event ? gdk_event_get_device(event) : nullptr;
@@ -315,6 +383,7 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
        m_client->failedToShowPopupMenu();
        return;
     }
+#endif
 }
 
 void WebPopupMenuProxyGtk::hidePopupMenu()
@@ -322,6 +391,7 @@ void WebPopupMenuProxyGtk::hidePopupMenu()
     if (!m_popup)
         return;
 
+#if !USE(GTK4)
     if (m_device) {
         gdk_seat_ungrab(gdk_device_get_seat(m_device));
         gtk_grab_remove(m_popup);
@@ -329,6 +399,7 @@ void WebPopupMenuProxyGtk::hidePopupMenu()
         gtk_window_set_attached_to(GTK_WINDOW(m_popup), nullptr);
         m_device = nullptr;
     }
+#endif
 
     activateItem(WTF::nullopt);
 
@@ -337,8 +408,12 @@ void WebPopupMenuProxyGtk::hidePopupMenu()
         m_currentSearchString = nullptr;
     }
 
+#if USE(GTK4)
+    g_clear_pointer(&m_popup, gtk_widget_unparent);
+#else
     gtk_widget_destroy(m_popup);
     m_popup = nullptr;
+#endif
 }
 
 void WebPopupMenuProxyGtk::cancelTracking()
@@ -350,15 +425,12 @@ void WebPopupMenuProxyGtk::cancelTracking()
     hidePopupMenu();
 }
 
-Optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* event)
+Optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(unsigned keyval, uint32_t time)
 {
-    guint keyval;
-    gdk_event_get_keyval(reinterpret_cast<GdkEvent*>(event), &keyval);
     gunichar keychar = gdk_keyval_to_unicode(keyval);
     if (!g_unichar_isprint(keychar))
         return WTF::nullopt;
 
-    uint32_t time = gdk_event_get_time(reinterpret_cast<GdkEvent*>(event));
     if (time < m_previousKeyEventTime)
         return WTF::nullopt;
 
@@ -420,9 +492,9 @@ Optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* event)
     return WTF::nullopt;
 }
 
-bool WebPopupMenuProxyGtk::typeAheadFind(GdkEventKey* event)
+bool WebPopupMenuProxyGtk::typeAheadFind(unsigned keyval, uint32_t timestamp)
 {
-    auto searchIndex = typeAheadFindIndex(event);
+    auto searchIndex = typeAheadFindIndex(keyval, timestamp);
     if (!searchIndex)
         return false;
 

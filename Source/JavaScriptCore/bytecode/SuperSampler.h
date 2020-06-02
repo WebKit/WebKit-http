@@ -48,11 +48,20 @@ public:
             g_superSamplerCount--;
     }
 
+    void release()
+    {
+        ASSERT(m_doSample);
+        g_superSamplerCount--;
+        m_doSample = false;
+    }
+
 private:
     bool m_doSample;
 };
 
 JS_EXPORT_PRIVATE void resetSuperSamplerState();
 JS_EXPORT_PRIVATE void printSuperSamplerState();
+JS_EXPORT_PRIVATE void enableSuperSampler();
+JS_EXPORT_PRIVATE void disableSuperSampler();
 
 } // namespace JSC

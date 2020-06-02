@@ -33,6 +33,7 @@
 #include "CSSMarkup.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyParser.h"
+#include "RuntimeEnabledFeatures.h"
 #include <limits.h>
 #include <wtf/HexNumber.h>
 #include <wtf/text/StringBuilder.h>
@@ -82,6 +83,10 @@ CSSUnitType cssPrimitiveValueUnitFromTrie(const CharacterType* data, unsigned le
         case 'i':
             if (toASCIILower(data[1]) == 'n')
                 return CSSUnitType::CSS_IN;
+            break;
+        case 'l':
+            if (toASCIILower(data[1]) == 'h' && RuntimeEnabledFeatures::sharedFeatures().lineHeightUnitsEnabled())
+                return CSSUnitType::CSS_LHS;
             break;
         case 'm':
             switch (toASCIILower(data[1])) {
@@ -138,6 +143,10 @@ CSSUnitType cssPrimitiveValueUnitFromTrie(const CharacterType* data, unsigned le
             case 'e':
                 if (toASCIILower(data[2]) == 'm')
                     return CSSUnitType::CSS_REMS;
+                break;
+            case 'l':
+                if (toASCIILower(data[2]) == 'h' && RuntimeEnabledFeatures::sharedFeatures().lineHeightUnitsEnabled())
+                    return CSSUnitType::CSS_RLHS;
                 break;
             }
         break;

@@ -54,6 +54,14 @@ RefPtr<Image> ImageBufferCairoBackend::copyImage(BackingStoreCopy copyBehavior, 
 
 void ImageBufferCairoBackend::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
 {
+    if (!destContext.hasPlatformContext()) {
+        // If there's no platformContext, we're using threaded rendering, and all the operations must be done
+        // through the GraphicsContext.
+        auto image = copyImage(&destContext == &context() ? CopyBackingStore : DontCopyBackingStore);
+        destContext.drawImage(*image, destRect, srcRect, options);
+        return;
+    }
+
     InterpolationQualityMaintainer interpolationQualityForThisScope(destContext, options.interpolationQuality());
     const auto& destinationContextState = destContext.state();
 
@@ -61,8 +69,16 @@ void ImageBufferCairoBackend::draw(GraphicsContext& destContext, const FloatRect
         drawNativeImage(*destContext.platformContext(), image.get(), destRect, srcRect, { options, destinationContextState.imageInterpolationQuality }, destinationContextState.alpha, WebCore::Cairo::ShadowState(destinationContextState));
 }
 
-void ImageBufferCairoBackend::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize&, const ImagePaintingOptions& options)
+void ImageBufferCairoBackend::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& options)
 {
+    if (!destContext.hasPlatformContext()) {
+        // If there's no platformContext, we're using threaded rendering, and all the operations must be done
+        // through the GraphicsContext.
+        auto image = copyImage(DontCopyBackingStore);
+        image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, spacing, options);
+        return;
+    }
+
     if (auto image = copyNativeImage(&destContext == &context() ? CopyBackingStore : DontCopyBackingStore))
         Cairo::drawPattern(*destContext.platformContext(), image.get(), m_logicalSize, destRect, srcRect, patternTransform, phase, options);
 }
@@ -82,7 +98,7 @@ void ImageBufferCairoBackend::transformColorSpace(ColorSpace srcColorSpace, Colo
             std::array<uint8_t, 256> array;
             for (unsigned i = 0; i < 256; i++) {
                 float color = i / 255.0f;
-                color = sRGBToLinearColorComponent(color);
+                color = rgbToLinearColorComponent(color);
                 array[i] = static_cast<uint8_t>(round(color * 255));
             }
             return array;
@@ -93,7 +109,7 @@ void ImageBufferCairoBackend::transformColorSpace(ColorSpace srcColorSpace, Colo
             std::array<uint8_t, 256> array;
             for (unsigned i = 0; i < 256; i++) {
                 float color = i / 255.0f;
-                color = linearToSRGBColorComponent(color);
+                color = linearToRGBColorComponent(color);
                 array[i] = static_cast<uint8_t>(round(color * 255));
             }
             return array;

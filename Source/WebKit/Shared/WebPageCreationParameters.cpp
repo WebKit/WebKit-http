@@ -44,6 +44,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << underlayColor;
     encoder << useFixedLayout;
     encoder << fixedLayoutSize;
+    encoder << viewExposedRect;
     encoder << alwaysShowsHorizontalScroller;
     encoder << alwaysShowsVerticalScroller;
     encoder.encodeEnum(paginationMode);
@@ -106,6 +107,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << deviceOrientation;
     encoder << keyboardIsAttached;
     encoder << canShowWhileLocked;
+    encoder << isCapturingScreen;
 #endif
 #if PLATFORM(COCOA)
     encoder << smartInsertDeleteEnabled;
@@ -113,6 +115,9 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
 #if USE(WPE_RENDERER)
     encoder << hostFileDescriptor;
+#endif
+#if PLATFORM(WIN)
+    encoder << nativeWindowHandle;
 #endif
     encoder << appleMailPaginationQuirkEnabled;
     encoder << appleMailLinesClampEnabled;
@@ -135,6 +140,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << corsDisablingPatterns;
     encoder << loadsSubresources;
     encoder << loadsFromNetwork;
+    encoder << userScriptsShouldWaitUntilNotification;
     encoder << crossOriginAccessControlCheckEnabled;
     encoder << processDisplayName;
 
@@ -145,6 +151,8 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldCaptureDisplayInUIProcess;
     encoder << shouldRenderCanvasInGPUProcess;
     encoder << needsInAppBrowserPrivacyQuirks;
+    encoder << limitsNavigationsToAppBoundDomains;
+    encoder << shouldRelaxThirdPartyCookieBlocking;
 
 #if PLATFORM(GTK)
     encoder << themeName;
@@ -185,6 +193,8 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!decoder.decode(parameters.useFixedLayout))
         return WTF::nullopt;
     if (!decoder.decode(parameters.fixedLayoutSize))
+        return WTF::nullopt;
+    if (!decoder.decode(parameters.viewExposedRect))
         return WTF::nullopt;
     if (!decoder.decode(parameters.alwaysShowsHorizontalScroller))
         return WTF::nullopt;
@@ -335,6 +345,8 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     if (!decoder.decode(parameters.canShowWhileLocked))
         return WTF::nullopt;
+    if (!decoder.decode(parameters.isCapturingScreen))
+        return WTF::nullopt;
 #endif
 
 #if PLATFORM(COCOA)
@@ -346,6 +358,11 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
 
 #if USE(WPE_RENDERER)
     if (!decoder.decode(parameters.hostFileDescriptor))
+        return WTF::nullopt;
+#endif
+
+#if PLATFORM(WIN)
+    if (!decoder.decode(parameters.nativeWindowHandle))
         return WTF::nullopt;
 #endif
 
@@ -430,6 +447,12 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     parameters.loadsFromNetwork = *loadsFromNetwork;
 
+    Optional<bool> userScriptsShouldWaitUntilNotification;
+    decoder >> userScriptsShouldWaitUntilNotification;
+    if (!userScriptsShouldWaitUntilNotification)
+        return WTF::nullopt;
+    parameters.userScriptsShouldWaitUntilNotification = *userScriptsShouldWaitUntilNotification;
+    
     Optional<bool> crossOriginAccessControlCheckEnabled;
     decoder >> crossOriginAccessControlCheckEnabled;
     if (!crossOriginAccessControlCheckEnabled)
@@ -461,6 +484,12 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
 
     if (!decoder.decode(parameters.needsInAppBrowserPrivacyQuirks))
+        return WTF::nullopt;
+    
+    if (!decoder.decode(parameters.limitsNavigationsToAppBoundDomains))
+        return WTF::nullopt;
+    
+    if (!decoder.decode(parameters.shouldRelaxThirdPartyCookieBlocking))
         return WTF::nullopt;
     
 #if PLATFORM(GTK)

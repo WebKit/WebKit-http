@@ -456,22 +456,6 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 #endif
 }
 
-- (void)_getWebViewCategoryFor:(WKWebView *)webView completionHandler:(void (^)(_WKWebViewCategory category))completionHandler
-{
-    if (!webView) {
-        completionHandler(_WKWebViewCategoryWebBrowser);
-        return;
-    }
-
-    auto webPageProxy = [webView _page];
-    if (!webPageProxy) {
-        completionHandler(_WKWebViewCategoryWebBrowser);
-        return;
-    }
-
-    completionHandler(toWKWebViewCategory(webPageProxy->configuration().webViewCategory()));
-}
-
 - (void)_scheduleCookieBlockingUpdate:(void (^)(void))completionHandler
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -542,11 +526,9 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     _websiteDataStore->getResourceLoadStatisticsDataSummary([completionHandler = makeBlockPtr(completionHandler)] (auto&& thirdPartyDomains) {
-        NSMutableArray<_WKResourceLoadStatisticsThirdParty *> *apiThirdParties = [[[NSMutableArray alloc] initWithCapacity:thirdPartyDomains.size()] autorelease];
-        for (auto& thirdParty : thirdPartyDomains)
-            [apiThirdParties addObject:wrapper(API::ResourceLoadStatisticsThirdParty::create(WTFMove(thirdParty)))];
-
-        completionHandler(apiThirdParties);
+        completionHandler(createNSArray(thirdPartyDomains, [] (auto&& domain) {
+            return wrapper(API::ResourceLoadStatisticsThirdParty::create(WTFMove(domain)));
+        }).get());
     });
 #else
     completionHandler(nil);
@@ -558,6 +540,17 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     _websiteDataStore->isRegisteredAsSubresourceUnder(thirdPartyURL, firstPartyURL, [completionHandler = makeBlockPtr(completionHandler)](bool enabled) {
         completionHandler(enabled);
+    });
+#else
+    completionHandler(NO);
+#endif
+}
+
+- (void)_statisticsDatabaseHasAllTables:(void (^)(BOOL))completionHandler
+{
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    _websiteDataStore->statisticsDatabaseHasAllTables([completionHandler = makeBlockPtr(completionHandler)](bool hasAllTables) {
+        completionHandler(hasAllTables);
     });
 #else
     completionHandler(NO);
@@ -595,6 +588,18 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 #endif
 }
 
+- (void)_renameOrigin:(NSURL *)oldName to:(NSURL *)newName forDataOfTypes:(NSSet<NSString *> *)dataTypes completionHandler:(void (^)(void))completionHandler
+{
+    if (!dataTypes.count)
+        return completionHandler();
+
+    if (dataTypes.count > 1 || ![dataTypes containsObject:WKWebsiteDataTypeLocalStorage])
+        [NSException raise:NSInvalidArgumentException format:@"_renameOrigin can only be called with WKWebsiteDataTypeLocalStorage right now."];
+    _websiteDataStore->renameOriginInWebsiteData(oldName, newName, WebKit::toWebsiteDataTypes(dataTypes), [completionHandler = makeBlockPtr(completionHandler)] {
+        completionHandler();
+    });
+}
+
 - (id <_WKWebsiteDataStoreDelegate>)_delegate
 {
     return _delegate.get().get();
@@ -613,7 +618,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (void)_appBoundDomains:(void (^)(NSArray<NSString *> *))completionHandler
 {
-    _websiteDataStore->appBoundDomainsForTesting([completionHandler = makeBlockPtr(completionHandler)](auto& domains) mutable {
+    _websiteDataStore->getAppBoundDomains([completionHandler = makeBlockPtr(completionHandler)](auto& domains) mutable {
         Vector<RefPtr<API::Object>> apiDomains;
         apiDomains.reserveInitialCapacity(domains.size());
         for (auto& domain : domains)

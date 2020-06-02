@@ -6,11 +6,14 @@
 // EGLBlobCacheTest:
 //   Unit tests for the EGL_ANDROID_blob_cache extension.
 
+// Must be included first to prevent errors with "None".
+#include "test_utils/ANGLETest.h"
+
 #include <map>
 #include <vector>
 
+#include "common/PackedEnums.h"
 #include "common/angleutils.h"
-#include "test_utils/ANGLETest.h"
 #include "test_utils/gl_raii.h"
 #include "util/EGLWindow.h"
 
@@ -20,18 +23,31 @@ constexpr char kEGLExtName[] = "EGL_ANDROID_blob_cache";
 
 enum class CacheOpResult
 {
-    SET_SUCCESS,
-    GET_NOT_FOUND,
-    GET_MEMORY_TOO_SMALL,
-    GET_SUCCESS,
-
-    VALUE_NOT_SET,
+    SetSuccess,
+    GetNotFound,
+    GetMemoryTooSmall,
+    GetSuccess,
+    ValueNotSet,
+    EnumCount
 };
+
+angle::PackedEnumMap<CacheOpResult, std::string> kCacheOpToString = {
+    {CacheOpResult::SetSuccess, "SetSuccess"},
+    {CacheOpResult::GetNotFound, "GetNotFound"},
+    {CacheOpResult::GetMemoryTooSmall, "GetMemoryTooSmall"},
+    {CacheOpResult::GetSuccess, "GetSuccess"},
+    {CacheOpResult::ValueNotSet, "ValueNotSet"},
+};
+
+std::ostream &operator<<(std::ostream &os, CacheOpResult result)
+{
+    return os << kCacheOpToString[result];
+}
 
 namespace
 {
 std::map<std::vector<uint8_t>, std::vector<uint8_t>> gApplicationCache;
-CacheOpResult gLastCacheOpResult = CacheOpResult::VALUE_NOT_SET;
+CacheOpResult gLastCacheOpResult = CacheOpResult::ValueNotSet;
 
 void SetBlob(const void *key, EGLsizeiANDROID keySize, const void *value, EGLsizeiANDROID valueSize)
 {
@@ -43,7 +59,7 @@ void SetBlob(const void *key, EGLsizeiANDROID keySize, const void *value, EGLsiz
 
     gApplicationCache[keyVec] = valueVec;
 
-    gLastCacheOpResult = CacheOpResult::SET_SUCCESS;
+    gLastCacheOpResult = CacheOpResult::SetSuccess;
 }
 
 EGLsizeiANDROID GetBlob(const void *key,
@@ -57,18 +73,18 @@ EGLsizeiANDROID GetBlob(const void *key,
     auto entry = gApplicationCache.find(keyVec);
     if (entry == gApplicationCache.end())
     {
-        gLastCacheOpResult = CacheOpResult::GET_NOT_FOUND;
+        gLastCacheOpResult = CacheOpResult::GetNotFound;
         return 0;
     }
 
     if (entry->second.size() <= static_cast<size_t>(valueSize))
     {
         memcpy(value, entry->second.data(), entry->second.size());
-        gLastCacheOpResult = CacheOpResult::GET_SUCCESS;
+        gLastCacheOpResult = CacheOpResult::GetSuccess;
     }
     else
     {
-        gLastCacheOpResult = CacheOpResult::GET_MEMORY_TOO_SMALL;
+        gLastCacheOpResult = CacheOpResult::GetMemoryTooSmall;
     }
 
     return entry->second.size();
@@ -90,10 +106,9 @@ class EGLBlobCacheTest : public ANGLETest
         mHasBlobCache      = IsEGLDisplayExtensionEnabled(display, kEGLExtName);
     }
 
-    bool programBinaryAvailable()
-    {
-        return (getClientMajorVersion() >= 3 || IsGLExtensionEnabled("GL_OES_get_program_binary"));
-    }
+    void testTearDown() override { gApplicationCache.clear(); }
+
+    bool programBinaryAvailable() { return IsGLExtensionEnabled("GL_OES_get_program_binary"); }
 
     bool mHasBlobCache;
 };
@@ -146,26 +161,26 @@ void main()
     {
         GLuint program = CompileProgram(kVertexShaderSrc, kFragmentShaderSrc);
         ASSERT_NE(0u, program);
-        EXPECT_EQ(CacheOpResult::SET_SUCCESS, gLastCacheOpResult);
-        gLastCacheOpResult = CacheOpResult::VALUE_NOT_SET;
+        EXPECT_EQ(CacheOpResult::SetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
 
         // Compile the same shader again, so it would try to retrieve it from the cache
         program = CompileProgram(kVertexShaderSrc, kFragmentShaderSrc);
         ASSERT_NE(0u, program);
-        EXPECT_EQ(CacheOpResult::GET_SUCCESS, gLastCacheOpResult);
-        gLastCacheOpResult = CacheOpResult::VALUE_NOT_SET;
+        EXPECT_EQ(CacheOpResult::GetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
 
         // Compile another shader, which should create a new entry
         program = CompileProgram(kVertexShaderSrc2, kFragmentShaderSrc2);
         ASSERT_NE(0u, program);
-        EXPECT_EQ(CacheOpResult::SET_SUCCESS, gLastCacheOpResult);
-        gLastCacheOpResult = CacheOpResult::VALUE_NOT_SET;
+        EXPECT_EQ(CacheOpResult::SetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
 
         // Compile the first shader again, which should still reside in the cache
         program = CompileProgram(kVertexShaderSrc, kFragmentShaderSrc);
         ASSERT_NE(0u, program);
-        EXPECT_EQ(CacheOpResult::GET_SUCCESS, gLastCacheOpResult);
-        gLastCacheOpResult = CacheOpResult::VALUE_NOT_SET;
+        EXPECT_EQ(CacheOpResult::GetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
     }
 }
 
@@ -214,4 +229,57 @@ TEST_P(EGLBlobCacheTest, NegativeAPI)
     EXPECT_EGL_ERROR(EGL_BAD_PARAMETER);
 }
 
-ANGLE_INSTANTIATE_TEST_ES2(EGLBlobCacheTest);
+// Regression test for including the fragment output locatins in the program key.
+// http://anglebug.com/4535
+TEST_P(EGLBlobCacheTest, FragmentOutputLocationKey)
+{
+    ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_blend_func_extended") ||
+                       getClientMajorVersion() < 3);
+
+    EGLDisplay display = getEGLWindow()->getDisplay();
+
+    EXPECT_TRUE(mHasBlobCache);
+    eglSetBlobCacheFuncsANDROID(display, SetBlob, GetBlob);
+    ASSERT_EGL_SUCCESS();
+
+    // Compile a shader so it puts something in the cache
+    if (programBinaryAvailable())
+    {
+        constexpr char kFragmentShaderSrc[] = R"(#version 300 es
+#extension GL_EXT_blend_func_extended : require
+precision mediump float;
+uniform vec4 src;
+uniform vec4 src1;
+out vec4 FragData;
+out vec4 SecondaryFragData;
+void main() {
+    FragData = src;
+    SecondaryFragData = src1;
+})";
+
+        constexpr char kVertexShaderSrc[] = R"(#version 300 es
+in vec4 position;
+void main() {
+    gl_Position = position;
+})";
+
+        GLuint program = CompileProgram(kVertexShaderSrc, kFragmentShaderSrc, [](GLuint p) {
+            glBindFragDataLocationEXT(p, 0, "FragData[0]");
+            glBindFragDataLocationIndexedEXT(p, 0, 1, "SecondaryFragData[0]");
+        });
+        ASSERT_NE(0u, program);
+        EXPECT_EQ(CacheOpResult::SetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
+
+        // Re-link the program with different fragment output bindings
+        program = CompileProgram(kVertexShaderSrc, kFragmentShaderSrc, [](GLuint p) {
+            glBindFragDataLocationEXT(p, 0, "FragData");
+            glBindFragDataLocationIndexedEXT(p, 0, 1, "SecondaryFragData");
+        });
+        ASSERT_NE(0u, program);
+        EXPECT_EQ(CacheOpResult::SetSuccess, gLastCacheOpResult);
+        gLastCacheOpResult = CacheOpResult::ValueNotSet;
+    }
+}
+
+ANGLE_INSTANTIATE_TEST_ES2_AND_ES3(EGLBlobCacheTest);

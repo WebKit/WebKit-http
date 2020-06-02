@@ -52,7 +52,7 @@ public:
         unsigned size() const { return m_size; }
 
         void encode(IPC::Encoder&) const;
-        static bool decode(IPC::Decoder&, Handle&);
+        static WARN_UNUSED_RETURN bool decode(IPC::Decoder&, Handle&);
 
         RefPtr<WebCore::SharedBuffer> tryWrapInSharedBuffer() const;
 
@@ -65,7 +65,7 @@ public:
     };
 
     // Create a shareable resource that uses malloced memory.
-    static Ref<ShareableResource> create(Ref<SharedMemory>&&, unsigned offset, unsigned size);
+    static RefPtr<ShareableResource> create(Ref<SharedMemory>&&, unsigned offset, unsigned size);
 
     // Create a shareable resource from a handle.
     static RefPtr<ShareableResource> map(const Handle&);

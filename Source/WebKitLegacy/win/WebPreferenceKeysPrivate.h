@@ -195,6 +195,8 @@
 
 #define WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey "WebKitWebAnimationsCSSIntegrationEnabled"
 
+#define WebKitCSSCustomPropertiesAndValuesEnabledPreferenceKey "WebKitCSSCustomPropertiesAndValuesEnabled"
+
 #define WebKitUserTimingEnabledPreferenceKey "WebKitUserTimingEnabled"
 
 #define WebKitResourceTimingEnabledPreferenceKey "WebKitResourceTimingEnabled"
@@ -214,6 +216,7 @@
 #define WebKitServerTimingEnabledPreferenceKey "WebKitServerTimingEnabled"
 
 #define WebKitCSSOMViewScrollingAPIEnabledPreferenceKey "WebKitCSSOMViewScrollingAPIEnabled"
+
 #define WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey "WebKitCSSOMViewSmoothScrollingEnabled"
 
 #define WebKitResizeObserverEnabledPreferenceKey "WebKitResizeObserverEnabled"

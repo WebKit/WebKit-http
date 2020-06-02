@@ -39,8 +39,11 @@
 #include <wtf/OptionSet.h>
 #include <wtf/RunLoop.h>
 
-#if USE(COORDINATED_GRAPHICS)
-#endif
+#if USE(GRAPHICS_LAYER_TEXTURE_MAPPER)
+
+#include "LayerTreeHostTextureMapper.h"
+
+#else // USE(GRAPHICS_LAYER_TEXTURE_MAPPER)
 
 namespace WebCore {
 class IntRect;
@@ -91,9 +94,7 @@ public:
 
     void deviceOrPageScaleFactorChanged();
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
-#endif
 
     WebCore::PlatformDisplayID displayID() const { return m_displayID; }
 
@@ -221,9 +222,9 @@ inline void LayerTreeHost::contentsSizeChanged(const WebCore::IntSize&) { }
 inline void LayerTreeHost::didChangeViewportAttributes(WebCore::ViewportAttributes&&) { }
 inline void LayerTreeHost::setIsDiscardable(bool) { }
 inline void LayerTreeHost::deviceOrPageScaleFactorChanged() { }
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 inline RefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHost::createDisplayRefreshMonitor(WebCore::PlatformDisplayID) { return nullptr; }
-#endif
 #endif
 
 } // namespace WebKit
+
+#endif // USE(GRAPHICS_LAYER_TEXTURE_MAPPER)

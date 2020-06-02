@@ -27,7 +27,7 @@
 #include "JSCTestRunnerUtils.h"
 
 #include "APICast.h"
-#include "JSCInlines.h"
+#include "JSGlobalObjectInlines.h"
 #include "TestRunnerUtils.h"
 
 namespace JSC {

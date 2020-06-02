@@ -26,12 +26,8 @@
 #include "config.h"
 #include "SetConstructor.h"
 
-#include "Error.h"
-#include "GetterSetter.h"
 #include "IteratorOperations.h"
 #include "JSCInlines.h"
-#include "JSGlobalObject.h"
-#include "JSObjectInlines.h"
 #include "JSSet.h"
 #include "SetPrototype.h"
 
@@ -67,8 +63,11 @@ static EncodedJSValue JSC_HOST_CALL constructSet(JSGlobalObject* globalObject, C
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    Structure* setStructure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), globalObject->setStructure());
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* setStructure = newTarget == callFrame->jsCallee()
+        ? globalObject->setStructure()
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->setStructure());
+    RETURN_IF_EXCEPTION(scope, { });
 
     JSValue iterable = callFrame->argument(0);
     if (iterable.isUndefinedOrNull()) 
@@ -85,9 +84,8 @@ static EncodedJSValue JSC_HOST_CALL constructSet(JSGlobalObject* globalObject, C
     JSValue adderFunction = set->JSObject::get(globalObject, vm.propertyNames->add);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    CallData adderFunctionCallData;
-    CallType adderFunctionCallType = getCallData(vm, adderFunction, adderFunctionCallData);
-    if (UNLIKELY(adderFunctionCallType == CallType::None))
+    auto adderFunctionCallData = getCallData(vm, adderFunction);
+    if (UNLIKELY(adderFunctionCallData.type == CallData::Type::None))
         return JSValue::encode(throwTypeError(globalObject, scope));
 
     scope.release();
@@ -95,7 +93,7 @@ static EncodedJSValue JSC_HOST_CALL constructSet(JSGlobalObject* globalObject, C
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);
         ASSERT(!arguments.hasOverflowed());
-        call(globalObject, adderFunction, adderFunctionCallType, adderFunctionCallData, set, arguments);
+        call(globalObject, adderFunction, adderFunctionCallData, set, arguments);
     });
 
     return JSValue::encode(set);

@@ -26,10 +26,25 @@
 #include "config.h"
 #include "AssemblerBuffer.h"
 
-#include <wtf/NeverDestroyed.h>
-
 namespace JSC {
 
 DEFINE_ALLOCATOR_WITH_HEAP_IDENTIFIER(AssemblerData);
+
+#if ENABLE(ASSEMBLER)
+
+static ThreadSpecificAssemblerData* threadSpecificAssemblerDataPtr;
+
+ThreadSpecificAssemblerData& threadSpecificAssemblerData()
+{
+    static std::once_flag flag;
+    std::call_once(
+        flag,
+        [] () {
+            threadSpecificAssemblerDataPtr = new ThreadSpecificAssemblerData();
+        });
+    return *threadSpecificAssemblerDataPtr;
+}
+
+#endif // ENABLE(ASSEMBLER)
 
 } // namespace JSC

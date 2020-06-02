@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2020 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 #include "WebContextMenuItemGlib.h"
 #include "WebContextMenuProxy.h"
+#include <WebCore/GtkVersioning.h>
 #include <WebCore/IntPoint.h>
 #include <wtf/HashMap.h>
 #include <wtf/glib/GRefPtr.h>
@@ -50,7 +51,8 @@ public:
     ~WebContextMenuProxyGtk();
 
     void populate(const Vector<WebContextMenuItemGlib>&);
-    GtkMenu* gtkMenu() const { return m_menu; }
+    GtkWidget* gtkWidget() const { return m_menu; }
+    static const char* widgetDismissedSignal;
 
 private:
     WebContextMenuProxyGtk(GtkWidget*, WebPageProxy&, ContextMenuContextData&&, const UserData&);
@@ -60,13 +62,12 @@ private:
     GRefPtr<GMenu> buildMenu(const Vector<WebContextMenuItemGlib>&);
     void populate(const Vector<Ref<WebContextMenuItem>>&);
     Vector<WebContextMenuItemGlib> populateSubMenu(const WebContextMenuItemData&);
-    static void menuPositionFunction(GtkMenu*, gint*, gint*, gboolean*, WebContextMenuProxyGtk*);
 
     GtkWidget* m_webView;
     WebPageProxy* m_page;
-    GtkMenu* m_menu;
-    WebCore::IntPoint m_popupPosition;
+    GtkWidget* m_menu;
     HashMap<unsigned long, void*> m_signalHandlers;
+    GRefPtr<GSimpleActionGroup> m_actionGroup { adoptGRef(g_simple_action_group_new()) };
 };
 
 

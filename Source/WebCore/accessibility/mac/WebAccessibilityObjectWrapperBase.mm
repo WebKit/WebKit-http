@@ -65,12 +65,15 @@
 #import "TextCheckingHelper.h"
 #import "VisibleUnits.h"
 #import "WebCoreFrameView.h"
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if PLATFORM(MAC)
+#import "WebAccessibilityObjectWrapperMac.h"
 #import <pal/spi/mac/HIServicesSPI.h>
 #else
 #import "WAKView.h"
 #import "WAKWindow.h"
+#import "WebAccessibilityObjectWrapperIOS.h"
 #endif
 
 using namespace WebCore;
@@ -248,35 +251,34 @@ using namespace HTMLNames;
 
 static NSArray *convertMathPairsToNSArray(const AccessibilityObject::AccessibilityMathMultiscriptPairs& pairs, NSString *subscriptKey, NSString *superscriptKey)
 {
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:pairs.size()];
-    for (const auto& pair : pairs) {
-        NSMutableDictionary *pairDictionary = [NSMutableDictionary dictionary];
-        if (pair.first && pair.first->wrapper() && !pair.first->accessibilityIsIgnored())
-            [pairDictionary setObject:pair.first->wrapper() forKey:subscriptKey];
-        if (pair.second && pair.second->wrapper() && !pair.second->accessibilityIsIgnored())
-            [pairDictionary setObject:pair.second->wrapper() forKey:superscriptKey];
-        [array addObject:pairDictionary];
-    }
-    return array;
-}
-
-static void addChildToArray(AXCoreObject& child, RetainPtr<NSMutableArray> array)
-{
-    WebAccessibilityObjectWrapper *wrapper = child.wrapper();
-    // We want to return the attachment view instead of the object representing the attachment,
-    // otherwise, we get palindrome errors in the AX hierarchy.
-    if (child.isAttachment() && [wrapper attachmentView])
-        [array.get() addObject:[wrapper attachmentView]];
-    else if (wrapper)
-        [array.get() addObject:wrapper];
+    return createNSArray(pairs, [&] (auto& pair) {
+        WebAccessibilityObjectWrapper *wrappers[2];
+        NSString *keys[2];
+        NSUInteger count = 0;
+        if (pair.first && pair.first->wrapper() && !pair.first->accessibilityIsIgnored()) {
+            wrappers[0] = pair.first->wrapper();
+            keys[0] = subscriptKey;
+            count = 1;
+        }
+        if (pair.second && pair.second->wrapper() && !pair.second->accessibilityIsIgnored()) {
+            wrappers[count] = pair.second->wrapper();
+            keys[count] = superscriptKey;
+            count += 1;
+        }
+        return adoptNS([[NSDictionary alloc] initWithObjects:wrappers forKeys:keys count:count]);
+    }).autorelease();
 }
 
 NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVector& children)
 {
-    NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:children.size()];
-    for (const auto& child : children)
-        addChildToArray(*child, result);
-    return [result autorelease];
+    return createNSArray(children, [] (auto& child) -> id {
+        auto wrapper = child->wrapper();
+        // We want to return the attachment view instead of the object representing the attachment,
+        // otherwise, we get palindrome errors in the AX hierarchy.
+        if (child->isAttachment() && wrapper.attachmentView)
+            return wrapper.attachmentView;
+        return wrapper;
+    }).autorelease();
 }
 
 @implementation WebAccessibilityObjectWrapperBase
@@ -304,6 +306,8 @@ NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVect
 - (void)attachIsolatedObject:(AXCoreObject*)isolatedObject
 {
     ASSERT(isolatedObject && (_identifier == InvalidAXID || _identifier == isolatedObject->objectID()));
+    ASSERT(m_axObject);
+    ASSERT(isolatedObject->objectID() == m_axObject->objectID());
     m_isolatedObject = isolatedObject;
     if (_identifier == InvalidAXID)
         _identifier = m_isolatedObject->objectID();
@@ -326,8 +330,7 @@ NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVect
 {
     _identifier = InvalidAXID;
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (!isMainThread()) {
-        ASSERT(AXObjectCache::isIsolatedTreeEnabled());
+    if (AXObjectCache::isIsolatedTreeEnabled()) {
         [self detachIsolatedObject];
         return;
     }
@@ -365,10 +368,8 @@ NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVect
 - (WebCore::AXCoreObject*)axBackingObject
 {
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (!isMainThread()) {
-        ASSERT(AXObjectCache::isIsolatedTreeEnabled());
+    if (AXObjectCache::isIsolatedTreeEnabled())
         return m_isolatedObject;
-    }
 #endif
     return m_axObject;
 }
@@ -444,7 +445,7 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
     }
 }
 
-- (CGPathRef)convertPathToScreenSpace:(Path &)path
+- (CGPathRef)convertPathToScreenSpace:(const Path&)path
 {
     PathConversionInfo conversion = { self, CGPathCreateMutable() };
     path.apply([&conversion](const PathElement& pathElement) {
@@ -461,7 +462,7 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
     return nil;
 }
 
-- (CGRect)convertRectToSpace:(WebCore::FloatRect &)rect space:(AccessibilityConversionSpace)space
+- (CGRect)convertRectToSpace:(const WebCore::FloatRect&)rect space:(AccessibilityConversionSpace)space
 {
     if (!self.axBackingObject)
         return CGRectZero;
@@ -691,6 +692,13 @@ static AccessibilitySearchKey accessibilitySearchKeyForString(const String& valu
     return static_cast<int>(searchKey) ? searchKey : AccessibilitySearchKey::AnyType;
 }
 
+static Optional<AccessibilitySearchKey> makeVectorElement(const AccessibilitySearchKey*, id arrayElement)
+{
+    if (![arrayElement isKindOfClass:NSString.class])
+        return WTF::nullopt;
+    return { { accessibilitySearchKeyForString(arrayElement) } };
+}
+
 AccessibilitySearchCriteria accessibilitySearchCriteriaForSearchPredicateParameterizedAttribute(const NSDictionary *parameterizedAttribute)
 {
     NSString *directionParameter = [parameterizedAttribute objectForKey:@"AXDirection"];
@@ -729,16 +737,9 @@ AccessibilitySearchCriteria accessibilitySearchCriteriaForSearchPredicateParamet
     
     if ([searchKeyParameter isKindOfClass:[NSString class]])
         criteria.searchKeys.append(accessibilitySearchKeyForString(searchKeyParameter));
-    else if ([searchKeyParameter isKindOfClass:[NSArray class]]) {
-        size_t searchKeyCount = static_cast<size_t>([searchKeyParameter count]);
-        criteria.searchKeys.reserveInitialCapacity(searchKeyCount);
-        for (size_t i = 0; i < searchKeyCount; ++i) {
-            NSString *searchKey = [searchKeyParameter objectAtIndex:i];
-            if ([searchKey isKindOfClass:[NSString class]])
-                criteria.searchKeys.uncheckedAppend(accessibilitySearchKeyForString(searchKey));
-        }
-    }
-    
+    else if ([searchKeyParameter isKindOfClass:[NSArray class]])
+        criteria.searchKeys = makeVector<AccessibilitySearchKey>(searchKeyParameter);
+
     return criteria;
 }
 

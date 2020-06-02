@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "WebAlternativeTextClient.h"
+#import "WebAlternativeTextClient.h"
 
-#include "WebViewInternal.h"
+#import "WebViewInternal.h"
 
 using namespace WebCore;
 
 WebAlternativeTextClient::WebAlternativeTextClient(WebView* webView)
-: m_webView(webView)
+    : m_webView(webView)
 {
 }
 
@@ -78,19 +78,17 @@ void WebAlternativeTextClient::recordAutocorrectionResponse(AutocorrectionRespon
 }
 #endif
 
-#if USE(DICTATION_ALTERNATIVES)
-void WebAlternativeTextClient::removeDictationAlternatives(uint64_t dictationContext)
+void WebAlternativeTextClient::removeDictationAlternatives(DictationContext dictationContext)
 {
     [m_webView _removeDictationAlternatives:dictationContext];
 }
 
-void WebAlternativeTextClient::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext)
+void WebAlternativeTextClient::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, DictationContext dictationContext)
 {
     [m_webView _showDictationAlternativeUI:boundingBoxOfDictatedText forDictationContext:dictationContext];
 }
 
-Vector<String> WebAlternativeTextClient::dictationAlternatives(uint64_t dictationContext)
+Vector<String> WebAlternativeTextClient::dictationAlternatives(DictationContext dictationContext)
 {
     return [m_webView _dictationAlternatives:dictationContext];
 }
-#endif

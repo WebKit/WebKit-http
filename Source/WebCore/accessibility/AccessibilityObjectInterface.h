@@ -49,6 +49,10 @@ typedef struct _WebKitAccessible AccessibilityObjectWrapper;
 class AccessibilityObjectWrapper;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class Node;
@@ -205,14 +209,14 @@ enum class AccessibilityRole {
     Tab,
     Table,
     TableHeaderContainer,
-    TextArea,
-    TextGroup,
     Term,
+    TextArea,
+    TextField,
+    TextGroup,
     Time,
     Tree,
     TreeGrid,
     TreeItem,
-    TextField,
     ToggleButton,
     Toolbar,
     Unknown,
@@ -496,7 +500,7 @@ public:
     virtual bool isAttachmentElement() const = 0;
     virtual bool isHeading() const = 0;
     virtual bool isLink() const = 0;
-    virtual bool isImage() const = 0;
+    bool isImage() const { return roleValue() == AccessibilityRole::Image; }
     bool isImageMap() const { return roleValue() == AccessibilityRole::ImageMap; }
     virtual bool isNativeImage() const = 0;
     virtual bool isImageButton() const = 0;
@@ -509,7 +513,7 @@ public:
     bool isCheckbox() const { return roleValue() == AccessibilityRole::CheckBox; }
     bool isRadioButton() const { return roleValue() == AccessibilityRole::RadioButton; }
     bool isListBox() const { return roleValue() == AccessibilityRole::ListBox; }
-    virtual bool isNativeListBox() const = 0;
+    virtual bool isNativeListBox() const { return false; };
     virtual bool isListBoxOption() const = 0;
     virtual bool isAttachment() const = 0;
     virtual bool isMediaTimeline() const = 0;
@@ -559,6 +563,8 @@ public:
     virtual std::pair<unsigned, unsigned> rowIndexRange() const = 0;
     // Returns the start location and column span of the cell.
     virtual std::pair<unsigned, unsigned> columnIndexRange() const = 0;
+    virtual bool isColumnHeaderCell() const = 0;
+    virtual bool isRowHeaderCell() const = 0;
     virtual int axColumnIndex() const = 0;
     virtual int axRowIndex() const = 0;
 
@@ -617,8 +623,8 @@ public:
     bool isSplitter() const { return roleValue() == AccessibilityRole::Splitter; }
     bool isToolbar() const { return roleValue() == AccessibilityRole::Toolbar; }
     bool isSummary() const { return roleValue() == AccessibilityRole::Summary; }
+    bool isBlockquote() const { return roleValue() == AccessibilityRole::Blockquote; }
 
-    virtual bool isBlockquote() const = 0;
     virtual bool isLandmark() const = 0;
     virtual bool isRangeControl() const = 0;
     virtual bool isMeter() const = 0;
@@ -659,9 +665,9 @@ public:
     virtual bool hasMisspelling() const = 0;
     virtual RefPtr<Range> getMisspellingRange(RefPtr<Range> const& start, AccessibilitySearchDirection) const = 0;
     virtual bool hasPlainText() const = 0;
-    virtual bool hasSameFont(RenderObject*) const = 0;
-    virtual bool hasSameFontColor(RenderObject*) const = 0;
-    virtual bool hasSameStyle(RenderObject*) const = 0;
+    virtual bool hasSameFont(const AXCoreObject&) const = 0;
+    virtual bool hasSameFontColor(const AXCoreObject&) const = 0;
+    virtual bool hasSameStyle(const AXCoreObject&) const = 0;
     bool isStaticText() const { return roleValue() == AccessibilityRole::StaticText; }
     virtual bool hasUnderline() const = 0;
     virtual bool hasHighlighting() const = 0;
@@ -752,11 +758,11 @@ public:
     virtual int posInSet() const = 0;
 
     // ARIA drag and drop
-    virtual bool supportsARIADropping() const = 0;
-    virtual bool supportsARIADragging() const = 0;
-    virtual bool isARIAGrabbed() = 0;
+    virtual bool supportsDropping() const = 0;
+    virtual bool supportsDragging() const = 0;
+    virtual bool isGrabbed() = 0;
     virtual void setARIAGrabbed(bool) = 0;
-    virtual Vector<String> determineARIADropEffects() = 0;
+    virtual Vector<String> determineDropEffects() const = 0;
 
     // Called on the root AX object to return the deepest available element.
     virtual AXCoreObject* accessibilityHitTest(const IntPoint&) const = 0;
@@ -1291,5 +1297,10 @@ inline bool AXCoreObject::isAncestorOfObject(const AXCoreObject* axObject) const
 {
     return axObject && (this == axObject || axObject->isDescendantOfObject(this));
 }
+
+// Logging helpers.
+WTF::TextStream& operator<<(WTF::TextStream&, AccessibilityRole);
+WTF::TextStream& operator<<(WTF::TextStream&, AccessibilityObjectInclusion);
+WTF::TextStream& operator<<(WTF::TextStream&, const AXCoreObject&);
 
 } // namespace WebCore

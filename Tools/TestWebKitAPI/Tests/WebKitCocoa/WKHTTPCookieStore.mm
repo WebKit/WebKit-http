@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #import "PlatformUtilities.h"
 #import "TestNavigationDelegate.h"
@@ -139,7 +139,8 @@ static void runTestWithWebsiteDataStore(WKWebsiteDataStore* dataStore)
     gotFlag = false;
 
     ASSERT_EQ(cookies.count, 2u);
-    ASSERT_EQ(observerCallbacks, 4u);
+    while (observerCallbacks != 4u)
+        TestWebKitAPI::Util::spinRunLoop();
 
     for (NSHTTPCookie *cookie : cookies) {
         if ([cookie.name isEqual:@"CookieName"]) {
@@ -175,7 +176,8 @@ static void runTestWithWebsiteDataStore(WKWebsiteDataStore* dataStore)
     gotFlag = false;
 
     ASSERT_EQ(cookies.count, 1u);
-    ASSERT_EQ(observerCallbacks, 6u);
+    while (observerCallbacks != 6u)
+        TestWebKitAPI::Util::spinRunLoop();
 
     for (NSHTTPCookie *cookie : cookies) {
         ASSERT_TRUE([cookie1.get().path isEqualToString:cookie.path]);
@@ -348,7 +350,8 @@ TEST(WKHTTPCookieStore, HttpOnly)
     [cookies release];
 }
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+// FIXME: Would be good to enable this test for watchOS and tvOS.
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 TEST(WKHTTPCookieStore, CreationTime)
 {   
     auto dataStore = [WKWebsiteDataStore defaultDataStore];
@@ -372,7 +375,7 @@ TEST(WKHTTPCookieStore, CreationTime)
     [cookieProperties setObject:@"cookieValue" forKey:NSHTTPCookieValue];
     [cookieProperties setObject:@".www.webkit.org" forKey:NSHTTPCookieDomain];
     [cookieProperties setObject:@"/path" forKey:NSHTTPCookiePath];
-    RetainPtr<NSNumber> creationTime = [NSNumber numberWithDouble:100000];
+    RetainPtr<NSNumber> creationTime = @(100000);
     [cookieProperties setObject:creationTime.get() forKey:@"Created"];
     RetainPtr<NSHTTPCookie> cookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
 
@@ -402,7 +405,7 @@ TEST(WKHTTPCookieStore, CreationTime)
     TestWebKitAPI::Util::run(&gotFlag);
     gotFlag = false;
 }
-#endif // (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+#endif
 
 // FIXME: This #if should be removed once <rdar://problem/35344202> is resolved and bots are updated.
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED <= 101301
@@ -634,6 +637,27 @@ static bool areCookiesEqual(NSHTTPCookie *first, NSHTTPCookie *second)
     return [first.name isEqual:second.name] && [first.domain isEqual:second.domain] && [first.path isEqual:second.path] && [first.value isEqual:second.value];
 }
 
+static void clearCookies(WKHTTPCookieStore* cookieStore)
+{
+    finished = false;
+    [cookieStore getAllCookies:^(NSArray<NSHTTPCookie *> *cookies) {
+        if (!cookies || !cookies.count) {
+            finished = true;
+            return;
+        }
+
+        unsigned cookiesCount = cookies.count;
+        __block unsigned deletedCount = 0;
+        for (NSHTTPCookie* cookie in cookies) {
+            [cookieStore deleteCookie:cookie completionHandler:^{
+                if (++deletedCount == cookiesCount)
+                    finished = true;
+            }];
+        }
+    }];
+    TestWebKitAPI::Util::run(&finished);
+}
+
 TEST(WKHTTPCookieStore, WithoutProcessPoolDuplicates)
 {
     RetainPtr<WKHTTPCookieStore> httpCookieStore = [WKWebsiteDataStore defaultDataStore].httpCookieStore;
@@ -650,7 +674,9 @@ TEST(WKHTTPCookieStore, WithoutProcessPoolDuplicates)
     properties.get()[NSHTTPCookieValue] = @"OtherCookieValue";
     RetainPtr<NSHTTPCookie> sessionCookieDifferentValue = [NSHTTPCookie cookieWithProperties:properties.get()];
     finished = false;
-    
+
+    clearCookies(httpCookieStore.get());
+
     [httpCookieStore.get() setCookie:sessionCookie.get() completionHandler:^{
         finished = true;
     }];

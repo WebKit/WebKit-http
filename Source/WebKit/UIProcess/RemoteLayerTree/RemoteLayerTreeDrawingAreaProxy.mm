@@ -49,6 +49,7 @@
 }
 
 - (id)initWithDrawingAreaProxy:(WebKit::RemoteLayerTreeDrawingAreaProxy*)drawingAreaProxy;
+- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond;
 - (void)displayLinkFired:(CADisplayLink *)sender;
 - (void)invalidate;
 - (void)schedule;
@@ -74,6 +75,11 @@
 {
     ASSERT(!_displayLink);
     [super dealloc];
+}
+
+- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond
+{
+    _displayLink.preferredFramesPerSecond = preferredFramesPerSecond;
 }
 
 - (void)displayLinkFired:(CADisplayLink *)sender
@@ -109,11 +115,9 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy& w
     : DrawingAreaProxy(DrawingAreaTypeRemoteLayerTree, webPageProxy, process)
     , m_remoteLayerTreeHost(makeUnique<RemoteLayerTreeHost>(*this))
 {
-#if HAVE(IOSURFACE)
     // We don't want to pool surfaces in the UI process.
     // FIXME: We should do this somewhere else.
     IOSurfacePool::sharedPool().setPoolSize(0);
-#endif
 
     process.addMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_identifier, *this);
 
@@ -181,6 +185,15 @@ void RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry()
     m_lastSentSize = m_size;
     send(Messages::DrawingArea::UpdateGeometry(m_size, false /* flushSynchronously */, MachSendRight()));
     m_isWaitingForDidUpdateGeometry = true;
+}
+
+void RemoteLayerTreeDrawingAreaProxy::setPreferredFramesPerSecond(FramesPerSecond preferredFramesPerSecond)
+{
+#if PLATFORM(IOS_FAMILY)
+    [displayLinkHandler() setPreferredFramesPerSecond:preferredFramesPerSecond];
+#else
+    UNUSED_PARAM(preferredFramesPerSecond);
+#endif
 }
 
 void RemoteLayerTreeDrawingAreaProxy::willCommitLayerTree(TransactionID transactionID)
@@ -275,9 +288,9 @@ void RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidEnd(uint64_t layerI
 static const float indicatorInset = 10;
 
 #if PLATFORM(MAC)
-void RemoteLayerTreeDrawingAreaProxy::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void RemoteLayerTreeDrawingAreaProxy::didChangeViewExposedRect()
 {
-    DrawingAreaProxy::setViewExposedRect(viewExposedRect);
+    DrawingAreaProxy::didChangeViewExposedRect();
     updateDebugIndicatorPosition();
 }
 #endif
@@ -293,8 +306,8 @@ FloatPoint RemoteLayerTreeDrawingAreaProxy::indicatorLocation() const
         tiledMapLocation += FloatSize(absoluteInset, absoluteInset);
 #else
         FloatPoint tiledMapLocation;
-        if (viewExposedRect())
-            tiledMapLocation = viewExposedRect().value().location();
+        if (auto viewExposedRect = m_webPageProxy.viewExposedRect())
+            tiledMapLocation = viewExposedRect->location();
 
         tiledMapLocation += FloatSize(indicatorInset, indicatorInset);
         float scale = 1 / m_webPageProxy.pageScaleFactor();
@@ -364,8 +377,8 @@ void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize,
 #if PLATFORM(IOS_FAMILY)
         scaledExposedRect = m_webPageProxy.exposedContentRect();
 #else
-        if (viewExposedRect())
-            scaledExposedRect = viewExposedRect().value();
+        if (auto viewExposedRect = m_webPageProxy.viewExposedRect())
+            scaledExposedRect = *viewExposedRect;
         float scale = 1 / m_webPageProxy.pageScaleFactor();
         scaledExposedRect.scale(scale);
 #endif
@@ -449,12 +462,7 @@ void RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateActivityState(ActivityStat
     static Seconds activityStateUpdateTimeout = [] {
         if (id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitOverrideActivityStateUpdateTimeout"])
             return Seconds([value doubleValue]);
-
-#if PLATFORM(IOS_FAMILY)
-        return Seconds::fromMilliseconds(500);
-#else
         return Seconds::fromMilliseconds(250);
-#endif
     }();
 
     auto startTime = MonotonicTime::now();

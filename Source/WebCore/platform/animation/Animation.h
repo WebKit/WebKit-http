@@ -92,11 +92,16 @@ public:
 
     double delay() const { return m_delay; }
 
-    enum AnimationMode {
-        AnimateAll,
-        AnimateNone,
-        AnimateSingleProperty,
-        AnimateUnknownProperty
+    enum class TransitionMode : uint8_t {
+        All,
+        None,
+        SingleProperty,
+        UnknownProperty
+    };
+
+    struct TransitionProperty {
+        TransitionMode mode;
+        CSSPropertyID id;
     };
 
     enum AnimationDirection {
@@ -112,20 +117,21 @@ public:
     AnimationFillMode fillMode() const { return static_cast<AnimationFillMode>(m_fillMode); }
 
     double duration() const { return m_duration; }
+    double playbackRate() const { return m_playbackRate; }
 
     enum { IterationCountInfinite = -1 };
     double iterationCount() const { return m_iterationCount; }
     const String& name() const { return m_name; }
     Style::ScopeOrdinal nameStyleScopeOrdinal() const { return m_nameStyleScopeOrdinal; }
     AnimationPlayState playState() const { return static_cast<AnimationPlayState>(m_playState); }
-    CSSPropertyID property() const { return m_property; }
+    TransitionProperty property() const { return m_property; }
     const String& unknownProperty() const { return m_unknownProperty; }
     TimingFunction* timingFunction() const { return m_timingFunction.get(); }
-    AnimationMode animationMode() const { return static_cast<AnimationMode>(m_mode); }
 
     void setDelay(double c) { m_delay = c; m_delaySet = true; }
     void setDirection(AnimationDirection d) { m_direction = d; m_directionSet = true; }
     void setDuration(double d) { ASSERT(d >= 0); m_duration = d; m_durationSet = true; }
+    void setPlaybackRate(double d) { m_playbackRate = d; }
     void setFillMode(AnimationFillMode f) { m_fillMode = static_cast<unsigned>(f); m_fillModeSet = true; }
     void setIterationCount(double c) { m_iterationCount = c; m_iterationCountSet = true; }
     void setName(const String& name, Style::ScopeOrdinal scope = Style::ScopeOrdinal::Element)
@@ -135,10 +141,9 @@ public:
         m_nameSet = true;
     }
     void setPlayState(AnimationPlayState d) { m_playState = static_cast<unsigned>(d); m_playStateSet = true; }
-    void setProperty(CSSPropertyID t) { m_property = t; m_propertySet = true; }
+    void setProperty(TransitionProperty t) { m_property = t; m_propertySet = true; }
     void setUnknownProperty(const String& property) { m_unknownProperty = property; }
     void setTimingFunction(RefPtr<TimingFunction>&& function) { m_timingFunction = WTFMove(function); m_timingFunctionSet = true; }
-    void setAnimationMode(AnimationMode mode) { m_mode = static_cast<unsigned>(mode); }
 
     void setIsNoneAnimation(bool n) { m_isNone = n; }
 
@@ -159,18 +164,18 @@ private:
     Animation(const Animation& o);
     
     // Packs with m_refCount from the base class.
-    CSSPropertyID m_property { CSSPropertyInvalid };
+    TransitionProperty m_property { TransitionMode::All, CSSPropertyInvalid };
 
     String m_name;
     String m_unknownProperty;
     double m_iterationCount;
     double m_delay;
     double m_duration;
+    double m_playbackRate { 1 };
     RefPtr<TimingFunction> m_timingFunction;
 
     Style::ScopeOrdinal m_nameStyleScopeOrdinal { Style::ScopeOrdinal::Element };
 
-    unsigned m_mode : 2; // AnimationMode
     unsigned m_direction : 2; // AnimationDirection
     unsigned m_fillMode : 2; // AnimationFillMode
     unsigned m_playState : 2; // AnimationPlayState
@@ -195,12 +200,12 @@ public:
     static double initialIterationCount() { return 1.0; }
     static const String& initialName();
     static AnimationPlayState initialPlayState() { return AnimationPlayState::Playing; }
-    static CSSPropertyID initialProperty() { return CSSPropertyInvalid; }
+    static TransitionProperty initialProperty() { return { TransitionMode::All, CSSPropertyInvalid }; }
     static Ref<TimingFunction> initialTimingFunction() { return CubicBezierTimingFunction::create(); }
 };
 
 WTF::TextStream& operator<<(WTF::TextStream&, AnimationPlayState);
-WTF::TextStream& operator<<(WTF::TextStream&, Animation::AnimationMode);
+WTF::TextStream& operator<<(WTF::TextStream&, Animation::TransitionProperty);
 WTF::TextStream& operator<<(WTF::TextStream&, Animation::AnimationDirection);
 WTF::TextStream& operator<<(WTF::TextStream&, const Animation&);
 

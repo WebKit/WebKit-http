@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #import "APICast.h"
 #import "Completion.h"
@@ -170,6 +170,15 @@
         return [JSValue valueWithUndefinedInContext:self];
     }
     return [JSValue valueWithJSValueRef:toRef(vm, result) inContext:self];
+}
+
+- (void)_setITMLDebuggableType
+{
+    JSC::JSGlobalObject* globalObject = toJS(m_context);
+    JSC::VM& vm = globalObject->vm();
+    JSC::JSLockHolder locker(vm);
+
+    globalObject->setIsITML();
 }
 
 - (void)setException:(JSValue *)value

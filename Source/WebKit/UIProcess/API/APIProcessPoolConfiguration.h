@@ -131,6 +131,25 @@ public:
     const WTF::String& customWebContentServiceBundleIdentifier() const { return m_customWebContentServiceBundleIdentifier; }
     void setCustomWebContentServiceBundleIdentifier(const WTF::String& customWebContentServiceBundleIdentifier) { m_customWebContentServiceBundleIdentifier = customWebContentServiceBundleIdentifier; }
 
+    const WTF::String& hstsStorageDirectory() const { return m_hstsStorageDirectory; }
+    void setHSTSStorageDirectory(WTF::String&& directory) { m_hstsStorageDirectory = WTFMove(directory); }
+
+#if PLATFORM(GTK) && !USE(GTK4)
+    bool useSystemAppearanceForScrollbars() const { return m_useSystemAppearanceForScrollbars; }
+    void setUseSystemAppearanceForScrollbars(bool useSystemAppearanceForScrollbars) { m_useSystemAppearanceForScrollbars = useSystemAppearanceForScrollbars; }
+#endif
+
+#if PLATFORM(PLAYSTATION)
+    const WTF::String& webProcessPath() const { return m_webProcessPath; }
+    void setWebProcessPath(const WTF::String& webProcessPath) { m_webProcessPath = webProcessPath; }
+
+    const WTF::String& networkProcessPath() const { return m_networkProcessPath; }
+    void setNetworkProcessPath(const WTF::String& networkProcessPath) { m_networkProcessPath = networkProcessPath; }
+
+    int32_t userId() const { return m_userId; }
+    void setUserId(const int32_t userId) { m_userId = userId; }
+#endif
+
 private:
     WTF::String m_injectedBundlePath;
     Vector<WTF::String> m_customClassesForParameterCoder;
@@ -157,6 +176,15 @@ private:
     bool m_shouldConfigureJSCForTesting { false };
     bool m_isJITEnabled { true };
     bool m_usesSingleWebProcess { false };
+    WTF::String m_hstsStorageDirectory;
+#if PLATFORM(GTK) && !USE(GTK4)
+    bool m_useSystemAppearanceForScrollbars { false };
+#endif
+#if PLATFORM(PLAYSTATION)
+    WTF::String m_webProcessPath;
+    WTF::String m_networkProcessPath;
+    int32_t m_userId { -1 };
+#endif
 };
 
 } // namespace API

@@ -145,8 +145,8 @@ static BOOL isForcingPreviewUpdate;
         ASSERT(![infoDictionary objectForKey:WebKitOriginalBottomPrintingMarginKey]);
         originalTopMargin = [info topMargin];
         originalBottomMargin = [info bottomMargin];
-        [infoDictionary setObject:[NSNumber numberWithDouble:originalTopMargin] forKey:WebKitOriginalTopPrintingMarginKey];
-        [infoDictionary setObject:[NSNumber numberWithDouble:originalBottomMargin] forKey:WebKitOriginalBottomPrintingMarginKey];
+        [infoDictionary setObject:@(originalTopMargin) forKey:WebKitOriginalTopPrintingMarginKey];
+        [infoDictionary setObject:@(originalBottomMargin) forKey:WebKitOriginalBottomPrintingMarginKey];
     } else {
         ASSERT([originalTopMarginNumber isKindOfClass:[NSNumber class]]);
         ASSERT([[infoDictionary objectForKey:WebKitOriginalBottomPrintingMarginKey] isKindOfClass:[NSNumber class]]);
@@ -457,10 +457,7 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
         return;
     }
 
-    NSGraphicsContext *nsGraphicsContext = [NSGraphicsContext currentContext];
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    CGContextRef context = static_cast<CGContextRef>([nsGraphicsContext graphicsPort]);
-    ALLOW_DEPRECATED_DECLARATIONS_END
+    CGContextRef context = [[NSGraphicsContext currentContext] CGContext];
 
     CGContextSaveGState(context);
     CGContextTranslateCTM(context, point.x, point.y);
@@ -546,11 +543,8 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
     }
 
     RefPtr<WebKit::ShareableBitmap> bitmap = pagePreviewIterator->value;
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    CGContextRef cgContext = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
-    ALLOW_DEPRECATED_DECLARATIONS_END
 
-    WebCore::GraphicsContext context(cgContext);
+    WebCore::GraphicsContext context([[NSGraphicsContext currentContext] CGContext]);
     WebCore::GraphicsContextStateSaver stateSaver(context);
 
     bitmap->paint(context, _webFrame->page()->deviceScaleFactor(), WebCore::IntPoint(nsRect.origin), bitmap->bounds());

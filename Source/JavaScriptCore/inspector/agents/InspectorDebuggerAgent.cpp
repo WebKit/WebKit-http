@@ -34,18 +34,12 @@
 #include "ContentSearchUtilities.h"
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
-#include "InspectorFrontendRouter.h"
-#include "JSCInlines.h"
 #include "RegularExpression.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include "ScriptDebugServer.h"
-#include "ScriptObject.h"
-#include <wtf/Function.h>
 #include <wtf/JSONValues.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Stopwatch.h>
-#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -767,6 +761,15 @@ void InspectorDebuggerAgent::resume(ErrorString& errorString)
     m_conditionToDispatchResumed = ShouldDispatchResumed::WhenContinued;
 }
 
+void InspectorDebuggerAgent::stepNext(ErrorString& errorString)
+{
+    if (!assertPaused(errorString))
+        return;
+
+    willStepAndMayBecomeIdle();
+    m_scriptDebugServer.stepNextExpression();
+}
+
 void InspectorDebuggerAgent::stepOver(ErrorString& errorString)
 {
     if (!assertPaused(errorString))
@@ -1153,9 +1156,9 @@ void InspectorDebuggerAgent::didPause(JSC::JSGlobalObject* globalObject, JSC::JS
         m_continueToLocationBreakpointID = JSC::noBreakpointID;
     }
 
-    RefPtr<Stopwatch> stopwatch = m_injectedScriptManager.inspectorEnvironment().executionStopwatch();
-    if (stopwatch && stopwatch->isActive()) {
-        stopwatch->stop();
+    auto& stopwatch = m_injectedScriptManager.inspectorEnvironment().executionStopwatch();
+    if (stopwatch.isActive()) {
+        stopwatch.stop();
         m_didPauseStopwatch = true;
     }
 }
@@ -1173,7 +1176,7 @@ void InspectorDebuggerAgent::breakpointActionProbe(JSC::JSGlobalObject* globalOb
         .setProbeId(action.identifier)
         .setBatchId(batchId)
         .setSampleId(sampleId)
-        .setTimestamp(m_injectedScriptManager.inspectorEnvironment().executionStopwatch()->elapsedTime().seconds())
+        .setTimestamp(m_injectedScriptManager.inspectorEnvironment().executionStopwatch().elapsedTime().seconds())
         .setPayload(WTFMove(payload))
         .release();
     m_frontendDispatcher->didSampleProbe(WTFMove(result));
@@ -1183,7 +1186,7 @@ void InspectorDebuggerAgent::didContinue()
 {
     if (m_didPauseStopwatch) {
         m_didPauseStopwatch = false;
-        m_injectedScriptManager.inspectorEnvironment().executionStopwatch()->start();
+        m_injectedScriptManager.inspectorEnvironment().executionStopwatch().start();
     }
 
     m_pausedGlobalObject = nullptr;

@@ -36,23 +36,24 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include <wtf/RetainPtr.h>
+
+OBJC_CLASS RBSAssertion;
+OBJC_CLASS WKRBSAssertionDelegate;
+
+#if !HAVE(RUNNINGBOARD_VISIBILITY_ASSERTIONS)
 OBJC_CLASS BKSProcessAssertion;
 #endif
+#endif // PLATFORM(IOS_FAMILY)
 
 namespace WebKit {
-    
-enum class AssertionState {
+
+enum class ProcessAssertionType {
     Suspended,
     Background,
     UnboundedNetworking,
     Foreground,
-};
-
-enum class AssertionReason {
-    Extension,
-    FinishTask,
-    FinishTaskUnbounded,
     MediaPlayback,
+    DependentProcessLink,
 };
 
 class ProcessAssertion : public CanMakeWeakPtr<ProcessAssertion> {
@@ -61,33 +62,37 @@ public:
     class Client {
     public:
         virtual ~Client() { }
+
         virtual void uiAssertionWillExpireImminently() = 0;
+        virtual void assertionWasInvalidated() = 0;
     };
 
-    ProcessAssertion(ProcessID, const String& reason, AssertionState);
-    ProcessAssertion(ProcessID, const String& reason, AssertionState, AssertionReason);
+    ProcessAssertion(ProcessID, const String& reason, ProcessAssertionType);
     virtual ~ProcessAssertion();
 
     void setClient(Client& client) { m_client = &client; }
     Client* client() { return m_client; }
 
-    AssertionState state() const { return m_assertionState; }
-    virtual void setState(AssertionState);
+    ProcessAssertionType type() const { return m_assertionType; }
+    ProcessID pid() const { return m_pid; }
+
+    bool isValid() const;
 
 #if PLATFORM(IOS_FAMILY)
 protected:
-    enum class Validity { No, Yes, Unset };
-    Validity validity() const { return m_validity; }
-
     virtual void processAssertionWasInvalidated();
 #endif
 
 private:
+    const ProcessAssertionType m_assertionType;
+    const ProcessID m_pid;
 #if PLATFORM(IOS_FAMILY)
-    RetainPtr<BKSProcessAssertion> m_assertion;
-    Validity m_validity { Validity::Unset };
+    RetainPtr<RBSAssertion> m_rbsAssertion;
+    RetainPtr<WKRBSAssertionDelegate> m_delegate;
+#if !HAVE(RUNNINGBOARD_VISIBILITY_ASSERTIONS)
+    RetainPtr<BKSProcessAssertion> m_bksAssertion; // Legacy.
 #endif
-    AssertionState m_assertionState;
+#endif
     Client* m_client { nullptr };
 };
 
@@ -95,10 +100,9 @@ private:
 
 class ProcessAndUIAssertion final : public ProcessAssertion {
 public:
-    ProcessAndUIAssertion(ProcessID, const String& reason, AssertionState);
+    ProcessAndUIAssertion(ProcessID, const String& reason, ProcessAssertionType);
     ~ProcessAndUIAssertion();
 
-    void setState(AssertionState) final;
     void uiAssertionWillExpireImminently();
 
 private:

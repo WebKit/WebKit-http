@@ -52,13 +52,13 @@ private:
     void commitStateBeforeChildren(const ScrollingStateNode&) override;
     void commitStateAfterChildren(const ScrollingStateNode&) override;
 
-    ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) override;
+    WheelEventHandlingResult handleWheelEvent(const PlatformWheelEvent&) override;
 
     void stopScrollAnimations() override;
 
     FloatPoint adjustedScrollPosition(const FloatPoint&, ScrollClamping) const override;
 
-    void currentScrollPositionChanged() override;
+    void currentScrollPositionChanged(ScrollingLayerPositionAction) override;
 
     void repositionScrollingLayers() override;
     void repositionRelatedLayers() override;

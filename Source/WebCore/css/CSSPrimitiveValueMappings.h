@@ -4514,6 +4514,7 @@ inline bool CSSPrimitiveValue::convertingToLengthRequiresNonNullStyle(int length
     case CSSUnitType::CSS_EMS:
     case CSSUnitType::CSS_EXS:
     case CSSUnitType::CSS_CHS:
+    case CSSUnitType::CSS_LHS:
         return lengthConversion & (FixedIntegerConversion | FixedFloatConversion);
     default:
         return false;
@@ -5464,7 +5465,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ApplePayButtonType e)
     case ApplePayButtonType::Donate:
         m_value.valueID = CSSValueDonate;
         break;
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case ApplePayButtonType::CheckOut:
         m_value.valueID = CSSValueCheckOut;
         break;
@@ -5474,8 +5474,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ApplePayButtonType e)
     case ApplePayButtonType::Subscribe:
         m_value.valueID = CSSValueSubscribe;
         break;
-#endif
-
     default:
         ASSERT_NOT_REACHED();
         break;
@@ -5494,14 +5492,12 @@ template<> inline CSSPrimitiveValue::operator ApplePayButtonType() const
         return ApplePayButtonType::SetUp;
     case CSSValueDonate:
         return ApplePayButtonType::Donate;
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case CSSValueCheckOut:
         return ApplePayButtonType::CheckOut;
     case CSSValueBook:
         return ApplePayButtonType::Book;
     case CSSValueSubscribe:
         return ApplePayButtonType::Subscribe;
-#endif
     default:
         break;
     }

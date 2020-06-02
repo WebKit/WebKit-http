@@ -62,6 +62,9 @@ public:
     void setUserTimingEnabled(bool isEnabled) { m_isUserTimingEnabled = isEnabled; }
     bool userTimingEnabled() const { return m_isUserTimingEnabled; }
 
+    void setPaintTimingEnabled(bool isEnabled) { m_isPaintTimingEnabled = isEnabled; }
+    bool paintTimingEnabled() const { return m_isPaintTimingEnabled; }
+
     bool performanceTimelineEnabled() const { return resourceTimingEnabled() || userTimingEnabled(); }
 
     void setShadowDOMEnabled(bool isEnabled) { m_isShadowDOMEnabled = isEnabled; }
@@ -236,8 +239,8 @@ public:
 #if ENABLE(WEB_RTC)
     bool webRTCDTMFEnabled() const { return m_isWebRTCDTMFEnabled; }
     void setWebRTCDTMFEnabled(bool isEnabled) { m_isWebRTCDTMFEnabled = isEnabled; }
-    bool webRTCVP8CodecEnabled() const { return m_isWebRTCVP8CodecEnabled; }
-    void setWebRTCVP8CodecEnabled(bool isEnabled) { m_isWebRTCVP8CodecEnabled = isEnabled; }
+    bool webRTCH265CodecEnabled() const { return m_isWebRTCH265CodecEnabled; }
+    void setWebRTCH265CodecEnabled(bool isEnabled) { m_isWebRTCH265CodecEnabled = isEnabled; }
     bool peerConnectionEnabled() const { return m_isPeerConnectionEnabled; }
     void setPeerConnectionEnabled(bool isEnabled) { m_isPeerConnectionEnabled = isEnabled; }
     bool webRTCMDNSICECandidatesEnabled() const { return m_isWebRTCMDNSICECandidatesEnabled; }
@@ -356,6 +359,12 @@ public:
     void setCSSLogicalEnabled(bool isEnabled) { m_CSSLogicalEnabled = isEnabled; }
     bool cssLogicalEnabled() const { return m_CSSLogicalEnabled; }
 
+    void setLegacyBeforeLoadEventEnabled(bool isEnabled) { m_legacyBeforeLoadEventEnabled = isEnabled; }
+    bool legacyBeforeLoadEventEnabled() const { return m_legacyBeforeLoadEventEnabled; }
+
+    void setLineHeightUnitsEnabled(bool isEnabled) { m_lineHeightUnitsEnabled = isEnabled; }
+    bool lineHeightUnitsEnabled() const { return m_lineHeightUnitsEnabled; }
+
     bool adClickAttributionEnabled() const { return m_adClickAttributionEnabled; }
     void setAdClickAttributionEnabled(bool isEnabled) { m_adClickAttributionEnabled = isEnabled; }
     bool adClickAttributionDebugModeEnabled() const { return m_adClickAttributionDebugModeEnabled; }
@@ -424,6 +433,7 @@ private:
     bool m_isLinkPreloadEnabled { true };
     bool m_isLinkPrefetchEnabled { false };
     bool m_isMediaPreloadingEnabled { false };
+    bool m_isPaintTimingEnabled { false };
     bool m_isResourceTimingEnabled { false };
     bool m_isUserTimingEnabled { false };
     bool m_isInteractiveFormValidationEnabled { false };
@@ -502,7 +512,7 @@ private:
 
 #if ENABLE(WEB_RTC)
     bool m_isWebRTCDTMFEnabled { true };
-    bool m_isWebRTCVP8CodecEnabled { true };
+    bool m_isWebRTCH265CodecEnabled { true };
     bool m_isPeerConnectionEnabled { true };
     bool m_isWebRTCMDNSICECandidatesEnabled { false };
     bool m_isWebRTCH264SimulcastEnabled { true };
@@ -594,6 +604,10 @@ private:
 
     bool m_CSSLogicalEnabled { false };
 
+    // False by default until https://bugs.webkit.org/show_bug.cgi?id=211351 /
+    // https://github.com/w3c/csswg-drafts/issues/3257 have been sorted out.
+    bool m_lineHeightUnitsEnabled { false };
+
     bool m_adClickAttributionEnabled { false };
     bool m_adClickAttributionDebugModeEnabled { false };
 
@@ -619,6 +633,8 @@ private:
 
     bool m_isInAppBrowserPrivacyEnabled { false };
     bool m_needsInAppBrowserPrivacyQuirks { false };
+
+    bool m_legacyBeforeLoadEventEnabled { false };
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     bool m_accessibilityIsolatedTree { false };

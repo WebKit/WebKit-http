@@ -73,6 +73,7 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/NSColorSPI.h>
 #import <pal/spi/mac/NSCellSPI.h>
+#import <pal/spi/mac/NSImageSPI.h>
 #import <pal/spi/mac/NSSharingServicePickerSPI.h>
 #import <wtf/MathExtras.h>
 #import <wtf/ObjCRuntimeExtras.h>
@@ -468,20 +469,13 @@ Color RenderThemeMac::platformFocusRingColor(OptionSet<StyleColor::Options> opti
         return oldAquaFocusRingColor();
     LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseDarkAppearance));
     // The color is expected to be opaque, since CoreGraphics will apply opacity when drawing (because opacity is normally animated).
-    return colorWithOverrideAlpha(colorFromNSColor([NSColor keyboardFocusIndicatorColor]).rgb(), 1);
+    return colorFromNSColor([NSColor keyboardFocusIndicatorColor]).opaqueColor();
 }
 
-Color RenderThemeMac::platformActiveTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
+Color RenderThemeMac::platformTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
 {
     LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor findHighlightColor]);
-}
-
-Color RenderThemeMac::platformInactiveTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
-{
-    // The inactive color is normally used, since no legacy WebKit client marks a text match as active.
-    // So just return the same color for both states.
-    return platformActiveTextSearchHighlightColor(options);
 }
 
 static FontSelectionValue toFontWeight(NSInteger appKitFontWeight)
@@ -557,7 +551,7 @@ void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, Fo
     fontDescription.setIsItalic([fontManager traitsOfFont:font] & NSItalicFontMask);
 }
 
-static RGBA32 menuBackgroundColor()
+static SimpleColor menuBackgroundColor()
 {
     RetainPtr<NSBitmapImageRep> offscreenRep = adoptNS([[NSBitmapImageRep alloc] initWithBitmapDataPlanes:nil pixelsWide:1 pixelsHigh:1
         bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:4 bitsPerPixel:32]);
@@ -574,7 +568,7 @@ static RGBA32 menuBackgroundColor()
     NSUInteger pixel[4];
     [offscreenRep getPixel:pixel atX:0 y:0];
 
-    return makeRGBA(pixel[0], pixel[1], pixel[2], pixel[3]);
+    return makeSimpleColor(pixel[0], pixel[1], pixel[2], pixel[3]);
 }
 
 Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const
@@ -873,14 +867,15 @@ bool RenderThemeMac::usesTestModeFocusRingColor() const
 
 bool RenderThemeMac::isControlStyled(const RenderStyle& style, const RenderStyle& userAgentStyle) const
 {
-    if (style.appearance() == TextFieldPart || style.appearance() == TextAreaPart || style.appearance() == ListboxPart)
+    auto appearance = style.appearance();
+    if (appearance == TextFieldPart || appearance == TextAreaPart || appearance == SearchFieldPart || appearance == ListboxPart)
         return style.border() != userAgentStyle.border();
 
     // FIXME: This is horrible, but there is not much else that can be done.  Menu lists cannot draw properly when
     // scaled.  They can't really draw properly when transformed either.  We can't detect the transform case at style
     // adjustment time so that will just have to stay broken.  We can however detect that we're zooming.  If zooming
     // is in effect we treat it like the control is styled.
-    if (style.appearance() == MenulistPart && style.effectiveZoom() != 1.0f)
+    if (appearance == MenulistPart && style.effectiveZoom() != 1.0f)
         return true;
 
     return RenderTheme::isControlStyled(style, userAgentStyle);
@@ -1166,12 +1161,8 @@ bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& pain
     AffineTransform transform = paintInfo.context().getCTM();
     if (transform.xScale() > 1 || transform.yScale() > 1) {
         adjustedPaintRect.inflateX(1 / transform.xScale());
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
         adjustedPaintRect.inflateY(2 / transform.yScale());
         adjustedPaintRect.move(0, -1 / transform.yScale());
-#else
-        adjustedPaintRect.inflateY(1 / transform.yScale());
-#endif
     }
     NSTextFieldCell *textField = this->textField();
 
@@ -1658,8 +1649,8 @@ bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, c
     };
     paintInfo.context().fillPath(Path::polygonPathFromPoints(arrow2));
 
-    Color leftSeparatorColor(0, 0, 0, 40);
-    Color rightSeparatorColor(255, 255, 255, 40);
+    constexpr auto leftSeparatorColor = makeSimpleColor(0, 0, 0, 40);
+    constexpr auto rightSeparatorColor = makeSimpleColor(255, 255, 255, 40);
 
     // FIXME: Should the separator thickness and space be scaled up by fontScale?
     int separatorSpace = 2; // Deliberately ignores zoom since it looks nicer if it stays thin.
@@ -2481,8 +2472,8 @@ const CGFloat attachmentIconSelectionBorderThickness = 1;
 const CGFloat attachmentIconBackgroundRadius = 3;
 const CGFloat attachmentIconToTitleMargin = 2;
 
-static Color attachmentIconBackgroundColor() { return Color(0, 0, 0, 30); }
-static Color attachmentIconBorderColor() { return Color(255, 255, 255, 125); }
+constexpr SimpleColor attachmentIconBackgroundColor = makeSimpleColor(0, 0, 0, 30);
+constexpr SimpleColor attachmentIconBorderColor = makeSimpleColor(255, 255, 255, 125);
 
 const CGFloat attachmentTitleFontSize = 12;
 const CGFloat attachmentTitleBackgroundRadius = 3;
@@ -2490,23 +2481,23 @@ const CGFloat attachmentTitleBackgroundPadding = 3;
 const CGFloat attachmentTitleMaximumWidth = 100 - (attachmentTitleBackgroundPadding * 2);
 const CFIndex attachmentTitleMaximumLineCount = 2;
 
-static Color attachmentTitleInactiveBackgroundColor() { return Color(204, 204, 204, 255); }
-static Color attachmentTitleInactiveTextColor() { return Color(100, 100, 100, 255); }
+constexpr SimpleColor attachmentTitleInactiveBackgroundColor = makeSimpleColor(204, 204, 204, 255);
+constexpr SimpleColor attachmentTitleInactiveTextColor = makeSimpleColor(100, 100, 100, 255);
 
 const CGFloat attachmentSubtitleFontSize = 10;
 const int attachmentSubtitleWidthIncrement = 10;
-static Color attachmentSubtitleTextColor() { return Color(82, 145, 214, 255); }
+constexpr SimpleColor attachmentSubtitleTextColor = makeSimpleColor(82, 145, 214, 255);
 
 const CGFloat attachmentProgressBarWidth = 30;
 const CGFloat attachmentProgressBarHeight = 5;
 const CGFloat attachmentProgressBarOffset = -9;
 const CGFloat attachmentProgressBarBorderWidth = 1;
-static Color attachmentProgressBarBackgroundColor() { return Color(0, 0, 0, 89); }
-static Color attachmentProgressBarFillColor() { return Color(Color::white); }
-static Color attachmentProgressBarBorderColor() { return Color(0, 0, 0, 128); }
+constexpr SimpleColor attachmentProgressBarBackgroundColor = makeSimpleColor(0, 0, 0, 89);
+constexpr SimpleColor attachmentProgressBarFillColor = Color::white;
+constexpr SimpleColor attachmentProgressBarBorderColor = makeSimpleColor(0, 0, 0, 128);
 
 const CGFloat attachmentPlaceholderBorderRadius = 5;
-static Color attachmentPlaceholderBorderColor() { return Color(0, 0, 0, 56); }
+constexpr SimpleColor attachmentPlaceholderBorderColor = makeSimpleColor(0, 0, 0, 56);
 const CGFloat attachmentPlaceholderBorderWidth = 2;
 const CGFloat attachmentPlaceholderBorderDashLength = 6;
 
@@ -2550,7 +2541,7 @@ static Color titleTextColorForAttachment(const RenderAttachment& attachment, Att
         if (attachment.frame().selection().isFocusedAndActive())
             result = colorFromNSColor([NSColor alternateSelectedControlTextColor]);
         else
-            result = attachmentTitleInactiveTextColor();
+            result = attachmentTitleInactiveTextColor;
     }
 
     return attachment.style().colorByApplyingColorFilter(result);
@@ -2656,7 +2647,7 @@ void AttachmentLayout::layOutSubtitle(const RenderAttachment& attachment)
     if (subtitleText.isEmpty())
         return;
 
-    Color subtitleColor = attachment.style().colorByApplyingColorFilter(attachmentSubtitleTextColor());
+    Color subtitleColor = attachment.style().colorByApplyingColorFilter(attachmentSubtitleTextColor);
     CFStringRef language = 0; // By not specifying a language we use the system language.
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, attachmentSubtitleFontSize, language));
     NSDictionary *textAttributes = @{
@@ -2730,7 +2721,7 @@ static void paintAttachmentIconBackground(const RenderAttachment& attachment, Gr
     if (paintBorder)
         backgroundRect.inflate(-attachmentIconSelectionBorderThickness);
 
-    Color backgroundColor = attachment.style().colorByApplyingColorFilter(attachmentIconBackgroundColor());
+    Color backgroundColor = attachment.style().colorByApplyingColorFilter(attachmentIconBackgroundColor);
     context.fillRoundedRect(FloatRoundedRect(backgroundRect, FloatRoundedRect::Radii(attachmentIconBackgroundRadius)), backgroundColor);
 
     if (paintBorder) {
@@ -2741,7 +2732,7 @@ static void paintAttachmentIconBackground(const RenderAttachment& attachment, Gr
         Path borderPath;
         borderPath.addRoundedRect(borderRect, iconBackgroundRadiusSize);
 
-        Color borderColor = attachment.style().colorByApplyingColorFilter(attachmentIconBorderColor());
+        Color borderColor = attachment.style().colorByApplyingColorFilter(attachmentIconBorderColor);
         context.setStrokeColor(borderColor);
         context.setStrokeThickness(attachmentIconSelectionBorderThickness);
         context.strokePath(borderPath);
@@ -2784,21 +2775,33 @@ static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
 
 static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
 {
+    if (auto thumbnailIcon = attachment.attachmentElement().thumbnail()) {
+        context.drawImage(*thumbnailIcon, layout.iconRect);
+        return;
+    }
     auto icon = iconForAttachment(attachment);
     if (!icon)
         return;
     icon->paint(context, layout.iconRect);
 }
 
+#if HAVE(SYSTEM_ATTACHMENT_PLACEHOLDER_ICON) && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/RenderThemeMacAdditions.mm>
+#else
+
+static std::pair<RefPtr<Image>, float> createAttachmentPlaceholderImage(float deviceScaleFactor, const AttachmentLayout&)
+{
+    if (deviceScaleFactor >= 2)
+        return { Image::loadPlatformResource("AttachmentPlaceholder@2x"), 2 };
+
+    return { Image::loadPlatformResource("AttachmentPlaceholder"), 1 };
+}
+
+#endif
+
 static void paintAttachmentIconPlaceholder(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
 {
-    RefPtr<Image> placeholderImage;
-    float imageScale = 1;
-    if (attachment.document().deviceScaleFactor() >= 2) {
-        placeholderImage = Image::loadPlatformResource("AttachmentPlaceholder@2x");
-        imageScale = 2;
-    } else
-        placeholderImage = Image::loadPlatformResource("AttachmentPlaceholder");
+    auto [placeholderImage, imageScale] = createAttachmentPlaceholderImage(attachment.document().deviceScaleFactor(), layout);
 
     // Center the placeholder image where the icon would usually be.
     FloatRect placeholderRect(0, 0, placeholderImage->width() / imageScale, placeholderImage->height() / imageScale);
@@ -2827,7 +2830,7 @@ static void paintAttachmentTitleBackground(const RenderAttachment& attachment, G
         backgroundColor = colorFromNSColor([NSColor alternateSelectedControlColor]);
         ALLOW_DEPRECATED_DECLARATIONS_END
     } else
-        backgroundColor = attachmentTitleInactiveBackgroundColor();
+        backgroundColor = attachmentTitleInactiveBackgroundColor;
 
     backgroundColor = attachment.style().colorByApplyingColorFilter(backgroundColor);
     context.setFillColor(backgroundColor);
@@ -2872,7 +2875,7 @@ static void paintAttachmentProgress(const RenderAttachment& attachment, Graphics
     backgroundRect.inflate(-attachmentProgressBarBorderWidth / 2);
 
     FloatRoundedRect backgroundRoundedRect(backgroundRect, FloatRoundedRect::Radii(backgroundRect.height() / 2));
-    context.fillRoundedRect(backgroundRoundedRect, attachmentProgressBarBackgroundColor());
+    context.fillRoundedRect(backgroundRoundedRect, attachmentProgressBarBackgroundColor);
 
     {
         GraphicsContextStateSaver clipSaver(context);
@@ -2882,13 +2885,13 @@ static void paintAttachmentProgress(const RenderAttachment& attachment, Graphics
         progressRect.setWidth(progressRect.width() * progress);
         progressRect = encloseRectToDevicePixels(progressRect, attachment.document().deviceScaleFactor());
 
-        context.fillRect(progressRect, attachmentProgressBarFillColor());
+        context.fillRect(progressRect, attachmentProgressBarFillColor);
     }
 
     Path borderPath;
     float borderRadius = borderRect.height() / 2;
     borderPath.addRoundedRect(borderRect, FloatSize(borderRadius, borderRadius));
-    context.setStrokeColor(attachmentProgressBarBorderColor());
+    context.setStrokeColor(attachmentProgressBarBorderColor);
     context.setStrokeThickness(attachmentProgressBarBorderWidth);
     context.strokePath(borderPath);
 }
@@ -2898,7 +2901,7 @@ static void paintAttachmentPlaceholderBorder(const RenderAttachment& attachment,
     Path borderPath;
     borderPath.addRoundedRect(layout.attachmentRect, FloatSize(attachmentPlaceholderBorderRadius, attachmentPlaceholderBorderRadius));
 
-    Color placeholderBorderColor = attachment.style().colorByApplyingColorFilter(attachmentPlaceholderBorderColor());
+    Color placeholderBorderColor = attachment.style().colorByApplyingColorFilter(attachmentPlaceholderBorderColor);
     context.setStrokeColor(placeholderBorderColor);
     context.setStrokeThickness(attachmentPlaceholderBorderWidth);
     context.setStrokeStyle(DashedStroke);

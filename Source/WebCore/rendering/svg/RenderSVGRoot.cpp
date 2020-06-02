@@ -29,6 +29,7 @@
 #include "HitTestResult.h"
 #include "LayoutRepainter.h"
 #include "Page.h"
+#include "RenderChildIterator.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderLayoutState.h"
@@ -211,7 +212,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
         return;
 
     // Don't paint, if the context explicitly disabled it.
-    if (paintInfo.context().paintingDisabled())
+    if (paintInfo.context().paintingDisabled() && !paintInfo.context().detectingContentfulPaint())
         return;
 
     // SVG outlines are painted during PaintPhase::Foreground.
@@ -222,6 +223,17 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     // (http://www.w3.org/TR/SVG/coords.html#ViewBoxAttribute)
     if (svgSVGElement().hasEmptyViewBox())
         return;
+
+    GraphicsContext& context = paintInfo.context();
+    if (context.detectingContentfulPaint()) {
+        for (auto& current : childrenOfType<RenderObject>(*this)) {
+            if (!current.isSVGHiddenContainer()) {
+                context.setContentfulPaintDetected();
+                return;
+            }
+        }
+        return;
+    }
 
     // Don't paint if we don't have kids, except if we have filters we should paint those.
     if (!firstChild()) {
@@ -353,7 +365,7 @@ Optional<FloatRect> RenderSVGRoot::computeFloatVisibleRectInContainer(const Floa
 
     // Apply initial viewport clip
     if (shouldApplyViewportClip()) {
-        if (context.m_options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection)) {
+        if (context.options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection)) {
             if (!adjustedRect.edgeInclusiveIntersect(snappedIntRect(borderBoxRect())))
                 return WTF::nullopt;
         } else
@@ -375,12 +387,12 @@ Optional<FloatRect> RenderSVGRoot::computeFloatVisibleRectInContainer(const Floa
 // This method expects local CSS box coordinates.
 // Callers with local SVG viewport coordinates should first apply the localToBorderBoxTransform
 // to convert from SVG viewport coordinates to local CSS box coordinates.
-void RenderSVGRoot::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+void RenderSVGRoot::mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     ASSERT(mode & ~IsFixed); // We should have no fixed content in the SVG rendering tree.
     ASSERT(mode & UseTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.
 
-    RenderReplaced::mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip, wasFixed);
+    RenderReplaced::mapLocalToContainer(ancestorContainer, transformState, mode | ApplyContainerFlip, wasFixed);
 }
 
 const RenderObject* RenderSVGRoot::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -402,6 +414,8 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
     LayoutPoint pointInParent = locationInContainer.point() - toLayoutSize(accumulatedOffset);
     LayoutPoint pointInBorderBox = pointInParent - toLayoutSize(location());
 
+    ASSERT(SVGHitTestCycleDetectionScope::isEmpty());
+
     // Test SVG content if the point is in our content box or it is inside the visualOverflowRect and the overflow is visible.
     // FIXME: This should be an intersection when rect-based hit tests are supported by nodeAtFloatPoint.
     if (contentBoxRect().contains(pointInBorderBox) || (!shouldApplyViewportClip() && visualOverflowRect().contains(pointInParent))) {
@@ -411,8 +425,10 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
             // FIXME: nodeAtFloatPoint() doesn't handle rect-based hit tests yet.
             if (child->nodeAtFloatPoint(request, result, localPoint, hitTestAction)) {
                 updateHitTestResult(result, pointInBorderBox);
-                if (result.addNodeToListBasedTestResult(child->node(), request, locationInContainer) == HitTestProgress::Stop)
+                if (result.addNodeToListBasedTestResult(child->node(), request, locationInContainer) == HitTestProgress::Stop) {
+                    ASSERT(SVGHitTestCycleDetectionScope::isEmpty());
                     return true;
+                }
             }
         }
     }
@@ -430,6 +446,8 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
                 return true;
         }
     }
+
+    ASSERT(SVGHitTestCycleDetectionScope::isEmpty());
 
     return false;
 }

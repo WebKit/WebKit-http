@@ -47,7 +47,8 @@
 #include <wtf/URL.h>
 #include <wtf/text/TextStream.h>
 
-#define USE_DRAW_PATH_DIRECT (PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400))
+// FIXME: This should probably be HAVE(CG_CONTEXT_DRAW_PATH_DIRECT) and be in PlatformHave.h.
+#define USE_DRAW_PATH_DIRECT PLATFORM(COCOA)
 
 // FIXME: The following using declaration should be in <wtf/HashFunctions.h>.
 using WTF::pairIntHash;
@@ -1760,19 +1761,15 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
     ASSERT(hasPlatformContext());
 
     CGContextRef context = platformContext();
-    switch (mode) {
-    case TextModeFill:
-        CGContextSetTextDrawingMode(context, kCGTextFill);
-        break;
-    case TextModeStroke:
-        CGContextSetTextDrawingMode(context, kCGTextStroke);
-        break;
-    case TextModeFill | TextModeStroke:
+    
+    bool fill = mode.contains(TextDrawingMode::Fill);
+    bool stroke = mode.contains(TextDrawingMode::Stroke);
+    if (fill && stroke)
         CGContextSetTextDrawingMode(context, kCGTextFillStroke);
-        break;
-    default:
-        break;
-    }
+    else if (fill)
+        CGContextSetTextDrawingMode(context, kCGTextFill);
+    else if (stroke)
+        CGContextSetTextDrawingMode(context, kCGTextStroke);
 }
 
 void GraphicsContext::setPlatformStrokeColor(const Color& color)

@@ -32,16 +32,31 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         this.element.classList.add("cookie-storage");
 
         this._cookies = [];
+        this._filteredCookies = [];
         this._sortComparator = null;
         this._table = null;
+        this._knownCells = new WeakSet;
+
+        this._emptyFilterResultsMessageElement = null;
+
+        this._filterBarNavigationItem = new WI.FilterBarNavigationItem;
+        this._filterBarNavigationItem.filterBar.addEventListener(WI.FilterBar.Event.FilterDidChange, this._handleFilterBarFilterDidChange, this);
 
         if (InspectorBackend.hasCommand("Page.setCookie")) {
             this._setCookieButtonNavigationItem = new WI.ButtonNavigationItem("cookie-storage-set-cookie", WI.UIString("Add Cookie"), "Images/Plus15.svg", 15, 15);
             this._setCookieButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._handleSetCookieButtonClick, this);
         }
 
-        this._refreshButtonNavigationItem = new WI.ButtonNavigationItem("cookie-storage-refresh", WI.UIString("Refresh"), "Images/ReloadFull.svg", 13, 13);
-        this._refreshButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._refreshButtonClicked, this);
+        if (InspectorBackend.hasCommand("Page.getCookies")) {
+            this._refreshButtonNavigationItem = new WI.ButtonNavigationItem("cookie-storage-refresh", WI.UIString("Refresh"), "Images/ReloadFull.svg", 13, 13);
+            this._refreshButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._refreshButtonClicked, this);
+        }
+
+        if (InspectorBackend.hasCommand("Page.deleteCookie")) {
+            this._clearButtonNavigationItem = new WI.ButtonNavigationItem("cookie-storage-clear", WI.UIString("Clear Cookies"), "Images/NavigationItemTrash.svg", 15, 15);
+            this._clearButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
+            this._clearButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._handleClearNavigationItemClicked, this);
+        }
     }
 
     // Public
@@ -49,9 +64,14 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
     get navigationItems()
     {
         let navigationItems = [];
+        navigationItems.push(this._filterBarNavigationItem);
+        navigationItems.push(new WI.DividerNavigationItem);
         if (this._setCookieButtonNavigationItem)
             navigationItems.push(this._setCookieButtonNavigationItem);
-        navigationItems.push(this._refreshButtonNavigationItem);
+        if (this._refreshButtonNavigationItem)
+            navigationItems.push(this._refreshButtonNavigationItem);
+        if (this._clearButtonNavigationItem)
+            navigationItems.push(this._clearButtonNavigationItem);
         return navigationItems;
     }
 
@@ -66,6 +86,16 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         if (!this._table)
             return [];
         return [this._table.scrollContainer];
+    }
+
+    get canFocusFilterBar()
+    {
+        return true;
+    }
+
+    focusFilterBar()
+    {
+        this._filterBarNavigationItem.filterBar.focus();
     }
 
     handleCopyEvent(event)
@@ -86,20 +116,20 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
 
     tableIndexForRepresentedObject(table, object)
     {
-        let index = this._cookies.indexOf(object);
+        let index = this._filteredCookies.indexOf(object);
         console.assert(index >= 0);
         return index;
     }
 
     tableRepresentedObjectForIndex(table, index)
     {
-        console.assert(index >= 0 && index < this._cookies.length);
-        return this._cookies[index];
+        console.assert(index >= 0 && index < this._filteredCookies.length);
+        return this._filteredCookies[index];
     }
 
     tableNumberOfRows(table)
     {
-        return this._cookies.length;
+        return this._filteredCookies.length;
     }
 
     tableSortChanged(table)
@@ -110,6 +140,8 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
             return;
 
         this._updateSort();
+        this._updateFilteredCookies();
+        this._updateEmptyFilterResultsMessage();
         this._table.reloadData();
     }
 
@@ -121,13 +153,9 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
 
         contextMenu.appendSeparator();
 
-        if (InspectorBackend.hasCommand("Page.setCookie")) {
-            contextMenu.appendItem(WI.UIString("Edit"), () => {
-                console.assert(!this._editingCookie);
-                this._editingCookie = this._cookies[rowIndex];
-
-                let popover = new WI.CookiePopover(this);
-                popover.show(this._editingCookie, this._table.cellForRowAndColumn(rowIndex, this._table.columns[0]), [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_X]);
+        if (InspectorBackend.hasCommand("Page.setCookie") && column.identifier !== "size") {
+            contextMenu.appendItem(WI.UIString("Edit %s").format(column.name), () => {
+                this._showCookiePopover(cell, this._filteredCookies[rowIndex], column.identifier);
             });
         }
 
@@ -142,12 +170,14 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
             InspectorFrontendHost.copyText(this._formatCookiesAsText(cookies));
         });
 
-        contextMenu.appendItem(WI.UIString("Delete"), () => {
-            if (table.isRowSelected(rowIndex))
-                table.removeSelectedRows();
-            else
-                table.removeRow(rowIndex);
-        });
+        if (InspectorBackend.hasCommand("Page.deleteCookie")) {
+            contextMenu.appendItem(WI.UIString("Delete"), () => {
+                if (table.isRowSelected(rowIndex))
+                    table.removeSelectedRows();
+                else
+                    table.removeRow(rowIndex);
+            });
+        }
 
         contextMenu.appendSeparator();
     }
@@ -159,12 +189,13 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
 
         for (let i = rowIndexes.length - 1; i >= 0; --i) {
             let rowIndex = rowIndexes[i];
-            let cookie = this._cookies[rowIndex];
+            let cookie = this._filteredCookies[rowIndex];
             console.assert(cookie, "Missing cookie for row " + rowIndex);
             if (!cookie)
                 continue;
 
-            this._cookies.splice(rowIndex, 1);
+            this._filteredCookies.splice(rowIndex, 1);
+            this._cookies.remove(cookie);
 
             let target = WI.assumingMainTarget();
             target.PageAgent.deleteCookie(cookie.name, cookie.url);
@@ -173,8 +204,23 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
 
     tablePopulateCell(table, cell, column, rowIndex)
     {
-        let cookie = this._cookies[rowIndex];
+        let cookie = this._filteredCookies[rowIndex];
+
         cell.textContent = this._formatCookiePropertyForColumn(cookie, column);
+
+        if (!this._knownCells.has(cell)) {
+            this._knownCells.add(cell);
+
+            cell.addEventListener("dblclick", (event) => {
+                if (column.identifier === "size") {
+                    InspectorFrontendHost.beep();
+                    return;
+                }
+
+                this._showCookiePopover(cell, cookie, column.identifier);
+            });
+        }
+
         return cell;
     }
 
@@ -281,11 +327,11 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
 
     // Private
 
-    _filterCookies(cookies)
+    _getCookiesForHost(cookies, host)
     {
         let resourceMatchesStorageDomain = (resource) => {
             let urlComponents = resource.urlComponents;
-            return urlComponents && urlComponents.host && urlComponents.host === this.representedObject.host;
+            return urlComponents && urlComponents.host && urlComponents.host === host;
         };
 
         let allResources = [];
@@ -348,6 +394,43 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         this._sortComparator = (a, b) => reverseFactor * comparator(a, b);
     }
 
+    _showCookiePopover(targetElement, cookie, columnIdentifier) {
+        console.assert(!this._editingCookie);
+        this._editingCookie = cookie;
+
+        let options = {};
+        if (columnIdentifier) {
+            switch (columnIdentifier) {
+            case "name":
+            case "value":
+            case "domain":
+            case "path":
+            case "secure":
+                options.focusField = columnIdentifier;
+                break;
+
+            case "expires":
+                options.focusField = this._editingCookie.session ? "session" : "expires";
+                break;
+
+            case "httpOnly":
+                options.focusField = "http-only";
+                break;
+
+            case "sameSite":
+                options.focusField = "same-site";
+                break;
+
+            default:
+                console.assert();
+                break;
+            }
+        }
+
+        let popover = new WI.CookiePopover(this);
+        popover.show(this._editingCookie, targetElement, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MIN_X, WI.RectEdge.MAX_X], options);
+    }
+
     async _willDismissCookiePopover(popover)
     {
         let editingCookie = this._editingCookie;
@@ -376,15 +459,21 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         promises.push(this._reloadCookies());
         await Promise.all(promises);
 
-        let index = this._cookies.findIndex((existingCookie) => cookieToSet.equals(existingCookie));
+        let index = this._filteredCookies.findIndex((existingCookie) => cookieToSet.equals(existingCookie));
         if (index >= 0)
             this._table.selectRow(index);
     }
 
+    _handleFilterBarFilterDidChange(event)
+    {
+        this._updateFilteredCookies();
+        this._updateEmptyFilterResultsMessage();
+        this._table.reloadData();
+    }
+
     _handleSetCookieButtonClick(event)
     {
-        let popover = new WI.CookiePopover(this);
-        popover.show(null, this._setCookieButtonNavigationItem.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_X]);
+        this._showCookiePopover(this._setCookieButtonNavigationItem.element, null, "name");
     }
 
     _refreshButtonClicked(event)
@@ -392,12 +481,26 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         this._reloadCookies();
     }
 
+    _handleClearNavigationItemClicked(event)
+    {
+        let target = WI.assumingMainTarget();
+        for (let cookie of this._cookies)
+            target.PageAgent.deleteCookie(cookie.name, cookie.url);
+
+        this._reloadCookies();
+    }
+
     _reloadCookies()
     {
         let target = WI.assumingMainTarget();
-        return target.PageAgent.getCookies().then((payload) => {
-            this._cookies = this._filterCookies(payload.cookies.map(WI.Cookie.fromPayload));
+        if (!target.hasCommand("Page.getCookies"))
+            return;
+
+        target.PageAgent.getCookies().then((payload) => {
+            this._cookies = this._getCookiesForHost(payload.cookies.map(WI.Cookie.fromPayload), this.representedObject.host);
             this._updateSort();
+            this._updateFilteredCookies();
+            this._updateEmptyFilterResultsMessage();
             this._table.reloadData();
         }).catch((error) => {
             console.error("Could not fetch cookies: ", error);
@@ -412,17 +515,70 @@ WI.CookieStorageContentView = class CookieStorageContentView extends WI.ContentV
         this._cookies.sort(this._sortComparator);
     }
 
+    _updateFilteredCookies()
+    {
+        this._filteredCookies = this._cookies;
+
+        let filterBar = this._filterBarNavigationItem.filterBar;
+        filterBar.invalid = false;
+
+        let filterText = filterBar.filters.text;
+        if (!filterText)
+            return;
+
+        let regex = WI.SearchUtilities.filterRegExpForString(filterText, WI.SearchUtilities.defaultSettings);
+        if (!regex) {
+            filterBar.invalid = true;
+            return;
+        }
+
+        this._filteredCookies = this._filteredCookies.filter((cookie) => {
+            for (let column of this._table.columns) {
+                let text = this._formatCookiePropertyForColumn(cookie, column);
+                if (text && regex.test(text))
+                    return true;
+            }
+            return false;
+        });
+    }
+
+    _updateEmptyFilterResultsMessage()
+    {
+        if (this._filteredCookies.length || !this._filterBarNavigationItem.filterBar.filters.text) {
+            if (this._emptyFilterResultsMessageElement)
+                this._emptyFilterResultsMessageElement.remove();
+            this._emptyFilterResultsMessageElement = null;
+        } else {
+            if (!this._emptyFilterResultsMessageElement) {
+                let buttonElement = document.createElement("button");
+                buttonElement.textContent = WI.UIString("Clear Filters");
+                buttonElement.addEventListener("click", (event) => {
+                    this._filterBarNavigationItem.filterBar.clear();
+                });
+
+                this._emptyFilterResultsMessageElement = WI.createMessageTextView(WI.UIString("No Filter Results"));
+                this._emptyFilterResultsMessageElement.appendChild(buttonElement);
+            }
+
+            this.element.appendChild(this._emptyFilterResultsMessageElement);
+        }
+    }
+
     _handleTableKeyDown(event)
     {
-        if (event.keyCode === WI.KeyboardShortcut.Key.Backspace.keyCode || event.keyCode === WI.KeyboardShortcut.Key.Delete.keyCode)
-            this._table.removeSelectedRows();
+        if (event.keyCode === WI.KeyboardShortcut.Key.Backspace.keyCode || event.keyCode === WI.KeyboardShortcut.Key.Delete.keyCode) {
+            if (InspectorBackend.hasCommand("Page.deleteCookie"))
+                this._table.removeSelectedRows();
+            else
+                InspectorFrontendHost.beep();
+        }
     }
 
     _cookiesAtIndexes(indexes)
     {
-        if (!this._cookies.length)
+        if (!this._filteredCookies.length)
             return [];
-        return indexes.map((index) => this._cookies[index]);
+        return indexes.map((index) => this._filteredCookies[index]);
     }
 
     _formatCookiesAsText(cookies)

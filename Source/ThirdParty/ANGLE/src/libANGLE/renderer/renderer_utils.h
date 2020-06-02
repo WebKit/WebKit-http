@@ -43,6 +43,23 @@ namespace rx
 {
 class ContextImpl;
 
+// The possible rotations of the surface/draw framebuffer, particularly for the Vulkan back-end on
+// Android.
+enum class SurfaceRotation
+{
+    Identity,
+    Rotated90Degrees,
+    Rotated180Degrees,
+    Rotated270Degrees,
+    FlippedIdentity,
+    FlippedRotated90Degrees,
+    FlippedRotated180Degrees,
+    FlippedRotated270Degrees,
+
+    InvalidEnum,
+    EnumCount = InvalidEnum,
+};
+
 using MipGenerationFunction = void (*)(size_t sourceWidth,
                                        size_t sourceHeight,
                                        size_t sourceDepth,
@@ -94,6 +111,7 @@ struct PackPixelsParams
     gl::Buffer *packBuffer;
     bool reverseRowOrder;
     ptrdiff_t offset;
+    SurfaceRotation rotation;
 };
 
 void PackPixels(const PackPixelsParams &params,
@@ -235,8 +253,7 @@ angle::Result GetVertexRangeInfo(const gl::Context *context,
 gl::Rectangle ClipRectToScissor(const gl::State &glState, const gl::Rectangle &rect, bool invertY);
 
 // Helper method to intialize a FeatureSet with overrides from the DisplayState
-void OverrideFeaturesWithDisplayState(angle::FeatureSetBase *features,
-                                      const egl::DisplayState &state);
+void ApplyFeatureOverrides(angle::FeatureSetBase *features, const egl::DisplayState &state);
 
 template <typename In>
 uint32_t LineLoopRestartIndexCountHelper(GLsizei indexCount, const uint8_t *srcPtr)

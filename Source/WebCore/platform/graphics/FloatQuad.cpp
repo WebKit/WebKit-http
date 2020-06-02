@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <limits>
 #include <wtf/MathExtras.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -225,6 +226,32 @@ bool FloatQuad::isCounterclockwise() const
 {
     // Return if the two first vectors are turning clockwise. If the quad is convex then all following vectors will turn the same way.
     return determinant(m_p2 - m_p1, m_p3 - m_p2) < 0;
+}
+
+Vector<FloatRect> boundingBoxes(const Vector<FloatQuad>& quads)
+{
+    Vector<FloatRect> boxes;
+    boxes.reserveInitialCapacity(quads.size());
+    for (const auto& quad : quads)
+        boxes.uncheckedAppend(quad.boundingBox());
+    return boxes;
+}
+
+FloatRect unitedBoundingBoxes(const Vector<FloatQuad>& quads)
+{
+    auto size = quads.size();
+    if (!size)
+        return { };
+    auto result = quads[0].boundingBox();
+    for (size_t i = 1; i < size; ++i)
+        result.uniteEvenIfEmpty(quads[i].boundingBox());
+    return result;
+}
+
+TextStream& operator<<(TextStream& ts, const FloatQuad& quad)
+{
+    ts << "p1 " << quad.p1() << " p2 " << quad.p2() << " p3 " << quad.p3() << " p4 " << quad.p4();
+    return ts;
 }
 
 } // namespace WebCore

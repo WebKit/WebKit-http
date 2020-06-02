@@ -27,15 +27,14 @@
 
 #include "AnimationTimeline.h"
 #include "DocumentTimelineOptions.h"
-#include "GenericTaskQueue.h"
 #include "Timer.h"
-#include <wtf/Markable.h>
 #include <wtf/Ref.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
 class AnimationEventBase;
+class DocumentTimelinesController;
 class RenderElement;
 
 class DocumentTimeline final : public AnimationTimeline
@@ -47,8 +46,6 @@ public:
 
     bool isDocumentTimeline() const final { return true; }
 
-    Vector<RefPtr<WebAnimation>> getAnimations() const;
-
     Document* document() const { return m_document.get(); }
 
     Optional<Seconds> currentTime() override;
@@ -57,6 +54,7 @@ public:
     void removeAnimation(WebAnimation&) override;
     void animationWasAddedToElement(WebAnimation&, Element&) final;
     void animationWasRemovedFromElement(WebAnimation&, Element&) final;
+    void transitionDidComplete(RefPtr<CSSTransition>);
 
     // If possible, compute the visual extent of any transform animation on the given renderer
     // using the given rect, returning the result in the rect. Return false if there is some
@@ -71,15 +69,16 @@ public:
 
     void enqueueAnimationEvent(AnimationEventBase&);
     
-    bool scheduledUpdate() const { return m_animationResolutionScheduled; }
-    void updateCurrentTime(DOMHighResTimeStamp timestamp);
-    void updateAnimationsAndSendEvents();
+    enum class ShouldUpdateAnimationsAndSendEvents : uint8_t { Yes, No };
+    ShouldUpdateAnimationsAndSendEvents documentWillUpdateAnimationsAndSendEvents();
+    void removeReplacedAnimations();
+    AnimationEvents prepareForPendingAnimationEventsDispatch();
+    void documentDidUpdateAnimationsAndSendEvents();
 
-    void updateThrottlingState();
     WEBCORE_EXPORT Seconds animationInterval() const;
-    WEBCORE_EXPORT void suspendAnimations();
-    WEBCORE_EXPORT void resumeAnimations();
-    WEBCORE_EXPORT bool animationsAreSuspended();
+    void suspendAnimations();
+    void resumeAnimations();
+    bool animationsAreSuspended() const;
     WEBCORE_EXPORT unsigned numberOfActiveAnimationsForTesting() const;
     WEBCORE_EXPORT Vector<std::pair<String, double>> acceleratedAnimationsForElement(Element&) const;    
     WEBCORE_EXPORT unsigned numberOfAnimationTimelineInvalidationsForTesting() const;
@@ -87,32 +86,24 @@ public:
 private:
     DocumentTimeline(Document&, Seconds);
 
-    DOMHighResTimeStamp liveCurrentTime() const;
+    DocumentTimelinesController* controller() const;
     void applyPendingAcceleratedAnimations();
-    void cacheCurrentTime(DOMHighResTimeStamp);
-    void maybeClearCachedCurrentTime();
     void scheduleInvalidationTaskIfNeeded();
     void scheduleAnimationResolution();
     void clearTickScheduleTimer();
     void internalUpdateAnimationsAndSendEvents();
     void updateListOfElementsWithRunningAcceleratedAnimationsForElement(Element&);
-    void transitionDidComplete(RefPtr<CSSTransition>);
     void scheduleNextTick();
-    void removeReplacedAnimations();
     bool animationCanBeRemoved(WebAnimation&);
     bool shouldRunUpdateAnimationsAndSendEventsIgnoringSuspensionState() const;
 
     Timer m_tickScheduleTimer;
-    GenericTaskQueue<Timer> m_currentTimeClearingTaskQueue;
     HashSet<RefPtr<WebAnimation>> m_acceleratedAnimationsPendingRunningStateChange;
     HashSet<Element*> m_elementsWithRunningAcceleratedAnimations;
-    Vector<Ref<AnimationEventBase>> m_pendingAnimationEvents;
+    AnimationEvents m_pendingAnimationEvents;
     WeakPtr<Document> m_document;
-    Markable<Seconds, Seconds::MarkableTraits> m_cachedCurrentTime;
     Seconds m_originTime;
     unsigned m_numberOfAnimationTimelineInvalidationsForTesting { 0 };
-    bool m_isSuspended { false };
-    bool m_waitingOnVMIdle { false };
     bool m_animationResolutionScheduled { false };
     bool m_shouldScheduleAnimationResolutionForNewPendingEvents { true };
 };

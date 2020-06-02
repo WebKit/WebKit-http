@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #if PLATFORM(COCOA)
 
@@ -37,16 +37,50 @@
 #endif
 
 #if PLATFORM(MAC)
+
 void writeImageDataToPasteboard(NSString *type, NSData *data)
 {
-    [[NSPasteboard generalPasteboard] declareTypes:[NSArray arrayWithObject:type] owner:nil];
-    [[NSPasteboard generalPasteboard] setData:data forType:type];
+    [NSPasteboard.generalPasteboard declareTypes:@[type] owner:nil];
+    [NSPasteboard.generalPasteboard setData:data forType:type];
 }
+
+void writeImageDataToPasteboard(NSDictionary <NSString *, NSData *> *typesAndData)
+{
+    [NSPasteboard.generalPasteboard declareTypes:typesAndData.allKeys owner:nil];
+    for (NSString *type in typesAndData)
+        [NSPasteboard.generalPasteboard setData:typesAndData[type] forType:type];
+}
+
+void writeImageDataToPasteboard(NSArray<NSDictionary <NSString *, NSData *> *> *items)
+{
+    [NSPasteboard.generalPasteboard clearContents];
+    auto pasteboardItems = adoptNS([[NSMutableArray alloc] initWithCapacity:items.count]);
+    for (NSDictionary<NSString *, NSData *> *typesAndData in items) {
+        auto pasteboardItem = adoptNS([[NSPasteboardItem alloc] init]);
+        for (NSString *type in typesAndData)
+            [pasteboardItem setData:typesAndData[type] forType:type];
+        [pasteboardItems addObject:pasteboardItem.get()];
+    }
+    [NSPasteboard.generalPasteboard writeObjects:pasteboardItems.get()];
+}
+
 #else
+
 void writeImageDataToPasteboard(NSString *type, NSData *data)
 {
-    [[UIPasteboard generalPasteboard] setItems:@[[NSDictionary dictionaryWithObject:data forKey:type]]];
+    UIPasteboard.generalPasteboard.items = @[ @{ type: data } ];
 }
+
+void writeImageDataToPasteboard(NSDictionary <NSString *, NSData *> *typesAndData)
+{
+    UIPasteboard.generalPasteboard.items = @[ typesAndData ];
+}
+
+void writeImageDataToPasteboard(NSArray<NSDictionary <NSString *, NSData *> *> *items)
+{
+    UIPasteboard.generalPasteboard.items = items;
+}
+
 #endif
 
 @interface TestWKWebView (PasteImage)
@@ -137,6 +171,30 @@ TEST(PasteImage, PastePNGImage)
     EXPECT_WK_STREQ("200", [webView stringByEvaluatingJavaScript:@"imageElement.width"]);
 }
 
+TEST(PasteImage, PasteImageWithMultipleRepresentations)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView synchronouslyLoadTestPageNamed:@"paste-image"];
+
+    auto pngData = [NSData dataWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"sunset-in-cupertino-200px" ofType:@"png" inDirectory:@"TestWebKitAPI.resources"]];
+    auto jpegData = [NSData dataWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"sunset-in-cupertino-600px" ofType:@"jpg" inDirectory:@"TestWebKitAPI.resources"]];
+    writeImageDataToPasteboard(@{
+        (__bridge NSString *)kUTTypePNG : pngData,
+        (__bridge NSString *)kUTTypeJPEG : jpegData
+    });
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("1", [webView stringByEvaluatingJavaScript:@"dataTransfer.files.length"]);
+
+    writeImageDataToPasteboard(@[
+        @{ (__bridge NSString *)kUTTypePNG : pngData },
+        @{ (__bridge NSString *)kUTTypeJPEG : jpegData }
+    ]);
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("2", [webView stringByEvaluatingJavaScript:@"dataTransfer.files.length"]);
+}
+
 TEST(PasteImage, RevealSelectionAfterPastingImage)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
@@ -155,8 +213,8 @@ TEST(PasteImage, RevealSelectionAfterPastingImage)
 #if PLATFORM(MAC)
 void writeBundleFileToPasteboard(id object)
 {
-    [[NSPasteboard generalPasteboard] declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
-    [[NSPasteboard generalPasteboard] writeObjects:[NSArray arrayWithObjects:object, nil]];
+    [[NSPasteboard generalPasteboard] declareTypes:@[NSFilenamesPboardType] owner:nil];
+    [[NSPasteboard generalPasteboard] writeObjects:@[object]];
 }
 
 TEST(PasteImage, PasteGIFFile)

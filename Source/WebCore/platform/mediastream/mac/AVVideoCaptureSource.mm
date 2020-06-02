@@ -75,11 +75,10 @@ namespace WebCore {
 
 static inline OSType avVideoCapturePixelBufferFormat()
 {
-    // FIXME: Use preferedPixelBufferFormat() once rdar://problem/44391444 is fixed.
-#if PLATFORM(MAC)
-    return kCVPixelFormatType_420YpCbCr8Planar;
-#else
+#if HAVE(DISPLAY_LAYER_BIPLANAR_SUPPORT)
     return preferedPixelBufferFormat();
+#else
+    return kCVPixelFormatType_420YpCbCr8Planar;
 #endif
 }
 
@@ -129,6 +128,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDevice* device, String&& id,
     : RealtimeVideoCaptureSource(device.localizedName, WTFMove(id), WTFMove(hashSalt))
     , m_objcObserver(adoptNS([[WebCoreAVVideoCaptureSourceObserver alloc] initWithCallback:this]))
     , m_device(device)
+    , m_verifyCapturingTimer(*this, &AVVideoCaptureSource::verifyIsCapturing)
 {
     [m_device.get() addObserver:m_objcObserver.get() forKeyPath:@"suspended" options:NSKeyValueObservingOptionNew context:(void *)nil];
 }
@@ -148,6 +148,33 @@ AVVideoCaptureSource::~AVVideoCaptureSource()
         [m_session stopRunning];
 
     clearSession();
+}
+
+void AVVideoCaptureSource::verifyIsCapturing()
+{
+    ASSERT(m_isRunning);
+    if (m_lastFramesCount != m_framesCount) {
+        m_lastFramesCount = m_framesCount;
+        return;
+    }
+
+    RELEASE_LOG_ERROR(WebRTC, "AVVideoCaptureSource::verifyIsCapturing - no frame received in %d seconds, failing", static_cast<int>(m_verifyCapturingTimer.repeatInterval().value()));
+    captureFailed();
+}
+
+void AVVideoCaptureSource::updateVerifyCapturingTimer()
+{
+    if (!m_isRunning) {
+        m_verifyCapturingTimer.stop();
+        return;
+    }
+
+    if (m_verifyCapturingTimer.isActive())
+        return;
+
+    m_verifyCapturingTimer.startRepeating(verifyCaptureInterval);
+    m_framesCount = 0;
+    m_lastFramesCount = 0;
 }
 
 void AVVideoCaptureSource::clearSession()
@@ -442,7 +469,7 @@ bool AVVideoCaptureSource::setupCaptureSession()
     [session() addInput:videoIn.get()];
 
     m_videoOutput = adoptNS([PAL::allocAVCaptureVideoDataOutputInstance() init]);
-    auto settingsDictionary = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:avVideoCapturePixelBufferFormat()], kCVPixelBufferPixelFormatTypeKey, nil]);
+    auto settingsDictionary = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys: @(avVideoCapturePixelBufferFormat()), kCVPixelBufferPixelFormatTypeKey, nil]);
 
     [m_videoOutput setVideoSettings:settingsDictionary.get()];
     [m_videoOutput setAlwaysDiscardsLateVideoFrames:YES];
@@ -497,10 +524,11 @@ void AVVideoCaptureSource::computeSampleRotation()
         sampleRotation = MediaSample::VideoRotation::UpsideDown;
         break;
     case 90:
+    case -270:
         sampleRotation = frontCamera ? MediaSample::VideoRotation::Left : MediaSample::VideoRotation::Right;
         break;
     case -90:
-    case -270:
+    case 270:
         sampleRotation = frontCamera ? MediaSample::VideoRotation::Right : MediaSample::VideoRotation::Left;
         break;
     default:
@@ -514,38 +542,27 @@ void AVVideoCaptureSource::computeSampleRotation()
     notifySettingsDidChangeObservers({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height });
 }
 
-void AVVideoCaptureSource::processNewFrame(Ref<MediaSample>&& sample)
+void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef sampleBuffer, AVCaptureConnection* captureConnection)
 {
-    if (!isProducingData() || muted())
+    if (++m_framesCount <= framesToDropWhenStarting)
         return;
 
+    auto sample = MediaSampleAVFObjC::create(sampleBuffer, m_sampleRotation, [captureConnection isVideoMirrored]);
     m_buffer = &sample.get();
     setIntrinsicSize(expandedIntSize(sample->presentationSize()));
     dispatchMediaSampleToObservers(WTFMove(sample));
 }
 
-void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef sampleBuffer, AVCaptureConnection* captureConnection)
-{
-    if (m_framesToDropAtStartup && m_framesToDropAtStartup--)
-        return;
-
-    auto sample = MediaSampleAVFObjC::create(sampleBuffer, m_sampleRotation, [captureConnection isVideoMirrored]);
-    scheduleDeferredTask([this, sample = WTFMove(sample)] () mutable {
-        processNewFrame(WTFMove(sample));
-    });
-}
-
 void AVVideoCaptureSource::captureSessionIsRunningDidChange(bool state)
 {
-    scheduleDeferredTask([this, state] {
-        ALWAYS_LOG_IF(loggerPtr(), LOGIDENTIFIER, state);
+    scheduleDeferredTask([this, logIdentifier = LOGIDENTIFIER, state] {
+        ALWAYS_LOG_IF(loggerPtr(), logIdentifier, state);
         if ((state == m_isRunning) && (state == !muted()))
             return;
 
         m_isRunning = state;
-        if (m_isRunning)
-            m_framesToDropAtStartup = 4;
 
+        updateVerifyCapturingTimer();
         notifyMutedChange(!m_isRunning);
     });
 }

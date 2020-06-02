@@ -1,3 +1,4 @@
+<!-- webkit-test-runner [ enableCaptureAudioInGPUProcess=false enableCaptureVideoInGPUProcess=false ] -->
 <!doctype html>
 <html>
     <head>
@@ -43,7 +44,7 @@ promise_test((test) => {
     }).then(async (stream) => {
         await waitForTrackMuted(videoTrack);
 
-        assert_true(audioTrack.muted, "audio track is muted");
+        assert_true(audioTrack.muted, "audio track is muted, second check");
         assert_true(videoTrack.muted, "video track is muted");
     });
 }, "Testing successive getUserMedia calls");

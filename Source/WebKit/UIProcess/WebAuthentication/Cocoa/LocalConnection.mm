@@ -29,6 +29,7 @@
 #if ENABLE(WEB_AUTHN)
 
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/WebAuthenticationConstants.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RunLoop.h>
 
@@ -42,21 +43,24 @@ namespace WebKit {
 using namespace WebCore;
 
 namespace {
-static String bundleName()
-{
-    String bundleName;
-
 #if PLATFORM(MAC)
-    bundleName = [[NSRunningApplication currentApplication] localizedName];
-#endif
-
-    return bundleName;
+static inline String bundleName()
+{
+    return [[NSRunningApplication currentApplication] localizedName];
 }
+#endif
 } // namespace
 
-void LocalConnection::verifyUser(const String& rpId, ClientDataType type, SecAccessControlRef accessControl, UserVerificationCallback&& completionHandler) const
+LocalConnection::~LocalConnection()
 {
-    String title;
+    // Dismiss any showing LocalAuthentication dialogs.
+    [m_context invalidate];
+}
+
+void LocalConnection::verifyUser(const String& rpId, ClientDataType type, SecAccessControlRef accessControl, UserVerificationCallback&& completionHandler)
+{
+    String title = genericTouchIDPromptTitle();
+#if PLATFORM(MAC)
     switch (type) {
     case ClientDataType::Create:
         title = makeCredentialTouchIDPromptTitle(bundleName(), rpId);
@@ -67,29 +71,32 @@ void LocalConnection::verifyUser(const String& rpId, ClientDataType type, SecAcc
     default:
         ASSERT_NOT_REACHED();
     }
+#endif
 
-    auto context = adoptNS([allocLAContextInstance() init]);
+    m_context = [allocLAContextInstance() init];
 
     auto options = adoptNS([[NSMutableDictionary alloc] init]);
-    if ([context biometryType] == LABiometryTypeTouchID) {
+    if ([m_context biometryType] == LABiometryTypeTouchID) {
         [options setObject:title forKey:@(LAOptionAuthenticationTitle)];
         [options setObject:@NO forKey:@(LAOptionFallbackVisible)];
     }
 
-    auto reply = makeBlockPtr([context, completionHandler = WTFMove(completionHandler)] (NSDictionary *, NSError *error) mutable {
-        ASSERT(!RunLoop::isMain());
-
+    auto reply = makeBlockPtr([context = m_context, completionHandler = WTFMove(completionHandler)] (NSDictionary *, NSError *error) mutable {
         UserVerification verification = UserVerification::Yes;
         if (error) {
             LOG_ERROR("Couldn't authenticate with biometrics: %@", error);
             verification = UserVerification::No;
+            if (error.code == LAErrorUserCancel)
+                verification = UserVerification::Cancel;
         }
+
+        // This block can be executed in another thread.
         RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), verification, context = WTFMove(context)] () mutable {
             completionHandler(verification, context.get());
         });
     });
 
-    [context evaluateAccessControl:accessControl operation:LAAccessControlOperationUseKeySign options:options.get() reply:reply.get()];
+    [m_context evaluateAccessControl:accessControl operation:LAAccessControlOperationUseKeySign options:options.get() reply:reply.get()];
 }
 
 RetainPtr<SecKeyRef> LocalConnection::createCredentialPrivateKey(LAContext *context, SecAccessControlRef accessControlRef, const String& secAttrLabel, NSData *secAttrApplicationTag) const
@@ -102,7 +109,7 @@ RetainPtr<SecKeyRef> LocalConnection::createCredentialPrivateKey(LAContext *cont
             (id)kSecUseAuthenticationContext: context,
             (id)kSecAttrAccessControl: (id)accessControlRef,
             (id)kSecAttrIsPermanent: @YES,
-            (id)kSecAttrAccessGroup: @"com.apple.webkit.webauthn",
+            (id)kSecAttrAccessGroup: (id)String(LocalAuthenticatiorAccessGroup),
             (id)kSecAttrLabel: secAttrLabel,
             (id)kSecAttrApplicationTag: secAttrApplicationTag,
         }};

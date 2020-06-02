@@ -43,14 +43,14 @@ public:
 
 private:
     // PlatformMediaResourceClient
-    void responseReceived(WebCore::PlatformMediaResource&, const WebCore::ResourceResponse&, CompletionHandler<void(WebCore::PolicyChecker::ShouldContinue)>&&) final;
+    void responseReceived(WebCore::PlatformMediaResource&, const WebCore::ResourceResponse&, CompletionHandler<void(WebCore::ShouldContinuePolicyCheck)>&&) final;
     void redirectReceived(WebCore::PlatformMediaResource&, WebCore::ResourceRequest&&, const WebCore::ResourceResponse&, CompletionHandler<void(WebCore::ResourceRequest&&)>&&) final;
     bool shouldCacheResponse(WebCore::PlatformMediaResource&, const WebCore::ResourceResponse&) final;
     void dataSent(WebCore::PlatformMediaResource&, unsigned long long, unsigned long long) final;
     void dataReceived(WebCore::PlatformMediaResource&, const char*, int) final;
     void accessControlCheckFailed(WebCore::PlatformMediaResource&, const WebCore::ResourceError&) final;
     void loadFailed(WebCore::PlatformMediaResource&, const WebCore::ResourceError&) final;
-    void loadFinished(WebCore::PlatformMediaResource&) final;
+    void loadFinished(WebCore::PlatformMediaResource&, const WebCore::NetworkLoadMetrics&) final;
 
     Ref<IPC::Connection> m_connection;
     WebCore::PlatformMediaResource& m_platformMediaResource;

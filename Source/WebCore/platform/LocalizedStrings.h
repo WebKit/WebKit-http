@@ -70,6 +70,7 @@ namespace WebCore {
     String contextMenuItemTagCut();
     WEBCORE_EXPORT String contextMenuItemTagPaste();
 #if PLATFORM(GTK)
+    String contextMenuItemTagPasteAsPlainText();
     String contextMenuItemTagDelete();
     String contextMenuItemTagInputMethods();
     String contextMenuItemTagUnicode();
@@ -342,6 +343,7 @@ namespace WebCore {
 #if ENABLE(WEB_AUTHN)
     WEBCORE_EXPORT String makeCredentialTouchIDPromptTitle(const String& bundleName, const String& domain);
     WEBCORE_EXPORT String getAssertionTouchIDPromptTitle(const String& bundleName, const String& domain);
+    WEBCORE_EXPORT String genericTouchIDPromptTitle();
 #endif
 
 #if USE(GLIB) && defined(GETTEXT_PACKAGE)

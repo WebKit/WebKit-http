@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(SCROLLING_THREAD)
 
 #include <functional>
 #include <wtf/Condition.h>
@@ -33,14 +33,9 @@
 #include <wtf/Function.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
-
-#if PLATFORM(COCOA)
-#include <wtf/RetainPtr.h>
-#else
-#include <wtf/RunLoop.h>
-#endif
 
 namespace WebCore {
 
@@ -48,7 +43,7 @@ class ScrollingThread {
     WTF_MAKE_NONCOPYABLE(ScrollingThread);
 
 public:
-    static bool isCurrentThread();
+    WEBCORE_EXPORT static bool isCurrentThread();
     WEBCORE_EXPORT static void dispatch(Function<void ()>&&);
 
     // Will dispatch the given function on the main thread once all pending functions
@@ -56,40 +51,19 @@ public:
     WEBCORE_EXPORT static void dispatchBarrier(Function<void ()>&&);
 
 private:
-    friend NeverDestroyed<ScrollingThread>;
-
-    ScrollingThread();
+    friend LazyNeverDestroyed<ScrollingThread>;
 
     static ScrollingThread& singleton();
 
-    void createThreadIfNeeded();
+    ScrollingThread();
+
     void dispatchFunctionsFromScrollingThread();
-
-    void initializeRunLoop();
-    void wakeUpRunLoop();
-
-#if PLATFORM(COCOA)
-    static void threadRunLoopSourceCallback(void* scrollingThread);
-    void threadRunLoopSourceCallback();
-#endif
+    RunLoop& runLoop() { return *m_runLoop; }
 
     RefPtr<Thread> m_thread;
-
-    Condition m_initializeRunLoopConditionVariable;
-    Lock m_initializeRunLoopMutex;
-
-    Lock m_functionsMutex;
-    Vector<Function<void ()>> m_functions;
-
-#if PLATFORM(COCOA)
-    // FIXME: We should use WebCore::RunLoop here.
-    RetainPtr<CFRunLoopRef> m_threadRunLoop;
-    RetainPtr<CFRunLoopSourceRef> m_threadRunLoopSource;
-#else
     RunLoop* m_runLoop { nullptr };
-#endif
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING)
+#endif // ENABLE(SCROLLING_THREAD)

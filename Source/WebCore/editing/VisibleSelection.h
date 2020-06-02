@@ -27,6 +27,7 @@
 
 #include "TextGranularity.h"
 #include "VisiblePosition.h"
+#include <wtf/EnumTraits.h>
 
 namespace WebCore {
 
@@ -35,7 +36,7 @@ class Position;
 struct SimpleRange;
 
 const EAffinity SEL_DEFAULT_AFFINITY = DOWNSTREAM;
-enum SelectionDirection : uint8_t { DirectionForward, DirectionBackward, DirectionRight, DirectionLeft };
+enum class SelectionDirection : uint8_t { Forward, Backward, Right, Left };
 
 class VisibleSelection {
 public:
@@ -87,18 +88,17 @@ public:
     void appendTrailingWhitespace();
 
     WEBCORE_EXPORT bool expandUsingGranularity(TextGranularity granularity);
-    
-    // We don't yet support multi-range selections, so we only ever have one range to return.
-    WEBCORE_EXPORT RefPtr<Range> firstRange() const;
 
-    // FIXME: Most callers probably don't want this function, but are using it
-    // for historical reasons.  toNormalizedRange contracts the range around
-    // text, and moves the caret upstream before returning the range.
-    WEBCORE_EXPORT RefPtr<Range> toNormalizedRange() const;
-    
+    // We don't yet support multi-range selections, so we only ever have one range to return.
+    WEBCORE_EXPORT Optional<SimpleRange> firstRange() const;
+
+    // FIXME: Most callers probably don't want this function, and should use firstRange instead.
+    // toNormalizedRange is like firstRange, but contracts the range around text and moves the caret upstream before returning the range.
+    WEBCORE_EXPORT Optional<SimpleRange> toNormalizedRange() const;
+
     WEBCORE_EXPORT Element* rootEditableElement() const;
     WEBCORE_EXPORT bool isContentEditable() const;
-    bool hasEditableStyle() const;
+    WEBCORE_EXPORT bool hasEditableStyle() const;
     WEBCORE_EXPORT bool isContentRichlyEditable() const;
     // Returns a shadow tree node for legacy shadow trees, a child of the
     // ShadowRoot node for new shadow trees, or 0 for non-shadow trees.
@@ -118,7 +118,7 @@ public:
     void setWithoutValidation(const Position&, const Position&);
 
 private:
-    void validate(TextGranularity = CharacterGranularity);
+    void validate(TextGranularity = TextGranularity::CharacterGranularity);
 
     // Support methods for validate()
     void setBaseAndExtentToDeepEquivalents();
@@ -165,3 +165,17 @@ WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const VisibleSelect
 void showTree(const WebCore::VisibleSelection&);
 void showTree(const WebCore::VisibleSelection*);
 #endif
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::SelectionDirection> {
+    using values = EnumValues<
+        WebCore::SelectionDirection,
+        WebCore::SelectionDirection::Forward,
+        WebCore::SelectionDirection::Backward,
+        WebCore::SelectionDirection::Right,
+        WebCore::SelectionDirection::Left
+    >;
+};
+
+} // namespace WTF

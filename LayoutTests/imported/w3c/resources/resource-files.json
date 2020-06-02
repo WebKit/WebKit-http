@@ -13,6 +13,7 @@
         "web-platform-tests/css/css-writing-modes/test-plan"
     ],
     "files": [
+        "css/css-animations/keyframes-remove-documentElement-crash.html",
         "css/css-color/t32-opacity-basic-0.6-a.xht",
         "css/css-color/t32-opacity-zorder-c.xht",
         "css/css-color/t421-rgb-hex3-expand-b.xht",
@@ -376,7 +377,12 @@
         "web-platform-tests/css/css-fonts/standard-font-family-9-notref.html",
         "web-platform-tests/css/css-grid-1/grid-items/ref-filled-green-100px-square-image.html",
         "web-platform-tests/css/css-grid-1/test-plan/index.html",
+        "web-platform-tests/css/css-grid/abspos/positioned-grid-items-crash.html",
+        "web-platform-tests/css/css-grid/grid-definition/grid-add-item-with-positioned-items-crash.html",
+        "web-platform-tests/css/css-grid/grid-definition/grid-add-positioned-block-item-after-inline-item-crash.html",
         "web-platform-tests/css/css-grid/grid-items/ref-filled-green-100px-square-image.html",
+        "web-platform-tests/css/css-grid/subgrid/contain-strict-nested-subgrid-crash.html",
+        "web-platform-tests/css/css-grid/subgrid/contain-strict-subgrid-crash.html",
         "web-platform-tests/css/css-grid/test-plan/index.html",
         "web-platform-tests/css/css-images/image-fit-001.xht",
         "web-platform-tests/css/css-images/image-fit-006.xht",
@@ -1253,6 +1259,7 @@
         "web-platform-tests/dom/events/EventListener-incumbent-global-subframe-1.sub.html",
         "web-platform-tests/dom/events/EventListener-incumbent-global-subframe-2.sub.html",
         "web-platform-tests/dom/events/EventListener-incumbent-global-subsubframe.sub.html",
+        "web-platform-tests/dom/events/replace-event-listener-null-browsing-context-crash.html",
         "web-platform-tests/dom/nodes/Element-getElementsByTagName-change-document-HTMLNess-iframe.xml",
         "web-platform-tests/dom/nodes/Node-isEqualNode-iframe1.xml",
         "web-platform-tests/dom/nodes/Node-isEqualNode-iframe2.xml",

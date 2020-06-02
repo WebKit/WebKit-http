@@ -35,11 +35,10 @@
 #include <wtf/Vector.h>
 
 #if PLATFORM(COCOA)
-#ifdef __OBJC__
-typedef id PlatformUIElement;
-#else
-typedef struct objc_object* PlatformUIElement;
-#endif
+OBJC_CLASS NSArray;
+OBJC_CLASS NSString;
+#include <wtf/RetainPtr.h>
+using PlatformUIElement = id;
 #elif HAVE(ACCESSIBILITY) && USE(ATK)
 #include "AccessibilityNotificationHandlerAtk.h"
 #include <atk/atk.h>
@@ -49,24 +48,31 @@ typedef GRefPtr<AtkObject> PlatformUIElement;
 typedef void* PlatformUIElement;
 #endif
 
-#if PLATFORM(COCOA)
-#ifdef __OBJC__
-typedef id NotificationHandler;
-#else
-typedef struct objc_object* NotificationHandler;
-#endif
-#endif
-
 namespace WTR {
 
+class AccessibilityController;
+
 class AccessibilityUIElement : public JSWrappable {
+#if PLATFORM(COCOA)
+    // Helper functions that dispatch the corresponding AccessibilityObjectWrapper method to the AX secondary thread when appropriate.
+    friend RetainPtr<NSArray> supportedAttributes(id);
+    friend id attributeValue(id, NSString *);
+    friend void setAttributeValue(id, NSString *, id, bool synchronous);
+#endif
+
 public:
     static Ref<AccessibilityUIElement> create(PlatformUIElement);
     static Ref<AccessibilityUIElement> create(const AccessibilityUIElement&);
 
     ~AccessibilityUIElement();
 
+#if PLATFORM(COCOA)
+    id platformUIElement() { return m_element.get(); }
+#endif
+#if !PLATFORM(COCOA)
     PlatformUIElement platformUIElement() { return m_element; }
+#endif
+
     virtual JSClassRef wrapperClass();
 
     static JSObjectRef makeJSAccessibilityUIElement(JSContextRef, const AccessibilityUIElement&);
@@ -115,6 +121,11 @@ public:
     JSValueRef uiElementArrayAttributeValue(JSStringRef attribute) const;
     RefPtr<AccessibilityUIElement> uiElementAttributeValue(JSStringRef attribute) const;
     bool boolAttributeValue(JSStringRef attribute);
+#if PLATFORM(MAC)
+    void attributeValueAsync(JSStringRef attribute, JSValueRef callback);
+#else
+    void attributeValueAsync(JSStringRef attribute, JSValueRef callback) { }
+#endif
     void setBoolAttributeValue(JSStringRef attribute, bool value);
     bool isAttributeSupported(JSStringRef attribute);
     bool isAttributeSettable(JSStringRef attribute);
@@ -356,16 +367,22 @@ private:
     AccessibilityUIElement(PlatformUIElement);
     AccessibilityUIElement(const AccessibilityUIElement&);
 
+#if !PLATFORM(COCOA)
     PlatformUIElement m_element;
-    
+#endif
+
     // A retained, platform specific object used to help manage notifications for this object.
 #if HAVE(ACCESSIBILITY)
 #if PLATFORM(COCOA)
-    NotificationHandler m_notificationHandler;
+    RetainPtr<id> m_element;
+    RetainPtr<id> m_notificationHandler;
+    static RefPtr<AccessibilityController> s_controller;
 
     void getLinkedUIElements(Vector<RefPtr<AccessibilityUIElement> >&);
     void getDocumentLinks(Vector<RefPtr<AccessibilityUIElement> >&);
-    
+    RefPtr<AccessibilityUIElement> elementForAttribute(NSString*) const;
+    RefPtr<AccessibilityUIElement> elementForAttributeAtIndex(NSString*, unsigned) const;
+
     void getUIElementsWithAttribute(JSStringRef, Vector<RefPtr<AccessibilityUIElement> >&) const;
 #endif
 
@@ -378,4 +395,8 @@ private:
 #endif
 };
     
+#ifdef __OBJC__
+inline Optional<RefPtr<AccessibilityUIElement>> makeVectorElement(const RefPtr<AccessibilityUIElement>*, id element) { return { { AccessibilityUIElement::create(element) } }; }
+#endif
+
 } // namespace WTR

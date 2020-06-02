@@ -251,6 +251,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         let searchGroup = generalSettingsView.addGroup(WI.UIString("Search:", "Search: @ Settings", "Settings tab label for search related settings"));
         searchGroup.addSetting(WI.settings.searchCaseSensitive, WI.UIString("Case Sensitive", "Case Sensitive @ Settings", "Settings tab checkbox label for whether searches should be case sensitive."));
         searchGroup.addSetting(WI.settings.searchRegularExpression, WI.UIString("Regular Expression", "Regular Expression @ Settings", "Settings tab checkbox label for whether searches should be treated as regular expressions."));
+        searchGroup.addSetting(WI.settings.searchFromSelection, WI.UIString("%s from selection", "Global Search From Selection @ Settings", "Settings tab checkbox label for whether the global search should populate from the current selection.").format(WI.searchKeyboardShortcut.displayName));
 
         generalSettingsView.addSeparator();
 
@@ -368,18 +369,25 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
     _createExperimentalSettingsView()
     {
+        let canShowPreviewFeatures = WI.canShowPreviewFeatures();
+        let hasCSSDomain = InspectorBackend.hasDomain("CSS");
+        if (!canShowPreviewFeatures && !hasCSSDomain)
+            return;
+
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
 
         let initialValues = new Map;
 
-        if (WI.canShowPreviewFeatures()) {
+        if (canShowPreviewFeatures) {
             experimentalSettingsView.addSetting(WI.UIString("Staging:"), WI.settings.experimentalEnablePreviewFeatures, WI.UIString("Enable Preview Features"));
             experimentalSettingsView.addSeparator();
         }
 
-        if (InspectorBackend.hasDomain("CSS")) {
+        if (hasCSSDomain) {
             let stylesGroup = experimentalSettingsView.addGroup(WI.UIString("Styles:"));
-            stylesGroup.addSetting(WI.settings.experimentalEnableStylesJumpToEffective, WI.UIString("Show Jump to Effective Property Button"));
+            stylesGroup.addSetting(WI.settings.experimentalEnableStylesJumpToEffective, WI.UIString("Show jump to effective property button"));
+            stylesGroup.addSetting(WI.settings.experimentalEnableStyelsJumpToVariableDeclaration, WI.UIString("Show jump to variable declaration button"));
+
             experimentalSettingsView.addSeparator();
         }
 
@@ -401,8 +409,10 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         listenForChange(WI.settings.experimentalEnablePreviewFeatures);
 
-        if (InspectorBackend.hasDomain("CSS"))
+        if (hasCSSDomain) {
             listenForChange(WI.settings.experimentalEnableStylesJumpToEffective);
+            listenForChange(WI.settings.experimentalEnableStyelsJumpToVariableDeclaration);
+        }
 
         this._createReferenceLink(experimentalSettingsView);
 

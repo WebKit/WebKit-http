@@ -57,6 +57,10 @@ void InitExtensionBehavior(const ShBuiltInResources &resources, TExtensionBehavi
     {
         extBehavior[TExtension::NV_shader_framebuffer_fetch] = EBhUndefined;
     }
+    if (resources.NV_shader_noperspective_interpolation)
+    {
+        extBehavior[TExtension::NV_shader_noperspective_interpolation] = EBhUndefined;
+    }
     if (resources.ARM_shader_framebuffer_fetch)
     {
         extBehavior[TExtension::ARM_shader_framebuffer_fetch] = EBhUndefined;
@@ -81,6 +85,10 @@ void InitExtensionBehavior(const ShBuiltInResources &resources, TExtensionBehavi
     {
         extBehavior[TExtension::EXT_gpu_shader5] = EBhUndefined;
     }
+    if (resources.EXT_shader_non_constant_global_initializers)
+    {
+        extBehavior[TExtension::EXT_shader_non_constant_global_initializers] = EBhUndefined;
+    }
     if (resources.OES_texture_storage_multisample_2d_array)
     {
         extBehavior[TExtension::OES_texture_storage_multisample_2d_array] = EBhUndefined;
@@ -104,6 +112,10 @@ void InitExtensionBehavior(const ShBuiltInResources &resources, TExtensionBehavi
     if (resources.WEBGL_video_texture)
     {
         extBehavior[TExtension::WEBGL_video_texture] = EBhUndefined;
+    }
+    if (resources.APPLE_clip_distance)
+    {
+        extBehavior[TExtension::APPLE_clip_distance] = EBhUndefined;
     }
 }
 

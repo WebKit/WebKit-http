@@ -65,6 +65,7 @@
 #import <wtf/Assertions.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/StringBuilder.h>
 
 using namespace WebCore;
@@ -170,6 +171,7 @@ static RetainPtr<NSArray> newArrayWithStrings(const HashSet<String, ASCIICaseIns
 
 - (void)receivedData:(NSData *)data withDataSource:(WebDataSource *)dataSource
 {
+    auto protectedSelf = retainPtr(self);
     WebFrame *webFrame = [dataSource webFrame];
     if (!webFrame)
         return;
@@ -179,7 +181,7 @@ static RetainPtr<NSArray> newArrayWithStrings(const HashSet<String, ASCIICaseIns
 
     // If the document is a stand-alone media document, now is the right time to cancel the WebKit load
     Frame* coreFrame = core(webFrame);
-    if (coreFrame->document()->isMediaDocument())
+    if (coreFrame->document()->isMediaDocument() && coreFrame->loader().documentLoader())
         coreFrame->loader().documentLoader()->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(coreFrame->loader().documentLoader()->response()));
 
     if (_private->pluginView) {
@@ -258,23 +260,27 @@ static RetainPtr<NSArray> newArrayWithStrings(const HashSet<String, ASCIICaseIns
     return [[_private->dataSource webFrame] DOMDocument];
 }
 
-#if !PLATFORM(IOS_FAMILY)
+#if PLATFORM(MAC)
+
 - (NSAttributedString *)attributedText
 {
-    // FIXME: Implement
     return nil;
 }
 
 - (NSAttributedString *)attributedStringFrom:(DOMNode *)startNode startOffset:(int)startOffset to:(DOMNode *)endNode endOffset:(int)endOffset
 {
-    return editingAttributedStringFromRange(Range::create(core(startNode)->document(), core(startNode), startOffset, core(endNode), endOffset));
+    if (!startNode || !endNode)
+        return [[[NSAttributedString alloc] init] autorelease];
+    auto range = SimpleRange { { *core(startNode), static_cast<unsigned>(startOffset) }, { *core(endNode), static_cast<unsigned>(endOffset) } };
+    return editingAttributedString(range).string.autorelease();
 }
+
 #endif
 
 static HTMLFormElement* formElementFromDOMElement(DOMElement *element)
 {
     Element* node = core(element);
-    return node && node->hasTagName(formTag) ? static_cast<HTMLFormElement*>(node) : 0;
+    return node && node->hasTagName(formTag) ? static_cast<HTMLFormElement*>(node) : nullptr;
 }
 
 - (DOMElement *)elementWithName:(NSString *)name inForm:(DOMElement *)form
@@ -316,8 +322,8 @@ static HTMLInputElement* inputElementFromDOMElement(DOMElement* element)
 
 - (DOMElement *)formForElement:(DOMElement *)element
 {
-    HTMLInputElement* inputElement = inputElementFromDOMElement(element);
-    return inputElement ? kit(inputElement->form()) : 0;
+    auto inputElement = inputElementFromDOMElement(element);
+    return inputElement ? kit(inputElement->form()) : nil;
 }
 
 - (DOMElement *)currentForm
@@ -327,23 +333,18 @@ static HTMLInputElement* inputElementFromDOMElement(DOMElement* element)
 
 - (NSArray *)controlsInForm:(DOMElement *)form
 {
-    HTMLFormElement* formElement = formElementFromDOMElement(form);
+    auto formElement = formElementFromDOMElement(form);
     if (!formElement)
         return nil;
-    NSMutableArray *results = nil;
 
     ScriptDisallowedScope::InMainThread scriptDisallowedScope;
-    for (auto& weakElement : formElement->unsafeAssociatedElements()) {
+    auto result = createNSArray(formElement->unsafeAssociatedElements(), [] (auto& weakElement) -> DOMElement * {
         auto coreElement = makeRefPtr(weakElement.get());
-        if (coreElement->asFormAssociatedElement()->isEnumeratable()) { // Skip option elements, other duds
-            DOMElement *element = kit(coreElement.get());
-            if (!results)
-                results = [NSMutableArray arrayWithObject:element];
-            else
-                [results addObject:element];
-        }
-    }
-    return results;
+        if (!coreElement->asFormAssociatedElement()->isEnumeratable()) // Skip option elements, other duds
+            return nil;
+        return kit(coreElement.get());
+    });
+    return [result count] ? result.autorelease() : nil;
 }
 
 // Either get cached regexp or build one that matches any of the labels.
@@ -423,12 +424,12 @@ static NSString* searchForLabelsBeforeElement(Frame* frame, NSArray* labels, Ele
     ASSERT(element);
     RegularExpression* regExp = regExpForLabels(labels);
     // We stop searching after we've seen this many chars
-    const unsigned int charsSearchedThreshold = 500;
+    constexpr unsigned charsSearchedThreshold = 500;
     // This is the absolute max we search.  We allow a little more slop than
     // charsSearchedThreshold, to make it more likely that we'll search whole nodes.
-    const unsigned int maxCharsSearched = 600;
+    constexpr unsigned maxCharsSearched = 600;
     // If the starting element is within a table, the cell that contains it
-    HTMLTableCellElement* startingTableCell = 0;
+    HTMLTableCellElement* startingTableCell = nullptr;
     bool searchedCellAbove = false;
     
     if (resultDistance)
@@ -447,8 +448,8 @@ static NSString* searchForLabelsBeforeElement(Frame* frame, NSArray* labels, Ele
         if (n->hasTagName(tdTag) && !startingTableCell) {
             startingTableCell = static_cast<HTMLTableCellElement*>(n);
         } else if (n->hasTagName(trTag) && startingTableCell) {
-            NSString* result = frame->searchForLabelsAboveCell(*regExp, startingTableCell, resultDistance);
-            if (result && [result length] > 0) {
+            NSString *result = frame->searchForLabelsAboveCell(*regExp, startingTableCell, resultDistance);
+            if ([result length]) {
                 if (resultIsInCellAbove)
                     *resultIsInCellAbove = true;
                 return result;
@@ -473,8 +474,8 @@ static NSString* searchForLabelsBeforeElement(Frame* frame, NSArray* labels, Ele
     // If we started in a cell, but bailed because we found the start of the form or the
     // previous element, we still might need to search the row above us for a label.
     if (startingTableCell && !searchedCellAbove) {
-        NSString* result = frame->searchForLabelsAboveCell(*regExp, startingTableCell, resultDistance);
-        if (result && [result length] > 0) {
+        NSString *result = frame->searchForLabelsAboveCell(*regExp, startingTableCell, resultDistance);
+        if ([result length]) {
             if (resultIsInCellAbove)
                 *resultIsInCellAbove = true;
             return result;
@@ -536,7 +537,7 @@ static NSString *matchLabelsAgainstElement(NSArray *labels, Element* element)
 
 - (NSString *)searchForLabels:(NSArray *)labels beforeElement:(DOMElement *)element
 {
-    return [self searchForLabels:labels beforeElement:element resultDistance:0 resultIsInCellAbove:0];
+    return [self searchForLabels:labels beforeElement:element resultDistance:nullptr resultIsInCellAbove:nullptr];
 }
 
 - (NSString *)searchForLabels:(NSArray *)labels beforeElement:(DOMElement *)element resultDistance:(NSUInteger*)outDistance resultIsInCellAbove:(BOOL*)outIsInCellAbove

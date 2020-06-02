@@ -30,7 +30,9 @@
 #include "AuthenticationManager.h"
 #include "NetworkDataTaskBlob.h"
 #include "NetworkProcess.h"
+#include "NetworkProcessProxyMessages.h"
 #include "NetworkSession.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SharedBuffer.h>
@@ -283,6 +285,12 @@ void NetworkLoad::cannotShowURL()
 void NetworkLoad::wasBlockedByRestrictions()
 {
     m_client.get().didFailLoading(wasBlockedByRestrictionsError(m_currentRequest));
+}
+
+void NetworkLoad::didNegotiateModernTLS(const WebCore::AuthenticationChallenge& challenge)
+{
+    if (m_parameters.webPageProxyID)
+        m_networkProcess->send(Messages::NetworkProcessProxy::DidNegotiateModernTLS(m_parameters.webPageProxyID, challenge));
 }
 
 String NetworkLoad::description() const

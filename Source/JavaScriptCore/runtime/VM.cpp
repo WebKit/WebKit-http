@@ -29,6 +29,7 @@
 #include "config.h"
 #include "VM.h"
 
+#include "AggregateError.h"
 #include "ArgList.h"
 #include "BigIntObject.h"
 #include "BooleanObject.h"
@@ -39,17 +40,13 @@
 #include "CodeBlock.h"
 #include "CodeCache.h"
 #include "CommonIdentifiers.h"
-#include "CommonSlowPaths.h"
 #include "CustomGetterSetter.h"
 #include "DFGWorklist.h"
 #include "DOMAttributeGetterSetter.h"
 #include "DateInstance.h"
 #include "DebuggerScope.h"
-#include "DirectEvalExecutable.h"
 #include "Disassembler.h"
 #include "DoublePredictionFuzzerAgent.h"
-#include "Error.h"
-#include "ErrorConstructor.h"
 #include "ErrorInstance.h"
 #include "EvalCodeBlock.h"
 #include "Exception.h"
@@ -58,24 +55,20 @@
 #include "FastMallocAlignedMemoryAllocator.h"
 #include "FileBasedFuzzerAgent.h"
 #include "FunctionCodeBlock.h"
-#include "FunctionConstructor.h"
 #include "FunctionExecutable.h"
-#include "GCActivityCallback.h"
 #include "GetterSetter.h"
 #include "GigacageAlignedMemoryAllocator.h"
 #include "HasOwnPropertyCache.h"
 #include "Heap.h"
-#include "HeapIterationScope.h"
 #include "HeapProfiler.h"
 #include "HostCallReturnValue.h"
-#include "Identifier.h"
-#include "IncrementalSweeper.h"
-#include "IndirectEvalExecutable.h"
 #include "Interpreter.h"
-#include "IntlCollatorConstructor.h"
-#include "IntlDateTimeFormatConstructor.h"
-#include "IntlNumberFormatConstructor.h"
-#include "IntlPluralRulesConstructor.h"
+#include "IntlCollator.h"
+#include "IntlDateTimeFormat.h"
+#include "IntlLocale.h"
+#include "IntlNumberFormat.h"
+#include "IntlPluralRules.h"
+#include "IntlRelativeTimeFormat.h"
 #include "IsoHeapCellType.h"
 #include "IsoInlinedHeapCellType.h"
 #include "JITCode.h"
@@ -85,13 +78,10 @@
 #include "JSAPIWrapperObject.h"
 #include "JSArray.h"
 #include "JSArrayBuffer.h"
-#include "JSArrayBufferConstructor.h"
 #include "JSArrayIterator.h"
-#include "JSAsyncFunction.h"
 #include "JSAsyncGenerator.h"
 #include "JSBigInt.h"
 #include "JSBoundFunction.h"
-#include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
@@ -101,10 +91,8 @@
 #include "JSFunction.h"
 #include "JSGlobalLexicalEnvironment.h"
 #include "JSGlobalObject.h"
-#include "JSGlobalObjectFunctions.h"
 #include "JSImmutableButterfly.h"
 #include "JSInjectedScriptHost.h"
-#include "JSInternalPromise.h"
 #include "JSJavaScriptCallFrame.h"
 #include "JSLock.h"
 #include "JSMap.h"
@@ -127,7 +115,6 @@
 #include "JSWeakMap.h"
 #include "JSWeakObjectRef.h"
 #include "JSWeakSet.h"
-#include "JSWebAssembly.h"
 #include "JSWebAssemblyCodeBlock.h"
 #include "JSWebAssemblyGlobal.h"
 #include "JSWebAssemblyInstance.h"
@@ -136,17 +123,12 @@
 #include "JSWebAssemblyTable.h"
 #include "JSWithScope.h"
 #include "LLIntData.h"
-#include "Lexer.h"
-#include "Lookup.h"
 #include "MinimumReservedZoneSize.h"
 #include "ModuleProgramCodeBlock.h"
 #include "ModuleProgramExecutable.h"
 #include "NarrowingNumberPredictionFuzzerAgent.h"
-#include "NativeErrorConstructor.h"
 #include "NativeExecutable.h"
-#include "Nodes.h"
 #include "NumberObject.h"
-#include "Parser.h"
 #include "PredictionFileCreatingFuzzerAgent.h"
 #include "ProfilerDatabase.h"
 #include "ProgramCodeBlock.h"
@@ -157,14 +139,11 @@
 #include "RandomizingFuzzerAgent.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
-#include "RegisterAtOffsetList.h"
-#include "RuntimeType.h"
 #include "SamplingProfiler.h"
 #include "ScopedArguments.h"
 #include "ShadowChicken.h"
 #include "SimpleTypedArrayController.h"
 #include "SourceProviderCache.h"
-#include "StackVisitor.h"
 #include "StrictEvalActivation.h"
 #include "StringObject.h"
 #include "StrongInlines.h"
@@ -175,7 +154,6 @@
 #include "ThunkGenerators.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
-#include "UnlinkedCodeBlock.h"
 #include "VMEntryScope.h"
 #include "VMInlines.h"
 #include "VMInspector.h"
@@ -193,7 +171,6 @@
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/text/AtomStringTable.h>
-#include <wtf/text/SymbolRegistry.h>
 
 #if ENABLE(C_LOOP)
 #include "CLoopStack.h"
@@ -215,13 +192,6 @@
 #ifdef JSC_GLIB_API_ENABLED
 #include "JSAPIWrapperGlobalObject.h"
 #include "JSCCallbackFunction.h"
-#endif
-
-#if ENABLE(INTL)
-#include "IntlCollator.h"
-#include "IntlDateTimeFormat.h"
-#include "IntlNumberFormat.h"
-#include "IntlPluralRules.h"
 #endif
 
 namespace JSC {
@@ -315,6 +285,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , immutableButterflyHeapCellType(makeUnique<HeapCellType>(CellAttributes(DoesNotNeedDestruction, HeapCell::JSCellWithInteriorPointers)))
     , cellHeapCellType(makeUnique<HeapCellType>(CellAttributes(DoesNotNeedDestruction, HeapCell::JSCell)))
     , destructibleCellHeapCellType(makeUnique<HeapCellType>(CellAttributes(NeedsDestruction, HeapCell::JSCell)))
+    , aggregateErrorHeapCellType(IsoHeapCellType::create<AggregateError>())
     , apiGlobalObjectHeapCellType(IsoHeapCellType::create<JSAPIGlobalObject>())
     , callbackConstructorHeapCellType(IsoHeapCellType::create<JSCallbackConstructor>())
     , callbackGlobalObjectHeapCellType(IsoHeapCellType::create<JSCallbackObject<JSGlobalObject>>())
@@ -341,12 +312,12 @@ VM::VM(VMType vmType, HeapType heapType)
     , callbackAPIWrapperGlobalObjectHeapCellType(IsoHeapCellType::create<JSCallbackObject<JSAPIWrapperGlobalObject>>())
     , jscCallbackFunctionHeapCellType(IsoHeapCellType::create<JSCCallbackFunction>())
 #endif
-#if ENABLE(INTL)
     , intlCollatorHeapCellType(IsoHeapCellType::create<IntlCollator>())
     , intlDateTimeFormatHeapCellType(IsoHeapCellType::create<IntlDateTimeFormat>())
+    , intlLocaleHeapCellType(IsoHeapCellType::create<IntlLocale>())
     , intlNumberFormatHeapCellType(IsoHeapCellType::create<IntlNumberFormat>())
     , intlPluralRulesHeapCellType(IsoHeapCellType::create<IntlPluralRules>())
-#endif
+    , intlRelativeTimeFormatHeapCellType(IsoHeapCellType::create<IntlRelativeTimeFormat>())
 #if ENABLE(WEBASSEMBLY)
     , webAssemblyCodeBlockHeapCellType(IsoHeapCellType::create<JSWebAssemblyCodeBlock>())
     , webAssemblyFunctionHeapCellType(IsoHeapCellType::create<WebAssemblyFunction>())
@@ -401,7 +372,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , programExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), ProgramExecutable) // Hash:0x527c77e7
     , unlinkedFunctionExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), UnlinkedFunctionExecutable) // Hash:0xf6b828d9
     , vmType(vmType)
-    , clientData(0)
+    , clientData(nullptr)
     , topEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
     , promiseTimer(PromiseTimer::create(*this))
@@ -413,8 +384,8 @@ VM::VM(VMType vmType, HeapType heapType)
     , stringCache(*this)
     , symbolImplToSymbolMap(*this)
     , structureCache(*this)
-    , interpreter(0)
-    , entryScope(0)
+    , interpreter(nullptr)
+    , entryScope(nullptr)
     , m_regExpCache(new RegExpCache(this))
     , m_compactVariableMap(adoptRef(*(new CompactVariableMap)))
 #if ENABLE(REGEXP_TRACING)
@@ -423,7 +394,7 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(GC_VALIDATION)
     , m_initializingObjectClass(0)
 #endif
-    , m_stackPointerAtVMEntry(0)
+    , m_stackPointerAtVMEntry(nullptr)
     , m_codeCache(makeUnique<CodeCache>())
     , m_builtinExecutables(makeUnique<BuiltinExecutables>(*this))
     , m_typeProfilerEnabledCount(0)
@@ -444,56 +415,56 @@ VM::VM(VMType vmType, HeapType heapType)
     JSLockHolder lock(this);
     AtomStringTable* existingEntryAtomStringTable = Thread::current().setCurrentAtomStringTable(m_atomStringTable);
     structureStructure.set(*this, Structure::createStructure(*this));
-    structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
-    stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
+    structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, nullptr, jsNull()));
+    stringStructure.set(*this, JSString::createStructure(*this, nullptr, jsNull()));
 
     smallStrings.initializeCommonStrings(*this);
 
     propertyNames = new CommonIdentifiers(*this);
-    terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
-    propertyNameEnumeratorStructure.set(*this, JSPropertyNameEnumerator::createStructure(*this, 0, jsNull()));
-    getterSetterStructure.set(*this, GetterSetter::createStructure(*this, 0, jsNull()));
-    customGetterSetterStructure.set(*this, CustomGetterSetter::createStructure(*this, 0, jsNull()));
-    domAttributeGetterSetterStructure.set(*this, DOMAttributeGetterSetter::createStructure(*this, 0, jsNull()));
-    scopedArgumentsTableStructure.set(*this, ScopedArgumentsTable::createStructure(*this, 0, jsNull()));
-    apiWrapperStructure.set(*this, JSAPIValueWrapper::createStructure(*this, 0, jsNull()));
-    nativeExecutableStructure.set(*this, NativeExecutable::createStructure(*this, 0, jsNull()));
-    evalExecutableStructure.set(*this, EvalExecutable::createStructure(*this, 0, jsNull()));
-    programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
-    functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
+    terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, nullptr, jsNull()));
+    propertyNameEnumeratorStructure.set(*this, JSPropertyNameEnumerator::createStructure(*this, nullptr, jsNull()));
+    getterSetterStructure.set(*this, GetterSetter::createStructure(*this, nullptr, jsNull()));
+    customGetterSetterStructure.set(*this, CustomGetterSetter::createStructure(*this, nullptr, jsNull()));
+    domAttributeGetterSetterStructure.set(*this, DOMAttributeGetterSetter::createStructure(*this, nullptr, jsNull()));
+    scopedArgumentsTableStructure.set(*this, ScopedArgumentsTable::createStructure(*this, nullptr, jsNull()));
+    apiWrapperStructure.set(*this, JSAPIValueWrapper::createStructure(*this, nullptr, jsNull()));
+    nativeExecutableStructure.set(*this, NativeExecutable::createStructure(*this, nullptr, jsNull()));
+    evalExecutableStructure.set(*this, EvalExecutable::createStructure(*this, nullptr, jsNull()));
+    programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, nullptr, jsNull()));
+    functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, nullptr, jsNull()));
 #if ENABLE(WEBASSEMBLY)
-    webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
+    webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, nullptr, jsNull()));
 #endif
-    moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
-    regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
-    symbolStructure.set(*this, Symbol::createStructure(*this, 0, jsNull()));
-    symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
+    moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, nullptr, jsNull()));
+    regExpStructure.set(*this, RegExp::createStructure(*this, nullptr, jsNull()));
+    symbolStructure.set(*this, Symbol::createStructure(*this, nullptr, jsNull()));
+    symbolTableStructure.set(*this, SymbolTable::createStructure(*this, nullptr, jsNull()));
 
-    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithInt32) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithInt32));
-    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithDouble) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithDouble));
-    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithContiguous) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithContiguous));
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithInt32) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, nullptr, jsNull(), CopyOnWriteArrayWithInt32));
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithDouble) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, nullptr, jsNull(), CopyOnWriteArrayWithDouble));
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithContiguous) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, nullptr, jsNull(), CopyOnWriteArrayWithContiguous));
 
-    sourceCodeStructure.set(*this, JSSourceCode::createStructure(*this, 0, jsNull()));
-    scriptFetcherStructure.set(*this, JSScriptFetcher::createStructure(*this, 0, jsNull()));
-    scriptFetchParametersStructure.set(*this, JSScriptFetchParameters::createStructure(*this, 0, jsNull()));
-    structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
-    sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
-    templateObjectDescriptorStructure.set(*this, JSTemplateObjectDescriptor::createStructure(*this, 0, jsNull()));
-    unlinkedFunctionExecutableStructure.set(*this, UnlinkedFunctionExecutable::createStructure(*this, 0, jsNull()));
-    unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, 0, jsNull()));
-    unlinkedEvalCodeBlockStructure.set(*this, UnlinkedEvalCodeBlock::createStructure(*this, 0, jsNull()));
-    unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, 0, jsNull()));
-    unlinkedModuleProgramCodeBlockStructure.set(*this, UnlinkedModuleProgramCodeBlock::createStructure(*this, 0, jsNull()));
-    propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
-    functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
-    exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
-    programCodeBlockStructure.set(*this, ProgramCodeBlock::createStructure(*this, 0, jsNull()));
-    moduleProgramCodeBlockStructure.set(*this, ModuleProgramCodeBlock::createStructure(*this, 0, jsNull()));
-    evalCodeBlockStructure.set(*this, EvalCodeBlock::createStructure(*this, 0, jsNull()));
-    functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
-    hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
-    hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
-    bigIntStructure.set(*this, JSBigInt::createStructure(*this, 0, jsNull()));
+    sourceCodeStructure.set(*this, JSSourceCode::createStructure(*this, nullptr, jsNull()));
+    scriptFetcherStructure.set(*this, JSScriptFetcher::createStructure(*this, nullptr, jsNull()));
+    scriptFetchParametersStructure.set(*this, JSScriptFetchParameters::createStructure(*this, nullptr, jsNull()));
+    structureChainStructure.set(*this, StructureChain::createStructure(*this, nullptr, jsNull()));
+    sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, nullptr, jsNull()));
+    templateObjectDescriptorStructure.set(*this, JSTemplateObjectDescriptor::createStructure(*this, nullptr, jsNull()));
+    unlinkedFunctionExecutableStructure.set(*this, UnlinkedFunctionExecutable::createStructure(*this, nullptr, jsNull()));
+    unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, nullptr, jsNull()));
+    unlinkedEvalCodeBlockStructure.set(*this, UnlinkedEvalCodeBlock::createStructure(*this, nullptr, jsNull()));
+    unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, nullptr, jsNull()));
+    unlinkedModuleProgramCodeBlockStructure.set(*this, UnlinkedModuleProgramCodeBlock::createStructure(*this, nullptr, jsNull()));
+    propertyTableStructure.set(*this, PropertyTable::createStructure(*this, nullptr, jsNull()));
+    functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, nullptr, jsNull()));
+    exceptionStructure.set(*this, Exception::createStructure(*this, nullptr, jsNull()));
+    programCodeBlockStructure.set(*this, ProgramCodeBlock::createStructure(*this, nullptr, jsNull()));
+    moduleProgramCodeBlockStructure.set(*this, ModuleProgramCodeBlock::createStructure(*this, nullptr, jsNull()));
+    evalCodeBlockStructure.set(*this, EvalCodeBlock::createStructure(*this, nullptr, jsNull()));
+    functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, nullptr, jsNull()));
+    hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, nullptr, jsNull()));
+    hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, nullptr, jsNull()));
+    bigIntStructure.set(*this, JSBigInt::createStructure(*this, nullptr, jsNull()));
     executableToCodeBlockEdgeStructure.set(*this, ExecutableToCodeBlockEdge::createStructure(*this, nullptr, jsNull()));
 
     // Eagerly initialize constant cells since the concurrent compiler can access them.
@@ -501,7 +472,11 @@ VM::VM(VMType vmType, HeapType heapType)
         sentinelMapBucket();
         sentinelSetBucket();
     }
-    bigIntConstantOne.set(*this, JSBigInt::createFrom(*this, 1));
+    {
+        auto* bigInt = JSBigInt::tryCreateFrom(*this, 1);
+        RELEASE_ASSERT(bigInt);
+        heapBigIntConstantOne.set(*this, bigInt);
+    }
 
     Thread::current().setCurrentAtomStringTable(existingEntryAtomStringTable);
     
@@ -744,7 +719,7 @@ HeapProfiler& VM::ensureHeapProfiler()
 }
 
 #if ENABLE(SAMPLING_PROFILER)
-SamplingProfiler& VM::ensureSamplingProfiler(RefPtr<Stopwatch>&& stopwatch)
+SamplingProfiler& VM::ensureSamplingProfiler(Ref<Stopwatch>&& stopwatch)
 {
     if (!m_samplingProfiler)
         m_samplingProfiler = adoptRef(new SamplingProfiler(*this, WTFMove(stopwatch)));
@@ -826,7 +801,7 @@ NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrins
     if (canUseJIT()) {
         return jitStubs->hostFunctionStub(
             *this, function, constructor,
-            intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : 0,
+            intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : nullptr,
             intrinsic, signature, name);
     }
 #endif // ENABLE(JIT)
@@ -1166,7 +1141,7 @@ WatchpointSet* VM::ensureWatchpointSetForImpureProperty(UniquedStringImpl* prope
 {
     auto result = m_impurePropertyWatchpointSets.add(propertyName, nullptr);
     if (result.isNewEntry)
-        result.iterator->value = adoptRef(new WatchpointSet(IsWatched));
+        result.iterator->value = WatchpointSet::create(IsWatched);
     return result.iterator->value.get();
 }
 
@@ -1263,14 +1238,13 @@ void VM::callPromiseRejectionCallback(Strong<JSPromise>& promise)
 
     auto scope = DECLARE_CATCH_SCOPE(*this);
 
-    CallData callData;
-    CallType callType = getCallData(*this, callback, callData);
-    ASSERT(callType != CallType::None);
+    auto callData = getCallData(*this, callback);
+    ASSERT(callData.type != CallData::Type::None);
 
     MarkedArgumentBuffer args;
     args.append(promise.get());
     args.append(promise->result(*this));
-    call(promise->globalObject(), callback, callType, callData, jsNull(), args);
+    call(promise->globalObject(), callback, callData, jsNull(), args);
     scope.clearException();
 }
 
@@ -1446,6 +1420,7 @@ void VM::ensureShadowChicken()
     }
 
 
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(aggregateErrorSpace, aggregateErrorHeapCellType.get(), AggregateError)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiGlobalObjectSpace, apiGlobalObjectHeapCellType.get(), JSAPIGlobalObject)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiValueWrapperSpace, cellHeapCellType.get(), JSAPIValueWrapper)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(arrayBufferSpace, cellHeapCellType.get(), JSArrayBuffer)
@@ -1513,12 +1488,12 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiWrapperObjectSpace, apiWrapperObjectH
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(jscCallbackFunctionSpace, jscCallbackFunctionHeapCellType.get(), JSCCallbackFunction)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(callbackAPIWrapperGlobalObjectSpace, callbackAPIWrapperGlobalObjectHeapCellType.get(), JSCallbackObject<JSAPIWrapperGlobalObject>)
 #endif
-#if ENABLE(INTL)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlCollatorSpace, intlCollatorHeapCellType.get(), IntlCollator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlDateTimeFormatSpace, intlDateTimeFormatHeapCellType.get(), IntlDateTimeFormat)
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlLocaleSpace, intlLocaleHeapCellType.get(), IntlLocale)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlNumberFormatSpace, intlNumberFormatHeapCellType.get(), IntlNumberFormat)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlPluralRulesSpace, intlPluralRulesHeapCellType.get(), IntlPluralRules)
-#endif
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(intlRelativeTimeFormatSpace, intlRelativeTimeFormatHeapCellType.get(), IntlRelativeTimeFormat)
 #if ENABLE(WEBASSEMBLY)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(jsToWasmICCalleeSpace, cellHeapCellType.get(), JSToWasmICCallee)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(webAssemblyCodeBlockSpace, webAssemblyCodeBlockHeapCellType.get(), JSWebAssemblyCodeBlock) // Hash:0x9ad995cd
@@ -1548,20 +1523,6 @@ DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(evalExecutableSpace, destructibleCellHe
 DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(moduleProgramExecutableSpace, destructibleCellHeapCellType.get(), ModuleProgramExecutable) // Hash:0x6506fa3c
 
 #undef DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW
-
-Structure* VM::setIteratorStructureSlow()
-{
-    ASSERT(!m_setIteratorStructure);
-    m_setIteratorStructure.set(*this, JSSetIterator::createStructure(*this, 0, jsNull()));
-    return m_setIteratorStructure.get();
-}
-
-Structure* VM::mapIteratorStructureSlow()
-{
-    ASSERT(!m_mapIteratorStructure);
-    m_mapIteratorStructure.set(*this, JSMapIterator::createStructure(*this, 0, jsNull()));
-    return m_mapIteratorStructure.get();
-}
 
 JSCell* VM::sentinelSetBucketSlow()
 {

@@ -29,6 +29,7 @@
 #include "config.h"
 #include "AccessibilityNodeObject.h"
 
+#include "AXLogger.h"
 #include "AXObjectCache.h"
 #include "AccessibilityImageMapLink.h"
 #include "AccessibilityList.h"
@@ -280,12 +281,13 @@ Document* AccessibilityNodeObject::document() const
 
 AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
 {
+    AXTRACE("AccessibilityNodeObject::determineAccessibilityRole");
     if (!node())
         return AccessibilityRole::Unknown;
 
     if ((m_ariaRole = determineAriaRoleAttribute()) != AccessibilityRole::Unknown)
         return m_ariaRole;
-    
+
     if (node()->isLink())
         return AccessibilityRole::WebCoreLink;
     if (node()->isTextNode())
@@ -518,11 +520,6 @@ bool AccessibilityNodeObject::isNativeImage() const
     }
 
     return false;
-}
-
-bool AccessibilityNodeObject::isImage() const
-{
-    return roleValue() == AccessibilityRole::Image;
 }
 
 bool AccessibilityNodeObject::isPasswordField() const
@@ -1962,10 +1959,10 @@ void AccessibilityNodeObject::colorValue(int& r, int& g, int& b) const
     if (!is<HTMLInputElement>(node()))
         return;
 
-    auto color = downcast<HTMLInputElement>(*node()).valueAsColor();
-    r = color.red();
-    g = color.green();
-    b = color.blue();
+    auto color = downcast<HTMLInputElement>(*node()).valueAsColor().toSRGBASimpleColorLossy();
+    r = color.redComponent();
+    g = color.greenComponent();
+    b = color.blueComponent();
 #endif
 }
 

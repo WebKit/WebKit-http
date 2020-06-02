@@ -53,16 +53,19 @@ public:
 
     virtual bool isKeyframeEffect() const { return false; }
 
+    EffectTiming getBindingsTiming() const;
     EffectTiming getTiming() const;
     BasicEffectTiming getBasicTiming() const;
+    ComputedEffectTiming getBindingsComputedTiming() const;
     ComputedEffectTiming getComputedTiming() const;
+    ExceptionOr<void> bindingsUpdateTiming(Optional<OptionalEffectTiming>);
     ExceptionOr<void> updateTiming(Optional<OptionalEffectTiming>);
 
     virtual void apply(RenderStyle&) = 0;
     virtual void invalidate() = 0;
     virtual void animationDidTick() = 0;
     virtual void animationDidPlay() = 0;
-    virtual void animationDidSeek() = 0;
+    virtual void animationDidChangeTimingProperties() = 0;
     virtual void animationWasCanceled() = 0;
     virtual void animationSuspensionStateDidChange(bool) = 0;
     virtual void animationTimelineDidChange(AnimationTimeline*) = 0;
@@ -98,6 +101,8 @@ public:
     Seconds endTime() const { return m_endTime; }
 
     void updateStaticTimingProperties();
+
+    virtual Optional<double> progressUntilNextStep(double) const;
 
 protected:
     explicit AnimationEffect();

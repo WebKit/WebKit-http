@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -740,7 +740,6 @@ public:
     {
         ASSERT(!(offset & 0xfff));
         insn(pcRelative(true, offset >> 12, rd));
-        nopCortexA53Fix843419();
     }
 
     template<int datasize, SetFlags setFlags = DontSetFlags>
@@ -783,12 +782,9 @@ public:
         insn(dataProcessing2Source(DATASIZE, rm, DataOp_ASRV, rn, rd));
     }
 
-    ALWAYS_INLINE void b(int32_t offset = 0)
+    ALWAYS_INLINE void b()
     {
-        ASSERT(!(offset & 3));
-        offset >>= 2;
-        ASSERT(offset == (offset << 6) >> 6);
-        insn(unconditionalBranchImmediate(false, offset));
+        insn(unconditionalBranchImmediate(false, 0));
     }
 
     ALWAYS_INLINE void b_cond(Condition cond, int32_t offset = 0)
@@ -831,11 +827,9 @@ public:
         insn(logicalShiftedRegister(DATASIZE, setFlags ? LogicalOp_ANDS : LogicalOp_AND, shift, true, rm, amount, rn, rd));
     }
 
-    ALWAYS_INLINE void bl(int32_t offset = 0)
+    ALWAYS_INLINE void bl()
     {
-        ASSERT(!(offset & 3));
-        offset >>= 2;
-        insn(unconditionalBranchImmediate(true, offset));
+        insn(unconditionalBranchImmediate(true, 0));
     }
 
     ALWAYS_INLINE void blr(RegisterID rn)
@@ -1390,7 +1384,6 @@ public:
     ALWAYS_INLINE void madd(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
         CHECK_DATASIZE();
-        nopCortexA53Fix835769<datasize>();
         insn(dataProcessing3Source(DATASIZE, DataOp_MADD, rm, ra, rn, rd));
     }
 
@@ -1443,7 +1436,6 @@ public:
     ALWAYS_INLINE void msub(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
         CHECK_DATASIZE();
-        nopCortexA53Fix835769<datasize>();
         insn(dataProcessing3Source(DATASIZE, DataOp_MSUB, rm, ra, rn, rd));
     }
 
@@ -1691,7 +1683,6 @@ public:
 
     ALWAYS_INLINE void smaddl(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
-        nopCortexA53Fix835769<64>();
         insn(dataProcessing3Source(Datasize_64, DataOp_SMADDL, rm, ra, rn, rd));
     }
 
@@ -1702,7 +1693,6 @@ public:
 
     ALWAYS_INLINE void smsubl(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
-        nopCortexA53Fix835769<64>();
         insn(dataProcessing3Source(Datasize_64, DataOp_SMSUBL, rm, ra, rn, rd));
     }
 
@@ -1960,7 +1950,6 @@ public:
 
     ALWAYS_INLINE void umaddl(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
-        nopCortexA53Fix835769<64>();
         insn(dataProcessing3Source(Datasize_64, DataOp_UMADDL, rm, ra, rn, rd));
     }
 
@@ -1971,7 +1960,6 @@ public:
 
     ALWAYS_INLINE void umsubl(RegisterID rd, RegisterID rn, RegisterID rm, RegisterID ra)
     {
-        nopCortexA53Fix835769<64>();
         insn(dataProcessing3Source(Datasize_64, DataOp_UMSUBL, rm, ra, rn, rd));
     }
 
@@ -2582,6 +2570,15 @@ public:
     {
         intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(where)) >> 2;
         ASSERT(static_cast<int>(offset) == offset);
+
+#if USE(JUMP_ISLANDS)
+        if (!isInt<26>(offset)) {
+            to = ExecutableAllocator::singleton().getJumpIslandTo(where, to);
+            offset = (bitwise_cast<intptr_t>(to) - bitwise_cast<intptr_t>(where)) >> 2;
+            RELEASE_ASSERT(isInt<26>(offset));
+        }
+#endif
+
         int insn = unconditionalBranchImmediate(false, static_cast<int>(offset));
         RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(where) == where);
         performJITMemcpy(where, &insn, sizeof(int));
@@ -2771,6 +2768,25 @@ public:
         relinkJumpOrCall<BranchType_CALL>(reinterpret_cast<int*>(from) - 1, reinterpret_cast<const int*>(from) - 1, to);
         cacheFlush(reinterpret_cast<int*>(from) - 1, sizeof(int));
     }
+
+#if USE(JUMP_ISLANDS)
+    static void* prepareForAtomicRelinkJumpConcurrently(void* from, void* to)
+    {
+        intptr_t offset = (bitwise_cast<intptr_t>(to) - bitwise_cast<intptr_t>(from)) >> 2;
+        ASSERT(static_cast<int>(offset) == offset);
+
+        if (isInt<26>(offset))
+            return to;
+
+        return ExecutableAllocator::singleton().getJumpIslandToConcurrently(from, to);
+    }
+
+    static void* prepareForAtomicRelinkCallConcurrently(void* from, void* to)
+    {
+        from = static_cast<void*>(bitwise_cast<int*>(from) - 1);
+        return prepareForAtomicRelinkJumpConcurrently(from, to);
+    }
+#endif
     
     static void repatchCompact(void* where, int32_t value)
     {
@@ -2872,7 +2888,7 @@ public:
                 return LinkJumpConditionDirect;
 
             return LinkJumpCondition;
-            }
+        }
         case JumpCompareAndBranch:  {
             ASSERT(is4ByteAligned(from));
             ASSERT(is4ByteAligned(to));
@@ -2945,6 +2961,12 @@ public:
         }
     }
 
+    static ALWAYS_INLINE bool canEmitJump(void* from, void* to)
+    {
+        intptr_t diff = (bitwise_cast<intptr_t>(from) - bitwise_cast<intptr_t>(to)) >> 2;
+        return isInt<26>(diff);
+    }
+
 protected:
     template<Datasize size>
     static bool checkMovk(int insn, int _hw, RegisterID _rd)
@@ -2994,8 +3016,16 @@ protected:
         ASSERT(!(reinterpret_cast<intptr_t>(to) & 3));
         assertIsNotTagged(to);
         assertIsNotTagged(fromInstruction);
-        intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(fromInstruction)) >> 2;
+        intptr_t offset = (bitwise_cast<intptr_t>(to) - bitwise_cast<intptr_t>(fromInstruction)) >> 2;
         ASSERT(static_cast<int>(offset) == offset);
+
+#if USE(JUMP_ISLANDS)
+        if (!isInt<26>(offset)) {
+            to = ExecutableAllocator::singleton().getJumpIslandTo(bitwise_cast<void*>(fromInstruction), to);
+            offset = (bitwise_cast<intptr_t>(to) - bitwise_cast<intptr_t>(fromInstruction)) >> 2;
+            RELEASE_ASSERT(isInt<26>(offset));
+        }
+#endif
 
         int insn = unconditionalBranchImmediate(isCall, static_cast<int>(offset));
         RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(from) == from);
@@ -3008,12 +3038,12 @@ protected:
         ASSERT(!(reinterpret_cast<intptr_t>(from) & 3));
         ASSERT(!(reinterpret_cast<intptr_t>(to) & 3));
         intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(fromInstruction)) >> 2;
-        ASSERT(isInt<26>(offset));
 
         bool useDirect = isInt<19>(offset);
         ASSERT(type == IndirectBranch || useDirect);
 
         if (useDirect || type == DirectBranch) {
+            ASSERT(isInt<19>(offset));
             int insn = compareAndBranchImmediate(is64Bit ? Datasize_64 : Datasize_32, condition == ConditionNE, static_cast<int>(offset), rt);
             RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(from) == from);
             copy(from, &insn, sizeof(int));
@@ -3036,12 +3066,12 @@ protected:
         ASSERT(!(reinterpret_cast<intptr_t>(from) & 3));
         ASSERT(!(reinterpret_cast<intptr_t>(to) & 3));
         intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(fromInstruction)) >> 2;
-        ASSERT(isInt<26>(offset));
 
         bool useDirect = isInt<19>(offset);
         ASSERT(type == IndirectBranch || useDirect);
 
         if (useDirect || type == DirectBranch) {
+            ASSERT(isInt<19>(offset));
             int insn = conditionalBranchImmediate(static_cast<int>(offset), condition);
             RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(from) == from);
             copy(from, &insn, sizeof(int));
@@ -3065,12 +3095,12 @@ protected:
         ASSERT(!(reinterpret_cast<intptr_t>(to) & 3));
         intptr_t offset = (reinterpret_cast<intptr_t>(to) - reinterpret_cast<intptr_t>(fromInstruction)) >> 2;
         ASSERT(static_cast<int>(offset) == offset);
-        ASSERT(isInt<26>(offset));
 
         bool useDirect = isInt<14>(offset);
         ASSERT(type == IndirectBranch || useDirect);
 
         if (useDirect || type == DirectBranch) {
+            ASSERT(isInt<14>(offset));
             int insn = testAndBranchImmediate(condition == ConditionNE, static_cast<int>(bitNumber), static_cast<int>(offset), rt);
             RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(from) == from);
             copy(from, &insn, sizeof(int));
@@ -3689,37 +3719,6 @@ protected:
     static int fjcvtzsInsn(FPRegisterID dn, RegisterID rd)
     {
         return 0x1e7e0000 | (dn << 5) | rd;
-    }
-
-    // Workaround for Cortex-A53 erratum (835769). Emit an extra nop if the
-    // last instruction in the buffer is a load, store or prefetch. Needed
-    // before 64-bit multiply-accumulate instructions.
-    template<int datasize>
-    ALWAYS_INLINE void nopCortexA53Fix835769()
-    {
-#if CPU(ARM64_CORTEXA53)
-        CHECK_DATASIZE();
-        if (datasize == 64) {
-            if (LIKELY(m_buffer.codeSize() >= sizeof(int32_t))) {
-                // From ARMv8 Reference Manual, Section C4.1: the encoding of the
-                // instructions in the Loads and stores instruction group is:
-                // ---- 1-0- ---- ---- ---- ---- ---- ----
-                if (UNLIKELY((*reinterpret_cast_ptr<int32_t*>(reinterpret_cast_ptr<char*>(m_buffer.data()) + m_buffer.codeSize() - sizeof(int32_t)) & 0x0a000000) == 0x08000000))
-                    nop();
-            }
-        }
-#endif
-    }
-
-    // Workaround for Cortex-A53 erratum (843419). Emit extra nops to avoid
-    // wrong address access after ADRP instruction.
-    ALWAYS_INLINE void nopCortexA53Fix843419()
-    {
-#if CPU(ARM64_CORTEXA53)
-        nop();
-        nop();
-        nop();
-#endif
     }
 
     Vector<LinkRecord, 0, UnsafeVectorOverflow> m_jumpsToLink;

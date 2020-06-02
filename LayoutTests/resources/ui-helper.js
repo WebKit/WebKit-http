@@ -28,19 +28,49 @@ window.UIHelper = class UIHelper {
         eventSender.mouseMoveTo(x2, y2);
         eventSender.mouseUp();
     }
-    
-    static async mouseWheelScrollAt(x, y)
+
+    static async moveMouseAndWaitForFrame(x, y)
     {
+        eventSender.mouseMoveTo(x, y);
+        await UIHelper.animationFrame();
+    }
+
+    static async mouseWheelScrollAt(x, y, beginX, beginY, deltaX, deltaY)
+    {
+        if (beginX === undefined)
+            beginX = 0;
+        if (beginY === undefined)
+            beginY = -1;
+
+        if (deltaX === undefined)
+            deltaX = 0;
+        if (deltaY === undefined)
+            deltaY = -10;
+
         eventSender.monitorWheelEvents();
         eventSender.mouseMoveTo(x, y);
-        eventSender.mouseScrollByWithWheelAndMomentumPhases(0, -1, "began", "none");
-        eventSender.mouseScrollByWithWheelAndMomentumPhases(0, -10, "changed", "none");
+        eventSender.mouseScrollByWithWheelAndMomentumPhases(beginX, beginY, "began", "none");
+        eventSender.mouseScrollByWithWheelAndMomentumPhases(deltaX, deltaY, "changed", "none");
         eventSender.mouseScrollByWithWheelAndMomentumPhases(0, 0, "ended", "none");
         return new Promise(resolve => {
             eventSender.callAfterScrollingCompletes(() => {
                 requestAnimationFrame(resolve);
             });
         });
+    }
+
+    static async mouseWheelMayBeginAt(x, y)
+    {
+        eventSender.mouseMoveTo(x, y);
+        eventSender.mouseScrollByWithWheelAndMomentumPhases(x, y, "maybegin", "none");
+        await UIHelper.animationFrame();
+    }
+
+    static async mouseWheelCancelAt(x, y)
+    {
+        eventSender.mouseMoveTo(x, y);
+        eventSender.mouseScrollByWithWheelAndMomentumPhases(x, y, "cancelled", "none");
+        await UIHelper.animationFrame();
     }
 
     static async waitForScrollCompletion()
@@ -55,6 +85,13 @@ window.UIHelper = class UIHelper {
     static async animationFrame()
     {
         return new Promise(requestAnimationFrame);
+    }
+
+    static async waitForCondition(conditionFunc)
+    {
+        while (!conditionFunc()) {
+            await UIHelper.animationFrame();
+        }
     }
 
     static sendEventStream(eventStream)
@@ -268,6 +305,13 @@ window.UIHelper = class UIHelper {
     {
         return new Promise((resolve) => {
             testRunner.runUIScript(`uiController.toggleCapsLock(() => uiController.uiScriptComplete());`, resolve);
+        });
+    }
+
+    static keyboardIsAutomaticallyShifted()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`uiController.keyboardIsAutomaticallyShifted`, result => resolve(result === "true"));
         });
     }
 
@@ -678,8 +722,15 @@ window.UIHelper = class UIHelper {
 
     static selectFormAccessoryPickerRow(rowIndex)
     {
-        const selectRowScript = `(() => uiController.selectFormAccessoryPickerRow(${rowIndex}))()`;
+        const selectRowScript = `uiController.selectFormAccessoryPickerRow(${rowIndex})`;
         return new Promise(resolve => testRunner.runUIScript(selectRowScript, resolve));
+    }
+
+    static selectFormAccessoryHasCheckedItemAtRow(rowIndex)
+    {
+        return new Promise(resolve => testRunner.runUIScript(`uiController.selectFormAccessoryHasCheckedItemAtRow(${rowIndex})`, result => {
+            resolve(result === "true");
+        }));
     }
 
     static selectFormPopoverTitle()
@@ -702,6 +753,18 @@ window.UIHelper = class UIHelper {
     {
         const setValueScript = `(() => uiController.setTimePickerValue(${hours}, ${minutes}))()`;
         return new Promise(resolve => testRunner.runUIScript(setValueScript, resolve));
+    }
+
+    static timerPickerValues()
+    {
+        if (!this.isIOSFamily())
+            return Promise.resolve();
+
+        const uiScript = "JSON.stringify([uiController.timePickerValueHour, uiController.timePickerValueMinute])";
+        return new Promise(resolve => testRunner.runUIScript(uiScript, result => {
+            const [hour, minute] = JSON.parse(result)
+            resolve({ hour: hour, minute: minute });
+        }));
     }
 
     static setShareSheetCompletesImmediatelyWithResolution(resolved)
@@ -1020,6 +1083,11 @@ window.UIHelper = class UIHelper {
             await this.activateAt(menuRect.left + menuRect.width / 2, menuRect.top + menuRect.height / 2);
     }
 
+    static waitForEvent(target, eventName)
+    {
+        return new Promise(resolve => target.addEventListener(eventName, resolve, { once: true }));
+    }
+
     static callFunctionAndWaitForEvent(functionToCall, target, eventName)
     {
         return new Promise((resolve) => {
@@ -1122,8 +1190,12 @@ window.UIHelper = class UIHelper {
     }
 
     static async copyText(text) {
-        const copyTextScript = `uiController.copyText(\`${text.replace(/`/g, "\\`")}\`)()`;
+        const copyTextScript = `uiController.copyText(\`${text.replace(/`/g, "\\`")}\`)`;
         return new Promise(resolve => testRunner.runUIScript(copyTextScript, resolve));
+    }
+
+    static async paste() {
+        return new Promise(resolve => testRunner.runUIScript(`uiController.paste()`, resolve));
     }
 
     static async setContinuousSpellCheckingEnabled(enabled) {
@@ -1146,6 +1218,42 @@ window.UIHelper = class UIHelper {
                         uiController.uiScriptComplete();
                     });
                 })();`, resolve);
+        });
+    }
+
+    static async activateElementAfterInstallingTapGestureOnWindow(element)
+    {
+        if (!this.isWebKit2() || !this.isIOSFamily())
+            return activateElement(element);
+
+        const x = element.offsetLeft + element.offsetWidth / 2;
+        const y = element.offsetTop + element.offsetHeight / 2;
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    let progress = 0;
+                    function incrementProgress() {
+                        if (++progress == 2)
+                            uiController.uiScriptComplete();
+                    }
+                    uiController.installTapGestureOnWindow(incrementProgress);
+                    uiController.singleTapAtPoint(${x}, ${y}, incrementProgress);
+                })();`, resolve);
+        });
+    }
+
+    static mayContainEditableElementsInRect(x, y, width, height)
+    {
+        if (!this.isWebKit2() || !this.isIOSFamily())
+            return Promise.resolve(false);
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    uiController.doAfterPresentationUpdate(function() {
+                        uiController.uiScriptComplete(uiController.mayContainEditableElementsInRect(${x}, ${y}, ${width}, ${height}));
+                    })
+                })();`, result => resolve(result === "true"));
         });
     }
 }

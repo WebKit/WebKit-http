@@ -62,18 +62,17 @@ namespace WebCore {
     
 using namespace HTMLNames;
 
-SubframeLoader::SubframeLoader(Frame& frame)
-    : m_containsPlugins(false)
-    , m_frame(frame)
+FrameLoader::SubframeLoader::SubframeLoader(Frame& frame)
+    : m_frame(frame)
 {
 }
 
-void SubframeLoader::clear()
+void FrameLoader::SubframeLoader::clear()
 {
     m_containsPlugins = false;
 }
 
-bool SubframeLoader::requestFrame(HTMLFrameOwnerElement& ownerElement, const String& urlString, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
+bool FrameLoader::SubframeLoader::requestFrame(HTMLFrameOwnerElement& ownerElement, const String& urlString, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
 {
     // Support for <frame src="javascript:string">
     URL scriptURL;
@@ -112,7 +111,7 @@ bool SubframeLoader::requestFrame(HTMLFrameOwnerElement& ownerElement, const Str
     return true;
 }
     
-bool SubframeLoader::resourceWillUsePlugin(const String& url, const String& mimeType)
+bool FrameLoader::SubframeLoader::resourceWillUsePlugin(const String& url, const String& mimeType)
 {
     URL completedURL;
     if (!url.isEmpty())
@@ -122,7 +121,7 @@ bool SubframeLoader::resourceWillUsePlugin(const String& url, const String& mime
     return shouldUsePlugin(completedURL, mimeType, false, useFallback);
 }
 
-bool SubframeLoader::pluginIsLoadable(const URL& url, const String& mimeType)
+bool FrameLoader::SubframeLoader::pluginIsLoadable(const URL& url, const String& mimeType)
 {
     auto* document = m_frame.document();
 
@@ -149,12 +148,12 @@ bool SubframeLoader::pluginIsLoadable(const URL& url, const String& mimeType)
     return true;
 }
 
-bool SubframeLoader::requestPlugin(HTMLPlugInImageElement& ownerElement, const URL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
+bool FrameLoader::SubframeLoader::requestPlugin(HTMLPlugInImageElement& ownerElement, const URL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
 {
     // Application plug-ins are plug-ins implemented by the user agent, for example Qt plug-ins,
     // as opposed to third-party code such as Flash. The user agent decides whether or not they are
     // permitted, rather than WebKit.
-    if ((!allowPlugins() && !MIMETypeRegistry::isApplicationPluginMIMEType(mimeType)))
+    if (!(m_frame.settings().arePluginsEnabled() || MIMETypeRegistry::isApplicationPluginMIMEType(mimeType)))
         return false;
 
     if (!pluginIsLoadable(url, mimeType))
@@ -218,7 +217,7 @@ static void logPluginRequest(Page* page, const String& mimeType, const String& u
     page->sawPlugin(description);
 }
 
-bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const String& url, const AtomString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
+bool FrameLoader::SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const String& url, const AtomString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     if (url.isEmpty() && mimeType.isEmpty())
         return false;
@@ -236,7 +235,7 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const S
     bool useFallback;
     if (shouldUsePlugin(completedURL, mimeType, hasFallbackContent, useFallback)) {
         bool success = requestPlugin(ownerElement, completedURL, mimeType, paramNames, paramValues, useFallback);
-        logPluginRequest(document.page(), mimeType, completedURL, success);
+        logPluginRequest(document.page(), mimeType, completedURL.string(), success);
         return success;
     }
 
@@ -246,7 +245,7 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const S
     return loadOrRedirectSubframe(ownerElement, completedURL, frameName, LockHistory::Yes, LockBackForwardList::Yes);
 }
 
-RefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLAppletElement& element, const Vector<String>& paramNames, const Vector<String>& paramValues)
+RefPtr<Widget> FrameLoader::SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLAppletElement& element, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     String baseURLString;
     String codeBaseURLString;
@@ -279,7 +278,7 @@ RefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLA
     URL baseURL = completeURL(baseURLString);
 
     RefPtr<Widget> widget;
-    if (allowPlugins())
+    if (m_frame.settings().arePluginsEnabled())
         widget = m_frame.loader().client().createJavaAppletWidget(size, element, baseURL, paramNames, paramValues);
 
     logPluginRequest(m_frame.page(), element.serviceType(), String(), widget);
@@ -296,14 +295,14 @@ RefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLA
     return widget;
 }
 
-Frame* SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElement, const URL& requestURL, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
+Frame* FrameLoader::SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElement, const URL& requestURL, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
 {
     auto& initiatingDocument = ownerElement.document();
 
     URL upgradedRequestURL = requestURL;
     initiatingDocument.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(upgradedRequestURL, ContentSecurityPolicy::InsecureRequestType::Load);
 
-    auto* frame = ownerElement.contentFrame();
+    RefPtr<Frame> frame = makeRefPtr(ownerElement.contentFrame());
     if (frame)
         frame->navigationScheduler().scheduleLocationChange(initiatingDocument, initiatingDocument.securityOrigin(), upgradedRequestURL, m_frame.loader().outgoingReferrer(), lockHistory, lockBackForwardList);
     else
@@ -316,7 +315,7 @@ Frame* SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElemen
     return ownerElement.contentFrame();
 }
 
-Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const URL& url, const String& name, const String& referrer)
+RefPtr<Frame> FrameLoader::SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const URL& url, const String& name, const String& referrer)
 {
     Ref<Frame> protect(m_frame);
     auto document = makeRef(ownerElement.document());
@@ -332,19 +331,25 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const U
     if (!m_frame.page() || m_frame.page()->subframeCount() >= Page::maxNumberOfFrames)
         return nullptr;
 
+    // Prevent initial empty document load from triggering load events.
+    document->incrementLoadEventDelayCount();
+
+    auto frame = m_frame.loader().client().createFrame(name, ownerElement);
+    if (!frame)  {
+        m_frame.loader().checkCallImplicitClose();
+        return nullptr;
+    }
     ReferrerPolicy policy = ownerElement.referrerPolicy();
     if (policy == ReferrerPolicy::EmptyString)
         policy = document->referrerPolicy();
     String referrerToUse = SecurityPolicy::generateReferrerHeader(policy, url, referrer);
 
-    // Prevent initial empty document load from triggering load events.
-    document->incrementLoadEventDelayCount();
-
-    auto frame = m_frame.loader().client().createFrame(url, name, ownerElement, referrerToUse);
+    m_frame.loader().loadURLIntoChildFrame(url, referrerToUse, frame.get());
 
     document->decrementLoadEventDelayCount();
 
-    if (!frame)  {
+    // The frame's onload handler may have removed it from the document.
+    if (!frame || !frame->tree().parent()) {
         m_frame.loader().checkCallImplicitClose();
         return nullptr;
     }
@@ -376,15 +381,13 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const U
     if (frame->loader().state() == FrameStateComplete && !frame->loader().policyDocumentLoader())
         frame->loader().checkCompleted();
 
-    return frame.get();
+    if (!frame->tree().parent())
+        return nullptr;
+
+    return frame;
 }
 
-bool SubframeLoader::allowPlugins()
-{
-    return m_frame.settings().arePluginsEnabled();
-}
-
-bool SubframeLoader::shouldUsePlugin(const URL& url, const String& mimeType, bool hasFallback, bool& useFallback)
+bool FrameLoader::SubframeLoader::shouldUsePlugin(const URL& url, const String& mimeType, bool hasFallback, bool& useFallback)
 {
     if (m_frame.loader().client().shouldAlwaysUsePluginDocument(mimeType)) {
         useFallback = false;
@@ -399,7 +402,7 @@ bool SubframeLoader::shouldUsePlugin(const URL& url, const String& mimeType, boo
     return objectType == ObjectContentType::None || objectType == ObjectContentType::PlugIn;
 }
 
-bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
+bool FrameLoader::SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
 {
     if (useFallback)
         return false;
@@ -442,13 +445,13 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL
     return true;
 }
 
-URL SubframeLoader::completeURL(const String& url) const
+URL FrameLoader::SubframeLoader::completeURL(const String& url) const
 {
     ASSERT(m_frame.document());
     return m_frame.document()->completeURL(url);
 }
 
-bool SubframeLoader::shouldConvertInvalidURLsToBlank() const
+bool FrameLoader::SubframeLoader::shouldConvertInvalidURLsToBlank() const
 {
     return m_frame.settings().shouldConvertInvalidURLsToBlank();
 }

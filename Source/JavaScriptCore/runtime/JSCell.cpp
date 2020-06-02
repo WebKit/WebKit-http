@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2020 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -23,19 +23,13 @@
 #include "config.h"
 #include "JSCell.h"
 
-#include "ArrayBufferView.h"
-#include "BlockDirectoryInlines.h"
+#include "IntegrityInlines.h"
 #include "IsoSubspaceInlines.h"
+#include "JSBigInt.h"
 #include "JSCInlines.h"
-#include "JSCast.h"
-#include "JSFunction.h"
-#include "JSString.h"
-#include "JSObject.h"
 #include "MarkedBlockInlines.h"
-#include "NumberObject.h"
 #include "SubspaceInlines.h"
 #include <wtf/LockAlgorithmInlines.h>
-#include <wtf/MathExtras.h>
 
 namespace JSC {
 
@@ -86,33 +80,27 @@ String JSCell::getString(JSGlobalObject* globalObject) const
 
 JSObject* JSCell::getObject()
 {
-    return isObject() ? asObject(this) : 0;
+    return isObject() ? asObject(this) : nullptr;
 }
 
 const JSObject* JSCell::getObject() const
 {
-    return isObject() ? static_cast<const JSObject*>(this) : 0;
+    return isObject() ? static_cast<const JSObject*>(this) : nullptr;
 }
 
-CallType JSCell::getCallData(JSCell*, CallData& callData)
+CallData JSCell::getCallData(JSCell*)
 {
-    callData.js.functionExecutable = nullptr;
-    callData.js.scope = nullptr;
-    callData.native.function = nullptr;
-    return CallType::None;
+    return { };
 }
 
-ConstructType JSCell::getConstructData(JSCell*, ConstructData& constructData)
+CallData JSCell::getConstructData(JSCell*)
 {
-    constructData.js.functionExecutable = nullptr;
-    constructData.js.scope = nullptr;
-    constructData.native.function = nullptr;
-    return ConstructType::None;
+    return { };
 }
 
 bool JSCell::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName identifier, JSValue value, PutPropertySlot& slot)
 {
-    if (cell->isString() || cell->isSymbol() || cell->isBigInt())
+    if (cell->isString() || cell->isSymbol() || cell->isHeapBigInt())
         return JSValue(cell).putToPrimitive(globalObject, identifier, value, slot);
 
     JSObject* thisObject = cell->toObject(globalObject);
@@ -122,7 +110,7 @@ bool JSCell::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName identi
 bool JSCell::putByIndex(JSCell* cell, JSGlobalObject* globalObject, unsigned identifier, JSValue value, bool shouldThrow)
 {
     VM& vm = globalObject->vm();
-    if (cell->isString() || cell->isSymbol() || cell->isBigInt()) {
+    if (cell->isString() || cell->isSymbol() || cell->isHeapBigInt()) {
         PutPropertySlot slot(cell, shouldThrow);
         return JSValue(cell).putToPrimitive(globalObject, Identifier::from(vm, identifier), value, slot);
     }
@@ -151,7 +139,7 @@ bool JSCell::deletePropertyByIndex(JSCell* cell, JSGlobalObject* globalObject, u
 
 JSValue JSCell::toThis(JSCell* cell, JSGlobalObject* globalObject, ECMAMode ecmaMode)
 {
-    if (ecmaMode == StrictMode)
+    if (ecmaMode.isStrict())
         return cell;
     return cell->toObject(globalObject);
 }
@@ -162,7 +150,7 @@ JSValue JSCell::toPrimitive(JSGlobalObject* globalObject, PreferredPrimitiveType
         return static_cast<const JSString*>(this)->toPrimitive(globalObject, preferredType);
     if (isSymbol())
         return static_cast<const Symbol*>(this)->toPrimitive(globalObject, preferredType);
-    if (isBigInt())
+    if (isHeapBigInt())
         return static_cast<const JSBigInt*>(this)->toPrimitive(globalObject, preferredType);
     return static_cast<const JSObject*>(this)->toPrimitive(globalObject, preferredType);
 }
@@ -173,7 +161,7 @@ bool JSCell::getPrimitiveNumber(JSGlobalObject* globalObject, double& number, JS
         return static_cast<const JSString*>(this)->getPrimitiveNumber(globalObject, number, value);
     if (isSymbol())
         return static_cast<const Symbol*>(this)->getPrimitiveNumber(globalObject, number, value);
-    if (isBigInt())
+    if (isHeapBigInt())
         return static_cast<const JSBigInt*>(this)->getPrimitiveNumber(globalObject, number, value);
     return static_cast<const JSObject*>(this)->getPrimitiveNumber(globalObject, number, value);
 }
@@ -184,17 +172,18 @@ double JSCell::toNumber(JSGlobalObject* globalObject) const
         return static_cast<const JSString*>(this)->toNumber(globalObject);
     if (isSymbol())
         return static_cast<const Symbol*>(this)->toNumber(globalObject);
-    if (isBigInt())
+    if (isHeapBigInt())
         return static_cast<const JSBigInt*>(this)->toNumber(globalObject);
     return static_cast<const JSObject*>(this)->toNumber(globalObject);
 }
 
 JSObject* JSCell::toObjectSlow(JSGlobalObject* globalObject) const
 {
+    Integrity::auditStructureID(globalObject->vm(), structureID());
     ASSERT(!isObject());
     if (isString())
         return static_cast<const JSString*>(this)->toObject(globalObject);
-    if (isBigInt())
+    if (isHeapBigInt())
         return static_cast<const JSBigInt*>(this)->toObject(globalObject);
     ASSERT(isSymbol());
     return static_cast<const Symbol*>(this)->toObject(globalObject);

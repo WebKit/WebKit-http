@@ -50,6 +50,7 @@
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/cocoa/RuntimeApplicationChecksCocoa.h>
 
 using namespace WebCore;
 
@@ -300,7 +301,7 @@ public:
             values = [decoder decodeObjectForKey:@"Values"];
         } else {
             int version;
-            [decoder decodeValueOfObjCType:@encode(int) at:&version];
+            [decoder decodeValueOfObjCType:@encode(int) at:&version size:sizeof(int)];
             if (version == 1) {
                 identifier = [decoder decodeObject];
                 values = [decoder decodeObject];
@@ -389,11 +390,13 @@ public:
     JSC::initializeThreading();
     RunLoop::initializeMainRunLoop();
     bool attachmentElementEnabled = MacApplication::isAppleMail();
+    bool webSQLEnabled = false;
 #else
     bool allowsInlineMediaPlayback = WebCore::deviceClass() == MGDeviceClassiPad;
     bool allowsInlineMediaPlaybackAfterFullscreen = WebCore::deviceClass() != MGDeviceClassiPad;
     bool requiresPlaysInlineAttribute = !allowsInlineMediaPlayback;
     bool attachmentElementEnabled = IOSApplication::isMobileMail();
+    bool webSQLEnabled = (IOSApplication::isFamilyHealthApp() || IOSApplication::isJesusCalling()) && applicationSDKVersion() < DYLD_IOS_VERSION_14_0;
 #endif
 
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -465,17 +468,16 @@ public:
         @"0", WebKitPDFScaleFactorPreferenceKey,
 #endif
         @"0", WebKitUseSiteSpecificSpoofingPreferenceKey,
-        [NSNumber numberWithInt:WebKitEditableLinkDefaultBehavior], WebKitEditableLinkBehaviorPreferenceKey,
+        @(WebKitEditableLinkDefaultBehavior), WebKitEditableLinkBehaviorPreferenceKey,
 #if !PLATFORM(IOS_FAMILY)
-        [NSNumber numberWithInt:WebTextDirectionSubmenuAutomaticallyIncluded],
-                                        WebKitTextDirectionSubmenuInclusionBehaviorPreferenceKey,
+        @(WebTextDirectionSubmenuAutomaticallyIncluded), WebKitTextDirectionSubmenuInclusionBehaviorPreferenceKey,
         @NO, WebKitDOMPasteAllowedPreferenceKey,
 #endif
         @YES, WebKitUsesPageCachePreferenceKey,
-        [NSNumber numberWithInt:cacheModelForMainBundle()], WebKitCacheModelPreferenceKey,
+        @(cacheModelForMainBundle()), WebKitCacheModelPreferenceKey,
         @YES, WebKitPageCacheSupportsPluginsPreferenceKey,
         @NO, WebKitDeveloperExtrasEnabledPreferenceKey,
-        [NSNumber numberWithUnsignedInt:0], WebKitJavaScriptRuntimeFlagsPreferenceKey,
+        @(0), WebKitJavaScriptRuntimeFlagsPreferenceKey,
         @YES, WebKitAuthorAndUserStylesEnabledPreferenceKey,
         @YES, WebKitDOMTimersThrottlingEnabledPreferenceKey,
         @NO, WebKitWebArchiveDebugModeEnabledPreferenceKey,
@@ -511,9 +513,9 @@ public:
         @YES, WebKitLargeImageAsyncDecodingEnabledPreferenceKey,
         @YES, WebKitAnimatedImageAsyncDecodingEnabledPreferenceKey,
 #if PLATFORM(IOS_FAMILY)
-        [NSNumber numberWithUnsignedInt:static_cast<uint32_t>(FrameFlattening::FullyEnabled)], WebKitFrameFlatteningPreferenceKey,
+        @(static_cast<uint32_t>(FrameFlattening::FullyEnabled)), WebKitFrameFlatteningPreferenceKey,
 #else
-        [NSNumber numberWithUnsignedInt:static_cast<uint32_t>(FrameFlattening::Disabled)], WebKitFrameFlatteningPreferenceKey,
+        @(static_cast<uint32_t>(FrameFlattening::Disabled)), WebKitFrameFlatteningPreferenceKey,
 #endif
         @NO, WebKitAsyncFrameScrollingEnabledPreferenceKey,
         @NO, WebKitSpatialNavigationEnabledPreferenceKey,
@@ -544,7 +546,7 @@ public:
         [NSNumber numberWithBool:allowsInlineMediaPlaybackAfterFullscreen], WebKitAllowsInlineMediaPlaybackAfterFullscreenPreferenceKey,
         [NSNumber numberWithBool:requiresPlaysInlineAttribute], WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey,
         @NO, WebKitMediaControlsScaleWithPageZoomPreferenceKey,
-        [NSNumber numberWithUnsignedInt:AudioSession::None], WebKitAudioSessionCategoryOverride,
+        @(AudioSession::None), WebKitAudioSessionCategoryOverride,
         @NO, WebKitMediaDataLoadsAutomaticallyPreferenceKey,
 #if HAVE(AVKIT)
         @YES, WebKitAVKitEnabled,
@@ -570,7 +572,7 @@ public:
         @YES, WebKitRequestAnimationFrameEnabledPreferenceKey,
         @NO, WebKitWantsBalancedSetDefersLoadingBehaviorKey,
         @NO, WebKitDiagnosticLoggingEnabledKey,
-        [NSNumber numberWithInt:WebAllowAllStorage], WebKitStorageBlockingPolicyKey,
+        @(WebAllowAllStorage), WebKitStorageBlockingPolicyKey,
         @NO, WebKitPlugInSnapshottingEnabledPreferenceKey,
 
 #if PLATFORM(IOS_FAMILY)
@@ -579,7 +581,7 @@ public:
         [NSNumber numberWithFloat:-1.0f], WebKitMaxParseDurationPreferenceKey,
         @NO, WebKitAllowMultiElementImplicitFormSubmissionPreferenceKey,
         @NO, WebKitAlwaysRequestGeolocationPermissionPreferenceKey,
-        [NSNumber numberWithInt:static_cast<int>(InterpolationQuality::Low)], WebKitInterpolationQualityPreferenceKey,
+        @(static_cast<int>(InterpolationQuality::Low)), WebKitInterpolationQualityPreferenceKey,
         @YES, WebKitPasswordEchoEnabledPreferenceKey,
         [NSNumber numberWithFloat:2.0f], WebKitPasswordEchoDurationPreferenceKey,
         @NO, WebKitNetworkDataUsageTrackingEnabledPreferenceKey,
@@ -679,6 +681,7 @@ public:
 #endif
         @YES, WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey,
         @NO, WebKitCSSLogicalEnabledPreferenceKey,
+        @NO, WebKitLineHeightUnitsEnabledPreferenceKey,
         @NO, WebKitAdClickAttributionEnabledPreferenceKey,
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
@@ -712,7 +715,7 @@ public:
         @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
         @NO, WebKitDebugInAppBrowserPrivacyEnabledPreferenceKey,
         @NO, WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey,
-        @NO, WebKitWebSQLEnabledPreferenceKey,
+        @(webSQLEnabled), WebKitWebSQLEnabledPreferenceKey,
         @YES, WebKitDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey,
         nil];
 
@@ -850,7 +853,7 @@ public:
     });
 #endif
     if (_private->autosaves)
-        [[NSUserDefaults standardUserDefaults] setObject:[NSNumber numberWithUnsignedInt:value] forKey:_key];
+        [[NSUserDefaults standardUserDefaults] setObject:@(value) forKey:_key];
     [self _postPreferencesChangedNotification];
 }
 
@@ -1808,7 +1811,7 @@ public:
 
 - (WebTextDirectionSubmenuInclusionBehavior)textDirectionSubmenuInclusionBehavior
 {
-    WebTextDirectionSubmenuInclusionBehavior value = static_cast<WebTextDirectionSubmenuInclusionBehavior>([self _integerValueForKey:WebKitTextDirectionSubmenuInclusionBehaviorPreferenceKey]);
+    auto value = static_cast<WebTextDirectionSubmenuInclusionBehavior>([self _integerValueForKey:WebKitTextDirectionSubmenuInclusionBehaviorPreferenceKey]);
     if (value != WebTextDirectionSubmenuNeverIncluded &&
         value != WebTextDirectionSubmenuAutomaticallyIncluded &&
         value != WebTextDirectionSubmenuAlwaysIncluded) {
@@ -1943,7 +1946,7 @@ public:
 + (void)_setInitialDefaultTextEncodingToSystemEncoding
 {
     [[NSUserDefaults standardUserDefaults] registerDefaults:
-        [NSDictionary dictionaryWithObject:defaultTextEncodingNameForSystemLanguage() forKey:WebKitDefaultTextEncodingNamePreferenceKey]];
+        @{ WebKitDefaultTextEncodingNamePreferenceKey: defaultTextEncodingNameForSystemLanguage() }];
 }
 
 static NSString *classIBCreatorID = nil;
@@ -2756,8 +2759,7 @@ static NSString *classIBCreatorID = nil;
 #if PLATFORM(IOS_FAMILY)
     // We don't want to write the setting out, so we just reset the default instead of storing the new setting.
     // FIXME: This code removes any defaults previously registered by client process, which is not appropriate for this method to do.
-    NSDictionary *dict = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:storageBlockingPolicy] forKey:WebKitStorageBlockingPolicyKey];
-    [[NSUserDefaults standardUserDefaults] registerDefaults:dict];
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{ WebKitStorageBlockingPolicyKey: @(storageBlockingPolicy) }];
 #else
     [self _setIntegerValue:storageBlockingPolicy forKey:WebKitStorageBlockingPolicyKey];
 #endif
@@ -3238,6 +3240,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey];
 }
 
+- (BOOL)CSSCustomPropertiesAndValuesEnabled
+{
+    return [self _boolValueForKey:WebKitCSSCustomPropertiesAndValuesEnabledPreferenceKey];
+}
+
+- (void)setCSSCustomPropertiesAndValuesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSCustomPropertiesAndValuesEnabledPreferenceKey];
+}
+
 - (BOOL)syntheticEditingCommandsEnabled
 {
     return [self _boolValueForKey:WebKitSyntheticEditingCommandsEnabledPreferenceKey];
@@ -3538,6 +3550,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setCSSLogicalEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCSSLogicalEnabledPreferenceKey];
+}
+
+- (BOOL)lineHeightUnitsEnabled
+{
+    return [self _boolValueForKey:WebKitLineHeightUnitsEnabledPreferenceKey];
+}
+
+- (void)setLineHeightUnitsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitLineHeightUnitsEnabledPreferenceKey];
 }
 
 - (BOOL)adClickAttributionEnabled

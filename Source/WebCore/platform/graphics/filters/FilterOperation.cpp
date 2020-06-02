@@ -29,6 +29,7 @@
 #include "AnimationUtilities.h"
 #include "CachedResourceLoader.h"
 #include "CachedSVGDocumentReference.h"
+#include "ColorMatrix.h"
 #include "ColorUtilities.h"
 #include "FilterEffect.h"
 #include "SVGURIReference.h"
@@ -84,26 +85,26 @@ RefPtr<FilterOperation> BasicColorMatrixFilterOperation::blend(const FilterOpera
     return BasicColorMatrixFilterOperation::create(WebCore::blend(fromAmount, m_amount, progress), m_type);
 }
 
-bool BasicColorMatrixFilterOperation::transformColor(FloatComponents& colorComponents) const
+bool BasicColorMatrixFilterOperation::transformColor(ColorComponents<float>& colorComponents) const
 {
     switch (m_type) {
     case GRAYSCALE: {
-        ColorMatrix matrix = ColorMatrix::grayscaleMatrix(m_amount);
+        auto matrix = grayscaleColorMatrix(m_amount);
         matrix.transformColorComponents(colorComponents);
         return true;
     }
     case SEPIA: {
-        ColorMatrix matrix = ColorMatrix::sepiaMatrix(m_amount);
+        auto matrix = sepiaColorMatrix(m_amount);
         matrix.transformColorComponents(colorComponents);
         return true;
     }
     case HUE_ROTATE: {
-        ColorMatrix matrix = ColorMatrix::hueRotateMatrix(m_amount);
+        auto matrix = hueRotateColorMatrix(m_amount);
         matrix.transformColorComponents(colorComponents);
         return true;
     }
     case SATURATE: {
-        ColorMatrix matrix = ColorMatrix::saturationMatrix(m_amount);
+        auto matrix = saturationColorMatrix(m_amount);
         matrix.transformColorComponents(colorComponents);
         return true;
     }
@@ -151,30 +152,30 @@ RefPtr<FilterOperation> BasicComponentTransferFilterOperation::blend(const Filte
     return BasicComponentTransferFilterOperation::create(WebCore::blend(fromAmount, m_amount, progress), m_type);
 }
 
-bool BasicComponentTransferFilterOperation::transformColor(FloatComponents& colorComponents) const
+bool BasicComponentTransferFilterOperation::transformColor(ColorComponents<float>& colorComponents) const
 {
     switch (m_type) {
     case OPACITY:
-        colorComponents.components[3] *= m_amount;
+        colorComponents[3] *= m_amount;
         return true;
     case INVERT: {
         float oneMinusAmount = 1.f - m_amount;
-        colorComponents.components[0] = 1 - (oneMinusAmount + colorComponents.components[0] * (m_amount - oneMinusAmount));
-        colorComponents.components[1] = 1 - (oneMinusAmount + colorComponents.components[1] * (m_amount - oneMinusAmount));
-        colorComponents.components[2] = 1 - (oneMinusAmount + colorComponents.components[2] * (m_amount - oneMinusAmount));
+        colorComponents[0] = 1 - (oneMinusAmount + colorComponents[0] * (m_amount - oneMinusAmount));
+        colorComponents[1] = 1 - (oneMinusAmount + colorComponents[1] * (m_amount - oneMinusAmount));
+        colorComponents[2] = 1 - (oneMinusAmount + colorComponents[2] * (m_amount - oneMinusAmount));
         return true;
     }
     case CONTRAST: {
         float intercept = -(0.5f * m_amount) + 0.5f;
-        colorComponents.components[0] = clampTo<float>(intercept + m_amount * colorComponents.components[0], 0, 1);
-        colorComponents.components[1] = clampTo<float>(intercept + m_amount * colorComponents.components[1], 0, 1);
-        colorComponents.components[2] = clampTo<float>(intercept + m_amount * colorComponents.components[2], 0, 1);
+        colorComponents[0] = clampTo<float>(intercept + m_amount * colorComponents[0], 0, 1);
+        colorComponents[1] = clampTo<float>(intercept + m_amount * colorComponents[1], 0, 1);
+        colorComponents[2] = clampTo<float>(intercept + m_amount * colorComponents[2], 0, 1);
         return true;
     }
     case BRIGHTNESS:
-        colorComponents.components[0] = std::max<float>(m_amount * colorComponents.components[0], 0);
-        colorComponents.components[1] = std::max<float>(m_amount * colorComponents.components[1], 0);
-        colorComponents.components[2] = std::max<float>(m_amount * colorComponents.components[2], 0);
+        colorComponents[0] = std::max<float>(m_amount * colorComponents[0], 0);
+        colorComponents[1] = std::max<float>(m_amount * colorComponents[1], 0);
+        colorComponents[2] = std::max<float>(m_amount * colorComponents[2], 0);
         return true;
     default:
         ASSERT_NOT_REACHED();
@@ -225,48 +226,44 @@ RefPtr<FilterOperation> InvertLightnessFilterOperation::blend(const FilterOperat
     return InvertLightnessFilterOperation::create();
 }
 
-bool InvertLightnessFilterOperation::transformColor(FloatComponents& sRGBColorComponents) const
+bool InvertLightnessFilterOperation::transformColor(ColorComponents<float>& sRGBColorComponents) const
 {
-    FloatComponents hslComponents = sRGBToHSL(sRGBColorComponents);
+    auto hslComponents = sRGBToHSL(sRGBColorComponents);
     
     // Rotate the hue 180deg.
-    hslComponents.components[0] = fmod(hslComponents.components[0] + 0.5f, 1.0f);
+    hslComponents[0] = fmod(hslComponents[0] + 0.5f, 1.0f);
     
     // Convert back to RGB.
-    sRGBColorComponents = HSLToSRGB(hslComponents);
+    sRGBColorComponents = hslToSRGB(hslComponents);
     
     // Apply the matrix. See rdar://problem/41146650 for how this matrix was derived.
-    float matrixValues[20] = {
-       -0.770,  0.059, -0.089, 0, 1,
-        0.030, -0.741, -0.089, 0, 1,
-        0.030,  0.059, -0.890, 0, 1,
-        0,      0,      0,     1, 0
+    constexpr ColorMatrix<5, 3> toDarkModeMatrix {
+       -0.770f,  0.059f, -0.089f, 0.0f, 1.0f,
+        0.030f, -0.741f, -0.089f, 0.0f, 1.0f,
+        0.030f,  0.059f, -0.890f, 0.0f, 1.0f
     };
-
-    ColorMatrix toDarkModeMatrix(matrixValues);
     toDarkModeMatrix.transformColorComponents(sRGBColorComponents);
     return true;
 }
 
-bool InvertLightnessFilterOperation::inverseTransformColor(FloatComponents& sRGBColorComponents) const
+bool InvertLightnessFilterOperation::inverseTransformColor(ColorComponents<float>& sRGBColorComponents) const
 {
-    FloatComponents rgbComponents = sRGBColorComponents;
+    auto rgbComponents = sRGBColorComponents;
+
     // Apply the matrix.
-    float matrixValues[20] = {
-        -1.300, -0.097,  0.147, 0, 1.25,
-        -0.049, -1.347,  0.146, 0, 1.25,
-        -0.049, -0.097, -1.104, 0, 1.25,
-         0,      0,      0,     1, 0
+    constexpr ColorMatrix<5, 3> toLightModeMatrix {
+        -1.300f, -0.097f,  0.147f, 0.0f, 1.25f,
+        -0.049f, -1.347f,  0.146f, 0.0f, 1.25f,
+        -0.049f, -0.097f, -1.104f, 0.0f, 1.25f
     };
-    ColorMatrix toLightModeMatrix(matrixValues);
     toLightModeMatrix.transformColorComponents(rgbComponents);
 
     // Convert to HSL.
-    FloatComponents hslComponents = sRGBToHSL(rgbComponents);
+    auto hslComponents = sRGBToHSL(rgbComponents);
     // Hue rotate by 180deg.
-    hslComponents.components[0] = fmod(hslComponents.components[0] + 0.5f, 1.0f);
+    hslComponents[0] = fmod(hslComponents[0] + 0.5f, 1.0f);
     // And return RGB.
-    sRGBColorComponents = HSLToSRGB(hslComponents);
+    sRGBColorComponents = hslToSRGB(hslComponents);
     return true;
 }
 
@@ -310,12 +307,12 @@ RefPtr<FilterOperation> DropShadowFilterOperation::blend(const FilterOperation* 
         return DropShadowFilterOperation::create(
             WebCore::blend(m_location, IntPoint(), progress),
             WebCore::blend(m_stdDeviation, 0, progress),
-            WebCore::blend(m_color, Color(Color::transparent), progress));
+            WebCore::blend(m_color, Color::transparent, progress));
 
     const DropShadowFilterOperation* fromOperation = downcast<DropShadowFilterOperation>(from);
     IntPoint fromLocation = fromOperation ? fromOperation->location() : IntPoint();
     int fromStdDeviation = fromOperation ? fromOperation->stdDeviation() : 0;
-    Color fromColor = fromOperation ? fromOperation->color() : Color(Color::transparent);
+    Color fromColor = fromOperation ? fromOperation->color() : Color::transparent;
     
     return DropShadowFilterOperation::create(
         WebCore::blend(fromLocation, m_location, progress),

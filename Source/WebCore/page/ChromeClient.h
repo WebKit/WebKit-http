@@ -68,6 +68,11 @@ class WAKResponder;
 #endif
 #endif
 
+#if ENABLE(MEDIA_USAGE)
+#include "MediaSessionIdentifier.h"
+#include "MediaUsageInfo.h"
+#endif
+
 OBJC_CLASS NSResponder;
 
 namespace WebCore {
@@ -267,6 +272,8 @@ public:
 
     virtual void webAppOrientationsUpdated() = 0;
     virtual void showPlaybackTargetPicker(bool hasVideo, RouteSharingPolicy, const String&) = 0;
+
+    virtual bool showDataDetectorsUIForElement(const Element&, const Event&) = 0;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -300,9 +307,7 @@ public:
     // Allows ports to customize the type of graphics layers created by this page.
     virtual GraphicsLayerFactory* graphicsLayerFactory() const { return nullptr; }
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     virtual RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const { return nullptr; }
-#endif
 
     virtual std::unique_ptr<ImageBuffer> createImageBuffer(const FloatSize&, ShouldAccelerate, ShouldUseDisplayList, RenderingPurpose, float, ColorSpace) const { return nullptr; }
     virtual std::unique_ptr<ImageBuffer> createImageBuffer(const FloatSize&, RenderingMode, float, ColorSpace) const { return nullptr; }
@@ -316,6 +321,7 @@ public:
     // Sets a flag to specify that the view needs to be updated, so we need
     // to do an eager layout before the drawing.
     virtual void scheduleRenderingUpdate() = 0;
+    virtual bool scheduleTimedRenderingUpdate() { return false; }
     virtual bool needsImmediateRenderingUpdate() const { return false; }
     // Returns whether or not the client can render the composited layer,
     // regardless of the settings.
@@ -355,6 +361,12 @@ public:
     virtual void clearPlaybackControlsManager() { }
 #endif
 
+#if ENABLE(MEDIA_USAGE)
+    virtual void addMediaUsageManagerSession(MediaSessionIdentifier, const String&, const URL&) { }
+    virtual void updateMediaUsageManagerSessionState(MediaSessionIdentifier, const MediaUsageInfo&) { }
+    virtual void removeMediaUsageManagerSession(MediaSessionIdentifier) { }
+#endif
+
     virtual void exitVideoFullscreenForVideoElement(HTMLVideoElement&) { }
     virtual void exitVideoFullscreenToModeWithoutAnimation(HTMLVideoElement&, HTMLMediaElementEnums::VideoFullscreenMode) { }
     virtual bool requiresFullscreenForVideoPlayback() { return false; } 
@@ -364,6 +376,10 @@ public:
     virtual void enterFullScreenForElement(Element&) { }
     virtual void exitFullScreenForElement(Element*) { }
     virtual void setRootFullScreenLayer(GraphicsLayer*) { }
+#endif
+
+#if ENABLE(VIDEO_PRESENTATION_MODE)
+    virtual void setMockVideoPresentationModeEnabled(bool) { }
 #endif
 
 #if USE(COORDINATED_GRAPHICS)
@@ -487,7 +503,7 @@ public:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     virtual void hasStorageAccess(RegistrableDomain&& /*subFrameDomain*/, RegistrableDomain&& /*topFrameDomain*/, Frame&, WTF::CompletionHandler<void(bool)>&& completionHandler) { completionHandler(false); }
-    virtual void requestStorageAccess(RegistrableDomain&& /*subFrameDomain*/, RegistrableDomain&& /*topFrameDomain*/, Frame&, WTF::CompletionHandler<void(StorageAccessWasGranted, StorageAccessPromptWasShown)>&& completionHandler) { completionHandler(StorageAccessWasGranted::No, StorageAccessPromptWasShown::No); }
+    virtual void requestStorageAccess(RegistrableDomain&& subFrameDomain, RegistrableDomain&& topFrameDomain, Frame&, StorageAccessScope scope, WTF::CompletionHandler<void(RequestStorageAccessResult)>&& completionHandler) { completionHandler({ StorageAccessWasGranted::No, StorageAccessPromptWasShown::No, scope, WTFMove(topFrameDomain), WTFMove(subFrameDomain) }); }
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -513,6 +529,8 @@ public:
 #if ENABLE(WEB_AUTHN)
     virtual void setMockWebAuthenticationConfiguration(const MockWebAuthenticationConfiguration&) { }
 #endif
+
+    virtual void animationDidFinishForElement(const Element&) { }
 
 protected:
     virtual ~ChromeClient() = default;

@@ -78,32 +78,24 @@ MediaStreamTrackPrivate::~MediaStreamTrackPrivate()
     m_source->removeObserver(*this);
 }
 
-void MediaStreamTrackPrivate::forEachObserver(const WTF::Function<void(Observer&)>& apply) const
+void MediaStreamTrackPrivate::forEachObserver(const Function<void(Observer&)>& apply)
 {
-    Vector<Observer*> observersCopy;
-    {
-        auto locker = holdLock(m_observersLock);
-        observersCopy = copyToVector(m_observers);
-    }
-    for (auto* observer : observersCopy) {
-        auto locker = holdLock(m_observersLock);
-        // Make sure the observer has not been destroyed.
-        if (!m_observers.contains(observer))
-            continue;
-        apply(*observer);
-    }
+    ASSERT(isMainThread());
+    ASSERT(!m_observers.hasNullReferences());
+    auto protectedThis = makeRef(*this);
+    m_observers.forEach(apply);
 }
 
 void MediaStreamTrackPrivate::addObserver(MediaStreamTrackPrivate::Observer& observer)
 {
-    auto locker = holdLock(m_observersLock);
-    m_observers.add(&observer);
+    ASSERT(isMainThread());
+    m_observers.add(observer);
 }
 
 void MediaStreamTrackPrivate::removeObserver(MediaStreamTrackPrivate::Observer& observer)
 {
-    auto locker = holdLock(m_observersLock);
-    m_observers.remove(&observer);
+    ASSERT(isMainThread());
+    m_observers.remove(observer);
 }
 
 const String& MediaStreamTrackPrivate::label() const
@@ -244,43 +236,13 @@ bool MediaStreamTrackPrivate::preventSourceFromStopping()
     return !m_isEnded;
 }
 
-void MediaStreamTrackPrivate::videoSampleAvailable(MediaSample& mediaSample)
+void MediaStreamTrackPrivate::hasStartedProducingData()
 {
     ASSERT(isMainThread());
-    if (!m_haveProducedData) {
-        m_haveProducedData = true;
-        updateReadyState();
-    }
-
-    if (!enabled())
+    if (m_hasStartedProducingData)
         return;
-
-    mediaSample.setTrackID(id());
-    forEachObserver([&](auto& observer) {
-        observer.sampleBufferUpdated(*this, mediaSample);
-    });
-}
-
-// May get called on a background thread.
-void MediaStreamTrackPrivate::audioSamplesAvailable(const MediaTime& mediaTime, const PlatformAudioData& data, const AudioStreamDescription& description, size_t sampleCount)
-{
-    if (!m_hasSentStartProducedData) {
-        callOnMainThread([this, weakThis = makeWeakPtr(this)] {
-            if (!weakThis)
-                return;
-
-            if (!m_haveProducedData) {
-                m_haveProducedData = true;
-                updateReadyState();
-            }
-            m_hasSentStartProducedData = true;
-        });
-        return;
-    }
-
-    forEachObserver([&](auto& observer) {
-        observer.audioSamplesAvailable(*this, mediaTime, data, description, sampleCount);
-    });
+    m_hasStartedProducingData = true;
+    updateReadyState();
 }
 
 void MediaStreamTrackPrivate::updateReadyState()
@@ -289,7 +251,7 @@ void MediaStreamTrackPrivate::updateReadyState()
 
     if (m_isEnded)
         state = ReadyState::Ended;
-    else if (m_haveProducedData)
+    else if (m_hasStartedProducingData)
         state = ReadyState::Live;
 
     if (state == m_readyState)

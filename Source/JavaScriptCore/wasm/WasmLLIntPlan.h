@@ -66,21 +66,20 @@ public:
         return WTFMove(m_embedderCallees);
     }
 
-    bool hasWork() const override
+    bool hasWork() const final
     {
         return m_state < State::Compiled;
     }
 
-    void work(CompilationEffort) override;
+    void work(CompilationEffort) final;
 
-    bool didReceiveFunctionData(unsigned, const FunctionData&) override;
-
-protected:
-    bool prepareImpl() override;
-    void compileFunction(uint32_t functionIndex) override;
-    void didCompleteCompilation(const AbstractLocker&) override;
+    bool didReceiveFunctionData(unsigned, const FunctionData&) final;
 
 private:
+    bool prepareImpl() final;
+    void compileFunction(uint32_t functionIndex) final;
+    void didCompleteCompilation(const AbstractLocker&) final;
+
     Vector<std::unique_ptr<FunctionCodeBlock>> m_wasmInternalFunctions;
     const Ref<LLIntCallee>* m_callees { nullptr };
     Vector<Ref<LLIntCallee>> m_calleesVector;

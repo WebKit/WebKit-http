@@ -298,23 +298,22 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
     handlePopulateFindShortcut()
     {
-        let searchQuery = this.searchQueryWithSelection();
-        if (!searchQuery)
+        if (!WI.updateFindString(this.searchQueryWithSelection()))
             return;
 
-        this._findBanner.searchQuery = searchQuery;
+        this._findBanner.searchQuery = WI.findString;
 
         this.performSearch(this._findBanner.searchQuery);
     }
 
     handleFindNextShortcut()
     {
-        this.findBannerRevealNextResult(this._findBanner);
+        this.highlightNextSearchMatch();
     }
 
     handleFindPreviousShortcut()
     {
-        this.findBannerRevealPreviousResult(this._findBanner);
+        this.highlightPreviousSearchMatch();
     }
 
     findBannerRevealPreviousResult()
@@ -324,7 +323,13 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
     highlightPreviousSearchMatch()
     {
-        if (!this.hasPerformedSearch || isEmptyObject(this._searchMatches))
+        if (!this.hasPerformedSearch || (!this._findBanner.showing && this._findBanner.searchQuery !== WI.findString)) {
+            this._findBanner.searchQuery = WI.findString;
+
+            this.performSearch(this._findBanner.searchQuery);
+        }
+
+        if (isEmptyObject(this._searchMatches))
             return;
 
         var index = this._selectedSearchMatch ? this._searchMatches.indexOf(this._selectedSearchMatch) : this._searchMatches.length;
@@ -338,7 +343,13 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
     highlightNextSearchMatch()
     {
-        if (!this.hasPerformedSearch || isEmptyObject(this._searchMatches))
+        if (!this.hasPerformedSearch || (!this._findBanner.showing && this._findBanner.searchQuery !== WI.findString)) {
+            this._findBanner.searchQuery = WI.findString;
+
+            this.performSearch(this._findBanner.searchQuery);
+        }
+
+        if (isEmptyObject(this._searchMatches))
             return;
 
         var index = this._selectedSearchMatch ? this._searchMatches.indexOf(this._selectedSearchMatch) + 1 : 0;
@@ -826,11 +837,8 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
     _garbageCollect()
     {
-        // COMPATIBILITY (iOS 10.3): Worker targets did not support Heap.gc.
-        for (let target of WI.targets) {
-            if (target.hasDomain("Heap"))
-                target.HeapAgent.gc();
-        }
+        for (let target of WI.targets)
+            target.HeapAgent.gc();
     }
 
     _messageShouldBeVisible(message)
@@ -1097,9 +1105,16 @@ WI.LogContentView = class LogContentView extends WI.ContentView
             return;
         }
 
+        let searchRegex = WI.SearchUtilities.searchRegExpForString(this._currentSearchQuery, WI.SearchUtilities.defaultSettings);
+        if (!searchRegex) {
+            this._findBanner.numberOfResults = 0;
+            this.element.classList.remove(WI.LogContentView.SearchInProgressStyleClassName);
+            this.dispatchEventToListeners(WI.ContentView.Event.NumberOfSearchResultsDidChange);
+            return;
+        }
+
         this.element.classList.add(WI.LogContentView.SearchInProgressStyleClassName);
 
-        let searchRegex = WI.SearchUtilities.regExpForString(this._currentSearchQuery, WI.SearchUtilities.defaultSettings);
         this._unfilteredMessageElements().forEach(function(message) {
             let matchRanges = [];
             let text = message.textContent;

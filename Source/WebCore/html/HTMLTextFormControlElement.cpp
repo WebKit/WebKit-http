@@ -397,9 +397,9 @@ int HTMLTextFormControlElement::computeSelectionEnd() const
 
 static const AtomString& directionString(TextFieldSelectionDirection direction)
 {
-    static NeverDestroyed<const AtomString> none("none", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomString> forward("forward", AtomString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomString> backward("backward", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> none("none", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> forward("forward", AtomString::ConstructFromLiteral);
+    static MainThreadNeverDestroyed<const AtomString> backward("backward", AtomString::ConstructFromLiteral);
 
     switch (direction) {
     case SelectionHasNoDirection:
@@ -435,7 +435,7 @@ TextFieldSelectionDirection HTMLTextFormControlElement::computeSelectionDirectio
     return selection.isDirectional() ? (selection.isBaseFirst() ? SelectionHasForwardDirection : SelectionHasBackwardDirection) : SelectionHasNoDirection;
 }
 
-static inline void setContainerAndOffsetForRange(Node* node, int offset, Node*& containerNode, int& offsetInContainer)
+static void setContainerAndOffsetForRange(Node* node, unsigned offset, Node*& containerNode, unsigned& offsetInContainer)
 {
     if (node->isTextNode()) {
         containerNode = node;
@@ -446,29 +446,30 @@ static inline void setContainerAndOffsetForRange(Node* node, int offset, Node*& 
     }
 }
 
-RefPtr<Range> HTMLTextFormControlElement::selection() const
+Optional<SimpleRange> HTMLTextFormControlElement::selection() const
 {
     if (!renderer() || !isTextField() || !hasCachedSelection())
-        return nullptr;
+        return WTF::nullopt;
 
-    int start = m_cachedSelectionStart;
-    int end = m_cachedSelectionEnd;
+    unsigned start = m_cachedSelectionStart;
+    unsigned end = m_cachedSelectionEnd;
 
     ASSERT(start <= end);
     auto innerText = innerTextElement();
     if (!innerText)
-        return nullptr;
+        return WTF::nullopt;
 
     if (!innerText->firstChild())
-        return Range::create(document(), innerText, 0, innerText, 0);
+        return SimpleRange { { *innerText, 0 }, { *innerText, 0 } };
 
-    int offset = 0;
+    unsigned offset = 0;
     Node* startNode = nullptr;
     Node* endNode = nullptr;
     for (RefPtr<Node> node = innerText->firstChild(); node; node = NodeTraversal::next(*node, innerText.get())) {
         ASSERT(!node->firstChild());
         ASSERT(node->isTextNode() || node->hasTagName(brTag));
-        int length = node->isTextNode() ? lastOffsetInNode(node.get()) : 1;
+
+        unsigned length = is<Text>(*node) ? downcast<Text>(*node).length() : 1;
 
         if (offset <= start && start <= offset + length)
             setContainerAndOffsetForRange(node.get(), start - offset, startNode, start);
@@ -482,9 +483,9 @@ RefPtr<Range> HTMLTextFormControlElement::selection() const
     }
 
     if (!startNode || !endNode)
-        return nullptr;
+        return WTF::nullopt;
 
-    return Range::create(document(), startNode, start, endNode, end);
+    return SimpleRange { { *startNode, start }, { *endNode, end } };
 }
 
 void HTMLTextFormControlElement::restoreCachedSelection(SelectionRevealMode revealMode, const AXTextStateChangeIntent& intent)
@@ -534,7 +535,9 @@ bool HTMLTextFormControlElement::isInnerTextElementEditable() const
 void HTMLTextFormControlElement::updateInnerTextElementEditability()
 {
     if (auto innerText = innerTextElement()) {
-        auto value = isInnerTextElementEditable() ? AtomString { "plaintext-only", AtomString::ConstructFromLiteral } : AtomString { "false", AtomString::ConstructFromLiteral };
+        static MainThreadNeverDestroyed<const AtomString> plainTextOnlyName("plaintext-only", AtomString::ConstructFromLiteral);
+        static MainThreadNeverDestroyed<const AtomString> falseName("false", AtomString::ConstructFromLiteral);
+        const auto& value = isInnerTextElementEditable() ? plainTextOnlyName.get() : falseName.get();
         innerText->setAttributeWithoutSynchronization(contenteditableAttr, value);
     }
 }
@@ -675,20 +678,6 @@ unsigned HTMLTextFormControlElement::indexForPosition(const Position& passedPosi
 #endif
     return index;
 }
-
-#if PLATFORM(IOS_FAMILY)
-void HTMLTextFormControlElement::hidePlaceholder()
-{
-    if (RefPtr<HTMLElement> placeholder = placeholderElement())
-        placeholder->setInlineStyleProperty(CSSPropertyVisibility, CSSValueHidden, true);
-}
-
-void HTMLTextFormControlElement::showPlaceholderIfNecessary()
-{
-    if (RefPtr<HTMLElement> placeholder = placeholderElement())
-        placeholder->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible, true);
-}
-#endif
 
 static void getNextSoftBreak(RootInlineBox*& line, Node*& breakNode, unsigned& breakOffset)
 {

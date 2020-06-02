@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#import "config.h"
 
 #import "PlatformUtilities.h"
 #import "TCPServer.h"
@@ -1403,4 +1403,233 @@ TEST(ResourceLoadStatistics, GetResourceLoadStatisticsDataSummaryDatabase)
     }];
 
     TestWebKitAPI::Util::run(&doneFlag);
+}
+
+TEST(ResourceLoadStatistics, MigrateDataFromIncorrectCreateTableSchema)
+{
+    auto *sharedProcessPool = [WKProcessPool _sharedProcessPool];
+
+    auto defaultFileManager = [NSFileManager defaultManager];
+    auto *dataStore = [WKWebsiteDataStore defaultDataStore];
+    NSURL *itpRootURL = [[dataStore _configuration] _resourceLoadStatisticsDirectory];
+    NSURL *fileURL = [itpRootURL URLByAppendingPathComponent:@"observations.db"];
+    [defaultFileManager removeItemAtPath:itpRootURL.path error:nil];
+    EXPECT_FALSE([defaultFileManager fileExistsAtPath:itpRootURL.path]);
+
+    // Load an incorrect database schema with pre-seeded ITP data.
+    // This data should be migrated into the new database.
+    [defaultFileManager createDirectoryAtURL:itpRootURL withIntermediateDirectories:YES attributes:nil error:nil];
+    NSURL *newFileURL = [[NSBundle mainBundle] URLForResource:@"incorrectCreateTableSchema" withExtension:@"db" subdirectory:@"TestWebKitAPI.resources"];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:newFileURL.path]);
+    [defaultFileManager copyItemAtPath:newFileURL.path toPath:fileURL.path error:nil];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:fileURL.path]);
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [configuration setProcessPool: sharedProcessPool];
+    configuration.get().websiteDataStore = dataStore;
+
+    // We need an active NetworkProcess to perform ResourceLoadStatistics operations.
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"about:blank"]]];
+
+    static bool doneFlag;
+    [dataStore _setUseITPDatabase:true completionHandler: ^(void) {
+        doneFlag = true;
+    }];
+    
+    TestWebKitAPI::Util::run(&doneFlag);
+    
+    // Check that the pre-seeded data is in the new database after migrating.
+    doneFlag = false;
+    [dataStore _isRegisteredAsSubresourceUnderFirstParty:[NSURL URLWithString:@"http://apple.com"] thirdParty:[NSURL URLWithString:@"http://webkit.org"] completionHandler: ^(BOOL isRegistered) {
+        EXPECT_TRUE(isRegistered);
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+    
+    // To make sure creation of unique indices is maintained, try to insert the same data
+    // again and make sure the timestamp is replaced, and there is only one entry.
+    static bool statisticsUpdated = false;
+    [dataStore _setResourceLoadStatisticsTestingCallback:^(WKWebsiteDataStore *, NSString *message) {
+        if (![message isEqualToString:@"Statistics Updated"])
+            return;
+        statisticsUpdated = true;
+    }];
+    
+    doneFlag = false;
+    [sharedProcessPool _seedResourceLoadStatisticsForTestingWithFirstParty:[NSURL URLWithString:@"http://apple.com"] thirdParty:[NSURL URLWithString:@"http://webkit.org"] shouldScheduleNotification:NO completionHandler: ^() {
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+    
+    statisticsUpdated = false;
+    [webView loadHTMLString:@"<body><script>close();</script></body>" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+
+    // Wait for the statistics to be updated in the network process.
+    TestWebKitAPI::Util::run(&statisticsUpdated);
+
+    doneFlag = false;
+    [dataStore _getResourceLoadStatisticsDataSummary:^void(NSArray<_WKResourceLoadStatisticsThirdParty *> *thirdPartyData)
+    {
+        EXPECT_EQ(static_cast<int>([thirdPartyData count]), 1);
+        NSEnumerator *thirdPartyDomains = [thirdPartyData objectEnumerator];
+
+        _WKResourceLoadStatisticsThirdParty *thirdParty = [thirdPartyDomains nextObject];
+        EXPECT_WK_STREQ(thirdParty.thirdPartyDomain, @"webkit.org");
+
+        NSEnumerator *enumerator = [thirdParty.underFirstParties objectEnumerator];
+        _WKResourceLoadStatisticsFirstParty *firstParty = [enumerator nextObject];
+
+        EXPECT_WK_STREQ(firstParty.firstPartyDomain, @"apple.com");
+
+        // Check timestamp for first party was updated.
+        NSTimeInterval firstPartyLastUpdated = firstParty.timeLastUpdated;
+        EXPECT_GT(firstPartyLastUpdated, 0);
+
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+}
+
+TEST(ResourceLoadStatistics, MigrateDataFromMissingTopFrameUniqueRedirectSameSiteStrictTableSchema)
+{
+    auto *sharedProcessPool = [WKProcessPool _sharedProcessPool];
+
+    auto defaultFileManager = [NSFileManager defaultManager];
+    auto *dataStore = [WKWebsiteDataStore defaultDataStore];
+    NSURL *itpRootURL = [[dataStore _configuration] _resourceLoadStatisticsDirectory];
+    NSURL *fileURL = [itpRootURL URLByAppendingPathComponent:@"observations.db"];
+    [defaultFileManager removeItemAtPath:itpRootURL.path error:nil];
+    EXPECT_FALSE([defaultFileManager fileExistsAtPath:itpRootURL.path]);
+
+    // Load an incorrect database schema with pre-seeded ITP data.
+    [defaultFileManager createDirectoryAtURL:itpRootURL withIntermediateDirectories:YES attributes:nil error:nil];
+    NSURL *newFileURL = [[NSBundle mainBundle] URLForResource:@"missingTopFrameUniqueRedirectSameSiteStrictTableSchema" withExtension:@"db" subdirectory:@"TestWebKitAPI.resources"];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:newFileURL.path]);
+    [defaultFileManager copyItemAtPath:newFileURL.path toPath:fileURL.path error:nil];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:fileURL.path]);
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [configuration setProcessPool: sharedProcessPool];
+    configuration.get().websiteDataStore = dataStore;
+
+    // We need an active NetworkProcess to perform ResourceLoadStatistics operations.
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"about:blank"]]];
+
+    static bool doneFlag;
+    [dataStore _setUseITPDatabase:true completionHandler: ^(void) {
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+
+    // Since the database should not be deleted, the pre-seeded data should
+    // still be there after initializing ITP.
+    doneFlag = false;
+    [dataStore _isRegisteredAsSubresourceUnderFirstParty:[NSURL URLWithString:@"http://apple.com"] thirdParty:[NSURL URLWithString:@"http://webkit.org"] completionHandler: ^(BOOL isRegistered) {
+        EXPECT_TRUE(isRegistered);
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+    
+    // Check to make sure all tables are accounted for.
+    doneFlag = false;
+    [dataStore _statisticsDatabaseHasAllTables:^(BOOL hasAllTables) {
+        EXPECT_TRUE(hasAllTables);
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+}
+
+TEST(ResourceLoadStatistics, CanAccessDataSummaryWithNoProcessPool)
+{
+    auto defaultFileManager = [NSFileManager defaultManager];
+    _WKWebsiteDataStoreConfiguration *dataStoreConfiguration = [[_WKWebsiteDataStoreConfiguration new] autorelease];
+    auto *dataStore = [[[WKWebsiteDataStore alloc] _initWithConfiguration:dataStoreConfiguration] autorelease];
+    NSURL *itpRootURL = [[dataStore _configuration] _resourceLoadStatisticsDirectory];
+    NSURL *fileURL = [itpRootURL URLByAppendingPathComponent:@"observations.db"];
+    [defaultFileManager removeItemAtPath:itpRootURL.path error:nil];
+    EXPECT_FALSE([defaultFileManager fileExistsAtPath:itpRootURL.path]);
+
+    // Load a a pre-seeded ITP database.
+    [defaultFileManager createDirectoryAtURL:itpRootURL withIntermediateDirectories:YES attributes:nil error:nil];
+    NSURL *newFileURL = [[NSBundle mainBundle] URLForResource:@"basicITPDatabase" withExtension:@"db" subdirectory:@"TestWebKitAPI.resources"];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:newFileURL.path]);
+    [defaultFileManager copyItemAtPath:newFileURL.path toPath:fileURL.path error:nil];
+    EXPECT_TRUE([defaultFileManager fileExistsAtPath:fileURL.path]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
+
+    static bool doneFlag = false;
+    [dataStore _getResourceLoadStatisticsDataSummary:^void(NSArray<_WKResourceLoadStatisticsThirdParty *> *thirdPartyData)
+    {
+        EXPECT_EQ(static_cast<int>([thirdPartyData count]), 1);
+        NSEnumerator *thirdPartyDomains = [thirdPartyData objectEnumerator];
+
+        _WKResourceLoadStatisticsThirdParty *thirdParty = [thirdPartyDomains nextObject];
+        EXPECT_WK_STREQ(thirdParty.thirdPartyDomain, @"webkit.org");
+
+        NSEnumerator *enumerator = [thirdParty.underFirstParties objectEnumerator];
+        _WKResourceLoadStatisticsFirstParty *firstParty = [enumerator nextObject];
+
+        EXPECT_WK_STREQ(firstParty.firstPartyDomain, @"apple.com");
+
+        doneFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&doneFlag);
+}
+
+TEST(ResourceLoadStatistics, StoreSuspension)
+{
+    auto *sharedProcessPool = [WKProcessPool _sharedProcessPool];
+    auto *dataStore1 = [WKWebsiteDataStore defaultDataStore];
+    auto *dataStore2 = [[[WKWebsiteDataStore alloc] _initWithConfiguration:[[[_WKWebsiteDataStoreConfiguration alloc] init] autorelease]] autorelease];
+
+    [dataStore1 _setResourceLoadStatisticsEnabled:YES];
+    [dataStore2 _setResourceLoadStatisticsEnabled:YES];
+
+    static bool doneFlag = false;
+    [dataStore1 _setUseITPDatabase:true completionHandler: ^(void) {
+        doneFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&doneFlag);
+
+    doneFlag = false;
+    [dataStore2 _setUseITPDatabase:true completionHandler: ^(void) {
+        doneFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&doneFlag);
+
+    auto configuration1 = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [configuration1 setProcessPool: sharedProcessPool];
+    configuration1.get().websiteDataStore = dataStore1;
+
+    auto configuration2 = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [configuration2 setProcessPool: sharedProcessPool];
+    configuration2.get().websiteDataStore = dataStore2;
+
+    auto webView1 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration1.get()]);
+    auto webView2 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration2.get()]);
+
+    [webView1 loadHTMLString:@"WebKit Test" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+    [webView1 _test_waitForDidFinishNavigation];
+
+    [webView2 loadHTMLString:@"WebKit Test" baseURL:[NSURL URLWithString:@"http://webkit2.org"]];
+    [webView2 _test_waitForDidFinishNavigation];
+
+    doneFlag = false;
+    [sharedProcessPool _sendNetworkProcessPrepareToSuspend:^{
+        doneFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&doneFlag);
+
+    [sharedProcessPool _sendNetworkProcessDidResume];
 }

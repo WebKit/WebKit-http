@@ -60,8 +60,7 @@ public:
     unsigned endOffset() const { return m_end.offset(); }
     bool collapsed() const { return m_start == m_end; }
 
-    Node* commonAncestorContainer() const { return commonAncestorContainer(&startContainer(), &endContainer()); }
-    WEBCORE_EXPORT static Node* commonAncestorContainer(Node* containerA, Node* containerB);
+    Node* commonAncestorContainer() const { return commonInclusiveAncestor(startContainer(), endContainer()).get(); }
     WEBCORE_EXPORT ExceptionOr<void> setStart(Ref<Node>&& container, unsigned offset);
     WEBCORE_EXPORT ExceptionOr<void> setEnd(Ref<Node>&& container, unsigned offset);
     WEBCORE_EXPORT void collapse(bool toStart);
@@ -107,12 +106,6 @@ public:
 
     ShadowRoot* shadowRoot() const;
 
-    enum RangeInFixedPosition {
-        NotFixedPosition,
-        PartiallyFixedPosition,
-        EntirelyFixedPosition
-    };
-    
     enum class BoundingRectBehavior : uint8_t {
         RespectClipping = 1 << 0,
         UseVisibleBounds = 1 << 1,
@@ -121,11 +114,10 @@ public:
     };
 
     // Not transform-friendly
-    WEBCORE_EXPORT void absoluteTextRects(Vector<IntRect>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr, OptionSet<BoundingRectBehavior> = { }) const;
+    WEBCORE_EXPORT void absoluteTextRects(Vector<IntRect>&, bool useSelectionHeight = false, OptionSet<BoundingRectBehavior> = { }) const;
     WEBCORE_EXPORT IntRect absoluteBoundingBox(OptionSet<BoundingRectBehavior> = { }) const;
 
     // Transform-friendly
-    WEBCORE_EXPORT void absoluteTextQuads(Vector<FloatQuad>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr) const;
     WEBCORE_EXPORT FloatRect absoluteBoundingRect(OptionSet<BoundingRectBehavior> = { }) const;
 #if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&) const;

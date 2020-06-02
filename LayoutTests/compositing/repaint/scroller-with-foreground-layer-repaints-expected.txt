@@ -11,12 +11,7 @@ Scrolled contents
           (position 8.00 8.00)
           (bounds 322.00 322.00)
           (drawsContent 1)
-          (repaint rects
-            (rect 306.00 1.00 15.00 104.00)
-            (rect 306.00 60.00 15.00 91.00)
-            (rect 306.00 105.00 15.00 201.00)
-          )
-          (children 1
+          (children 2
             (GraphicsLayer
               (offsetFromRenderer width=1 height=1)
               (position 1.00 1.00)
@@ -42,6 +37,32 @@ Scrolled contents
                       (drawsContent 1)
                     )
                   )
+                )
+              )
+            )
+            (GraphicsLayer
+              (position 1.00 1.00)
+              (bounds 320.00 320.00)
+              (children 3
+                (GraphicsLayer
+                  (position 0.00 305.00)
+                  (bounds 305.00 15.00)
+                  (drawsContent 1)
+                )
+                (GraphicsLayer
+                  (position 305.00 0.00)
+                  (bounds 15.00 305.00)
+                  (drawsContent 1)
+                  (repaint rects
+                    (rect 0.00 0.00 15.00 305.00)
+                    (rect 0.00 0.00 15.00 305.00)
+                    (rect 0.00 0.00 15.00 305.00)
+                  )
+                )
+                (GraphicsLayer
+                  (position 305.00 305.00)
+                  (bounds 15.00 15.00)
+                  (drawsContent 1)
                 )
               )
             )

@@ -559,7 +559,7 @@ HRESULT WebFrame::loadRequest(_In_opt_ IWebURLRequest* request)
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    coreFrame->loader().load(FrameLoadRequest(*coreFrame, requestImpl->resourceRequest(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    coreFrame->loader().load(FrameLoadRequest(*coreFrame, requestImpl->resourceRequest()));
     return S_OK;
 }
 
@@ -584,7 +584,7 @@ void WebFrame::loadData(Ref<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR t
 
     // This method is only called from IWebFrame methods, so don't ASSERT that the Frame pointer isn't null.
     if (Frame* coreFrame = core(this))
-        coreFrame->loader().load(FrameLoadRequest(*coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+        coreFrame->loader().load(FrameLoadRequest(*coreFrame, request, substituteData));
 }
 
 HRESULT WebFrame::loadData(_In_opt_ IStream* data, _In_ BSTR mimeType, _In_ BSTR textEncodingName, _In_ BSTR url)
@@ -1183,7 +1183,7 @@ HRESULT WebFrame::resumeAnimations()
     if (!frame)
         return E_UNEXPECTED;
 
-    frame->animation().resumeAnimations();
+    frame->legacyAnimation().resumeAnimations();
     return S_OK;
 }
 
@@ -1193,7 +1193,7 @@ HRESULT WebFrame::suspendAnimations()
     if (!frame)
         return E_UNEXPECTED;
 
-    frame->animation().suspendAnimations();
+    frame->legacyAnimation().suspendAnimations();
     return S_OK;
 }
 
@@ -1212,7 +1212,7 @@ HRESULT WebFrame::pauseAnimation(_In_ BSTR animationName, _In_opt_ IDOMNode* nod
     if (!domNode)
         return E_FAIL;
 
-    *animationWasRunning = frame->animation().pauseAnimationAtTime(downcast<Element>(*domNode->node()), String(animationName, SysStringLen(animationName)), secondsFromNow);
+    *animationWasRunning = frame->legacyAnimation().pauseAnimationAtTime(downcast<Element>(*domNode->node()), String(animationName, SysStringLen(animationName)), secondsFromNow);
     return S_OK;
 }
 
@@ -1231,7 +1231,7 @@ HRESULT WebFrame::pauseTransition(_In_ BSTR propertyName, _In_opt_ IDOMNode* nod
     if (!domNode)
         return E_FAIL;
 
-    *transitionWasRunning = frame->animation().pauseTransitionAtTime(downcast<Element>(*domNode->node()), String(propertyName, SysStringLen(propertyName)), secondsFromNow);
+    *transitionWasRunning = frame->legacyAnimation().pauseTransitionAtTime(downcast<Element>(*domNode->node()), String(propertyName, SysStringLen(propertyName)), secondsFromNow);
     return S_OK;
 }
 
@@ -1264,7 +1264,7 @@ HRESULT WebFrame::numberOfActiveAnimations(_Out_ UINT* number)
     if (!frame)
         return E_UNEXPECTED;
 
-    *number = frame->animation().numberOfActiveAnimations(frame->document());
+    *number = frame->legacyAnimation().numberOfActiveAnimations(frame->document());
     return S_OK;
 }
 

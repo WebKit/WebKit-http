@@ -28,9 +28,9 @@
 
 #include <wtf/Atomics.h>
 #include <wtf/PageBlock.h>
-#include <wtf/OSAllocator.h>
 
 #if defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
+#include <wtf/OSAllocator.h>
 
 namespace Gigacage {
 
@@ -135,7 +135,7 @@ namespace Gigacage {
 
 void* tryMallocArray(Kind kind, size_t numElements, size_t elementSize)
 {
-    Checked<size_t, RecordOverflow> checkedSize = elementSize;
+    CheckedSize checkedSize = elementSize;
     checkedSize *= numElements;
     if (checkedSize.hasOverflowed())
         return nullptr;

@@ -297,6 +297,9 @@ namespace JSC {
 
         void privateCompileExceptionHandlers();
 
+        void advanceToNextCheckpoint();
+        void emitJumpSlowToHotForCheckpoint(Jump);
+
         void addSlowCase(Jump);
         void addSlowCase(const JumpList&);
         void addSlowCase();
@@ -528,6 +531,11 @@ namespace JSC {
         void emit_op_is_undefined_or_null(const Instruction*);
         void emit_op_is_boolean(const Instruction*);
         void emit_op_is_number(const Instruction*);
+#if USE(BIGINT32)
+        void emit_op_is_big_int(const Instruction*);
+#else
+        NO_RETURN void emit_op_is_big_int(const Instruction*);
+#endif
         void emit_op_is_object(const Instruction*);
         void emit_op_is_cell_with_type(const Instruction*);
         void emit_op_jeq_null(const Instruction*);
@@ -610,7 +618,11 @@ namespace JSC {
         void emit_op_unexpected_load(const Instruction*);
         void emit_op_unsigned(const Instruction*);
         void emit_op_urshift(const Instruction*);
+        template <typename OpCodeType>
+        void emit_op_has_structure_propertyImpl(const Instruction*);
         void emit_op_has_structure_property(const Instruction*);
+        void emit_op_has_own_structure_property(const Instruction*);
+        void emit_op_in_structure_property(const Instruction*);
         void emit_op_has_indexed_property(const Instruction*);
         void emit_op_get_direct_pname(const Instruction*);
         void emit_op_enumerator_structure_pname(const Instruction*);
@@ -675,6 +687,11 @@ namespace JSC {
         void emitSlow_op_put_to_scope(const Instruction*, Vector<SlowCaseEntry>::iterator&);
 
         void emitSlowCaseCall(const Instruction*, Vector<SlowCaseEntry>::iterator&, SlowPathFunction);
+
+        void emit_op_iterator_open(const Instruction*);
+        void emitSlow_op_iterator_open(const Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emit_op_iterator_next(const Instruction*);
+        void emitSlow_op_iterator_next(const Instruction*, Vector<SlowCaseEntry>::iterator&);
 
         void emitRightShift(const Instruction*, bool isUnsigned);
         void emitRightShiftSlowCase(const Instruction*, Vector<SlowCaseEntry>::iterator&, bool isUnsigned);
@@ -911,6 +928,7 @@ namespace JSC {
 
         Vector<CallRecord> m_calls;
         Vector<Label> m_labels;
+        HashMap<BytecodeIndex, Label> m_checkpointLabels;
         Vector<JITGetByIdGenerator> m_getByIds;
         Vector<JITGetByValGenerator> m_getByVals;
         Vector<JITGetByIdWithThisGenerator> m_getByIdsWithThis;

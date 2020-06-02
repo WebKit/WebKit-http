@@ -449,6 +449,11 @@ namespace JSC {
     {
     }
 
+    inline HasOwnPropertyFunctionCallDotNode::HasOwnPropertyFunctionCallDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+        : FunctionCallDotNode(location, base, ident, args, divot, divotStart, divotEnd)
+    {
+    }
+
     inline PostfixNode::PostfixNode(const JSTokenLocation& location, ExpressionNode* expr, Operator oper, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
         : PrefixNode(location, expr, oper, divot, divotStart, divotEnd)
     {
@@ -718,6 +723,16 @@ namespace JSC {
     {
     }
 
+    inline ShortCircuitReadModifyResolveNode::ShortCircuitReadModifyResolveNode(const JSTokenLocation& location, const Identifier& ident, Operator oper, ExpressionNode* right, bool rightHasAssignments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+        : ExpressionNode(location)
+        , ThrowableExpressionData(divot, divotStart, divotEnd)
+        , m_ident(ident)
+        , m_right(right)
+        , m_operator(oper)
+        , m_rightHasAssignments(rightHasAssignments)
+    {
+    }
+
     inline AssignResolveNode::AssignResolveNode(const JSTokenLocation& location, const Identifier& ident, ExpressionNode* right, AssignmentContext assignmentContext)
         : ExpressionNode(location)
         , m_ident(ident)
@@ -728,6 +743,18 @@ namespace JSC {
 
 
     inline ReadModifyBracketNode::ReadModifyBracketNode(const JSTokenLocation& location, ExpressionNode* base, ExpressionNode* subscript, Operator oper, ExpressionNode* right, bool subscriptHasAssignments, bool rightHasAssignments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+        : ExpressionNode(location)
+        , ThrowableSubExpressionData(divot, divotStart, divotEnd)
+        , m_base(base)
+        , m_subscript(subscript)
+        , m_right(right)
+        , m_operator(oper)
+        , m_subscriptHasAssignments(subscriptHasAssignments)
+        , m_rightHasAssignments(rightHasAssignments)
+    {
+    }
+
+    inline ShortCircuitReadModifyBracketNode::ShortCircuitReadModifyBracketNode(const JSTokenLocation& location, ExpressionNode* base, ExpressionNode* subscript, Operator oper, ExpressionNode* right, bool subscriptHasAssignments, bool rightHasAssignments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
         : ExpressionNode(location)
         , ThrowableSubExpressionData(divot, divotStart, divotEnd)
         , m_base(base)
@@ -771,6 +798,17 @@ namespace JSC {
     {
     }
 
+    inline ShortCircuitReadModifyDotNode::ShortCircuitReadModifyDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, Operator oper, ExpressionNode* right, bool rightHasAssignments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+        : ExpressionNode(location)
+        , ThrowableSubExpressionData(divot, divotStart, divotEnd)
+        , m_base(base)
+        , m_ident(ident)
+        , m_right(right)
+        , m_operator(oper)
+        , m_rightHasAssignments(rightHasAssignments)
+    {
+    }
+
     inline AssignErrorNode::AssignErrorNode(const JSTokenLocation& location, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
         : ExpressionNode(location)
         , ThrowableExpressionData(divot, divotStart, divotEnd)
@@ -801,12 +839,14 @@ namespace JSC {
         : StatementNode(location)
         , m_expr(expr)
     {
+        m_expr->setIsOnlyChildOfStatement();
     }
 
     inline DeclarationStatement::DeclarationStatement(const JSTokenLocation& location, ExpressionNode* expr)
         : StatementNode(location)
         , m_expr(expr)
     {
+        m_expr->setIsOnlyChildOfStatement();
     }
 
     inline ModuleDeclarationNode::ModuleDeclarationNode(const JSTokenLocation& location)
@@ -928,6 +968,8 @@ namespace JSC {
         : StatementNode(location)
         , m_value(value)
     {
+        if (m_value)
+            m_value->setIsOnlyChildOfStatement();
     }
 
     inline WithNode::WithNode(const JSTokenLocation& location, ExpressionNode* expr, StatementNode* statement, const JSTextPosition& divot, uint32_t expressionLength)
@@ -950,6 +992,7 @@ namespace JSC {
         : StatementNode(location)
         , m_expr(expr)
     {
+        m_expr->setIsOnlyChildOfStatement();
     }
 
     inline TryNode::TryNode(const JSTokenLocation& location, StatementNode* tryBlock, DestructuringPatternNode* catchPattern, StatementNode* catchBlock, VariableEnvironment& catchEnvironment, StatementNode* finallyBlock)

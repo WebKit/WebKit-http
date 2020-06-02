@@ -5,7 +5,7 @@ Green
 Blue
 Blue
 Red
-Black
+Blue
 Red
 
 PASS Preconditions. 

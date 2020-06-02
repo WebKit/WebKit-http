@@ -82,9 +82,6 @@ static bool usePersistentCredentialStorage = false;
 
 namespace TestWebKitAPI {
 
-
-// FIXME: Re-enable this test once webkit.org/b/208451 is resolved.
-#if !PLATFORM(IOS)
 TEST(WKWebsiteDataStore, RemoveAndFetchData)
 {
     readyToContinue = false;
@@ -100,7 +97,6 @@ TEST(WKWebsiteDataStore, RemoveAndFetchData)
     }];
     TestWebKitAPI::Util::run(&readyToContinue);
 }
-#endif // !PLATFORM(IOS)
 
 TEST(WKWebsiteDataStore, RemoveEphemeralData)
 {
@@ -201,7 +197,7 @@ TEST(WKWebsiteDataStore, RemoveNonPersistentCredentials)
     TestWebKitAPI::Util::run(&done);
 
     done = false;
-    [websiteDataStore removeDataOfTypes:[NSSet setWithObject:_WKWebsiteDataTypeCredentials] forDataRecords:[NSArray arrayWithObject:expectedRecord.get()] completionHandler:^(void) {
+    [websiteDataStore removeDataOfTypes:[NSSet setWithObject:_WKWebsiteDataTypeCredentials] forDataRecords:@[expectedRecord.get()] completionHandler:^(void) {
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);

@@ -129,8 +129,9 @@ void MediaPlayerPrivateRemote::prepareForPlayback(bool privateMode, MediaPlayer:
             return;
 
         m_videoInlineLayer = createVideoLayerRemote(this, inlineLayerHostingContextId.value());
-
+#if ENABLE(VIDEO_PRESENTATION_MODE)
         m_fullscreenLayerHostingContextId = fullscreenLayerHostingContextId;
+#endif
     }, m_id);
 }
 
@@ -644,7 +645,7 @@ PlatformLayer* MediaPlayerPrivateRemote::platformLayer() const
     return m_videoInlineLayer.get();
 }
 
-#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if ENABLE(VIDEO_PRESENTATION_MODE)
 
 void MediaPlayerPrivateRemote::setVideoFullscreenLayer(PlatformLayer* videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {

@@ -87,7 +87,17 @@
 
 (define-once (framebuffer-access)
     (allow iokit-open
-           (iokit-user-client-class "IOMobileFramebufferUserClient"))
+        (iokit-user-client-class "IOMobileFramebufferUserClient")
+        (when (defined? 'iokit-external-method)
+            (apply-message-filter
+                (deny (with telemetry)
+                    iokit-async-external-method
+                    iokit-external-trap)
+                (allow
+                    iokit-external-method)
+            )
+        )
+    )
 
     ; IOMobileFramebuffer
     (with-filter (iokit-registry-entry-class "IOMobileFramebuffer")
@@ -205,7 +215,7 @@
 ;;;
 (define-once (opengl)
     ;; Items not seen in testing
-    (allow iokit-open (with report) (with telemetry)
+    (deny iokit-open (with telemetry)
            (iokit-connection "IOGPU")
            (iokit-user-client-class
                 "AGXCommandQueue"
@@ -222,9 +232,17 @@
     ;; Items with known uses
     (allow iokit-open
         (iokit-connection "IOGPU")
-        (iokit-user-client-class
-            "AGXDeviceUserClient" ;; Used by WebGL
-    ))
+        (iokit-user-client-class "AGXDeviceUserClient") ;; Used by WebGL
+        (when (defined? 'iokit-external-method)
+            (apply-message-filter
+                (deny (with telemetry)
+                    iokit-external-trap)
+                (allow
+                    iokit-async-external-method
+                    iokit-external-method)
+            )
+        )
+    )
 
     (allow iokit-get-properties
         (iokit-property "IOGLBundleName")
@@ -359,15 +377,48 @@
         (global-name "com.apple.CARenderServer"))
 
     ; UIKit-required IOKit nodes.
-    (allow iokit-open  (with report) (with telemetry)
-        (iokit-user-client-class "AppleJPEGDriverUserClient")
+    (deny iokit-open (with telemetry-backtrace)
         (iokit-user-client-class "IOSurfaceSendRight")
+    )
+
+    (allow iokit-open
+        (iokit-user-client-class "AppleJPEGDriverUserClient")
+        (when (defined? 'iokit-external-method)
+            (apply-message-filter
+                (deny (with telemetry)
+                    iokit-async-external-method
+                    iokit-external-trap)
+                (allow
+                    iokit-external-method)
+            )
+        )
     )
 
     ; WebKit-required IOKit classes
     (allow iokit-open
         (iokit-user-client-class "IOSurfaceAcceleratorClient") ;; Media rendering into pixel buffers
+        (when (defined? 'iokit-external-method)
+            (apply-message-filter
+                (deny (with telemetry)
+                    iokit-async-external-method
+                    iokit-external-trap)
+                (allow (with telemetry)
+                    iokit-external-method)
+            )
+        )
+    )
+
+    (allow iokit-open
         (iokit-user-client-class "IOSurfaceRootUserClient") ;; Needed by Tiled Grid code.
+        (when (defined? 'iokit-external-method)
+            (apply-message-filter
+                (deny (with telemetry)
+                    iokit-async-external-method
+                    iokit-external-trap)
+                (allow
+                    iokit-external-method)
+            )
+        )
     )
 
     ;; Silence sandbox violations from apps trying to create the empty plist if it doesn't exist.
@@ -552,8 +603,8 @@
     (deny ipc-posix-sem-create ipc-posix-sem-post ipc-posix-sem-unlink ipc-posix-sem-wait)
     (allow ipc-posix-sem-open))
 
-(allow mach-lookup (with telemetry)
-    (global-name "com.apple.runningboard") ;; Needed by process assertion code (ProcessTaskStateObserver).
+(deny mach-lookup (with telemetry-backtrace)
+    (global-name "com.apple.runningboard")
 )
 
 (allow system-sched
@@ -707,6 +758,51 @@
 ;;; End UIKit-apps.sb content
 ;;;
 
+;; In CFPrefs direct mode, access to preference files is required.
+(allow file-read*
+    (home-literal
+        "/Library/Preferences/com.apple.Accessibility.plist"
+        "/Library/Preferences/com.apple.EmojiPreferences.plist"
+        "/Library/Preferences/com.apple.InputModePreferences.plist"
+        "/Library/Preferences/com.apple.LaunchServices.plist"
+        "/Library/Preferences/com.apple.Metal.plist"
+        "/Library/Preferences/com.apple.MobileAsset.plist"
+        "/Library/Preferences/com.apple.Preferences.plist"
+        "/Library/Preferences/com.apple.PrototypeTools.plist"
+        "/Library/Preferences/com.apple.SpeakSelection.plist"
+        "/Library/Preferences/com.apple.UIKit.plist"
+        "/Library/Preferences/com.apple.VoiceOverTouch.plist"
+        "/Library/Preferences/com.apple.WebFoundation.plist"
+        "/Library/Preferences/com.apple.WebUI.plist"
+        "/Library/Preferences/com.apple.airplay.plist"
+        "/Library/Preferences/com.apple.audio.virtualaudio.plist"
+        "/Library/Preferences/com.apple.avfoundation.plist"
+        "/Library/Preferences/com.apple.avfoundation.frecents.plist"
+        "/Library/Preferences/com.apple.avfoundation.videoperformancehud.plist"
+        "/Library/Preferences/com.apple.avkit.plist"
+        "/Library/Preferences/com.apple.coreanimation.plist"
+        "/Library/Preferences/com.apple.coreaudio.plist"
+        "/Library/Preferences/com.apple.coremedia.plist"
+        "/Library/Preferences/com.apple.corevideo.plist"
+        "/Library/Preferences/com.apple.da.plist"
+        "/Library/Preferences/com.apple.keyboard.plist"
+        "/Library/Preferences/com.apple.lookup.shared.plist"
+        "/Library/Preferences/com.apple.mediaaccessibility.plist"
+        "/Library/Preferences/com.apple.mediaaccessibility.public.plist"
+        "/Library/Preferences/com.apple.mediaremote.plist"
+        "/Library/Preferences/com.apple.mobileipod.plist"
+        "/Library/Preferences/com.apple.mt.plist"
+        "/Library/Preferences/com.apple.hangtracer.plist"
+        "/Library/Preferences/com.apple.iokit.IOMobileGraphicsFamily.plist"
+        "/Library/Preferences/com.apple.itunesstored.plist"
+        "/Library/Preferences/com.apple.opengl.plist"
+        "/Library/Preferences/com.apple.preferences.sounds.plist"
+        "/Library/Preferences/com.apple.security.plist"
+        "/Library/Preferences/com.apple.voiceservices.plist"
+        "/Library/Preferences/com.apple.voiceservices.logging.plist"
+    )
+)
+
 (deny sysctl*)
 (allow sysctl-read
     (sysctl-name
@@ -732,6 +828,7 @@
         "kern.osrelease"
         "kern.ostype"
         "kern.osvariant_status"
+        "kern.osversion"
         "kern.secure_kernel" ;; Needed by XPC bundle resolution
         "kern.version"
         "sysctl.name2oid"
@@ -844,11 +941,22 @@
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
-        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd" "com.apple.lsd.open" "com.apple.mobileassetd" "com.apple.mobileassetd.v2" "com.apple.frontboard.systemappservices" "com.apple.iconservices" "com.apple.webinspector" "com.apple.PowerManagement.control" "com.apple.cfprefsd.daemon" "com.apple.lsd.mapdb"
+        (global-name
+            "com.apple.cfprefsd.agent"
+            "com.apple.cfprefsd.daemon"
+            "com.apple.diagnosticd"
+            "com.apple.iphone.axserver-systemwide"
+            "com.apple.lsd.mapdb"
+            "com.apple.mobileassetd.v2"
+            "com.apple.nehelper"
+            "com.apple.nesessionmanager.content-filter"
+            "com.apple.tccd"
+            "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI"
+            "com.apple.webinspector"
 
             ;;; FIXME(207716): The following should be removed when the GPU process is complete
-            "com.apple.airplay.apsynccontroller.xpc" "com.apple.audio.AURemoteIOServer" "com.apple.audio.AudioComponentRegistrar"
-            "com.apple.audio.AudioComponentRegistrar" "com.apple.audio.AudioSession" "com.apple.coremedia.admin" "com.apple.coremedia.asset.xpc"
+            "com.apple.airplay.apsynccontroller.xpc" "com.apple.audio.AURemoteIOServer" "com.apple.audio.AudioComponentPrefs" "com.apple.audio.AudioComponentRegistrar"
+            "com.apple.audio.AudioQueueServer" "com.apple.audio.AudioSession" "com.apple.coremedia.admin" "com.apple.coremedia.asset.xpc"
             "com.apple.coremedia.assetimagegenerator.xpc" "com.apple.coremedia.audiodeviceclock.xpc" "com.apple.coremedia.audioprocessingtap.xpc"
             "com.apple.coremedia.capturesession" "com.apple.coremedia.capturesource" "com.apple.coremedia.compressionsession" "com.apple.coremedia.cpe.xpc"
             "com.apple.coremedia.cpeprotector.xpc" "com.apple.coremedia.customurlloader.xpc" "com.apple.coremedia.decompressionsession"
@@ -857,9 +965,22 @@
             "com.apple.coremedia.routediscoverer.xpc" "com.apple.coremedia.routingcontext.xpc" "com.apple.coremedia.routingsessionmanager.xpc"
             "com.apple.coremedia.samplebufferaudiorenderer.xpc" "com.apple.coremedia.samplebufferrendersynchronizer.xpc" "com.apple.coremedia.sandboxserver.xpc"
             "com.apple.coremedia.sts" "com.apple.coremedia.systemcontroller.xpc" "com.apple.coremedia.videoqueue" "com.apple.coremedia.volumecontroller.xpc"
-            "com.apple.coremedia.visualcontext.xpc" "com.apple.mediaremoted.xpc"
+            "com.apple.coremedia.visualcontext.xpc" "com.apple.mediaremoted.xpc" "com.apple.accessibility.mediaaccessibilityd"
             ;;; FIXME(207716): End services to remove.
 )))
+
+(allow mach-lookup (with telemetry-backtrace)
+    (require-all
+        (extension "com.apple.webkit.extension.mach")
+        (global-name
+            "com.apple.PowerManagement.control"
+            "com.apple.frontboard.systemappservices"
+            "com.apple.iconservices"
+            "com.apple.lsd.open"
+            "com.apple.mobileassetd" 
+        )
+    )
+)
 
 (allow mach-lookup
     (require-all
@@ -867,9 +988,26 @@
         (xpc-service-name
             ;;; FIXME(207716): The following should be removed when the GPU process is complete
             "com.apple.MediaPlayer.RemotePlayerService"
-            "com.apple.accessibility.mediaaccessibilityd"
             "com.apple.audio.toolbox.reporting.service"
             ;;; FIXME(207716): End services to remove.
+        )
+    )
+)
+
+(allow iokit-open
+    (require-all
+        (extension "com.apple.webkit.extension.iokit")
+        (iokit-user-client-class
+            "AGXCommandQueue"
+            "AGXDevice"
+            "AGXSharedUserClient"
+            "IOAccelContext"
+            "IOAccelDevice"
+            "IOAccelSharedUserClient"
+            "IOAccelSubmitter2"
+            "IOAccelContext2"
+            "IOAccelDevice2"
+            "IOAccelSharedUserClient2"
         )
     )
 )
@@ -1051,22 +1189,25 @@
         (syscall-number SYS_kqueue_workloop_ctl) ;; <rdar://problem/50999499>
         (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/51134351>
         (syscall-number SYS_faccessat) ;; <rdar://problem/56998930>
-        (syscall-number SYS_objc_bp_assist_cfg_np) ;; <rdar://problem/55924791>
         (syscall-number SYS_shared_region_map_and_slide_2_np) ;; <rdar://problem/60294880>
         (syscall-number SYS_ulock_wait2) ;; <rdar://problem/58743778>
+        (syscall-number SYS_fstat64_extended) ;; <rdar://problem/61310019>
     )
+    (if (defined? 'SYS_objc_bp_assist_cfg_np)
+        (allow syscall-unix (syscall-number SYS_objc_bp_assist_cfg_np)))
 )
 
 (when (defined? 'mach-bootstrap)
     (allow mach-bootstrap
         (apply-message-filter
-            (allow xpc-message-send (with report) (with telemetry))
+            (deny xpc-message-send (with telemetry))
             (allow xpc-message-send (message-number 206))
             (allow xpc-message-send (message-number 207))
             (allow xpc-message-send (message-number 711))
             (allow xpc-message-send (message-number 712))
             (allow xpc-message-send (message-number 718))
             (allow xpc-message-send (message-number 800))
+            (allow xpc-message-send (message-number 802))
             (allow xpc-message-send (message-number 803))
             (allow xpc-message-send (message-number 804))
             (allow xpc-message-send (message-number 805))
@@ -1075,7 +1216,7 @@
 )
 
 (when (defined? 'syscall-mach)
-    (allow syscall-mach (with report) (with telemetry))
+    (deny syscall-mach (with telemetry))
     (allow syscall-mach
         (machtrap-number MSC__kernelrpc_mach_port_allocate_trap)
         (machtrap-number MSC__kernelrpc_mach_port_construct_trap)
@@ -1089,6 +1230,7 @@
         (machtrap-number MSC__kernelrpc_mach_port_mod_refs_trap)
         (machtrap-number MSC__kernelrpc_mach_port_request_notification_trap)
         (machtrap-number MSC__kernelrpc_mach_port_type_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_unguard_trap)
         (machtrap-number MSC__kernelrpc_mach_vm_allocate_trap)
         (machtrap-number MSC__kernelrpc_mach_vm_deallocate_trap)
         (machtrap-number MSC__kernelrpc_mach_vm_map_trap)
@@ -1099,6 +1241,7 @@
         (machtrap-number MSC_mach_generate_activity_id)
         (machtrap-number MSC_mach_msg_trap)
         (machtrap-number MSC_mach_reply_port)
+        (machtrap-number MSC_mach_timebase_info_trap)
         (machtrap-number MSC_mach_voucher_extract_attr_recipe_trap)
         (machtrap-number MSC_mk_timer_arm)
         (machtrap-number MSC_mk_timer_arm_leeway)
@@ -1110,6 +1253,9 @@
         (machtrap-number MSC_semaphore_timedwait_trap)
         (machtrap-number MSC_semaphore_wait_trap)
         (machtrap-number MSC_swtch_pri)
+        (machtrap-number MSC_syscall_thread_switch)
+        (machtrap-number MSC_task_name_for_pid)
+        (machtrap-number MSC_task_self_trap)
         (machtrap-number MSC_thread_get_special_reply_port)
         (machtrap-number MSC_thread_self_trap)
     )
@@ -1118,18 +1264,63 @@
 (when (defined? 'mach-kernel-endpoint)
     (allow mach-kernel-endpoint
         (apply-message-filter
-            (allow mach-message-send (with report) (with telemetry))
-        )
-    )
-)
-
-(when (defined? 'iokit-external-method)
-    (allow iokit-open
-        (apply-message-filter (with report) (with telemetry)
-            (allow
-             iokit-external-method
-             iokit-async-external-method
-             iokit-external-trap)
+            (deny mach-message-send (with telemetry))
+            (allow mach-message-send (kernel-mig-routine
+                (when (defined? '_mach_make_memory_entry) _mach_make_memory_entry)
+                clock_get_time
+                host_get_clock_service
+                host_get_io_master
+                host_get_special_port
+                host_info
+                host_request_notification
+                io_connect_add_client
+                io_connect_async_method
+                io_connect_map_memory_into_task
+                io_connect_method
+                (when (defined? 'io_connect_set_notification_port) io_connect_set_notification_port)
+                io_connect_set_notification_port_64
+                io_iterator_next
+                io_registry_entry_from_path
+                io_registry_entry_get_parent_iterator
+                io_registry_entry_get_property_bin_buf
+                io_registry_entry_get_property_bytes
+                io_registry_entry_get_registry_entry_id
+                io_server_version
+                io_service_add_notification_bin_64
+                io_service_close
+                io_service_get_matching_service_bin
+                io_service_get_matching_services_bin
+                io_service_open_extended
+                mach_exception_raise
+                (when (defined? 'mach_make_memory_entry) mach_make_memory_entry)
+                (when (defined? 'mach_make_memory_entry_64) mach_make_memory_entry_64)
+                mach_port_get_context_from_user
+                mach_port_request_notification
+                mach_port_set_attributes
+                mach_vm_copy
+                mach_vm_map_external
+                mach_vm_region
+                mach_vm_region_recurse
+                mach_vm_remap_external
+                semaphore_create
+                semaphore_destroy
+                task_get_special_port_from_user
+                task_info_from_user
+                task_restartable_ranges_register
+                task_restartable_ranges_synchronize
+                task_set_exc_guard_behavior
+                task_set_special_port
+                thread_get_state_to_user
+                thread_info
+                thread_policy
+                thread_policy_set
+                thread_resume
+                thread_set_exception_ports
+                thread_suspend
+                (when (defined? 'vm_copy) vm_copy)
+                (when (defined? 'vm_remap_external) vm_remap_external)
+                )
+            )
         )
     )
 )

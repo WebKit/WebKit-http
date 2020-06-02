@@ -38,10 +38,8 @@
 #include "WasmFunctionCodeBlock.h"
 #include "WasmFunctionParser.h"
 #include "WasmGeneratorTraits.h"
-#include "WasmThunks.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/RefPtr.h>
-#include <wtf/StdUnorderedMap.h>
 #include <wtf/Variant.h>
 
 namespace JSC { namespace Wasm {
@@ -428,11 +426,33 @@ Expected<std::unique_ptr<FunctionCodeBlock>, String> parseAndCompileBytecode(con
     return llintGenerator.finalize();
 }
 
+
+using Buffer = InstructionStream::InstructionBuffer;
+static ThreadSpecific<Buffer>* threadSpecificBufferPtr;
+
+static ThreadSpecific<Buffer>& threadSpecificBuffer()
+{
+    static std::once_flag flag;
+    std::call_once(
+        flag,
+        [] () {
+            threadSpecificBufferPtr = new ThreadSpecific<Buffer>();
+        });
+    return *threadSpecificBufferPtr;
+}
+
 LLIntGenerator::LLIntGenerator(const ModuleInformation& info, unsigned functionIndex, const Signature&)
     : BytecodeGeneratorBase(makeUnique<FunctionCodeBlock>(functionIndex), 0)
     , m_info(info)
     , m_functionIndex(functionIndex)
 {
+    {
+        auto& threadSpecific = threadSpecificBuffer();
+        Buffer buffer = WTFMove(*threadSpecific);
+        *threadSpecific = Buffer();
+        m_writer.setInstructionBuffer(WTFMove(buffer));
+    }
+
     m_codeBlock->m_numVars = numberOfLLIntCalleeSaveRegisters;
     m_stackSize = numberOfLLIntCalleeSaveRegisters;
     m_maxStackSize = numberOfLLIntCalleeSaveRegisters;
@@ -444,7 +464,15 @@ std::unique_ptr<FunctionCodeBlock> LLIntGenerator::finalize()
 {
     RELEASE_ASSERT(m_codeBlock);
     m_codeBlock->m_numCalleeLocals = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), m_maxStackSize);
-    m_codeBlock->setInstructions(m_writer.finalize());
+
+    auto& threadSpecific = threadSpecificBuffer();
+    Buffer usedBuffer;
+    m_codeBlock->setInstructions(m_writer.finalize(usedBuffer));
+    size_t oldCapacity = usedBuffer.capacity();
+    usedBuffer.resize(0);
+    RELEASE_ASSERT(usedBuffer.capacity() == oldCapacity);
+    *threadSpecific = WTFMove(usedBuffer);
+
     return WTFMove(m_codeBlock);
 }
 

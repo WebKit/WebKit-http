@@ -50,7 +50,6 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include <WebCore/RenderThemeIOS.h>
-#include <WebCore/UTTypeRecordSwizzler.h>
 #endif
 
 namespace API {
@@ -71,7 +70,7 @@ struct WebProcessCreationParameters {
     WebProcessCreationParameters& operator=(WebProcessCreationParameters&&);
 
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, WebProcessCreationParameters&);
+    static WARN_UNUSED_RETURN bool decode(IPC::Decoder&, WebProcessCreationParameters&);
 
     String injectedBundlePath;
     SandboxExtension::Handle injectedBundlePathExtensionHandle;
@@ -101,7 +100,6 @@ struct WebProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
     Vector<String> urlSchemesRegisteredAsAlwaysRevalidated;
     Vector<String> urlSchemesRegisteredAsCachePartitioned;
-    Vector<String> urlSchemesServiceWorkersCanHandle;
     Vector<String> urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
 
     Vector<String> fontWhitelist;
@@ -200,11 +198,14 @@ struct WebProcessCreationParameters {
 #if PLATFORM(IOS)
     Optional<SandboxExtension::Handle> compilerServiceExtensionHandle;
     Optional<SandboxExtension::Handle> contentFilterExtensionHandle;
+    Optional<SandboxExtension::Handle> frontboardServiceExtensionHandle;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     Optional<SandboxExtension::Handle> diagnosticsExtensionHandle;
+    Optional<SandboxExtension::Handle> runningboardExtensionHandle;
     SandboxExtension::HandleArray dynamicMachExtensionHandles;
+    SandboxExtension::HandleArray dynamicIOKitExtensionHandles;
 #endif
 
 #if PLATFORM(COCOA)
@@ -212,7 +213,6 @@ struct WebProcessCreationParameters {
     Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
     Optional<SandboxExtension::Handle> mapDBExtensionHandle;
     bool systemHasBattery { false };
-    Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>> mimeTypesMap;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -221,16 +221,17 @@ struct WebProcessCreationParameters {
     WebCore::RenderThemeIOS::CSSValueToSystemColorMap cssValueToSystemColorMap;
     WebCore::Color focusRingColor;
     String localizedDeviceModel;
-#if USE(UTTYPE_SWIZZLER)
-    Vector<WebCore::UTTypeItem> vectorOfUTTypeItem;
-#endif
 #endif
 
 #if PLATFORM(COCOA)
     SandboxExtension::HandleArray mediaExtensionHandles; // FIXME(207716): Remove when GPU process is complete.
 #if ENABLE(CFPREFS_DIRECT_MODE)
-    Optional<SandboxExtension::Handle> preferencesExtensionHandle;
+    Optional<SandboxExtension::HandleArray> preferencesExtensionHandles;
 #endif
+#endif
+
+#if PLATFORM(GTK)
+    bool useSystemAppearanceForScrollbars { false };
 #endif
 };
 

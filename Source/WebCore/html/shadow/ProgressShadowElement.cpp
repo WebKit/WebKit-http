@@ -89,4 +89,28 @@ void ProgressValueElement::setWidthPercentage(double width)
     setInlineStyleProperty(CSSPropertyWidth, width, CSSUnitType::CSS_PERCENTAGE);
 }
 
+Ref<ProgressInnerElement> ProgressInnerElement::create(Document& document)
+{
+    static MainThreadNeverDestroyed<const AtomString> webkitProgressInnerElementName("-webkit-progress-inner-element", AtomString::ConstructFromLiteral);
+    Ref<ProgressInnerElement> result = adoptRef(*new ProgressInnerElement(document));
+    result->setPseudo(webkitProgressInnerElementName);
+    return result;
+}
+
+Ref<ProgressBarElement> ProgressBarElement::create(Document& document)
+{
+    static MainThreadNeverDestroyed<const AtomString> webkitProgressBarName("-webkit-progress-bar", AtomString::ConstructFromLiteral);
+    Ref<ProgressBarElement> result = adoptRef(*new ProgressBarElement(document));
+    result->setPseudo(webkitProgressBarName);
+    return result;
+}
+
+Ref<ProgressValueElement> ProgressValueElement::create(Document& document)
+{
+    static MainThreadNeverDestroyed<const AtomString> webkitProgressValueName("-webkit-progress-value", AtomString::ConstructFromLiteral);
+    Ref<ProgressValueElement> result = adoptRef(*new ProgressValueElement(document));
+    result->setPseudo(webkitProgressValueName);
+    return result;
+}
+
 }

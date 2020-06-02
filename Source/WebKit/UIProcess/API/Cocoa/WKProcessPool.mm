@@ -55,6 +55,7 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/WeakObjCPtr.h>
+#import <wtf/cocoa/VectorCocoa.h>
 
 #if PLATFORM(IOS_FAMILY)
 #import <WebCore/WebCoreThreadSystemInterface.h>
@@ -163,11 +164,9 @@ static WKProcessPool *sharedProcessPool;
 
 + (NSArray<WKProcessPool *> *)_allProcessPoolsForTesting
 {
-    auto& allPools = WebKit::WebProcessPool::allProcessPools();
-    auto nsAllPools = adoptNS([[NSMutableArray alloc] initWithCapacity:allPools.size()]);
-    for (auto* pool : allPools)
-        [nsAllPools addObject:wrapper(*pool)];
-    return nsAllPools.autorelease();
+    return createNSArray(WebKit::WebProcessPool::allProcessPools(), [] (auto& pool) {
+        return wrapper(*pool);
+    }).autorelease();
 }
 
 + (NSURL *)_websiteDataURLForContainerWithURL:(NSURL *)containerURL
@@ -422,6 +421,13 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->sendNetworkProcessWillSuspendImminentlyForTesting();
 }
 
+- (void)_sendNetworkProcessPrepareToSuspend:(void(^)(void))completionHandler
+{
+    _processPool->sendNetworkProcessPrepareToSuspendForTesting([completionHandler = makeBlockPtr(completionHandler)] {
+        completionHandler();
+    });
+}
+
 - (void)_sendNetworkProcessDidResume
 {
     _processPool->sendNetworkProcessDidResume();
@@ -610,10 +616,7 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (void)_getActivePagesOriginsInWebProcessForTesting:(pid_t)pid completionHandler:(void(^)(NSArray<NSString *> *))completionHandler
 {
     _processPool->activePagesOriginsInWebProcessForTesting(pid, [completionHandler = makeBlockPtr(completionHandler)] (Vector<String>&& activePagesOrigins) {
-        NSMutableArray<NSString *> *array = [[[NSMutableArray alloc] initWithCapacity:activePagesOrigins.size()] autorelease];
-        for (auto& origin : activePagesOrigins)
-            [array addObject:origin];
-        completionHandler(array);
+        completionHandler(createNSArray(activePagesOrigins).get());
     });
 }
 

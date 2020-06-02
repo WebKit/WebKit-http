@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef GeolocationPermissionRequestManagerProxy_h
 #define GeolocationPermissionRequestManagerProxy_h
 
+#include "GeolocationIdentifier.h"
 #include "GeolocationPermissionRequestProxy.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -42,16 +43,16 @@ public:
     void invalidateRequests();
 
     // Create a request to be presented to the user.
-    Ref<GeolocationPermissionRequestProxy> createRequest(uint64_t geolocationID);
+    Ref<GeolocationPermissionRequestProxy> createRequest(GeolocationIdentifier);
     
     // Called by GeolocationPermissionRequestProxy when a decision is made by the user.
-    void didReceiveGeolocationPermissionDecision(uint64_t, bool allow);
+    void didReceiveGeolocationPermissionDecision(GeolocationIdentifier, bool allow);
 
     bool isValidAuthorizationToken(const String&) const;
     void revokeAuthorizationToken(const String&);
 
 private:
-    HashMap<uint64_t, RefPtr<GeolocationPermissionRequestProxy>> m_pendingRequests;
+    HashMap<GeolocationIdentifier, RefPtr<GeolocationPermissionRequestProxy>> m_pendingRequests;
     HashSet<String> m_validAuthorizationTokens;
     WebPageProxy& m_page;
 };

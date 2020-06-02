@@ -23,22 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "ResourceUsageThread.h"
+#import "config.h"
+#import "ResourceUsageThread.h"
 
 #if ENABLE(RESOURCE_USAGE)
 
-#include "WorkerThread.h"
-#include <JavaScriptCore/GCActivityCallback.h>
-#include <JavaScriptCore/Heap.h>
-#include <JavaScriptCore/SamplingProfiler.h>
-#include <JavaScriptCore/VM.h>
-#include <mach/mach.h>
-#include <mach/vm_statistics.h>
-#include <wtf/MachSendRight.h>
-#include <wtf/ResourceUsage.h>
-#include <wtf/spi/cocoa/MachVMSPI.h>
-#include <wtf/text/StringConcatenateNumbers.h>
+#import "WorkerThread.h"
+#import <JavaScriptCore/GCActivityCallback.h>
+#import <JavaScriptCore/Heap.h>
+#import <JavaScriptCore/SamplingProfiler.h>
+#import <JavaScriptCore/VM.h>
+#import <mach/mach.h>
+#import <mach/vm_statistics.h>
+#import <wtf/MachSendRight.h>
+#import <wtf/ResourceUsage.h>
+#import <wtf/spi/cocoa/MachVMSPI.h>
+#import <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -156,8 +156,8 @@ void ResourceUsageThread::platformCollectCPUData(JSC::VM*, ResourceUsageData& da
 
     HashSet<mach_port_t> knownWebKitThreads;
     {
-        LockHolder lock(Thread::allThreadsMutex());
-        for (auto* thread : Thread::allThreads(lock)) {
+        auto locker = holdLock(Thread::allThreadsMutex());
+        for (auto* thread : Thread::allThreads(locker)) {
             mach_port_t machThread = thread->machThread();
             if (machThread != MACH_PORT_NULL)
                 knownWebKitThreads.add(machThread);

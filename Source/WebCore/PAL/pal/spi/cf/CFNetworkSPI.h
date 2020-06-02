@@ -55,8 +55,9 @@ extern const CFStringRef _kCFWindowsSSLPeerCert;
 
 WTF_EXTERN_C_END
 
-#else // PLATFORM(WIN)
+#else // !PLATFORM(WIN)
 #include <CFNetwork/CFSocketStreamPriv.h>
+#include <nw/private.h>
 #endif // PLATFORM(WIN)
 
 // FIXME: Remove the defined(__OBJC__)-guard once we fix <rdar://problem/19033610>.
@@ -65,6 +66,19 @@ WTF_EXTERN_C_END
 #endif
 
 #else // !PLATFORM(WIN) && !USE(APPLE_INTERNAL_SDK)
+
+#if HAVE(LOGGING_PRIVACY_LEVEL)
+typedef enum {
+    nw_context_privacy_level_public = 1,
+    nw_context_privacy_level_private = 2,
+    nw_context_privacy_level_sensitive = 3,
+    nw_context_privacy_level_silent = 4,
+} nw_context_privacy_level_t;
+
+#ifndef NW_CONTEXT_HAS_PRIVACY_LEVEL_SILENT
+#define NW_CONTEXT_HAS_PRIVACY_LEVEL_SILENT    1
+#endif
+#endif // HAVE(LOGGING_PRIVACY_LEVEL)
 
 typedef CF_ENUM(int64_t, _TimingDataOptions)
 {
@@ -193,7 +207,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 @property (copy) NSData *_sourceApplicationAuditTokenData;
 @property (nullable, copy) NSString *_sourceApplicationBundleIdentifier;
 @property (nullable, copy) NSString *_sourceApplicationSecondaryIdentifier;
-@property BOOL _shouldSkipPreferredClientCertificateLookup NS_AVAILABLE(10_10, 8_0);
+@property BOOL _shouldSkipPreferredClientCertificateLookup;
+@property BOOL _preventsSystemHTTPProxyAuthentication;
+@property BOOL _requiresSecureHTTPSProxyConnection;
 #if PLATFORM(IOS_FAMILY)
 @property (nullable, copy) NSString *_CTDataConnectionServiceType;
 #endif
@@ -206,6 +222,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 #endif
 #if HAVE(ALLOWS_SENSITIVE_LOGGING)
 @property BOOL _allowsSensitiveLogging;
+#endif
+#if HAVE(LOGGING_PRIVACY_LEVEL)
+@property nw_context_privacy_level_t _loggingPrivacyLevel;
 #endif
 #if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
 @property (nullable, retain) _NSHTTPAlternativeServicesStorage *_alternativeServicesStorage;
@@ -277,7 +296,7 @@ extern NSString * const NSURLAuthenticationMethodOAuth;
 
 #endif // defined(__OBJC__)
 
-#endif // !PLATFORM(WIN) && !USE(APPLE_INTERNAL_SDK)
+#endif // PLATFORM(WIN) || USE(APPLE_INTERNAL_SDK)
 
 WTF_EXTERN_C_BEGIN
 
@@ -421,9 +440,16 @@ WTF_EXTERN_C_END
 - (NSArray* __nullable)_getCookiesForDomain:(NSString*)domain;
 - (void)_setCookiesChangedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* addedCookies, NSString* domainForChangedCookie))cookiesChangedHandler onQueue:(dispatch_queue_t __nullable)queue;
 - (void)_setCookiesRemovedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* __nullable removedCookies, NSString* __nullable domainForRemovedCookies, bool removeAllCookies))cookiesRemovedHandler onQueue:(dispatch_queue_t __nullable)queue;
-// FIXME: The following 2 should be removed are only kept to ensure smooth transition to the new _setCookiesChangedHandler / _setCookiesRemovedHandler SPI.
-- (void)_setCookiesAddedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* addedCookies, NSURL* __nullable urlForAddedCookies))cookiesAddedHandler onQueue:(dispatch_queue_t __nullable)queue;
-- (void)_setCookiesDeletedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* __nullable deletedCookies, bool deletedAllCookies))cookiesDeletedHandler onQueue:(dispatch_queue_t __nullable)queue;
+@end
+
+@interface __NSCFLocalDownloadFile : NSObject
+@end
+@interface __NSCFLocalDownloadFile ()
+@property (readwrite, assign) BOOL skipUnlink;
+@end
+
+@interface NSURLSessionDownloadTask ()
+- (__NSCFLocalDownloadFile *)downloadFile;
 @end
 
 @interface NSURLResponse ()

@@ -403,7 +403,7 @@ void RenderImage::repaintOrMarkForLayout(ImageSizeChangeType imageSizeChange, co
     contentChanged(ImageChanged);
 }
 
-void RenderImage::notifyFinished(CachedResource& newImage)
+void RenderImage::notifyFinished(CachedResource& newImage, const NetworkLoadMetrics& metrics)
 {
     if (renderTreeBeingDestroyed())
         return;
@@ -418,6 +418,8 @@ void RenderImage::notifyFinished(CachedResource& newImage)
 
     if (is<HTMLImageElement>(element()))
         page().didFinishLoadingImageForElement(downcast<HTMLImageElement>(*element()));
+
+    RenderReplaced::notifyFinished(newImage, metrics);
 }
 
 void RenderImage::setImageDevicePixelRatio(float factor)
@@ -489,6 +491,13 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     auto contentSize = this->contentSize();
     float deviceScaleFactor = document().deviceScaleFactor();
     LayoutUnit missingImageBorderWidth(1 / deviceScaleFactor);
+
+    if (context.detectingContentfulPaint()) {
+        if (!context.contenfulPaintDetected() && !isDeferredImage(element()) && cachedImage() && cachedImage()->canRender(this, deviceScaleFactor) && !contentSize.isEmpty())
+            context.setContentfulPaintDetected();
+
+        return;
+    }
 
     if (!imageResource().cachedImage() || isDeferredImage(element()) || shouldDisplayBrokenImageIcon()) {
         if (paintInfo.phase == PaintPhase::Selection)
@@ -905,15 +914,6 @@ RenderBox* RenderImage::embeddedContentBox() const
         return downcast<SVGImage>(*cachedImage->image()).embeddedContentBox();
 
     return nullptr;
-}
-
-void RenderImage::incrementVisuallyNonEmptyPixelCountIfNeeded(const IntSize& size)
-{
-    if (m_didIncrementVisuallyNonEmptyPixelCount)
-        return;
-
-    view().frameView().incrementVisuallyNonEmptyPixelCount(size);
-    m_didIncrementVisuallyNonEmptyPixelCount = true;
 }
 
 } // namespace WebCore

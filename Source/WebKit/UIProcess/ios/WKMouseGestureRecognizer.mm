@@ -31,6 +31,7 @@
 #import "NativeWebMouseEvent.h"
 #import "UIKitSPI.h"
 #import <pal/spi/ios/GraphicsServicesSPI.h>
+#import <wtf/Compiler.h>
 #import <wtf/Optional.h>
 
 static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFlags(UIKeyModifierFlags flags)
@@ -49,8 +50,19 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
     return modifiers;
 }
 
+#if HAVE(UI_HOVER_EVENT_RESPONDABLE)
+@interface UIHoverGestureRecognizer () <_UIHoverEventRespondable>
+#else
+@interface UIHoverGestureRecognizer ()
+- (void)_hoverEntered:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverExited:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+#endif
+@end
+
 @implementation WKMouseGestureRecognizer {
-    RetainPtr<UIHoverEvent> _currentHoverEvent;
+    RetainPtr<UIEvent> _currentHoverEvent;
     RetainPtr<UITouch> _currentTouch;
 
     BOOL _touching;
@@ -60,27 +72,17 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
     Optional<UIEventButtonMask> _pressedButtonMask;
 }
 
-- (instancetype)initWithTarget:(id)target action:(SEL)action
+- (void)setEnabled:(BOOL)enabled
 {
-    self = [super initWithTarget:target action:action];
-    if (!self)
-        return nil;
+    [super setEnabled:enabled];
 
-    [self _setAcceptsFailureRequiments:NO];
-
-    return self;
-}
-
-- (void)setView:(UIView *)view
-{
-    if (view == self.view)
-        return;
-
-    [super setView:view];
-
-    if (view.window) {
-        UIHoverEvent *hoverEvent = [UIApp _hoverEventForWindow:view.window];
-        [hoverEvent setNeedsHitTestReset];
+    if (!enabled) {
+        _currentHoverEvent = nil;
+        _currentTouch = nil;
+        _touching = NO;
+        _lastEvent = nil;
+        _lastLocation = WTF::nullopt;
+        _pressedButtonMask = WTF::nullopt;
     }
 }
 
@@ -97,11 +99,6 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 - (UITouch *)mouseTouch
 {
     return _currentTouch.get();
-}
-
-- (BOOL)_wantsHoverEvents
-{
-    return YES;
 }
 
 - (void)reset
@@ -190,13 +187,11 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
     _lastEvent = [self createMouseEventWithType:WebKit::WebEvent::MouseMove];
 
     if (_currentHoverEvent == nil && touches.count == 1 && [event isKindOfClass:NSClassFromString(@"UIHoverEvent")]) {
-        _currentHoverEvent = (UIHoverEvent *)event;
+        _currentHoverEvent = event;
         _currentTouch = touches.anyObject;
         _lastLocation = [self locationInView:self.view];
         self.state = UIGestureRecognizerStateBegan;
     }
-
-    [super _hoverEntered:touches withEvent:event];
 }
 
 - (void)_hoverMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
@@ -211,8 +206,6 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 
     if (_currentHoverEvent == event && [touches containsObject:_currentTouch.get()])
         self.state = UIGestureRecognizerStateChanged;
-
-    [super _hoverMoved:touches withEvent:event];
 }
 
 - (void)_hoverExited:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
@@ -225,14 +218,11 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
         _currentTouch = nil;
         self.state = UIGestureRecognizerStateEnded;
     }
-
-    [super _hoverExited:touches withEvent:event];
 }
 
 - (void)_hoverCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
     [self _hoverExited:touches withEvent:event];
-    [super _hoverCancelled:touches withEvent:event];
 }
 
 - (CGPoint)locationInView:(UIView *)view
@@ -240,16 +230,6 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
     if (!_currentTouch)
         return CGPointMake(-1, -1);
     return [_currentTouch locationInView:view];
-}
-
-- (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer
-{
-    return NO;
-}
-
-- (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer
-{
-    return NO;
 }
 
 @end

@@ -27,15 +27,10 @@
 #include "config.h"
 #include "IntlNumberFormatConstructor.h"
 
-#if ENABLE(INTL)
-
-#include "Error.h"
 #include "IntlNumberFormat.h"
 #include "IntlNumberFormatPrototype.h"
-#include "IntlObject.h"
 #include "IntlObjectInlines.h"
 #include "JSCInlines.h"
-#include "Lookup.h"
 
 namespace JSC {
 
@@ -93,8 +88,12 @@ static EncodedJSValue JSC_HOST_CALL constructIntlNumberFormat(JSGlobalObject* gl
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
     // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
     // 3. ReturnIfAbrupt(numberFormat).
-    Structure* structure = InternalFunction::createSubclassStructure(globalObject, callFrame->jsCallee(), callFrame->newTarget(), jsCast<IntlNumberFormatConstructor*>(callFrame->jsCallee())->numberFormatStructure(vm));
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSObject* newTarget = asObject(callFrame->newTarget());
+    Structure* structure = newTarget == callFrame->jsCallee()
+        ? globalObject->numberFormatStructure()
+        : InternalFunction::createSubclassStructure(globalObject, newTarget, getFunctionRealm(vm, newTarget)->numberFormatStructure());
+    RETURN_IF_EXCEPTION(scope, { });
+
     IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, structure);
     ASSERT(numberFormat);
 
@@ -110,14 +109,12 @@ static EncodedJSValue JSC_HOST_CALL callIntlNumberFormat(JSGlobalObject* globalO
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
     // NewTarget is always undefined when called as a function.
 
-    IntlNumberFormatConstructor* callee = jsCast<IntlNumberFormatConstructor*>(callFrame->jsCallee());
-
     // FIXME: Workaround to provide compatibility with ECMA-402 1.0 call/apply patterns.
     // https://bugs.webkit.org/show_bug.cgi?id=153679
-    return JSValue::encode(constructIntlInstanceWithWorkaroundForLegacyIntlConstructor<IntlNumberFormat>(globalObject, callFrame->thisValue(), callee, [&] (VM& vm) {
+    return JSValue::encode(constructIntlInstanceWithWorkaroundForLegacyIntlConstructor<IntlNumberFormat>(globalObject, callFrame->thisValue(), callFrame->jsCallee(), [&] (VM& vm) {
         // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
         // 3. ReturnIfAbrupt(numberFormat).
-        IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, callee->numberFormatStructure(vm));
+        IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, globalObject->numberFormatStructure());
         ASSERT(numberFormat);
 
         // 4. Return InitializeNumberFormat(numberFormat, locales, options).
@@ -144,5 +141,3 @@ EncodedJSValue JSC_HOST_CALL IntlNumberFormatConstructorFuncSupportedLocalesOf(J
 }
 
 } // namespace JSC
-
-#endif // ENABLE(INTL)

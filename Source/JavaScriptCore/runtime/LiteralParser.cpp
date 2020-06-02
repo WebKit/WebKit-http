@@ -27,14 +27,11 @@
 #include "config.h"
 #include "LiteralParser.h"
 
-#include "ButterflyInlines.h"
 #include "CodeBlock.h"
 #include "JSArray.h"
-#include "JSString.h"
+#include "JSCInlines.h"
 #include "Lexer.h"
 #include "ObjectConstructor.h"
-#include "JSCInlines.h"
-#include "StrongInlines.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringConcatenate.h>
@@ -832,7 +829,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
         switch(state) {
             startParseArray:
             case StartParseArray: {
-                JSArray* array = constructEmptyArray(m_globalObject, 0);
+                JSArray* array = constructEmptyArray(m_globalObject, nullptr);
                 RETURN_IF_EXCEPTION(scope, JSValue());
                 objectStack.appendWithCrashOnOverflow(array);
             }
@@ -933,7 +930,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
                         m_parseErrorMessage = "Attempted to redefine __proto__ property"_s;
                         return JSValue();
                     }
-                    PutPropertySlot slot(object, m_nullOrCodeBlock ? m_nullOrCodeBlock->isStrictMode() : false);
+                    PutPropertySlot slot(object, m_nullOrCodeBlock ? m_nullOrCodeBlock->ownerExecutable()->isInStrictContext() : false);
                     objectStack.last().put(m_globalObject, ident, lastValue, slot);
                 } else {
                     if (Optional<uint32_t> index = parseIndex(ident))

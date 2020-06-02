@@ -30,10 +30,6 @@
 #include "ApplePayPaymentPass.h"
 #include <wtf/Optional.h>
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/ApplePayPaymentMethodAdditions.h>
-#endif
-
 namespace WebCore {
 
 enum class ApplePayPaymentMethodType;
@@ -46,11 +42,7 @@ struct ApplePayPaymentMethod {
     Optional<Type> type;
     Optional<ApplePayPaymentPass> paymentPass;
     Optional<ApplePayPaymentContact> billingContact;
-
-#if defined(APPLEPAYPAYMENTMETHOD_ADDITIONS)
-APPLEPAYPAYMENTMETHOD_ADDITIONS
-#undef APPLEPAYPAYMENTMETHOD_ADDITIONS
-#endif
+    String bindToken;
 };
 
 }

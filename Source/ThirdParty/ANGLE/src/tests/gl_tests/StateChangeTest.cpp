@@ -10,6 +10,7 @@
 
 #include "test_utils/ANGLETest.h"
 #include "test_utils/gl_raii.h"
+#include "util/random_utils.h"
 
 using namespace angle;
 
@@ -250,11 +251,8 @@ TEST_P(StateChangeTest, FramebufferIncompleteStencilAttachment)
 }
 
 // Test that Framebuffer completeness caching works when depth-stencil attachments change.
-TEST_P(StateChangeTest, FramebufferIncompleteDepthStencilAttachment)
+TEST_P(StateChangeTestES3, FramebufferIncompleteDepthStencilAttachment)
 {
-    ANGLE_SKIP_TEST_IF(getClientMajorVersion() < 3 &&
-                       !IsGLExtensionEnabled("GL_OES_packed_depth_stencil"));
-
     glBindFramebuffer(GL_FRAMEBUFFER, mFramebuffer);
     glBindTexture(GL_TEXTURE_2D, mTextures[0]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -732,29 +730,26 @@ TEST_P(StateChangeRenderTest, RecreateRenderbuffer)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, mRenderbuffer);
 
     // Explictly check FBO status sync in some versions of ANGLE no_error skips FBO checks.
-    ASSERT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    ASSERT_GL_FRAMEBUFFER_COMPLETE(GL_FRAMEBUFFER);
 
     // Draw with red to the FBO.
-    GLColor red(255, 0, 0, 255);
-    setUniformColor(red);
+    setUniformColor(GLColor::red);
     drawQuad(mProgram, "position", 0.5f);
-    EXPECT_PIXEL_COLOR_EQ(0, 0, red);
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::red);
 
     // Recreate the renderbuffer and clear to green.
     glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 32, 32);
     glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    GLColor green(0, 255, 0, 255);
-    EXPECT_PIXEL_COLOR_EQ(0, 0, green);
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green);
 
     // Explictly check FBO status sync in some versions of ANGLE no_error skips FBO checks.
-    ASSERT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    ASSERT_GL_FRAMEBUFFER_COMPLETE(GL_FRAMEBUFFER);
 
     // Verify drawing blue gives blue. This covers the FBO sync with D3D dirty bits.
-    GLColor blue(0, 0, 255, 255);
-    setUniformColor(blue);
+    setUniformColor(GLColor::blue);
     drawQuad(mProgram, "position", 0.5f);
-    EXPECT_PIXEL_COLOR_EQ(0, 0, blue);
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::blue);
 
     EXPECT_GL_NO_ERROR();
 }
@@ -1836,8 +1831,9 @@ TEST_P(SimpleStateChangeTest, DrawElementsUBYTEX2ThenDrawElementsUSHORT)
 // verify all the rendering results are the same.
 TEST_P(SimpleStateChangeTest, DrawRepeatUnalignedVboChange)
 {
-    // http://anglebug.com/4092
-    ANGLE_SKIP_TEST_IF(isSwiftshader() && IsWindows());
+    // http://anglebug.com/4470
+    ANGLE_SKIP_TEST_IF(isSwiftshader() && (IsWindows() || IsLinux()));
+
     const int kRepeat = 2;
 
     // set up VBO, colorVBO is unaligned
@@ -2594,6 +2590,82 @@ TEST_P(SimpleStateChangeTest, RedefineFramebufferTexture)
     simpleDrawWithColor(GLColor::green);
     ASSERT_GL_NO_ERROR();
     EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green) << "second draw should be green";
+}
+
+// Trips a bug in the Vulkan back-end where a Texture wouldn't transition correctly.
+TEST_P(SimpleStateChangeTest, DrawAndClearTextureRepeatedly)
+{
+    // Fails on 431.02 driver. http://anglebug.com/3748
+    ANGLE_SKIP_TEST_IF(IsWindows() && IsNVIDIA() && IsVulkan());
+
+    // Fails on AMD OpenGL Windows. This configuration isn't maintained.
+    ANGLE_SKIP_TEST_IF(IsWindows() && IsAMD() && IsOpenGL());
+
+    ANGLE_GL_PROGRAM(program, essl1_shaders::vs::Texture2D(), essl1_shaders::fs::Texture2D());
+
+    GLTexture tex;
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &GLColor::red);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    ASSERT_GL_NO_ERROR();
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+    ASSERT_GL_NO_ERROR();
+    ASSERT_GL_FRAMEBUFFER_COMPLETE(GL_FRAMEBUFFER);
+
+    glUseProgram(program);
+
+    GLint uniLoc = glGetUniformLocation(program, essl1_shaders::Texture2DUniform());
+    ASSERT_NE(-1, uniLoc);
+    glUniform1i(uniLoc, 0);
+
+    const int numRowsCols = 2;
+    const int cellSize    = getWindowWidth() / 2;
+
+    for (int cellY = 0; cellY < numRowsCols; cellY++)
+    {
+        for (int cellX = 0; cellX < numRowsCols; cellX++)
+        {
+            int seed            = cellX + cellY * numRowsCols;
+            const Vector4 color = RandomVec4(seed, 0.0f, 1.0f);
+
+            // Set the texture to a constant color using glClear and a user FBO.
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glClearColor(color[0], color[1], color[2], color[3]);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            // Draw a small colored quad to the default FBO using the viewport.
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(cellX * cellSize, cellY * cellSize, cellSize, cellSize);
+            drawQuad(program, essl1_shaders::PositionAttrib(), 0.5f);
+        }
+    }
+
+    // Verify the colored quads were drawn correctly despite no flushing.
+    std::vector<GLColor> pixelData(getWindowWidth() * getWindowHeight());
+    glReadPixels(0, 0, getWindowWidth(), getWindowHeight(), GL_RGBA, GL_UNSIGNED_BYTE,
+                 pixelData.data());
+
+    ASSERT_GL_NO_ERROR();
+
+    for (int cellY = 0; cellY < numRowsCols; cellY++)
+    {
+        for (int cellX = 0; cellX < numRowsCols; cellX++)
+        {
+            int seed            = cellX + cellY * numRowsCols;
+            const Vector4 color = RandomVec4(seed, 0.0f, 1.0f);
+
+            GLColor expectedColor(color);
+
+            int testN =
+                cellX * cellSize + cellY * getWindowWidth() * cellSize + getWindowWidth() + 1;
+            GLColor actualColor = pixelData[testN];
+            EXPECT_COLOR_NEAR(expectedColor, actualColor, 1);
+        }
+    }
 }
 
 // Validates disabling cull face really disables it.
@@ -3905,6 +3977,9 @@ void main()
 TEST_P(WebGL2ValidationStateChangeTest, TransformFeedbackNegativeAPI)
 {
     ANGLE_SKIP_TEST_IF(IsAMD() && IsOSX());
+
+    // TODO(anglebug.com/4533) This fails after the upgrade to the 26.20.100.7870 driver.
+    ANGLE_SKIP_TEST_IF(IsWindows() && IsIntel() && IsVulkan());
 
     constexpr char kFS[] = R"(#version 300 es
 precision mediump float;

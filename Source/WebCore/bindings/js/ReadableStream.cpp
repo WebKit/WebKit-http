@@ -45,15 +45,14 @@ Ref<ReadableStream> ReadableStream::create(JSC::JSGlobalObject& lexicalGlobalObj
 
     auto* constructor = JSC::asObject(globalObject.get(&lexicalGlobalObject, clientData.builtinNames().ReadableStreamPrivateName()));
 
-    ConstructData constructData;
-    ConstructType constructType = constructor->methodTable(vm)->getConstructData(constructor, constructData);
-    ASSERT(constructType != ConstructType::None);
+    auto constructData = getConstructData(vm, constructor);
+    ASSERT(constructData.type != CallData::Type::None);
 
     MarkedArgumentBuffer args;
     args.append(source ? toJSNewlyCreated(&lexicalGlobalObject, &globalObject, source.releaseNonNull()) : JSC::jsUndefined());
     ASSERT(!args.hasOverflowed());
 
-    auto newReadableStream = jsDynamicCast<JSReadableStream*>(vm, JSC::construct(&lexicalGlobalObject, constructor, constructType, constructData, args));
+    auto newReadableStream = jsDynamicCast<JSReadableStream*>(vm, JSC::construct(&lexicalGlobalObject, constructor, constructData, args));
     scope.assertNoException();
 
     return create(globalObject, *newReadableStream);
@@ -64,10 +63,9 @@ static inline JSC::JSValue callFunction(JSC::JSGlobalObject& lexicalGlobalObject
 {
     VM& vm = lexicalGlobalObject.vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
-    JSC::CallData callData;
-    auto callType = JSC::getCallData(vm, jsFunction, callData);
-    ASSERT(callType != JSC::CallType::None);
-    auto result = call(&lexicalGlobalObject, jsFunction, callType, callData, thisValue, arguments);
+    auto callData = JSC::getCallData(vm, jsFunction);
+    ASSERT(callData.type != JSC::CallData::Type::None);
+    auto result = call(&lexicalGlobalObject, jsFunction, callData, thisValue, arguments);
     scope.assertNoException();
     return result;
 }
@@ -80,7 +78,7 @@ void ReadableStream::pipeTo(ReadableStreamSink& sink)
     const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().readableStreamPipeToPrivateName();
 
     auto readableStreamPipeTo = m_globalObject->get(&lexicalGlobalObject, privateName);
-    ASSERT(readableStreamPipeTo.isFunction(lexicalGlobalObject.vm()));
+    ASSERT(readableStreamPipeTo.isCallable(lexicalGlobalObject.vm()));
 
     MarkedArgumentBuffer arguments;
     arguments.append(readableStream());
@@ -96,7 +94,7 @@ std::pair<Ref<ReadableStream>, Ref<ReadableStream>> ReadableStream::tee()
     const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().readableStreamTeePrivateName();
 
     auto readableStreamTee = m_globalObject->get(&lexicalGlobalObject, privateName);
-    ASSERT(readableStreamTee.isFunction(lexicalGlobalObject.vm()));
+    ASSERT(readableStreamTee.isCallable(lexicalGlobalObject.vm()));
 
     MarkedArgumentBuffer arguments;
     arguments.append(readableStream());
@@ -120,15 +118,14 @@ void ReadableStream::lock()
 
     auto* constructor = JSC::asObject(m_globalObject->get(&lexicalGlobalObject, clientData.builtinNames().ReadableStreamDefaultReaderPrivateName()));
 
-    ConstructData constructData;
-    ConstructType constructType = constructor->methodTable(vm)->getConstructData(constructor, constructData);
-    ASSERT(constructType != ConstructType::None);
+    auto constructData = getConstructData(vm, constructor);
+    ASSERT(constructData.type != CallData::Type::None);
 
     MarkedArgumentBuffer args;
     args.append(readableStream());
     ASSERT(!args.hasOverflowed());
 
-    JSC::construct(&lexicalGlobalObject, constructor, constructType, constructData, args);
+    JSC::construct(&lexicalGlobalObject, constructor, constructData, args);
     scope.assertNoException();
 }
 

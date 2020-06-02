@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
 #include "config.h"
 #include "SlotVisitor.h"
 
-#include "BlockDirectoryInlines.h"
-#include "CPU.h"
 #include "ConservativeRoots.h"
 #include "GCSegmentedArrayInlines.h"
 #include "HeapAnalyzer.h"
@@ -35,15 +33,11 @@
 #include "HeapProfiler.h"
 #include "IntegrityInlines.h"
 #include "JSArray.h"
-#include "JSDestructibleObject.h"
-#include "JSObject.h"
+#include "JSCellInlines.h"
 #include "JSString.h"
-#include "JSCInlines.h"
-#include "MarkedBlockInlines.h"
 #include "MarkingConstraintSolver.h"
 #include "SlotVisitorInlines.h"
 #include "StopIfNecessaryTimer.h"
-#include "SuperSampler.h"
 #include "VM.h"
 #include <wtf/ListDump.h>
 #include <wtf/Lock.h>
@@ -200,11 +194,8 @@ void SlotVisitor::appendJSCellOrAuxiliary(HeapCell* heapCell)
         if (isNuked(structureID))
             die("GC scan found object in bad state: structureID is nuked!\n");
         
-#if USE(JSVALUE64)
         // This detects the worst of the badness.
-        if (!heap()->structureIDTable().isValid(structureID))
-            die("GC scan found corrupt object: structureID is invalid!\n");
-#endif
+        Integrity::auditStructureID(heap()->structureIDTable(), structureID);
     };
     
     // In debug mode, we validate before marking since this makes it clearer what the problem

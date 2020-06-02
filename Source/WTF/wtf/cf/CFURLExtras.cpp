@@ -31,21 +31,9 @@
 
 namespace WTF {
 
-RetainPtr<CFURLRef> createCFURLFromBuffer(const char* data, size_t size, CFURLRef baseURL)
-{
-    // NOTE: We use UTF-8 here since this encoding is used when computing strings when returning URL components
-    // (e.g calls to NSURL -path). However, this function is not tolerant of illegal UTF-8 sequences, which
-    // could either be a malformed string or bytes in a different encoding, like Shift-JIS, so we fall back
-    // onto using ISO Latin-1 in those cases.
-    RetainPtr<CFURLRef> result = adoptCF(CFURLCreateAbsoluteURLWithBytes(0, reinterpret_cast<const UInt8*>(data), size, kCFStringEncodingUTF8, baseURL, true));
-    if (!result)
-        result = adoptCF(CFURLCreateAbsoluteURLWithBytes(0, reinterpret_cast<const UInt8*>(data), size, kCFStringEncodingISOLatin1, baseURL, true));
-    return result;
-}
-
 void getURLBytes(CFURLRef url, URLCharBuffer& result)
 {
-    CFIndex bytesLength = CFURLGetBytes(url, 0, 0);
+    CFIndex bytesLength = CFURLGetBytes(url, nullptr, 0);
     result.resize(bytesLength);
     CFIndex finalLength = CFURLGetBytes(url, reinterpret_cast<UInt8*>(result.data()), bytesLength);
     ASSERT_UNUSED(finalLength, finalLength == bytesLength);
@@ -53,7 +41,7 @@ void getURLBytes(CFURLRef url, URLCharBuffer& result)
 
 void getURLBytes(CFURLRef url, CString& result)
 {
-    CFIndex bytesLength = CFURLGetBytes(url, 0, 0);
+    CFIndex bytesLength = CFURLGetBytes(url, nullptr, 0);
     char* bytes;
     result = CString::newUninitialized(bytesLength, bytes);
     CFIndex finalLength = CFURLGetBytes(url, reinterpret_cast<UInt8*>(bytes), bytesLength);
@@ -64,7 +52,7 @@ bool isCFURLSameOrigin(CFURLRef cfURL, const URL& url)
 {
     ASSERT(url.protocolIsInHTTPFamily());
 
-    if (url.hasUsername() || url.hasPassword())
+    if (url.hasCredentials())
         return protocolHostAndPortAreEqual(url, URL { cfURL });
 
     URLCharBuffer bytes;

@@ -471,6 +471,10 @@ textAutosizingUsesIdempotentMode:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
   conditional: TEXT_AUTOSIZING
+idempotentModeAutosizingOnlyHonorsPercentages:
+  initial: false
+  conditional: TEXT_AUTOSIZING
+  # This is only set before the main frame load, so there's no need to specify setNeedsRecalcStyleInAllFrames.
 
 subpixelAntialiasedLayerTextEnabled:
   initial: false
@@ -541,7 +545,7 @@ useImageDocumentForSubframePDF:
   initial: false
 dataDetectorTypes:
   type: DataDetectorTypes
-  initial: DataDetectorTypeNone
+  initial: 
   conditional: DATA_DETECTION
 
 # Allow SourceBuffers to store up to 304MB each, enough for approximately five minutes

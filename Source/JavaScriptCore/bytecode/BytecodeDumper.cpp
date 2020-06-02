@@ -27,19 +27,10 @@
 #include "config.h"
 #include "BytecodeDumper.h"
 
-#include "ArithProfile.h"
-#include "B3Type.h"
 #include "BytecodeGenerator.h"
 #include "BytecodeStructs.h"
-#include "CallLinkStatus.h"
 #include "CodeBlock.h"
-#include "Error.h"
-#include "HeapInlines.h"
-#include "InterpreterInlines.h"
-#include "PolymorphicAccess.h"
-#include "PutByIdFlags.h"
-#include "StructureInlines.h"
-#include "ToThisStatus.h"
+#include "JSCJSValueInlines.h"
 #include "UnlinkedCodeBlockGenerator.h"
 #include "UnlinkedMetadataTableInlines.h"
 #include "WasmFunctionCodeBlock.h"
@@ -49,11 +40,6 @@
 #include "WasmSignatureInlines.h"
 
 namespace JSC {
-
-static ALWAYS_INLINE bool isConstantRegisterIndex(int index)
-{
-    return index >= FirstConstantRegisterIndex;
-}
 
 void BytecodeDumperBase::printLocationAndOp(InstructionStream::Offset location, const char* op)
 {

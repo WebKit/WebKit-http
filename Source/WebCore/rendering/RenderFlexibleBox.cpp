@@ -467,9 +467,10 @@ LayoutUnit RenderFlexibleBox::childIntrinsicLogicalWidth(const RenderBox& child)
     // This should only be called if the logical width is the cross size
     ASSERT(hasOrthogonalFlow(child));
     // If our height is auto, make sure that our returned height is unaffected by
-    // earlier layouts by returning the max preferred logical width
+    // earlier layouts by returning the shrink-to-fit size.
     if (!crossAxisLengthIsDefinite(child, child.style().logicalWidth()))
-        return child.maxPreferredLogicalWidth();
+        return std::min(child.maxPreferredLogicalWidth(), std::max(child.minPreferredLogicalWidth(), contentLogicalWidth()));
+
     return child.logicalWidth();
 }
 
@@ -766,6 +767,10 @@ bool RenderFlexibleBox::mainAxisLengthIsDefinite(const RenderBox& child, const L
         if (!isColumnFlow() || m_hasDefiniteHeight == SizeDefiniteness::Definite)
             return true;
         if (m_hasDefiniteHeight == SizeDefiniteness::Indefinite)
+            return false;
+        // Do not cache the definite height state when the child is perpendicular.
+        // The height of a perpendicular child is resolved against the containing block's width which is not the main axis.
+        if (child.isHorizontalWritingMode() != isHorizontalWritingMode())
             return false;
         bool definite = child.computePercentageLogicalHeight(flexBasis) != WTF::nullopt;
         if (m_inLayout) {
@@ -1139,21 +1144,12 @@ Optional<LayoutUnit> RenderFlexibleBox::crossSizeForPercentageResolution(const R
 
 Optional<LayoutUnit> RenderFlexibleBox::mainSizeForPercentageResolution(const RenderBox& child)
 {
-    // This function implements section 9.8. Definite and Indefinite Sizes, case
-    // 2) of the flexbox spec.
-    // We need to check for the flexbox to have a definite main size, and for the
-    // flex item to have a definite flex basis.
-    const Length& flexBasis = flexBasisForChild(child);
-    if (!mainAxisLengthIsDefinite(child, flexBasis))
+    // This function implements section 9.8. Definite and Indefinite Sizes, case 2) of the flexbox spec.
+    // If the flex container has a definite main size the flex item post-flexing main size is also treated
+    // as definite. We make up a percentage to check whether we have a definite size.
+    if (!mainAxisLengthIsDefinite(child, Length(0, Percent)))
         return WTF::nullopt;
-    if (!flexBasis.isPercentOrCalculated()) {
-        // If flex basis had a percentage, our size is guaranteed to be definite or
-        // the flex item's size could not be definite. Otherwise, we make up a
-        // percentage to check whether we have a definite size.
-        if (!mainAxisLengthIsDefinite(child, Length(0, Percent)))
-            return WTF::nullopt;
-    }
-    
+
     if (hasOrthogonalFlow(child))
         return child.hasOverrideContentLogicalHeight() ? Optional<LayoutUnit>(child.overrideContentLogicalHeight()) : WTF::nullopt;
     return child.hasOverrideContentLogicalWidth() ? Optional<LayoutUnit>(child.overrideContentLogicalWidth()) : WTF::nullopt;

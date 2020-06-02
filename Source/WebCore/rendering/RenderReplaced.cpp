@@ -141,15 +141,10 @@ bool RenderReplaced::shouldDrawSelectionTint() const
 
 inline static bool draggedContentContainsReplacedElement(const Vector<RenderedDocumentMarker*>& markers, const Element& element)
 {
-    if (markers.isEmpty())
-        return false;
-
     for (auto* marker : markers) {
-        auto& draggedContentData = WTF::get<DocumentMarker::DraggedContentData>(marker->data());
-        if (draggedContentData.targetNode == &element)
+        if (WTF::get<RefPtr<Node>>(marker->data()) == &element)
             return true;
     }
-
     return false;
 }
 
@@ -169,9 +164,7 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
         return;
     }
 
-#ifndef NDEBUG
-    SetLayoutNeededForbiddenScope scope(this);
-#endif
+    SetLayoutNeededForbiddenScope scope(*this);
 
     GraphicsContextStateSaver savedGraphicsContext(paintInfo.context(), false);
     if (element() && element()->parentOrShadowHostElement()) {
@@ -433,6 +426,13 @@ LayoutRect RenderReplaced::replacedContentRect(const LayoutSize& intrinsicSize) 
     return finalRect;
 }
 
+RoundedRect RenderReplaced::roundedContentBoxRect() const
+{
+    return style().getRoundedInnerBorderFor(borderBoxRect(),
+        borderTop() + paddingTop(), borderBottom() + paddingBottom(),
+        borderLeft() + paddingLeft(), borderRight() + paddingRight());
+}
+
 void RenderReplaced::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio) const
 {
     // If there's an embeddedContentBox() of a remote, referenced document available, this code-path should never be used.
@@ -627,7 +627,7 @@ VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point, const
     InlineBox* box = inlineBoxWrapper();
     const RootInlineBox* rootBox = box ? &box->root() : 0;
     
-    LayoutUnit top = rootBox ? rootBox->selectionTop() : logicalTop();
+    LayoutUnit top = rootBox ? rootBox->selectionTop(RootInlineBox::ForHitTesting::Yes) : logicalTop();
     LayoutUnit bottom = rootBox ? rootBox->selectionBottom() : logicalBottom();
     
     LayoutUnit blockDirectionPosition = isHorizontalWritingMode() ? point.y() + y() : point.x() + x();

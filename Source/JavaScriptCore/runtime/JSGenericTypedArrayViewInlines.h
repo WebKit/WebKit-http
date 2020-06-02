@@ -421,8 +421,11 @@ bool JSGenericTypedArrayView<Adaptor>::defineOwnProperty(
         if (descriptor.configurable())
             return throwTypeErrorIfNeeded("Attempting to configure non-configurable property on a typed array at index: ");
 
-        if (!descriptor.enumerable() || !descriptor.writable())
-            return throwTypeErrorIfNeeded("Attempting to store non-enumerable or non-writable property on a typed array at index: ");
+        if (descriptor.enumerablePresent() && !descriptor.enumerable())
+            return throwTypeErrorIfNeeded("Attempting to store non-enumerable property on a typed array at index: ");
+
+        if (descriptor.writablePresent() && !descriptor.writable())
+            return throwTypeErrorIfNeeded("Attempting to store non-writable property on a typed array at index: ");
 
         if (descriptor.value())
             RELEASE_AND_RETURN(scope, thisObject->putByIndex(thisObject, globalObject, index.value(), descriptor.value(), shouldThrow));
@@ -444,11 +447,11 @@ bool JSGenericTypedArrayView<Adaptor>::deleteProperty(
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
 
-    if (thisObject->isNeutered())
-        return typeError(globalObject, scope, true, typedArrayBufferHasBeenDetachedErrorMessage);
-
-    if (parseIndex(propertyName))
+    if (parseIndex(propertyName)) {
+        if (thisObject->isNeutered())
+            return typeError(globalObject, scope, true, typedArrayBufferHasBeenDetachedErrorMessage);
         return false;
+    }
     
     return Base::deleteProperty(thisObject, globalObject, propertyName, slot);
 }

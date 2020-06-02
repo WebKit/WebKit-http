@@ -793,11 +793,13 @@ void InspectorInstrumentation::frameClearedScheduledNavigationImpl(Instrumenting
         inspectorPageAgent->frameClearedScheduledNavigation(frame);
 }
 
+#if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
 void InspectorInstrumentation::defaultAppearanceDidChangeImpl(InstrumentingAgents& instrumentingAgents, bool useDarkAppearance)
 {
     if (InspectorPageAgent* inspectorPageAgent = instrumentingAgents.inspectorPageAgent())
         inspectorPageAgent->defaultAppearanceDidChange(useDarkAppearance);
 }
+#endif
 
 void InspectorInstrumentation::willDestroyCachedResourceImpl(CachedResource& cachedResource)
 {
@@ -979,13 +981,13 @@ bool InspectorInstrumentation::shouldWaitForDebuggerOnStartImpl(InstrumentingAge
     return false;
 }
 
-void InspectorInstrumentation::workerStartedImpl(InstrumentingAgents& instrumentingAgents, WorkerInspectorProxy* proxy, const URL& url)
+void InspectorInstrumentation::workerStartedImpl(InstrumentingAgents& instrumentingAgents, WorkerInspectorProxy& proxy)
 {
     if (InspectorWorkerAgent* workerAgent = instrumentingAgents.inspectorWorkerAgent())
-        workerAgent->workerStarted(proxy, url);
+        workerAgent->workerStarted(proxy);
 }
 
-void InspectorInstrumentation::workerTerminatedImpl(InstrumentingAgents& instrumentingAgents, WorkerInspectorProxy* proxy)
+void InspectorInstrumentation::workerTerminatedImpl(InstrumentingAgents& instrumentingAgents, WorkerInspectorProxy& proxy)
 {
     if (InspectorWorkerAgent* workerAgent = instrumentingAgents.inspectorWorkerAgent())
         workerAgent->workerTerminated(proxy);
@@ -1138,6 +1140,12 @@ void InspectorInstrumentation::willApplyKeyframeEffectImpl(InstrumentingAgents& 
 {
     if (auto* animationAgent = instrumentingAgents.trackingInspectorAnimationAgent())
         animationAgent->willApplyKeyframeEffect(target, effect, computedTiming);
+}
+
+void InspectorInstrumentation::didChangeWebAnimationNameImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
+{
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->didChangeWebAnimationName(animation);
 }
 
 void InspectorInstrumentation::didSetWebAnimationEffectImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)

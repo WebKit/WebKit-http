@@ -27,6 +27,7 @@
 #include <wtf/CompletionHandler.h>
 #include <wtf/Forward.h>
 #include "Exception.h"
+#include "RealtimeMediaSource.h"
 
 #if ENABLE(MEDIA_STREAM)
 
@@ -43,28 +44,69 @@ class MediaStreamTrackPrivate;
 class PlatformAudioData;
 class SharedBuffer;
 
-class MediaRecorderPrivate {
+class MediaRecorderPrivate
+    : public RealtimeMediaSource::AudioSampleObserver
+    , public RealtimeMediaSource::VideoSampleObserver {
 public:
-    virtual ~MediaRecorderPrivate() = default;
+    ~MediaRecorderPrivate();
 
     struct AudioVideoSelectedTracks {
-        const MediaStreamTrackPrivate* audioTrack { nullptr };
-        const MediaStreamTrackPrivate* videoTrack { nullptr };
+        MediaStreamTrackPrivate* audioTrack { nullptr };
+        MediaStreamTrackPrivate* videoTrack { nullptr };
     };
-    WEBCORE_EXPORT static AudioVideoSelectedTracks selectTracks(const MediaStreamPrivate&);
+    WEBCORE_EXPORT static AudioVideoSelectedTracks selectTracks(MediaStreamPrivate&);
 
-    virtual void sampleBufferUpdated(const MediaStreamTrackPrivate&, MediaSample&) = 0;
-    virtual void audioSamplesAvailable(const MediaStreamTrackPrivate&, const WTF::MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) = 0;
-
-    virtual void fetchData(CompletionHandler<void(RefPtr<SharedBuffer>&&, const String& mimeType)>&&) = 0;
-    virtual void stopRecording() { };
+    using FetchDataCallback = CompletionHandler<void(RefPtr<SharedBuffer>&&, const String& mimeType)>;
+    virtual void fetchData(FetchDataCallback&&) = 0;
+    virtual void stopRecording() = 0;
 
     using ErrorCallback = Function<void(Optional<Exception>&&)>;
     void setErrorCallback(ErrorCallback&& errorCallback) { m_errorCallback = WTFMove(errorCallback); }
 
 protected:
+    void setAudioSource(RefPtr<RealtimeMediaSource>&&);
+    void setVideoSource(RefPtr<RealtimeMediaSource>&&);
+
+protected:
     ErrorCallback m_errorCallback;
+
+private:
+    RefPtr<RealtimeMediaSource> m_audioSource;
+    RefPtr<RealtimeMediaSource> m_videoSource;
 };
+
+inline void MediaRecorderPrivate::setAudioSource(RefPtr<RealtimeMediaSource>&& audioSource)
+{
+    if (m_audioSource)
+        m_audioSource->removeAudioSampleObserver(*this);
+
+    m_audioSource = WTFMove(audioSource);
+
+    if (m_audioSource)
+        m_audioSource->addAudioSampleObserver(*this);
+}
+
+inline void MediaRecorderPrivate::setVideoSource(RefPtr<RealtimeMediaSource>&& videoSource)
+{
+    if (m_videoSource)
+        m_videoSource->removeVideoSampleObserver(*this);
+
+    m_videoSource = WTFMove(videoSource);
+
+    if (m_videoSource)
+        m_videoSource->addVideoSampleObserver(*this);
+}
+
+inline MediaRecorderPrivate::~MediaRecorderPrivate()
+{
+    // Subclasses should stop observing sonner than here. Otherwise they might be called from a background thread while half destroyed
+    ASSERT(!m_audioSource);
+    ASSERT(!m_videoSource);
+    if (m_audioSource)
+        m_audioSource->removeAudioSampleObserver(*this);
+    if (m_videoSource)
+        m_videoSource->removeVideoSampleObserver(*this);
+}
 
 } // namespace WebCore
 

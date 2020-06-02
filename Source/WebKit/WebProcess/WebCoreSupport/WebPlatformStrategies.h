@@ -75,8 +75,12 @@ private:
     String urlStringSuitableForLoading(const String& pasteboardName, String& title) override;
 #endif
 #if PLATFORM(GTK)
-    void writeToClipboard(const String& pasteboardName, const WebCore::SelectionData&) override;
-    Ref<WebCore::SelectionData> readFromClipboard(const String& pasteboardName) override;
+    Vector<String> types(const String& pasteboardName) override;
+    String readTextFromClipboard(const String& pasteboardName) override;
+    Vector<String> readFilePathsFromClipboard(const String& pasteboardName) override;
+    RefPtr<WebCore::SharedBuffer> readBufferFromClipboard(const String& pasteboardName, const String& pasteboardType) override;
+    void writeToClipboard(const String& pasteboardName, WebCore::SelectionData&&) override;
+    void clearClipboard(const String& pasteboardName) override;
 #endif
 #if USE(LIBWPE)
     void getTypes(Vector<String>& types) override;

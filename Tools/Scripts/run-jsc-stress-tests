@@ -50,6 +50,7 @@ SCRIPTS_PATH = THIS_SCRIPT_PATH.dirname
 WEBKIT_PATH = SCRIPTS_PATH.dirname.dirname
 LAYOUTTESTS_PATH = WEBKIT_PATH + "LayoutTests"
 WASMTESTS_PATH = WEBKIT_PATH + "JSTests/wasm"
+JETSTREAM2_PATH = WEBKIT_PATH + "PerformanceTests/JetStream2"
 CHAKRATESTS_PATH = WEBKIT_PATH + "JSTests/ChakraCore/test"
 raise unless SCRIPTS_PATH.basename.to_s == "Scripts"
 raise unless SCRIPTS_PATH.dirname.basename.to_s == "Tools"
@@ -120,6 +121,7 @@ $envVars = []
 $mode = "full"
 $buildType = "release"
 $forceCollectContinuously = false
+$reportExecutionTime = false
 
 def usage
     puts "run-jsc-stress-tests -j <shell path> <collections path> [<collections path> ...]"
@@ -149,6 +151,7 @@ def usage
     puts "                            \"ruby\" to use ruby scripts for systems without a unix shell."
     puts "--remote                    Specify a remote host on which to run tests from command line argument."
     puts "--remote-config-file        Specify a remote host on which to run tests from JSON file."
+    puts "--report-execution-time     Print execution time for each test."
     puts "--child-processes    (-c)   Specify the number of child processes."
     puts "--filter                    Only run tests whose name matches the given regular expression."
     puts "--help               (-h)   Print this message."
@@ -184,6 +187,7 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
                ['--test-writer', GetoptLong::REQUIRED_ARGUMENT],
                ['--remote', GetoptLong::REQUIRED_ARGUMENT],
                ['--remote-config-file', GetoptLong::REQUIRED_ARGUMENT],
+               ['--report-execution-time', GetoptLong::NO_ARGUMENT],
                ['--model', GetoptLong::REQUIRED_ARGUMENT],
                ['--child-processes', '-c', GetoptLong::REQUIRED_ARGUMENT],
                ['--filter', GetoptLong::REQUIRED_ARGUMENT],
@@ -235,6 +239,8 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
         $remoteHosts << RemoteHost.new("default-#{$remoteHosts.length}", uri.user, uri.host, uri.port)
     when '--remote-config-file'
         $remoteConfigFile = arg
+    when '--report-execution-time'
+        $reportExecutionTime = true
     when '--child-processes'
         $numChildProcesses = arg.to_i
     when '--filter'
@@ -367,24 +373,38 @@ end
 
 def determineArchitectureFromELFBinary
     f = File.open($jscPath.to_s)
-    data = f.read(19)
+    data = f.read(20)
 
     if !(data[0,4] == "\x7F\x45\x4C\x46")
         $stderr.puts "Warning: Missing ELF magic in file #{Shellwords.shellescape($jscPath.to_s)}"
         return nil
     end
 
-    code = data[18].ord
+    # MIPS and PowerPC may be either big- or little-endian. S390 (which includes
+    # S390x) is big-endian. The rest are little-endian.
+    code = data[18, 20]
     case code
-    when 3
+    when "\x03\0"
         "x86"
-    when 8
+    when "\x08\0"
         "mips"
-    when 62
-        "x86-64"
-    when 40
+    when "\0\x08"
+        "mips"
+    when "\x14\0"
+        "powerpc"
+    when "\0\x14"
+        "powerpc"
+    when "\x15\0"
+        "powerpc64"
+    when "\0\x15"
+        "powerpc64"
+    when "\0\x16"
+        "s390"
+    when "\x28\0"
         "arm"
-    when 183
+    when "\x3E\0"
+        "x86-64"
+    when "\xB7\0"
         "arm64"
     else
         $stderr.puts "Warning: unable to determine architecture from code: #{code}"
@@ -669,7 +689,7 @@ def runNoCJITValidate(*optionalTestSpecificOptions)
 end
 
 def runNoCJITValidatePhases(*optionalTestSpecificOptions)
-    run("no-cjit-validate-phases", "--validateBytecode=true", "--validateGraphAtEachPhase=true", "--useSourceProviderCache=false", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("no-cjit-validate-phases", "--validateBytecode=true", "--validateGraphAtEachPhase=true", "--useSourceProviderCache=false", "--useRandomizingExecutableIslandAllocation=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runNoCJITCollectContinuously(*optionalTestSpecificOptions)
@@ -701,12 +721,28 @@ def runBigIntEnabled(*optionalTestSpecificOptions)
     run("big-int-enabled", "--useBigInt=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
 end
 
+def runBigIntEnabledNoJIT(*optionalTestSpecificOptions)
+    run("big-int-enabled-nojit", "--useBigInt=true", "--useJIT=false", *optionalTestSpecificOptions)
+end
+
+def runBigIntEnabledBaseline(*optionalTestSpecificOptions)
+    run("big-int-enabled-baseline", "--useBigInt=true", "--useDFGJIT=0", *optionalTestSpecificOptions)
+end
+
+def runIntlLocaleEnabled(*optionalTestSpecificOptions)
+    run("intl-locale-enabled", "--useIntlLocale=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runIntlRelativeTimeFormatEnabled(*optionalTestSpecificOptions)
+    run("intl-relativetimeformat-enabled", "--useIntlRelativeTimeFormat=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
+end
+
 def runFTLNoCJIT(*optionalTestSpecificOptions)
     run("misc-ftl-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITB3O0(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-b3o0", "--useArrayAllocationProfiling=false", "--forcePolyProto=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O0_OPTIONS + FORCE_LLINT_EXIT_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-b3o0", "--useArrayAllocationProfiling=false", "--forcePolyProto=true", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O0_OPTIONS + FORCE_LLINT_EXIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITValidate(*optionalTestSpecificOptions)
@@ -734,7 +770,7 @@ def runDFGEagerNoCJITValidate(*optionalTestSpecificOptions)
 end
 
 def runFTLEager(*optionalTestSpecificOptions)
-    run("ftl-eager", "--airForceBriggsAllocator=true", "--forcePolyProto=true", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-eager", "--airForceBriggsAllocator=true", "--useRandomizingExecutableIslandAllocation=true", "--forcePolyProto=true", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEagerWatchdog(*optionalTestSpecificOptions)
@@ -775,7 +811,7 @@ def runNoCJIT(*optionalTestSpecificOptions)
 end
 
 def runEagerJettisonNoCJIT(*optionalTestSpecificOptions)
-    run("eager-jettison-no-cjit", "--forceCodeBlockToJettisonDueToOldAge=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("eager-jettison-no-cjit", "--useRandomizingExecutableIslandAllocation=true", "--forceCodeBlockToJettisonDueToOldAge=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runShadowChicken(*optionalTestSpecificOptions)
@@ -784,6 +820,10 @@ end
 
 def runMiniMode(*optionalTestSpecificOptions)
     run("mini-mode", "--forceMiniVMMode=true", *optionalTestSpecificOptions)
+end
+
+def runLogicalAssignmentOperatorsEnabled(*optionalTestSpecificOptions)
+    run("logical-assignment-operators-enabled", "--useLogicalAssignmentOperators=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
 end
 
 def defaultRun
@@ -939,7 +979,7 @@ def runProfiler
 end
 
 def runExceptionFuzz
-    subCommand = escapeAll([pathToVM.to_s, "--useDollarVM=true", $benchmark.to_s])
+    subCommand = escapeAll([pathToVM.to_s, "--useDollarVM=true", "--useExceptionFuzz=true", $benchmark.to_s])
     addRunCommand("exception-fuzz", ["perl", (pathToHelpers + "js-exception-fuzz").to_s, subCommand], silentOutputHandler, simpleErrorHandler)
 end
 
@@ -1083,13 +1123,34 @@ def runWebAssembly
     run("default-wasm", "-m", *FTL_OPTIONS)
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-        run("wasm-eager", "-m", *(FTL_OPTIONS + EAGER_OPTIONS))
-        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-eager", "-m", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + EAGER_OPTIONS))
+        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
         run("wasm-slow-memory", "-m", "--useWebAssemblyFastMemory=false", *FTL_OPTIONS)
         run("wasm-b3", "-m", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
-        run("wasm-air", "-m", "--useWasmLLInt=false", *FTL_OPTIONS)
+        run("wasm-air", "-m", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
         run("wasm-collect-continuously", "-m", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
+    end
+end
+
+def runWebAssemblyJetStream2
+    return if !$jitTests
+    return if !$isFTLPlatform
+
+    prepareExtraAbsoluteFiles(JETSTREAM2_PATH, ["JetStreamDriver.js"])
+    prepareExtraRelativeFilesWithBaseDirectory(Dir[JETSTREAM2_PATH + "wasm" + "*.js"].map { |f| "wasm/" + File.basename(f) }, $collection.dirname, $extraFilesBaseDir.dirname)
+    prepareExtraRelativeFilesWithBaseDirectory(Dir[JETSTREAM2_PATH + "wasm" + "*.wasm"].map { |f| "wasm/" + File.basename(f) }, $collection.dirname, $extraFilesBaseDir.dirname)
+
+    run("default-wasm", *FTL_OPTIONS)
+    if $mode != "quick"
+        run("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + EAGER_OPTIONS))
+        run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+        run("wasm-slow-memory", "--useWebAssemblyFastMemory=false", *FTL_OPTIONS)
+        run("wasm-b3", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
+        run("wasm-air", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
+        run("wasm-collect-continuously", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
 
@@ -1103,11 +1164,11 @@ def runWebAssemblySuite(*optionalTestSpecificOptions)
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
         run("wasm-eager", "-m", *(FTL_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
-        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
+        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-slow-memory", "-m", "--useWebAssemblyFastMemory=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-b3", "-m", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
-        run("wasm-air", "-m", "--useWasmLLInt=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
+        run("wasm-air", "-m", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-collect-continuously", "-m", "--collectContinuously=true", *(FTL_OPTIONS + optionalTestSpecificOptions)) if shouldCollectContinuously?
     end
 end
@@ -1133,11 +1194,11 @@ def runWebAssemblyWithHarness(*optionalTestSpecificOptions)
     if $mode != "quick"
         runHarnessTest("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
         runHarnessTest("wasm-eager", *(FTL_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
-        runHarnessTest("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
+        runHarnessTest("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
         runHarnessTest("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
         runHarnessTest("wasm-slow-memory", "--useWebAssemblyFastMemory=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
         runHarnessTest("wasm-b3", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
-        runHarnessTest("wasm-no-air", "--useWasmLLInt=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
+        runHarnessTest("wasm-no-air", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
         runHarnessTest("wasm-collect-continuously", "--collectContinuously=true", *(FTL_OPTIONS + optionalTestSpecificOptions)) if shouldCollectContinuously?
     end
 end
@@ -1154,10 +1215,10 @@ def runWebAssemblyEmscripten(mode)
     run("default-wasm", *FTL_OPTIONS)
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-        run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
         run("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
         run("wasm-b3", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
-        run("wasm-air", "--useWasmLLInt=false", *FTL_OPTIONS)
+        run("wasm-air", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
         run("wasm-collect-continuously", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
@@ -1180,10 +1241,10 @@ def runWebAssemblySpecTest(mode)
     runWithOutputHandler("default-wasm", noisyOutputHandler, "../spec-harness.js", *FTL_OPTIONS)
     if $mode != "quick"
       runWithOutputHandler("wasm-no-cjit-yes-tls-context", noisyOutputHandler, "../spec-harness.js",  "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-      runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
       runWithOutputHandler("wasm-no-tls-context", noisyOutputHandler, "../spec-harness.js", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
       runWithOutputHandler("wasm-b3", noisyOutputHandler, "../spec-harness.js", "--useWasmLLInt=false", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
-      runWithOutputHandler("wasm-air", noisyOutputHandler, "../spec-harness.js", "--useWasmLLInt=false", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-air", noisyOutputHandler, "../spec-harness.js", "--useWasmLLInt=false", "--useRandomizingExecutableIslandAllocation=true", *FTL_OPTIONS)
       runWithOutputHandler("wasm-collect-continuously", noisyOutputHandler, "../spec-harness.js", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
@@ -1352,15 +1413,19 @@ def noNoLLIntRunLayoutTest
     end
 end
 
-def prepareExtraRelativeFiles(extraFiles, destination)
+def prepareExtraRelativeFilesWithBaseDirectory(extraFiles, destination, baseDirectory)
     Dir.chdir($outputDir) {
         extraFiles.each {
             | file |
             dest = destination + file
             FileUtils.mkdir_p(dest.dirname)
-            FileUtils.cp $extraFilesBaseDir + file, dest
+            FileUtils.cp baseDirectory + file, dest
         }
     }
+end
+
+def prepareExtraRelativeFiles(extraFiles, destination)
+    prepareExtraRelativeFilesWithBaseDirectory(extraFiles, destination, $extraFilesBaseDir)
 end
 
 def baseDirForCollection(collectionName)
@@ -1384,7 +1449,7 @@ def runComplexTest(before, after, additionalEnv, *options)
     prepareExtraRelativeFiles(before.map{|v| (Pathname("..") + v).to_s}, $collection)
     prepareExtraRelativeFiles(after.map{|v| (Pathname("..") + v).to_s}, $collection)
     args = [pathToVM.to_s] + BASE_OPTIONS + $testSpecificRequiredOptions + options + before.map{|v| v.to_s} + [$benchmark.to_s] + after.map{|v| v.to_s}
-    addRunCommand("complex", args, silentOutputHandler, simpleErrorHandler, *additionalEnv)
+    addRunCommand("complex", args, noisyOutputHandler, simpleErrorHandler, *additionalEnv)
 end
 
 def runMozillaTest(kind, mode, extraFiles, *options)
@@ -2038,9 +2103,7 @@ end
 
 def detectFailures
     raise if $bundle
-
     failures = []
-    
     if $remote
         $remoteHosts.each_with_index {
             | host, remoteIndex |

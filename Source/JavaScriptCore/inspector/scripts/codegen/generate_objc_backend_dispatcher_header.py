@@ -81,7 +81,7 @@ class ObjCBackendDispatcherHeaderGenerator(ObjCGenerator):
         lines = []
         for domain in self.domains_to_generate():
             if self.commands_for_domain(domain):
-                lines.append('@protocol %s%sDomainHandler;' % (self.objc_prefix(), domain.domain_name))
+                lines.append(self.wrap_with_guard_for_condition(domain.condition, '@protocol %s%sDomainHandler;' % (self.objc_prefix(), domain.domain_name)))
         return '\n'.join(lines)
 
     def _generate_objc_handler_declarations_for_domain(self, domain):
@@ -99,7 +99,7 @@ class ObjCBackendDispatcherHeaderGenerator(ObjCGenerator):
             'objcPrefix': self.objc_prefix(),
         }
 
-        return self.wrap_with_guard_for_domain(domain, Template(ObjCTemplates.BackendDispatcherHeaderDomainHandlerObjCDeclaration).substitute(None, **handler_args))
+        return self.wrap_with_guard_for_condition(domain.condition, Template(ObjCTemplates.BackendDispatcherHeaderDomainHandlerObjCDeclaration).substitute(None, **handler_args))
 
     def _generate_objc_handler_declaration_for_command(self, command):
         lines = []
@@ -111,5 +111,5 @@ class ObjCBackendDispatcherHeaderGenerator(ObjCGenerator):
             'commandName': command.command_name,
             'parameters': ', '.join(parameters),
         }
-        lines.append('    virtual void %(commandName)s(%(parameters)s) override;' % command_args)
-        return '\n'.join(lines)
+        lines.append('    void %(commandName)s(%(parameters)s) final;' % command_args)
+        return self.wrap_with_guard_for_condition(command.condition, '\n'.join(lines))

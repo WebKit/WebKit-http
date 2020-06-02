@@ -159,18 +159,13 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
             target.DebuggerAgent.setPauseOnDebuggerStatements(!this._debuggerStatementsBreakpoint.disabled);
 
         target.DebuggerAgent.setPauseOnExceptions(this._breakOnExceptionsState);
-
-        // COMPATIBILITY (iOS 10): DebuggerAgent.setPauseOnAssertions did not exist yet.
-        if (target.hasCommand("Debugger.setPauseOnAssertions"))
-            target.DebuggerAgent.setPauseOnAssertions(!this._assertionFailuresBreakpoint.disabled);
+        target.DebuggerAgent.setPauseOnAssertions(!this._assertionFailuresBreakpoint.disabled);
 
         // COMPATIBILITY (iOS 13): DebuggerAgent.setPauseOnMicrotasks did not exist yet.
         if (target.hasCommand("Debugger.setPauseOnMicrotasks"))
             target.DebuggerAgent.setPauseOnMicrotasks(!this._allMicrotasksBreakpoint.disabled);
 
-        // COMPATIBILITY (iOS 10): Debugger.setAsyncStackTraceDepth did not exist yet.
-        if (target.hasCommand("Debugger.setAsyncStackTraceDepth"))
-            target.DebuggerAgent.setAsyncStackTraceDepth(this._asyncStackTraceDepthSetting.value);
+        target.DebuggerAgent.setAsyncStackTraceDepth(this._asyncStackTraceDepthSetting.value);
 
         // COMPATIBILITY (iOS 13): Debugger.setShouldBlackboxURL did not exist yet.
         if (target.hasCommand("Debugger.setShouldBlackboxURL")) {
@@ -568,6 +563,27 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         return Promise.all([managerResult, ...promises]);
     }
 
+    stepNext()
+    {
+        if (!this.paused)
+            return Promise.reject(new Error("Cannot step next because debugger is not paused."));
+
+        let listener = new WI.EventListener(this, true);
+
+        let managerResult = new Promise(function(resolve, reject) {
+            listener.connect(WI.debuggerManager, WI.DebuggerManager.Event.ActiveCallFrameDidChange, resolve);
+        });
+
+        let protocolResult = this._activeCallFrame.target.DebuggerAgent.stepNext()
+            .catch(function(error) {
+                listener.disconnect();
+                console.error("DebuggerManager.stepNext failed: ", error);
+                throw error;
+            });
+
+        return Promise.all([managerResult, protocolResult]);
+    }
+
     stepOver()
     {
         if (!this.paused)
@@ -835,17 +851,6 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
 
     debuggerDidResume(target)
     {
-        // COMPATIBILITY (iOS 10): Debugger.resumed event was ambiguous. When stepping
-        // we would receive a Debugger.resumed and we would not know if it really meant
-        // the backend resumed or would pause again due to a step. Legacy backends wait
-        // 50ms, and treat it as a real resume if we haven't paused in that time frame.
-        // This delay ensures the user interface does not flash between brief steps
-        // or successive breakpoints.
-        if (!target.hasCommand("Debugger.setPauseOnAssertions")) {
-            this._delayedResumeTimeout = setTimeout(this._didResumeInternal.bind(this, target), 50);
-            return;
-        }
-
         this._didResumeInternal(target);
     }
 
@@ -983,16 +988,9 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         case InspectorBackend.Enum.Debugger.ScopeType.GlobalLexicalEnvironment:
             type = WI.ScopeChainNode.Type.GlobalLexicalEnvironment;
             break;
-
-        // COMPATIBILITY (iOS 9): Debugger.ScopeType.Local used to be provided by the backend.
-        // Newer backends no longer send this enum value, it should be computed by the frontend.
-        // Map this to "Closure" type. The frontend can recalculate this when needed.
-        case InspectorBackend.Enum.Debugger.ScopeType.Local:
-            type = WI.ScopeChainNode.Type.Closure;
-            break;
-
         default:
             console.error("Unknown type: " + payload.type);
+            break;
         }
 
         let object = WI.RemoteObject.fromPayload(payload.object, target);

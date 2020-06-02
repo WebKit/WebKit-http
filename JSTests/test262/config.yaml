@@ -2,12 +2,15 @@
 ---
 flags:
   BigInt: useBigInt
+  Intl.Locale: useIntlLocale
+  Intl.RelativeTimeFormat: useIntlRelativeTimeFormat
   WeakRef: useWeakRefs
   class-fields-public: usePublicClassFields
 skip:
   features:
     - SharedArrayBuffer
     - Atomics
+    - Atomics.waitAsync
     # https://bugs.webkit.org/show_bug.cgi?id=174931
     - regexp-lookbehind
 
@@ -17,9 +20,9 @@ skip:
     - class-static-fields-private
     - class-static-methods-private
     - host-gc-required
+    # https://bugs.webkit.org/show_bug.cgi?id=202475
     - regexp-match-indices
     - top-level-await
-    - AggregateError
     - FinalizationRegistry
     - Intl.DateTimeFormat-datetimestyle
     - Intl.DateTimeFormat-dayPeriod
@@ -27,14 +30,9 @@ skip:
     - Intl.DateTimeFormat-fractionalSecondDigits
     - Intl.DisplayNames
     - Intl.ListFormat
-    - Intl.Locale
     - Intl.NumberFormat-unified
-    - Intl.RelativeTimeFormat
     - Intl.Segmenter
   paths:
-    # https://bugs.webkit.org/show_bug.cgi?id=192920
-    - test/intl402/NumberFormat/prototype/formatToParts
-
     - test/built-ins/DataView/prototype/getBigInt64
     - test/built-ins/DataView/prototype/getBigUint64
     - test/built-ins/DataView/prototype/setBigInt64
@@ -87,34 +85,11 @@ skip:
 
     # https://bugs.webkit.org/show_bug.cgi?id=186749
     - test/built-ins/RegExp/property-escapes/character-class.js
-    
-    # https://bugs.webkit.org/show_bug.cgi?id=185495
-    - test/built-ins/Array/prototype/slice/S15.4.4.10_A3_T1.js
-    - test/built-ins/Array/prototype/slice/S15.4.4.10_A3_T2.js
-    - test/built-ins/Array/prototype/slice/create-non-array-invalid-len.js
-    - test/built-ins/Array/prototype/slice/create-proxied-array-invalid-len.js
-    - test/built-ins/Array/prototype/splice/create-species-undef-invalid-len.js
-    - test/built-ins/Array/prototype/splice/create-non-array-invalid-len.js
-    - test/built-ins/Array/prototype/splice/create-species-undef-invalid-len.js
-    - test/built-ins/Array/prototype/splice/length-near-integer-limit-grow-array.js
-
-    # https://bugs.webkit.org/show_bug.cgi?id=185625
-    - test/built-ins/Array/prototype/indexOf/15.4.4.14-3-28.js
-    - test/built-ins/Array/prototype/indexOf/15.4.4.14-3-29.js
-
-    # https://bugs.webkit.org/show_bug.cgi?id=164456
-    - test/built-ins/Array/prototype/lastIndexOf/15.4.4.15-3-28.js
-    - test/built-ins/Array/prototype/pop/S15.4.4.6_A3_T2.js
-    - test/built-ins/Array/prototype/push/S15.4.4.7_A4_T1.js
-    - test/built-ins/Array/prototype/push/length-near-integer-limit.js
 
     # [[OwnPropertyKeys]] order with large integer index keys up to 2 ** 53 - 1
     # https://bugs.webkit.org/show_bug.cgi?id=186691
     - test/built-ins/Reflect/ownKeys/return-on-corresponding-order-large-index.js
 
-    # https://bugs.webkit.org/show_bug.cgi?id=192920
-    - test/intl402/PluralRules/prototype/resolvedOptions/order.js
-    - test/intl402/PluralRules/prototype/resolvedOptions/pluralCategories.js
 
     # https://bugs.webkit.org/show_bug.cgi?id=190800
     - test/built-ins/TypedArray/prototype/set/src-typedarray-big-throws.js
@@ -154,6 +129,11 @@ skip:
     # https://bugs.webkit.org/show_bug.cgi?id=208639
     - test/built-ins/Array/prototype/lastIndexOf/length-near-integer-limit.js
 
-    # https://bugs.webkit.org/show_bug.cgi?id=143511
-    - test/built-ins/JSON/stringify/replacer-function-stack-overflow.js
-    - test/built-ins/JSON/stringify/value-tojson-stack-overflow.js
+    # These tests require macOS system ICU to actually update its CLDR data >:(
+    # https://bugs.webkit.org/show_bug.cgi?id=209783
+    - test/intl402/DateTimeFormat/prototype/format/related-year-zh.js
+    - test/intl402/DateTimeFormat/prototype/formatToParts/related-year-zh.js
+
+    # requires ICU 65 (https://unicode-org.atlassian.net/browse/ICU-20654)
+    - test/intl402/RelativeTimeFormat/prototype/format/en-us-numeric-auto.js
+    - test/intl402/RelativeTimeFormat/prototype/formatToParts/en-us-numeric-auto.js

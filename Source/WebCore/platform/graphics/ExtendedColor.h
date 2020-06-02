@@ -25,42 +25,60 @@
 
 #pragma once
 
+#include "ColorComponents.h"
 #include "ColorSpace.h"
-
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class Color;
+
 class ExtendedColor : public RefCounted<ExtendedColor> {
 public:
-    static Ref<ExtendedColor> create(float red, float green, float blue, float alpha, ColorSpace = ColorSpace::SRGB);
+    WEBCORE_EXPORT static Ref<ExtendedColor> create(float c1, float c2, float c3, float alpha, ColorSpace);
 
-    float red() const { return m_red; }
-    float green() const { return m_green; }
-    float blue() const { return m_blue; }
-    float alpha() const { return m_alpha; }
+    float alpha() const { return m_components[3]; }
 
+    const ColorComponents<float>& components() const { return m_components; }
     ColorSpace colorSpace() const { return m_colorSpace; }
+
+    WEBCORE_EXPORT unsigned hash() const;
 
     WEBCORE_EXPORT String cssText() const;
 
+    Ref<ExtendedColor> colorWithAlpha(float) const;
+    Ref<ExtendedColor> invertedColorWithAlpha(float) const;
+
+    ColorComponents<float> toSRGBAComponentsLossy() const;
+
+    bool isWhite() const;
+    bool isBlack() const;
+
 private:
-    ExtendedColor(float r, float g, float b, float a, ColorSpace colorSpace)
-        : m_red(r)
-        , m_green(g)
-        , m_blue(b)
-        , m_alpha(a)
+    ExtendedColor(float c1, float c2, float c3, float alpha, ColorSpace colorSpace)
+        : m_components(c1, c2, c3, alpha)
         , m_colorSpace(colorSpace)
-    { }
+    {
+    }
 
-    float m_red { 0 };
-    float m_green { 0 };
-    float m_blue { 0 };
-    float m_alpha { 0 };
-
-    ColorSpace m_colorSpace { ColorSpace::SRGB };
+    ColorComponents<float> m_components;
+    ColorSpace m_colorSpace;
 };
+
+inline bool operator==(const ExtendedColor& a, const ExtendedColor& b)
+{
+    return a.colorSpace() == b.colorSpace() && a.components() == b.components();
+}
+
+inline bool operator!=(const ExtendedColor& a, const ExtendedColor& b)
+{
+    return !(a == b);
+}
+
+// FIXME: If the ColorSpace is sRGB and the values can all be
+// converted exactly to integers, we should make a SimpleColor.
+WEBCORE_EXPORT Color makeExtendedColor(float c1, float c2, float c3, float alpha, ColorSpace);
 
 }

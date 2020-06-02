@@ -36,7 +36,6 @@
 #import "Frame.h"
 #import "FrameSelection.h"
 #import "GraphicsContextCG.h"
-#import "HTMLConverter.h"
 #import "HitTestResult.h"
 #import "NotImplemented.h"
 #import "Page.h"
@@ -268,9 +267,6 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeForSelection(co
     if (!RevealLibrary() || !RevealCoreLibrary() || !getRVItemClass())
         return { nullptr, nil };
 
-    if (!selection.toNormalizedRange())
-        return { nullptr, nil };
-
     // Since we already have the range we want, we just need to grab the returned options.
     auto selectionStart = selection.visibleStart();
     auto selectionEnd = selection.visibleEnd();
@@ -342,7 +338,7 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeAtHitTestResult
         hitIndex = characterCount({ *makeBoundaryPoint(paragraphStart), *makeBoundaryPoint(position) });
     } else {
         VisibleSelection selectionAccountingForLineRules { position };
-        selectionAccountingForLineRules.expandUsingGranularity(WordGranularity);
+        selectionAccountingForLineRules.expandUsingGranularity(TextGranularity::WordGranularity);
         position = selectionAccountingForLineRules.start();
 
         // As context, we are going to use 250 characters of text before and after the point.

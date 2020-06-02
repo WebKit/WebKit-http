@@ -314,6 +314,7 @@ typedef enum {
 - (void)addInputString:(NSString *)string withFlags:(NSUInteger)flags;
 - (void)addInputString:(NSString *)string withFlags:(NSUInteger)flags withInputManagerHint:(NSString *)hint;
 - (BOOL)autocorrectSpellingEnabled;
+- (BOOL)isAutoShifted;
 - (void)deleteFromInput;
 - (void)deleteFromInputWithFlags:(NSUInteger)flags;
 - (void)replaceText:(id)replacement;
@@ -419,12 +420,18 @@ typedef enum {
 #if PLATFORM(IOS) && !defined(__IPHONE_13_4)
 @property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
 #endif
+@end
 
+#if HAVE(UI_HOVER_EVENT_RESPONDABLE)
+
+@protocol _UIHoverEventRespondable <NSObject>
 - (void)_hoverEntered:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
 - (void)_hoverMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
 - (void)_hoverExited:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
 - (void)_hoverCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
 @end
+
+#endif // HAVE(UI_HOVER_EVENT_RESPONDABLE)
 
 @interface UITapGestureRecognizer ()
 @property (nonatomic, getter=_allowableSeparation, setter=_setAllowableSeparation:) CGFloat allowableSeparation;
@@ -515,7 +522,7 @@ typedef enum {
 @property (readonly) NSString *_hostApplicationBundleIdentifier;
 @end
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if PLATFORM(IOS)
 @interface NSURL ()
 @property (nonatomic, copy, setter=_setTitle:) NSString *_title;
 @end
@@ -680,7 +687,13 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 @property (class, nonatomic, readonly) CGFloat _maximumBeamSnappingLength;
 @end
 
+@class UIWKDocumentRequest;
+@class UIWKDocumentContext;
+
 @protocol UIWKInteractionViewProtocol
+- (void)adjustSelectionWithDelta:(NSRange)deltaRange completionHandler:(void (^)(void))completionHandler;
+- (void)requestDocumentContext:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
+- (void)selectPositionAtPoint:(CGPoint)point withContextRequest:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state;
 - (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart withFlags:(UIWKSelectionFlags)flags;
 - (void)changeSelectionWithTouchesFrom:(CGPoint)from to:(CGPoint)to withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState;
@@ -772,13 +785,11 @@ struct _UIWebTouchPoint {
     CGPoint locationInDocumentCoordinates;
     unsigned identifier;
     UITouchPhase phase;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED > 100000
     CGFloat majorRadiusInScreenCoordinates;
     CGFloat force;
     CGFloat altitudeAngle;
     CGFloat azimuthAngle;
     UIWebTouchPointType touchType;
-#endif
 };
 
 struct _UIWebTouchEvent {
@@ -1066,9 +1077,7 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UITextEffectsWindow : UIAutoRotatingWindow
 + (UITextEffectsWindow *)sharedTextEffectsWindow;
-#if HAVE(UISCENE)
 + (UITextEffectsWindow *)sharedTextEffectsWindowForWindowScene:(UIWindowScene *)windowScene;
-#endif // HAVE(UISCENE)
 @end
 
 @interface _UIVisualEffectLayerConfig : NSObject
@@ -1143,10 +1152,12 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
     _UIContextMenuLayoutActionsOnly = 1,
     _UIContextMenuLayoutCompactMenu = 3,
+    _UIContextMenuLayoutAutomatic = 100,
 };
 
 @interface _UIContextMenuStyle : NSObject <NSCopying>
 @property (nonatomic) _UIContextMenuLayout preferredLayout;
+@property (nonatomic) BOOL hasInteractivePreview;
 + (instancetype)defaultStyle;
 @end
 
@@ -1156,6 +1167,7 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 @end
 
 @interface UIContextMenuInteraction ()
+@property (nonatomic, readonly) UIGestureRecognizer *gestureRecognizerForFailureRelationships;
 - (void)_presentMenuAtLocation:(CGPoint)location;
 @end
 
@@ -1201,10 +1213,6 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 + (instancetype)styleWithCursor:(_UICursor *)cursor constrainedAxes:(UIAxis)axes;
 @end
 
-@interface UITouch ()
-- (BOOL)_isPointerTouch;
-@end
-
 #endif // USE(APPLE_INTERNAL_SDK)
 
 #define UIWKDocumentRequestMarkedTextRects (1 << 5)
@@ -1219,6 +1227,12 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 @interface UITextInteraction (IPI)
 @property (nonatomic, readonly) BOOL inGesture;
 @end
+
+#if ENABLE(DRAG_SUPPORT)
+@interface UIDragInteraction (IPI)
+@property (nonatomic, readonly, getter=_initiationDriver) id initiationDriver;
+@end
+#endif // ENABLE(DRAG_SUPPORT)
 
 #if HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)
 @interface UIContextMenuConfiguration (IPI)
@@ -1273,21 +1287,6 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 - (void)_updateSafeAreaInsets;
 @end
 
-@interface UIGestureRecognizer (IPI)
-- (BOOL)_paused;
-@property (nonatomic) UIView *view;
-@property (nonatomic, assign, getter=_acceptsFailureRequirements, setter=_setAcceptsFailureRequiments:) BOOL _acceptsFailureRequirements;
-@property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
-@end
-
-@interface UIHoverEvent : UIEvent
-- (void)setNeedsHitTestReset;
-@end
-
-@interface UIApplication (IPI)
-- (UIHoverEvent *)_hoverEventForWindow:(UIWindow *)window;
-@end
-
 @interface UIScrollView (IPI)
 - (CGFloat)_rubberBandOffsetForOffset:(CGFloat)newOffset maxOffset:(CGFloat)maxOffset minOffset:(CGFloat)minOffset range:(CGFloat)range outside:(BOOL *)outside;
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary *)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
@@ -1297,7 +1296,6 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 - (BOOL)_canScrollWithoutBouncingY;
 - (void)_setContentOffsetWithDecelerationAnimation:(CGPoint)contentOffset;
 - (CGPoint)_adjustedContentOffsetForContentOffset:(CGPoint)contentOffset;
-- (void)_flashScrollIndicatorsPersistingPreviousFlashes:(BOOL)persisting;
 
 @property (nonatomic) BOOL tracksImmediatelyWhileDecelerating;
 @property (nonatomic, getter=_avoidsJumpOnInterruptedBounce, setter=_setAvoidsJumpOnInterruptedBounce:) BOOL _avoidsJumpOnInterruptedBounce;
@@ -1314,6 +1312,7 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 - (BOOL)handleKeyAppCommandForCurrentEvent;
 - (BOOL)handleKeyInputMethodCommandForCurrentEvent;
 - (BOOL)isCallingInputDelegate;
+- (BOOL)delegateSupportsImagePaste;
 @property (nonatomic, readonly) UIKeyboardInputMode *currentInputModeInPreference;
 @end
 

@@ -73,7 +73,7 @@
 #include <wtf/CompletionHandler.h>
 #include <wtf/text/StringBuilder.h>
 
-#if PLATFORM(X11)
+#if PLATFORM(X11) && ENABLE(NETSCAPE_PLUGIN_API)
 #include <WebCore/PlatformDisplay.h>
 #endif
 
@@ -190,7 +190,7 @@ void PluginView::Stream::continueLoad()
 
 static String buildHTTPHeaders(const ResourceResponse& response, long long& expectedContentLength)
 {
-    if (!response.isHTTP())
+    if (!response.isInHTTPFamily())
         return String();
 
     StringBuilder header;
@@ -783,7 +783,7 @@ void PluginView::setFrameRect(const WebCore::IntRect& rect)
     viewGeometryDidChange();
 }
 
-void PluginView::paint(GraphicsContext& context, const IntRect& /*dirtyRect*/, Widget::SecurityOriginPaintPolicy)
+void PluginView::paint(GraphicsContext& context, const IntRect& /*dirtyRect*/, Widget::SecurityOriginPaintPolicy, EventRegionContext*)
 {
     if (!m_plugin || !m_isInitialized || m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return;
@@ -1168,7 +1168,7 @@ void PluginView::performURLRequest(URLRequest* request)
     Ref<PluginView> protect(*this);
 
     // First, check if this is a javascript: url.
-    if (WTF::protocolIsJavaScript(request->request().url())) {
+    if (request->request().url().protocolIsJavaScript()) {
         performJavaScriptURLRequest(request);
         return;
     }
@@ -1204,7 +1204,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
     if (!targetFrame) {
         // We did not find a target frame. Ask our frame to load the page. This may or may not create a popup window.
-        FrameLoadRequest frameLoadRequest { *frame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+        FrameLoadRequest frameLoadRequest { *frame, request->request() };
         frameLoadRequest.setFrameName(request->target());
         frameLoadRequest.setShouldCheckNewWindowPolicy(true);
         frame->loader().load(WTFMove(frameLoadRequest));
@@ -1216,7 +1216,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     }
 
     // Now ask the frame to load the request.
-    targetFrame->loader().load(FrameLoadRequest(*targetFrame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    targetFrame->loader().load(FrameLoadRequest(*targetFrame, request->request() ));
 
     auto* targetWebFrame = WebFrame::fromCoreFrame(*targetFrame);
     ASSERT(targetWebFrame);
@@ -1233,7 +1233,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
 
 void PluginView::performJavaScriptURLRequest(URLRequest* request)
 {
-    ASSERT(WTF::protocolIsJavaScript(request->request().url()));
+    ASSERT(request->request().url().protocolIsJavaScript());
 
     RefPtr<Frame> frame = m_pluginElement->document().frame();
     if (!frame)
@@ -1390,7 +1390,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest { m_pluginElement->document(), m_pluginElement->document().securityOrigin(), { }, target, LockHistory::No, LockBackForwardList::No, ReferrerPolicy::EmptyString, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    FrameLoadRequest frameLoadRequest { m_pluginElement->document(), m_pluginElement->document().securityOrigin(), { }, target, InitiatedByMainFrame::Unknown };
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);
@@ -1682,7 +1682,7 @@ void PluginView::didFailLoad(WebFrame* webFrame, bool wasCancelled)
     m_plugin->frameDidFail(request->requestID(), wasCancelled);
 }
 
-#if PLATFORM(X11)
+#if PLATFORM(X11) && ENABLE(NETSCAPE_PLUGIN_API)
 uint64_t PluginView::createPluginContainer()
 {
     uint64_t windowID = 0;

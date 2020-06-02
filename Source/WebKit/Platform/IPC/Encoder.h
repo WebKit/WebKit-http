@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #include "ArgumentCoder.h"
 #include "Attachment.h"
+#include "MessageNames.h"
 #include "StringReference.h"
 #include <wtf/EnumTraits.h>
 #include <wtf/Vector.h>
@@ -34,16 +35,18 @@
 namespace IPC {
 
 class DataReference;
-enum class ShouldDispatchWhenWaitingForSyncReply;
+enum class MessageFlags : uint8_t;
+enum class MessageName : uint16_t;
+enum class ShouldDispatchWhenWaitingForSyncReply : uint8_t;
 
 class Encoder final {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Encoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID);
+    Encoder(MessageName, uint64_t destinationID);
     ~Encoder();
 
-    StringReference messageReceiverName() const { return m_messageReceiverName; }
-    StringReference messageName() const { return m_messageName; }
+    ReceiverName messageReceiverName() const { return receiverName(m_messageName); }
+    MessageName messageName() const { return m_messageName; }
     uint64_t destinationID() const { return m_destinationID; }
 
     void setIsSyncMessage(bool);
@@ -56,26 +59,27 @@ public:
 
     void wrapForTesting(std::unique_ptr<Encoder>);
 
-    void encodeFixedLengthData(const uint8_t*, size_t, unsigned alignment);
+    void encodeFixedLengthData(const uint8_t* data, size_t, size_t alignment);
     void encodeVariableLengthByteArray(const DataReference&);
 
-    template<typename T> void encodeEnum(T t)
+    template<typename E>
+    void encodeEnum(E enumValue)
     {
-        COMPILE_ASSERT(sizeof(T) <= sizeof(uint64_t), enum_type_must_not_be_larger_than_64_bits);
-
-        encode(static_cast<uint64_t>(t));
+        // FIXME: Remove this after migrating all uses of this function to encode() or operator<<() with WTF::isValidEnum check.
+        encode(static_cast<typename std::underlying_type<E>::type>(enumValue));
     }
 
-    template<typename T, std::enable_if_t<!std::is_enum<typename std::remove_const_t<std::remove_reference_t<T>>>::value>* = nullptr>
+    template<typename T, std::enable_if_t<!std::is_enum<typename std::remove_const_t<std::remove_reference_t<T>>>::value && !std::is_arithmetic<typename std::remove_const_t<std::remove_reference_t<T>>>::value>* = nullptr>
     void encode(T&& t)
     {
         ArgumentCoder<typename std::remove_const<typename std::remove_reference<T>::type>::type>::encode(*this, std::forward<T>(t));
     }
 
-    template<typename T, std::enable_if_t<std::is_enum<T>::value>* = nullptr>
-    Encoder& operator<<(T&& t)
+    template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
+    Encoder& operator<<(E&& enumValue)
     {
-        encode(static_cast<uint64_t>(t));
+        ASSERT(WTF::isValidEnum<E>(static_cast<typename std::underlying_type<E>::type>(enumValue)));
+        encode(static_cast<typename std::underlying_type<E>::type>(enumValue));
         return *this;
     }
 
@@ -86,43 +90,37 @@ public:
         return *this;
     }
 
+    template<typename T, std::enable_if_t<std::is_arithmetic<T>::value>* = nullptr>
+    void encode(T value)
+    {
+        encodeFixedLengthData(reinterpret_cast<const uint8_t*>(&value), sizeof(T), alignof(T));
+    }
+
     uint8_t* buffer() const { return m_buffer; }
     size_t bufferSize() const { return m_bufferSize; }
 
     void addAttachment(Attachment&&);
     Vector<Attachment> releaseAttachments();
-    void reserve(size_t);
 
     static const bool isIPCEncoder = true;
 
-    void encode(uint64_t);
-
 private:
-    uint8_t* grow(unsigned alignment, size_t);
+    void reserve(size_t);
 
-    void encode(bool);
-    void encode(uint8_t);
-    void encode(uint16_t);
-    void encode(uint32_t);
-    void encode(int16_t);
-    void encode(int32_t);
-    void encode(int64_t);
-    void encode(float);
-    void encode(double);
+    uint8_t* grow(size_t alignment, size_t);
 
-    template<typename E>
-    auto encode(E value) -> std::enable_if_t<std::is_enum<E>::value>
+    template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
+    void encode(E enumValue)
     {
-        static_assert(sizeof(E) <= sizeof(uint64_t), "Enum type must not be larger than 64 bits.");
-
-        ASSERT(isValidEnum<E>(static_cast<uint64_t>(value)));
-        encode(static_cast<uint64_t>(value));
+        ASSERT(WTF::isValidEnum<E>(static_cast<typename std::underlying_type<E>::type>(enumValue)));
+        encode(static_cast<typename std::underlying_type<E>::type>(enumValue));
     }
 
     void encodeHeader();
+    const OptionSet<MessageFlags>& messageFlags() const;
+    OptionSet<MessageFlags>& messageFlags();
 
-    StringReference m_messageReceiverName;
-    StringReference m_messageName;
+    MessageName m_messageName;
     uint64_t m_destinationID;
 
     uint8_t m_inlineBuffer[512];

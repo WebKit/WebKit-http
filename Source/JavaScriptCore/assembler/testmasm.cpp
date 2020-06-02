@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -313,7 +313,7 @@ static Vector<int32_t> int32Operands()
     };
 }
 
-#if CPU(X86_64)
+#if CPU(X86_64) || CPU(ARM64)
 static Vector<int64_t> int64Operands()
 {
     return Vector<int64_t> {
@@ -467,6 +467,198 @@ void testBranchTestBit64AddrImm()
 }
 
 #endif
+
+#if CPU(X86_64) || CPU(ARM64)
+void testClearBit64()
+{
+    auto test = compile([] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        GPRReg scratchGPR = GPRInfo::argumentGPR2;
+        jit.clearBit64(GPRInfo::argumentGPR1, GPRInfo::argumentGPR0, scratchGPR);
+        jit.move(GPRInfo::argumentGPR0, GPRInfo::returnValueGPR);
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    constexpr unsigned bitsInWord = sizeof(uint64_t) * 8;
+
+    for (unsigned i = 0; i < bitsInWord; ++i) {
+        uint64_t word = std::numeric_limits<uint64_t>::max();
+        constexpr uint64_t one = 1;
+        CHECK_EQ(invoke<uint64_t>(test, word, i), (word & ~(one << i)));
+    }
+
+    for (unsigned i = 0; i < bitsInWord; ++i) {
+        uint64_t word = 0;
+        CHECK_EQ(invoke<uint64_t>(test, word, i), 0);
+    }
+}
+
+void testClearBits64WithMask()
+{
+    auto test = compile([] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        jit.clearBits64WithMask(GPRInfo::argumentGPR1, GPRInfo::argumentGPR0);
+        jit.move(GPRInfo::argumentGPR0, GPRInfo::returnValueGPR);
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    for (auto value : int64Operands()) {
+        uint64_t word = std::numeric_limits<uint64_t>::max();
+        CHECK_EQ(invoke<uint64_t>(test, word, value), (word & ~value));
+    }
+
+    for (auto value : int64Operands()) {
+        uint64_t word = 0;
+        CHECK_EQ(invoke<uint64_t>(test, word, value), 0);
+    }
+
+#if ENABLE(MASM_PROBE)
+    uint64_t savedMask = 0;
+    auto test2 = compile([&] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        jit.probe([&] (Probe::Context& context) {
+            savedMask = context.gpr<uint64_t>(GPRInfo::argumentGPR1);
+        });
+
+        jit.clearBits64WithMask(GPRInfo::argumentGPR1, GPRInfo::argumentGPR0, CCallHelpers::ClearBitsAttributes::MustPreserveMask);
+
+        jit.probe([&] (Probe::Context& context) {
+            CHECK_EQ(savedMask, context.gpr<uint64_t>(GPRInfo::argumentGPR1));
+        });
+        jit.move(GPRInfo::argumentGPR0, GPRInfo::returnValueGPR);
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    for (auto value : int64Operands()) {
+        uint64_t word = std::numeric_limits<uint64_t>::max();
+        CHECK_EQ(invoke<uint64_t>(test2, word, value), (word & ~value));
+    }
+
+    for (auto value : int64Operands()) {
+        uint64_t word = 0;
+        CHECK_EQ(invoke<uint64_t>(test2, word, value), 0);
+    }
+#endif
+}
+
+void testClearBits64WithMaskTernary()
+{
+    auto test = compile([] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        jit.move(GPRInfo::argumentGPR0, GPRInfo::argumentGPR2);
+        jit.move(GPRInfo::argumentGPR1, GPRInfo::argumentGPR3);
+        jit.clearBits64WithMask(GPRInfo::argumentGPR2, GPRInfo::argumentGPR3, GPRInfo::returnValueGPR);
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    for (auto value : int64Operands()) {
+        uint64_t word = std::numeric_limits<uint64_t>::max();
+        CHECK_EQ(invoke<uint64_t>(test, word, value), (word & ~value));
+    }
+
+    for (auto value : int64Operands()) {
+        uint64_t word = 0;
+        CHECK_EQ(invoke<uint64_t>(test, word, value), 0);
+    }
+
+#if ENABLE(MASM_PROBE)
+    uint64_t savedMask = 0;
+    auto test2 = compile([&] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        jit.move(GPRInfo::argumentGPR0, GPRInfo::argumentGPR2);
+        jit.move(GPRInfo::argumentGPR1, GPRInfo::argumentGPR3);
+
+        jit.probe([&] (Probe::Context& context) {
+            savedMask = context.gpr<uint64_t>(GPRInfo::argumentGPR2);
+        });
+
+        jit.clearBits64WithMask(GPRInfo::argumentGPR2, GPRInfo::argumentGPR3, GPRInfo::returnValueGPR, CCallHelpers::ClearBitsAttributes::MustPreserveMask);
+
+        jit.probe([&] (Probe::Context& context) {
+            CHECK_EQ(savedMask, context.gpr<uint64_t>(GPRInfo::argumentGPR2));
+        });
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    for (auto value : int64Operands()) {
+        uint64_t word = std::numeric_limits<uint64_t>::max();
+        CHECK_EQ(invoke<uint64_t>(test2, word, value), (word & ~value));
+    }
+
+    for (auto value : int64Operands()) {
+        uint64_t word = 0;
+        CHECK_EQ(invoke<uint64_t>(test2, word, value), 0);
+    }
+#endif
+}
+
+static void testCountTrailingZeros64Impl(bool wordCanBeZero)
+{
+    auto test = compile([=] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+
+        if (wordCanBeZero)
+            jit.countTrailingZeros64(GPRInfo::argumentGPR0, GPRInfo::returnValueGPR);
+        else
+            jit.countTrailingZeros64WithoutNullCheck(GPRInfo::argumentGPR0, GPRInfo::returnValueGPR);
+
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    constexpr size_t numberOfBits = sizeof(uint64_t) * 8;
+
+    auto expectedNumberOfTrailingZeros = [=] (uint64_t word) -> size_t {
+        size_t count = 0;
+        for (size_t i = 0; i < numberOfBits; ++i) {
+            if (word & 1)
+                break;
+            word >>= 1;
+            count++;
+        }
+        return count;
+    };
+
+    for (auto word : int64Operands()) {
+        if (!wordCanBeZero && !word)
+            continue;
+        CHECK_EQ(invoke<size_t>(test, word), expectedNumberOfTrailingZeros(word));
+    }
+
+    for (size_t i = 0; i < numberOfBits; ++i) {
+        uint64_t one = 1;
+        uint64_t word = one << i;
+        CHECK_EQ(invoke<size_t>(test, word), i);
+    }
+}
+
+void testCountTrailingZeros64()
+{
+    bool wordCanBeZero = true;
+    testCountTrailingZeros64Impl(wordCanBeZero);
+}
+
+void testCountTrailingZeros64WithoutNullCheck()
+{
+    bool wordCanBeZero = false;
+    testCountTrailingZeros64Impl(wordCanBeZero);
+}
+#endif // CPU(X86_64) || CPU(ARM64)
 
 void testCompareDouble(MacroAssembler::DoubleCondition condition)
 {
@@ -2132,9 +2324,10 @@ static void testCagePreservesPACFailureBit()
     void* taggedNotCagedPtr = tagArrayPtr(notCagedPtr, 1);
 
     if (isARM64E()) {
-        // FIXME: This won't work if authentication failures trap but I don't know how to test for that right now.
         CHECK_NOT_EQ(invoke<void*>(cage, taggedPtr, 2), ptr);
-        CHECK_EQ(invoke<void*>(cage, taggedNotCagedPtr, 1), untagArrayPtr(taggedPtr, 2));
+        CHECK_NOT_EQ(invoke<void*>(cage, taggedNotCagedPtr, 1), ptr);
+        void* cagedTaggedNotCagedPtr = invoke<void*>(cage, taggedNotCagedPtr, 1);
+        CHECK_NOT_EQ(cagedTaggedNotCagedPtr, removeArrayPtrTag(cagedTaggedNotCagedPtr));
     } else
         CHECK_EQ(invoke<void*>(cage, taggedPtr, 2), ptr);
 
@@ -2150,15 +2343,82 @@ static void testCagePreservesPACFailureBit()
 
     CHECK_EQ(invoke<void*>(cageWithoutAuthentication, taggedPtr), taggedPtr);
     if (isARM64E()) {
-        // FIXME: This won't work if authentication failures trap but I don't know how to test for that right now.
         CHECK_NOT_EQ(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), taggedNotCagedPtr);
-        CHECK_NOT_EQ(untagArrayPtr(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), 1), notCagedPtr);
+        CHECK_NOT_EQ(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), tagArrayPtr(notCagedPtr, 1));
         CHECK_NOT_EQ(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), taggedPtr);
-        CHECK_NOT_EQ(untagArrayPtr(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), 1), ptr);
+        CHECK_NOT_EQ(invoke<void*>(cageWithoutAuthentication, taggedNotCagedPtr), tagArrayPtr(ptr, 1));
     }
 
     Gigacage::free(Gigacage::Primitive, ptr);
 #endif
+}
+
+static void testBranchIfType()
+{
+    using JSC::JSType;
+    struct CellLike {
+        uint32_t structureID;
+        uint8_t indexingType;
+        JSType type;
+    };
+    CHECK_EQ(JSCell::typeInfoTypeOffset(), OBJECT_OFFSETOF(CellLike, type));
+
+    auto isType = compile([] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+        auto isType = jit.branchIfType(GPRInfo::argumentGPR0, JSC::JSTypeRange { JSType(FirstTypedArrayType), JSType(LastTypedArrayTypeExcludingDataView) });
+        jit.move(CCallHelpers::TrustedImm32(false), GPRInfo::returnValueGPR);
+        auto done = jit.jump();
+        isType.link(&jit);
+        jit.move(CCallHelpers::TrustedImm32(true), GPRInfo::returnValueGPR);
+        done.link(&jit);
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    CellLike cell;
+    for (unsigned i = JSC::FirstTypedArrayType; i <= JSC::LastTypedArrayTypeExcludingDataView; ++i) {
+        cell.type = JSType(i);
+        CHECK_EQ(invoke<bool>(isType, &cell), true);
+    }
+
+    cell.type = JSType(LastTypedArrayType);
+    CHECK_EQ(invoke<bool>(isType, &cell), false);
+    cell.type = JSType(FirstTypedArrayType - 1);
+    CHECK_EQ(invoke<bool>(isType, &cell), false);
+}
+
+static void testBranchIfNotType()
+{
+    using JSC::JSType;
+    struct CellLike {
+        uint32_t structureID;
+        uint8_t indexingType;
+        JSType type;
+    };
+    CHECK_EQ(JSCell::typeInfoTypeOffset(), OBJECT_OFFSETOF(CellLike, type));
+
+    auto isNotType = compile([] (CCallHelpers& jit) {
+        emitFunctionPrologue(jit);
+        auto isNotType = jit.branchIfNotType(GPRInfo::argumentGPR0, JSC::JSTypeRange { JSType(FirstTypedArrayType), JSType(LastTypedArrayTypeExcludingDataView) });
+        jit.move(CCallHelpers::TrustedImm32(false), GPRInfo::returnValueGPR);
+        auto done = jit.jump();
+        isNotType.link(&jit);
+        jit.move(CCallHelpers::TrustedImm32(true), GPRInfo::returnValueGPR);
+        done.link(&jit);
+        emitFunctionEpilogue(jit);
+        jit.ret();
+    });
+
+    CellLike cell;
+    for (unsigned i = JSC::FirstTypedArrayType; i <= JSC::LastTypedArrayTypeExcludingDataView; ++i) {
+        cell.type = JSType(i);
+        CHECK_EQ(invoke<bool>(isNotType, &cell), false);
+    }
+
+    cell.type = JSType(LastTypedArrayType);
+    CHECK_EQ(invoke<bool>(isNotType, &cell), true);
+    cell.type = JSType(FirstTypedArrayType - 1);
+    CHECK_EQ(invoke<bool>(isNotType, &cell), true);
 }
 
 #define RUN(test) do {                          \
@@ -2233,6 +2493,14 @@ void run(const char* filter)
     RUN(testBranchTestBit64AddrImm());
 #endif
 
+#if CPU(X86_64) || CPU(ARM64)
+    RUN(testClearBit64());
+    RUN(testClearBits64WithMask());
+    RUN(testClearBits64WithMaskTernary());
+    RUN(testCountTrailingZeros64());
+    RUN(testCountTrailingZeros64WithoutNullCheck());
+#endif
+
 #if CPU(ARM64)
     RUN(testMul32SignExtend());
 #endif
@@ -2282,6 +2550,9 @@ void run(const char* filter)
     RUN(testMoveDoubleConditionally64());
 
     RUN(testCagePreservesPACFailureBit());
+
+    RUN(testBranchIfType());
+    RUN(testBranchIfNotType());
 
     RUN(testOrImmMem());
 

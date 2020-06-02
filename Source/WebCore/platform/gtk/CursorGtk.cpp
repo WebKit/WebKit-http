@@ -32,22 +32,44 @@
 #include "Image.h"
 #include "IntPoint.h"
 #include <gdk/gdk.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
+#if USE(GTK4)
+static GRefPtr<GdkCursor> fallbackCursor()
+{
+    static WTF::NeverDestroyed<GRefPtr<GdkCursor>> cursor(adoptGRef(gdk_cursor_new_from_name("default", nullptr)));
+    return cursor;
+}
+#endif // USE(GTK4)
+
 static GRefPtr<GdkCursor> createNamedCursor(const char* name)
 {
+#if USE(GTK4)
+    return adoptGRef(gdk_cursor_new_from_name(name, fallbackCursor().get()));
+#else
     return adoptGRef(gdk_cursor_new_from_name(gdk_display_get_default(), name));
+#endif // USE(GTK4)
 }
 
 static GRefPtr<GdkCursor> createCustomCursor(Image* image, const IntPoint& hotSpot)
 {
+#if USE(GTK4)
+    auto texture = adoptGRef(image->gdkTexture());
+    if (!texture)
+        return nullptr;
+
+    IntPoint effectiveHotSpot = determineHotSpot(image, hotSpot);
+    return adoptGRef(gdk_cursor_new_from_texture(texture.get(), effectiveHotSpot.x(), effectiveHotSpot.y(), fallbackCursor().get()));
+#else
     RefPtr<cairo_surface_t> surface = image->nativeImageForCurrentFrame();
     if (!surface)
         return nullptr;
 
     IntPoint effectiveHotSpot = determineHotSpot(image, hotSpot);
     return adoptGRef(gdk_cursor_new_from_surface(gdk_display_get_default(), surface.get(), effectiveHotSpot.x(), effectiveHotSpot.y()));
+#endif // USE(GTK4)
 }
 
 void Cursor::ensurePlatformCursor() const

@@ -21,7 +21,6 @@
 #include "config.h"
 #include "BooleanObject.h"
 
-#include "JSScope.h"
 #include "JSCInlines.h"
 
 namespace JSC {
@@ -39,6 +38,11 @@ void BooleanObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+}
+
+String BooleanObject::toStringName(const JSObject*, JSGlobalObject*)
+{
+    return "Boolean"_s;
 }
 
 } // namespace JSC

@@ -47,6 +47,7 @@ set(WTF_PUBLIC_HEADERS
     CryptographicallyRandomNumber.h
     DataLog.h
     DataMutex.h
+    DataRef.h
     DateMath.h
     DebugHeap.h
     DebugUtilities.h
@@ -176,6 +177,7 @@ set(WTF_PUBLIC_HEADERS
     PlatformCPU.h
     PlatformEnable.h
     PlatformEnableCocoa.h
+    PlatformEnablePlayStation.h
     PlatformEnableWinApple.h
     PlatformEnableWinCairo.h
     PlatformHave.h
@@ -237,6 +239,7 @@ set(WTF_PUBLIC_HEADERS
     StackShotProfiler.h
     StackStats.h
     StackTrace.h
+    StdIntExtras.h
     StdLibExtras.h
     StdList.h
     StdMap.h
@@ -282,6 +285,7 @@ set(WTF_PUBLIC_HEADERS
     Vector.h
     VectorHash.h
     VectorTraits.h
+    WTFConfig.h
     WTFSemaphore.h
     WallTime.h
     WeakHashSet.h
@@ -357,6 +361,8 @@ set(WTF_PUBLIC_HEADERS
     unicode/CharacterNames.h
     unicode/Collator.h
     unicode/UTF8Conversion.h
+
+    unicode/icu/ICUHelpers.h
 )
 
 set(WTF_SOURCES
@@ -441,6 +447,7 @@ set(WTF_SOURCES
     UniqueArray.cpp
     Vector.cpp
     WTFAssertions.cpp
+    WTFConfig.cpp
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
@@ -490,13 +497,6 @@ set(WTF_SOURCES
     unicode/UTF8Conversion.cpp
 
     unicode/icu/CollatorICU.cpp
-)
-
-set(WTF_INCLUDE_DIRECTORIES
-    # FIXME: https://bugs.webkit.org/show_bug.cgi?id=196734#c1
-    "${CMAKE_BINARY_DIR}"
-    "${DERIVED_SOURCES_DIR}"
-    "${THIRDPARTY_DIR}"
 )
 
 set(WTF_PRIVATE_INCLUDE_DIRECTORIES

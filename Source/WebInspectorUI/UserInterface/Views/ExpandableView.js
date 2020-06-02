@@ -30,19 +30,18 @@ WI.ExpandableView = class ExpandableView
         this._element = document.createElement("div");
 
         if (childElement) {
-            let disclosureButton = document.createElement("button");
-            disclosureButton.classList.add("disclosure-button");
-            disclosureButton.addEventListener("click", this._onDisclosureButtonClick.bind(this));
-            this._element.append(disclosureButton);
+            this._disclosureButton = this._element.createChild("button", "disclosure-button");
+            this._disclosureButton.addEventListener("click", this._onDisclosureButtonClick.bind(this));
+            this._disclosureButton.addEventListener("keydown", this._handleDisclosureButtonKeyDown.bind(this));
         }
 
         this._element.append(titleElement);
         this._expandedSetting = new WI.Setting("expanded-" + key, false);
 
-        if (childElement) {
+        if (childElement)
             this._element.append(childElement);
-            this._element.classList.toggle("expanded", this._expandedSetting.value);
-        }
+
+        this._update();
     }
 
     // Public
@@ -56,13 +55,29 @@ WI.ExpandableView = class ExpandableView
 
     _onDisclosureButtonClick(event)
     {
-        let shouldExpand = !this._expandedSetting.value;
-        this._update(shouldExpand);
+        this._expandedSetting.value = !this._expandedSetting.value;
+        this._update();
     }
 
-    _update(shouldExpand)
+    _handleDisclosureButtonKeyDown(event)
     {
-        this._element.classList.toggle("expanded", shouldExpand);
-        this._expandedSetting.value = shouldExpand;
+        if (event.code !== "ArrowRight" && event.code !== "ArrowLeft")
+            return;
+
+        event.preventDefault();
+
+        let collapsed = event.code === "ArrowLeft";
+        if (WI.resolveLayoutDirectionForElement(this._disclosureButton) === WI.LayoutDirection.RTL)
+            collapsed = !collapsed;
+
+        this._expandedSetting.value = !collapsed;
+        this._update();
+    }
+
+    _update()
+    {
+        let isExpanded = this._expandedSetting.value;
+        this._element.classList.toggle("expanded", isExpanded);
+        this._disclosureButton?.setAttribute("aria-expanded", isExpanded);
     }
 };

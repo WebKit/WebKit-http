@@ -86,6 +86,7 @@ void WebBackForwardListProxy::removeItem(const BackForwardItemIdentifier& itemID
 WebBackForwardListProxy::WebBackForwardListProxy(WebPage& page)
     : m_page(&page)
 {
+    // FIXME: This means that if we mix legacy WebKit and modern WebKit in the same process, we won't get both notifications.
     WebCore::notifyHistoryItemChanged = WK2NotifyHistoryItemChanged;
 }
 
@@ -107,11 +108,9 @@ void WebBackForwardListProxy::goToItem(HistoryItem& item)
     if (!m_page)
         return;
 
-    SandboxExtension::Handle sandboxExtensionHandle;
     WebBackForwardListCounts backForwardListCounts;
-    m_page->sendSync(Messages::WebPageProxy::BackForwardGoToItem(item.identifier()), Messages::WebPageProxy::BackForwardGoToItem::Reply(sandboxExtensionHandle, backForwardListCounts));
+    m_page->sendSync(Messages::WebPageProxy::BackForwardGoToItem(item.identifier()), Messages::WebPageProxy::BackForwardGoToItem::Reply(backForwardListCounts));
     m_cachedBackForwardListCounts = backForwardListCounts;
-    m_page->sandboxExtensionTracker().beginLoad(&m_page->mainWebFrame(), WTFMove(sandboxExtensionHandle));
 }
 
 RefPtr<HistoryItem> WebBackForwardListProxy::itemAtIndex(int itemIndex)

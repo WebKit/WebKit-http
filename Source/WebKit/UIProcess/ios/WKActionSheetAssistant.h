@@ -36,6 +36,8 @@ class WebPageProxy;
 struct InteractionInformationAtPosition;
 }
 
+@class UIMenuElement;
+@class UITargetedPreview;
 @class WKActionSheetAssistant;
 @class _WKActivatedElementInfo;
 @class _WKElementAction;
@@ -59,15 +61,19 @@ struct InteractionInformationAtPosition;
 - (CGRect)unoccludedWindowBoundsForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element;
 - (void)actionSheetAssistantDidStopInteraction:(WKActionSheetAssistant *)assistant;
-- (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant positionInformation:(const WebKit::InteractionInformationAtPosition&)positionInformation;
 - (NSString *)selectedTextForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant getAlternateURLForImage:(UIImage *)image completion:(void (^)(NSURL *alternateURL, NSDictionary *userInfo))completion;
-- (CGPoint)contextMenuPresentationLocationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+#if USE(UICONTEXTMENU)
+- (UITargetedPreview *)createTargetedContextMenuHintForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (void)removeContextMenuViewIfPossibleForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+#endif
 
 @end
 
 #if ENABLE(DATA_DETECTION) && USE(UICONTEXTMENU)
 @interface WKActionSheetAssistant : NSObject <WKActionSheetDelegate, DDDetectionControllerInteractionDelegate, UIContextMenuInteractionDelegate>
+- (BOOL)hasContextMenuInteraction;
 #else
 @interface WKActionSheetAssistant : NSObject <WKActionSheetDelegate>
 #endif
@@ -76,7 +82,7 @@ struct InteractionInformationAtPosition;
 - (id)initWithView:(UIView *)view;
 - (void)showLinkSheet;
 - (void)showImageSheet;
-- (void)showDataDetectorsSheet;
+- (void)showDataDetectorsUIForPositionInformation:(const WebKit::InteractionInformationAtPosition&)positionInformation;
 - (void)cleanupSheet;
 - (void)updateSheetPosition;
 - (RetainPtr<NSArray<_WKElementAction *>>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo;
@@ -84,7 +90,9 @@ struct InteractionInformationAtPosition;
 - (BOOL)isShowingSheet;
 - (void)interactionDidStartWithPositionInformation:(const WebKit::InteractionInformationAtPosition&)information;
 - (NSArray *)currentAvailableActionTitles;
-- (Optional<WebKit::InteractionInformationAtPosition>)currentPositionInformation;
+#if USE(UICONTEXTMENU)
+- (NSArray<UIMenuElement *> *)suggestedActionsForContextMenuWithPositionInformation:(const WebKit::InteractionInformationAtPosition&)positionInformation;
+#endif
 @end
 
 #endif // PLATFORM(IOS_FAMILY)

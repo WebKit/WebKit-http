@@ -21,10 +21,9 @@
 #include "config.h"
 #include "StringObject.h"
 
-#include "Error.h"
-#include "JSGlobalObject.h"
 #include "JSCInlines.h"
 #include "PropertyNameArray.h"
+#include "TypeError.h"
 
 namespace JSC {
 
@@ -164,6 +163,11 @@ void StringObject::getOwnNonIndexPropertyNames(JSObject* object, JSGlobalObject*
     if (mode.includeDontEnumProperties())
         propertyNames.add(vm.propertyNames->length);
     return JSObject::getOwnNonIndexPropertyNames(thisObject, globalObject, propertyNames, mode);
+}
+
+String StringObject::toStringName(const JSObject*, JSGlobalObject*)
+{
+    return "String"_s;
 }
 
 StringObject* constructString(VM& vm, JSGlobalObject* globalObject, JSValue string)

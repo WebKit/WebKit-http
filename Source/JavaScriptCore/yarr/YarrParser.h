@@ -44,6 +44,8 @@ private:
     template<class FriendDelegate>
     friend ErrorCode parse(FriendDelegate&, const String& pattern, bool isUnicode, unsigned backReferenceLimit, bool isNamedForwardReferenceAllowed);
 
+    enum class UnicodeParseContext : uint8_t { PatternCodePoint, GroupName };
+
     /*
      * CharacterClassParserDelegate:
      *
@@ -322,6 +324,23 @@ private:
             delegate.atomBuiltInCharacterClass(BuiltInCharacterClassID::WordClassID, true);
             break;
 
+        case '0': {
+            consume();
+
+            if (!peekIsDigit()) {
+                delegate.atomPatternCharacter(0);
+                break;
+            }
+
+            if (m_isUnicode) {
+                m_errorCode = ErrorCode::InvalidOctalEscape;
+                break;
+            }
+
+            delegate.atomPatternCharacter(consumeOctal(2));
+            break;
+        }
+
         // DecimalEscape
         case '1':
         case '2':
@@ -332,7 +351,7 @@ private:
         case '7':
         case '8':
         case '9': {
-            // To match Firefox, we parse an invalid backreference in the range [1-7] as an octal escape.
+            // For non-Unicode patterns, invalid backreferences are parsed as octal or decimal escapes.
             // First, try to parse this as backreference.
             if (!inCharacterClass) {
                 ParseState state = saveState();
@@ -345,22 +364,20 @@ private:
                 }
 
                 restoreState(state);
+                if (m_isUnicode) {
+                    m_errorCode = ErrorCode::InvalidBackreference;
+                    break;
+                }
             }
 
-            // Not a backreference, and not octal. Just a number.
-            if (peek() >= '8') {
-                delegate.atomPatternCharacter(consume());
+            if (m_isUnicode) {
+                m_errorCode = ErrorCode::InvalidOctalEscape;
                 break;
             }
 
-            // Fall-through to handle this as an octal escape.
-            FALLTHROUGH;
-        }
-
-        // Octal escape
-        case '0':
-            delegate.atomPatternCharacter(consumeOctal());
+            delegate.atomPatternCharacter(peek() < '8' ? consumeOctal(3) : consume());
             break;
+        }
 
         // ControlEscape
         case 'f':
@@ -490,7 +507,7 @@ private:
 
         // UnicodeEscape
         case 'u': {
-            int codePoint = tryConsumeUnicodeEscape<UnicodeEscapeContext::CharacterEscape>();
+            int codePoint = tryConsumeUnicodeEscape<UnicodeParseContext::PatternCodePoint>();
             if (hasError(m_errorCode))
                 break;
 
@@ -517,10 +534,13 @@ private:
         return true;
     }
 
+    template<UnicodeParseContext context>
     UChar32 consumePossibleSurrogatePair()
     {
+        bool unicodePatternOrGroupName = m_isUnicode || context == UnicodeParseContext::GroupName;
+
         UChar32 ch = consume();
-        if (U16_IS_LEAD(ch) && m_isUnicode && (patternRemaining() > 0)) {
+        if (U16_IS_LEAD(ch) && unicodePatternOrGroupName && !atEndOfPattern()) {
             ParseState state = saveState();
 
             UChar32 surrogate2 = consume();
@@ -576,7 +596,7 @@ private:
                 break;
 
             default:
-                characterClassConstructor.atomPatternCharacter(consumePossibleSurrogatePair(), true);
+                characterClassConstructor.atomPatternCharacter(consumePossibleSurrogatePair<UnicodeParseContext::PatternCodePoint>(), true);
             }
 
             if (hasError(m_errorCode))
@@ -818,7 +838,7 @@ private:
             }
 
             default:
-                m_delegate.atomPatternCharacter(consumePossibleSurrogatePair());
+                m_delegate.atomPatternCharacter(consumePossibleSurrogatePair<UnicodeParseContext::PatternCodePoint>());
                 lastTokenWasAnAtom = true;
             }
 
@@ -962,20 +982,20 @@ private:
         return peek() - '0';
     }
 
-    enum class UnicodeEscapeContext : uint8_t { CharacterEscape, IdentifierName };
-
-    template<UnicodeEscapeContext context>
+    template<UnicodeParseContext context>
     int tryConsumeUnicodeEscape()
     {
         ASSERT(!hasError(m_errorCode));
 
+        bool unicodePatternOrGroupName = m_isUnicode || context == UnicodeParseContext::GroupName;
+
         if (!tryConsume('u') || atEndOfPattern()) {
-            if (m_isUnicode || context == UnicodeEscapeContext::IdentifierName)
+            if (unicodePatternOrGroupName)
                 m_errorCode = ErrorCode::InvalidUnicodeEscape;
             return -1;
         }
 
-        if (m_isUnicode && tryConsume('{')) {
+        if (unicodePatternOrGroupName && tryConsume('{')) {
             int codePoint = 0;
             do {
                 if (atEndOfPattern() || !isASCIIHexDigit(peek())) {
@@ -1001,13 +1021,13 @@ private:
 
         int codeUnit = tryConsumeHex(4);
         if (codeUnit == -1) {
-            if (m_isUnicode || context == UnicodeEscapeContext::IdentifierName)
+            if (unicodePatternOrGroupName)
                 m_errorCode = ErrorCode::InvalidUnicodeEscape;
             return -1;
         }
 
         // If we have the first of a surrogate pair, look for the second.
-        if (U16_IS_LEAD(codeUnit) && m_isUnicode && patternRemaining() >= 6 && peek() == '\\') {
+        if (U16_IS_LEAD(codeUnit) && unicodePatternOrGroupName && patternRemaining() >= 6 && peek() == '\\') {
             ParseState state = saveState();
             consume();
 
@@ -1026,9 +1046,9 @@ private:
     int tryConsumeIdentifierCharacter()
     {
         if (tryConsume('\\'))
-            return tryConsumeUnicodeEscape<UnicodeEscapeContext::IdentifierName>();
+            return tryConsumeUnicodeEscape<UnicodeParseContext::GroupName>();
 
-        return consumePossibleSurrogatePair();
+        return consumePossibleSurrogatePair<UnicodeParseContext::GroupName>();
     }
 
     bool isIdentifierStart(int ch)
@@ -1066,14 +1086,13 @@ private:
         return n.hasOverflowed() ? quantifyInfinite : n.unsafeGet();
     }
 
-    unsigned consumeOctal()
+    // https://tc39.es/ecma262/#prod-annexB-LegacyOctalEscapeSequence
+    unsigned consumeOctal(unsigned count)
     {
-        ASSERT(WTF::isASCIIOctalDigit(peek()));
-
-        unsigned n = consumeDigit();
-        while (n < 32 && !atEndOfPattern() && WTF::isASCIIOctalDigit(peek()))
-            n = n * 8 + consumeDigit();
-        return n;
+        unsigned octal = 0;
+        while (count-- && octal < 32 && !atEndOfPattern() && WTF::isASCIIOctalDigit(peek()))
+            octal = octal * 8 + consumeDigit();
+        return octal;
     }
 
     bool tryConsume(UChar ch)

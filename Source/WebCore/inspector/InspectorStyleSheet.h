@@ -174,7 +174,7 @@ public:
     CSSStyleRule* ruleForId(const InspectorCSSId&) const;
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetBody> buildObjectForStyleSheet();
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetHeader> buildObjectForStyleSheetInfo();
-    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*, Element*);
+    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*);
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle(CSSStyleDeclaration*);
     ExceptionOr<void> setStyleText(const InspectorCSSId&, const String& text, String* oldText);
 
@@ -215,8 +215,8 @@ private:
     bool inlineStyleSheetText(String* result) const;
     bool extensionStyleSheetText(String* result) const;
     Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
-    Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
-    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*, int& endingLine);
+    Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*);
+    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, int& endingLine);
 
     InspectorPageAgent* m_pageAgent;
     String m_id;
@@ -236,7 +236,7 @@ public:
     ExceptionOr<String> text() const final;
     CSSStyleDeclaration* styleForId(const InspectorCSSId& id) const final { ASSERT_UNUSED(id, !id.ordinal()); return &inlineStyle(); }
 
-protected:
+private:
     InspectorStyleSheetForInlineStyle(InspectorPageAgent*, const String& id, Ref<StyledElement>&&, Inspector::Protocol::CSS::StyleSheetOrigin, Listener*);
 
     Document* ownerDocument() const final;
@@ -249,7 +249,6 @@ protected:
     ExceptionOr<void> setStyleText(CSSStyleDeclaration*, const String&) final;
     Vector<size_t> lineEndings() const final;
 
-private:
     CSSStyleDeclaration& inlineStyle() const;
     const String& elementStyleText() const;
     Ref<CSSRuleSourceData> ruleSourceData() const;

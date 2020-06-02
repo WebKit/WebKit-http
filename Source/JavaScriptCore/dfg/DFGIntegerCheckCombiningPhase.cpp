@@ -31,11 +31,7 @@
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
-#include "DFGPredictionPropagationPhase.h"
-#include "DFGVariableAccessDataDump.h"
-#include "JSCInlines.h"
-#include <wtf/HashMethod.h>
-#include <wtf/StdUnorderedMap.h>
+#include "JSCJSValueInlines.h"
 
 namespace JSC { namespace DFG {
 
@@ -61,7 +57,7 @@ public:
             RangeKey result;
             result.m_kind = Addition;
             result.m_source = edge.sanitized();
-            result.m_key = 0;
+            result.m_key = nullptr;
             return result;
         }
         

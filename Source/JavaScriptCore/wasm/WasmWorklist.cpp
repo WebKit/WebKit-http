@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "WasmWorklist.h"
+#include "WasmLLIntGenerator.h"
 
 #if ENABLE(WEBASSEMBLY)
 
@@ -63,8 +64,8 @@ public:
 
     }
 
-protected:
-    PollResult poll(const AbstractLocker&) override
+private:
+    PollResult poll(const AbstractLocker&) final
     {
         auto& queue = worklist.m_queue;
         synchronize.notifyAll();
@@ -89,7 +90,7 @@ protected:
         return PollResult::Wait;
     }
 
-    WorkResult work() override
+    WorkResult work() final
     {
         auto complete = [&] (const AbstractLocker&) {
             // We need to hold the lock to release our plan otherwise the main thread, while canceling plans
@@ -116,7 +117,7 @@ protected:
         return complete(holdLock(*worklist.m_lock));
     }
 
-    const char* name() const override
+    const char* name() const final
     {
         return "Wasm Worklist Helper Thread";
     }

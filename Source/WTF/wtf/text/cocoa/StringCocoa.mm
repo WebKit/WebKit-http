@@ -18,10 +18,10 @@
  *
  */
 
-#include "config.h"
-#include <wtf/text/WTFString.h>
+#import "config.h"
+#import <wtf/text/WTFString.h>
 
-#include <CoreFoundation/CFString.h>
+#import <CoreFoundation/CFString.h>
 
 namespace WTF {
 
@@ -43,9 +43,21 @@ String::String(NSString *str)
         }
 
         Vector<UChar, 1024> ucharBuffer(size);
-        CFStringGetCharacters(reinterpret_cast<CFStringRef>(str), CFRangeMake(0, size), ucharBuffer.data());
+        CFStringGetCharacters(reinterpret_cast<CFStringRef>(str), CFRangeMake(0, size), reinterpret_cast<UniChar*>(ucharBuffer.data()));
         m_impl = StringImpl::create(ucharBuffer.data(), size);
     }
+}
+
+RetainPtr<id> makeNSArrayElement(const String& vectorElement)
+{
+    return adoptNS((__bridge_transfer id)vectorElement.createCFString().leakRef());
+}
+
+Optional<String> makeVectorElement(const String*, id arrayElement)
+{
+    if (![arrayElement isKindOfClass:NSString.class])
+        return WTF::nullopt;
+    return { { arrayElement } };
 }
 
 }

@@ -28,12 +28,10 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCInlines.h"
-#include "JSWebAssemblyLinkError.h"
-#include "JSWebAssemblyMemory.h"
+#include "JSCJSValueInlines.h"
+#include "JSCellInlines.h"
 #include "WasmModuleInformation.h"
 #include "WasmToJS.h"
-
 
 namespace JSC {
 

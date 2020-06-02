@@ -31,6 +31,7 @@
 #import "TestInputDelegate.h"
 #import "TestWKWebView.h"
 #import "UIKitSPI.h"
+#import "UserInterfaceSwizzler.h"
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/WKWebViewPrivateForTesting.h>
 #import <wtf/RetainPtr.h>
@@ -82,6 +83,8 @@
 
 @end
 
+namespace TestWebKitAPI {
+
 TEST(UIWKInteractionViewProtocol, SelectTextWithCharacterGranularity)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 400, 400)]);
@@ -107,6 +110,8 @@ TEST(UIWKInteractionViewProtocol, UpdateSelectionWithExtentPoint)
 
 TEST(UIWKInteractionViewProtocol, SelectPositionAtPointAfterBecomingFirstResponder)
 {
+    IPhoneUserInterfaceSwizzler userInterfaceSwizzler;
+
     auto inputDelegate = adoptNS([TestInputDelegate new]);
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 400, 400)]);
     [webView _setInputDelegate:inputDelegate.get()];
@@ -174,5 +179,7 @@ TEST(UIWKInteractionViewProtocol, SelectPositionAtPointInElementInNonFocusedFram
     TestWebKitAPI::Util::run(&didStartInputSession);
     EXPECT_WK_STREQ("DIV", [webView stringByEvaluatingJavaScript:@"document.querySelector('iframe').contentDocument.activeElement.tagName"]);
 }
+
+} // namespace TestWebKitAPI
 
 #endif

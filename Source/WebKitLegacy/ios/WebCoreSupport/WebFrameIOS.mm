@@ -27,6 +27,16 @@
 
 #import "WebFrameIOS.h"
 
+#import "DOM.h"
+#import "DOMNodeInternal.h"
+#import "DOMRange.h"
+#import "DOMRangeInternal.h"
+#import "DOMUIKitExtensions.h"
+#import "WebFrameInternal.h"
+#import "WebSelectionRect.h"
+#import "WebUIKitDelegate.h"
+#import "WebViewPrivate.h"
+#import "WebVisiblePositionInternal.h"
 #import <WebCore/DocumentMarkerController.h>
 #import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
@@ -40,7 +50,6 @@
 #import <WebCore/HitTestResult.h>
 #import <WebCore/Position.h>
 #import <WebCore/Range.h>
-#import <WebCore/RenderObject.h>
 #import <WebCore/RenderText.h>
 #import <WebCore/RenderedDocumentMarker.h>
 #import <WebCore/SelectionRect.h>
@@ -49,20 +58,8 @@
 #import <WebCore/TextFlags.h>
 #import <WebCore/VisiblePosition.h>
 #import <WebCore/VisibleUnits.h>
-#import <WebKitLegacy/DOM.h>
-#import <WebKitLegacy/DOMRange.h>
-#import <WebKitLegacy/DOMUIKitExtensions.h>
-#import <WebKitLegacy/WebSelectionRect.h>
-#import <WebKitLegacy/WebVisiblePosition.h>
 #import <unicode/uchar.h>
-
-#import "DOMNodeInternal.h"
-#import "DOMRangeInternal.h"
-#import "WebFrameInternal.h"
-#import "WebUIKitDelegate.h"
-#import "WebViewPrivate.h"
-#import "WebVisiblePosition.h"
-#import "WebVisiblePositionInternal.h"
+#import <wtf/cocoa/VectorCocoa.h>
 
 using namespace WebCore;
 
@@ -133,52 +130,52 @@ using namespace WebCore;
 
 - (CGRect)closestCaretRectInMarkedTextRangeForPoint:(CGPoint)point
 {
-    Frame *frame = [self coreFrame];
-    Range *markedTextRange = frame->editor().compositionRange().get();
-    VisibleSelection markedTextRangeSelection = markedTextRange ? VisibleSelection(*markedTextRange) : VisibleSelection();
+    auto frame = [self coreFrame];
+    if (!frame)
+        return { };
 
-    IntRect result;
+    auto document = frame->document();
+    if (!document)
+        return { };
 
-    if (markedTextRangeSelection.isRange()) {
-        VisiblePosition start(markedTextRangeSelection.start());
-        VisiblePosition end(markedTextRangeSelection.end());
+    document->updateLayout();
 
-        // Adjust pos and give it an appropriate affinity.
-        VisiblePosition pos;
-        Vector<IntRect> intRects;
-        markedTextRange->absoluteTextRects(intRects, NO);
-        unsigned size = intRects.size();
-        CGRect firstRect = intRects[0];
-        CGRect lastRect  = intRects[size-1];
-        if (point.y < firstRect.origin.y) {
-            point.y = firstRect.origin.y;
-            pos = [self visiblePositionForPoint:point];
-            pos.setAffinity(UPSTREAM);
-        }
-        else if (point.y >= lastRect.origin.y) {
-            point.y = lastRect.origin.y;
-            pos = [self visiblePositionForPoint:point];
-            pos.setAffinity(DOWNSTREAM);
-        }
-        else {
-            pos = [self visiblePositionForPoint:point];
-        }
-        
-        if (pos == start || pos < start) {
-            start.setAffinity(UPSTREAM);
-            result = start.absoluteCaretBounds();
-        } else if (pos > end) {
-            end.setAffinity(DOWNSTREAM);
-            result = end.absoluteCaretBounds();
-        } else {
-            result = pos.absoluteCaretBounds();
-        }
+    auto markedTextRange = frame->editor().compositionRange().get();
+    auto markedTextRangeSelection = markedTextRange ? VisibleSelection(*markedTextRange) : VisibleSelection();
+
+    if (!markedTextRangeSelection.isRange())
+        return [self visiblePositionForPoint:point].absoluteCaretBounds();
+
+    auto intRects = RenderObject::absoluteTextRects(*markedTextRange);
+    CGRect firstRect = intRects.first();
+    CGRect lastRect = intRects.last();
+
+    VisiblePosition start = markedTextRangeSelection.start();
+    VisiblePosition end = markedTextRangeSelection.end();
+    VisiblePosition position;
+
+    // Adjust position and give it an appropriate affinity.
+    if (point.y < firstRect.origin.y) {
+        point.y = firstRect.origin.y;
+        position = [self visiblePositionForPoint:point];
+        position.setAffinity(UPSTREAM);
+    } else if (point.y >= lastRect.origin.y) {
+        point.y = lastRect.origin.y;
+        position = [self visiblePositionForPoint:point];
+        position.setAffinity(DOWNSTREAM);
     } else {
-        VisiblePosition pos = [self visiblePositionForPoint:point];
-        result = pos.absoluteCaretBounds();
+        position = [self visiblePositionForPoint:point];
     }
-    
-    return (CGRect) result;    
+
+    if (position == start || position < start) {
+        start.setAffinity(UPSTREAM);
+        return start.absoluteCaretBounds();
+    }
+    if (position > end) {
+        end.setAffinity(DOWNSTREAM);
+        return end.absoluteCaretBounds();
+    }
+    return position.absoluteCaretBounds();
 }
 
 
@@ -207,20 +204,14 @@ using namespace WebCore;
     }    
 }
 
-- (NSArray *)selectionRectsForCoreRange:(Range *)range
+- (NSArray *)selectionRectsForCoreRange:(const SimpleRange&)range
 {
-    if (!range)
-        return nil;
-    
     Vector<SelectionRect> rects;
-    range->collectSelectionRects(rects);
-    unsigned size = rects.size();
-    
-    NSMutableArray *result = [NSMutableArray arrayWithCapacity:size];
-    for (unsigned i = 0; i < size; i++) {
-        SelectionRect &coreRect = rects[i];
-        WebSelectionRect *webRect = [WebSelectionRect selectionRect];
-        webRect.rect = static_cast<CGRect>(coreRect.rect());
+    createLiveRange(range)->collectSelectionRects(rects);
+
+    return createNSArray(rects, [] (auto& coreRect) {
+        auto webRect = [WebSelectionRect selectionRect];
+        webRect.rect = coreRect.rect();
         webRect.writingDirection = coreRect.direction() == TextDirection::LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
         webRect.isLineBreak = coreRect.isLineBreak();
         webRect.isFirstOnLine = coreRect.isFirstOnLine();
@@ -229,24 +220,20 @@ using namespace WebCore;
         webRect.containsEnd = coreRect.containsEnd();
         webRect.isInFixedPosition = coreRect.isInFixedPosition();
         webRect.isHorizontal = coreRect.isHorizontal();
-        [result addObject:webRect];
-    }
-    
-    return result;        
+        return webRect;
+    }).autorelease();
 }
 
 - (NSArray *)selectionRectsForRange:(DOMRange *)domRange
 {
-    return [self selectionRectsForCoreRange:core(domRange)];
+    auto range = core(domRange);
+    return range ? [self selectionRectsForCoreRange:*range] : nil;
 }
 
 - (NSArray *)selectionRects
 {
-    if (![self hasSelection])
-        return nil;
-
-    Frame *frame = [self coreFrame];
-    return [self selectionRectsForCoreRange:frame->selection().toNormalizedRange().get()];
+    auto range = self.coreFrame->selection().selection().toNormalizedRange();
+    return range ? [self selectionRectsForCoreRange:*range] : nil;
 }
 
 - (DOMRange *)wordAtPoint:(CGPoint)point
@@ -497,7 +484,7 @@ using namespace WebCore;
 
     // This is a temporary hack until we get the improvements
     // I'm working on for RTL selection.
-    if (frameSelection.granularity() == WordGranularity)
+    if (frameSelection.granularity() == TextGranularity::WordGranularity)
         frameSelection.moveTo(frameSelection.selection().start(), frameSelection.selection().end());
     
     if (frameSelection.selection().isCaret()) {
@@ -597,18 +584,14 @@ using namespace WebCore;
 
 - (void)moveSelectionToStart
 {
-    Frame *frame = [self coreFrame];
-    FrameSelection& frameSelection = frame->selection();
-    VisiblePosition start = startOfDocument(frameSelection.selection().start());
-    frameSelection.moveTo(start);
+    auto& frame = *self.coreFrame;
+    frame.selection().moveTo(startOfDocument(frame.document()));
 }
 
 - (void)moveSelectionToEnd
 {
-    Frame *frame = [self coreFrame];
-    FrameSelection& frameSelection = frame->selection();
-    VisiblePosition end =  endOfDocument(frameSelection.selection().end());
-    frameSelection.moveTo(end);
+    auto& frame = *self.coreFrame;
+    frame.selection().moveTo(endOfDocument(frame.document()));
 }
 
 - (void)moveSelectionToPoint:(CGPoint)point
@@ -621,23 +604,23 @@ using namespace WebCore;
 
 - (void)setSelectionGranularity:(WebTextGranularity)granularity
 {
-    TextGranularity wcGranularity = CharacterGranularity;
+    TextGranularity wcGranularity = TextGranularity::CharacterGranularity;
     switch (granularity) {
         case WebTextGranularityCharacter:
-            wcGranularity = CharacterGranularity;
+            wcGranularity = TextGranularity::CharacterGranularity;
             break;
         case WebTextGranularityWord:
-            wcGranularity = WordGranularity;
+            wcGranularity = TextGranularity::WordGranularity;
             break;
         case WebTextGranularitySentence:
-            wcGranularity = SentenceGranularity;
+            wcGranularity = TextGranularity::SentenceGranularity;
             break;
         case WebTextGranularityParagraph:
-            wcGranularity = ParagraphGranularity;
+            wcGranularity = TextGranularity::ParagraphGranularity;
             break;
         case WebTextGranularityAll:
-            // FIXME: Add DocumentGranularity.
-            wcGranularity = ParagraphGranularity;
+            // FIXME: Add TextGranularity::DocumentGranularity.
+            wcGranularity = TextGranularity::ParagraphGranularity;
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -808,134 +791,18 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
 
 - (WebVisiblePosition *)startPosition
 {
-    Frame *frame = [self coreFrame];
-    Element *rootElement = frame->document()->documentElement();
-    return [WebVisiblePosition _wrapVisiblePosition:startOfDocument(static_cast<Node*>(rootElement))];
+    return [WebVisiblePosition _wrapVisiblePosition:startOfDocument(self.coreFrame->document())];
 }
 
 - (WebVisiblePosition *)endPosition
 {
-    Frame *frame = [self coreFrame];
-    Element *rootElement = frame->document()->documentElement();
-    return [WebVisiblePosition _wrapVisiblePosition:endOfDocument(static_cast<Node*>(rootElement))];
+    return [WebVisiblePosition _wrapVisiblePosition:endOfDocument(self.coreFrame->document())];
 }
 
 - (BOOL)renderedCharactersExceed:(NSUInteger)threshold
 {
     Frame *frame = [self coreFrame];
     return frame->view()->renderedCharactersExceed(threshold);
-}
-
-// Iterates backward through the document and returns the point at which untouched dictation results end.
-- (WebVisiblePosition *)previousUnperturbedDictationResultBoundaryFromPosition:(WebVisiblePosition *)position
-{
-    VisiblePosition currentVisiblePosition = [position _visiblePosition];
-    if (currentVisiblePosition.isNull())
-        return position;
-    
-    Document& document = currentVisiblePosition.deepEquivalent().anchorNode()->document();
-
-    id uikitDelegate = [[self webView] _UIKitDelegate];
-    if (![uikitDelegate respondsToSelector:@selector(isUnperturbedDictationResultMarker:)])
-        return position;
-    
-    while (currentVisiblePosition.isNotNull()) {
-        WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
-        
-        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(*currentNode);
-        ASSERT(lastOffset >= 0);
-        if (lastOffset < 0)
-            return currentWebVisiblePosition;
-        
-        VisiblePosition previousVisiblePosition = currentVisiblePosition.previous();
-        if (previousVisiblePosition.isNull())
-            return currentWebVisiblePosition;
-        
-        auto graphemeRange = Range::create(document, previousVisiblePosition.deepEquivalent(), currentVisiblePosition.deepEquivalent());
-        
-        auto markers = document.markers().markersInRange(graphemeRange, DocumentMarker::DictationResult);
-        if (markers.isEmpty())
-            return currentWebVisiblePosition;
-        
-        // FIXME: Result markers should not overlap, so there should only ever be one for a single grapheme.
-        // <rdar://problem/9810617> Too much document context is omitted when sending dictation hints because of problems with WebCore DocumentMarkers
-        // ASSERT(markers.size() == 1);
-        if (markers.size() > 1)
-            return currentWebVisiblePosition;
-        RenderedDocumentMarker* resultMarker = markers.at(0);
-        
-        // FIXME: WebCore doesn't always update markers correctly during editing. Bail if resultMarker extends off the edge of 
-        // this node, because that means it's invalid.
-        if (resultMarker->endOffset() > (unsigned)lastOffset)
-            return currentWebVisiblePosition;
-        
-        if (![uikitDelegate isUnperturbedDictationResultMarker:resultMarker->metadata()])
-            return currentWebVisiblePosition;
-        
-        if (resultMarker->startOffset() > 0)
-            return [WebVisiblePosition _wrapVisiblePosition:VisiblePosition(createLegacyEditingPosition(currentNode, resultMarker->startOffset()))];
-        
-        currentVisiblePosition = VisiblePosition(createLegacyEditingPosition(currentNode, 0));
-    }
-    
-    return position;
-}
-
-// Iterates forward through the document and returns the point at which untouched dictation results end.
-- (WebVisiblePosition *)nextUnperturbedDictationResultBoundaryFromPosition:(WebVisiblePosition *)position
-{
-    VisiblePosition currentVisiblePosition = [position _visiblePosition];
-    if (currentVisiblePosition.isNull())
-        return position;
-    
-    Document& document = currentVisiblePosition.deepEquivalent().anchorNode()->document();
-    
-    id uikitDelegate = [[self webView] _UIKitDelegate];
-    if (![uikitDelegate respondsToSelector:@selector(isUnperturbedDictationResultMarker:)])
-        return position;
-    
-    while (currentVisiblePosition.isNotNull()) {
-        WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
-        
-        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(*currentNode);
-        ASSERT(lastOffset >= 0);
-        if (lastOffset < 0)
-            return currentWebVisiblePosition;
-        
-        VisiblePosition nextVisiblePosition = currentVisiblePosition.next();
-        if (nextVisiblePosition.isNull())
-            return currentWebVisiblePosition;
-        
-        auto graphemeRange = Range::create(document, currentVisiblePosition.deepEquivalent(), nextVisiblePosition.deepEquivalent());
-        
-        auto markers = document.markers().markersInRange(graphemeRange, DocumentMarker::DictationResult);
-        if (markers.isEmpty())
-            return currentWebVisiblePosition;
-        
-        // FIXME: Result markers should not overlap, so there should only ever be one for a single grapheme.
-        // <rdar://problem/9810617> Too much document context is omitted when sending dictation hints because of problems with WebCore DocumentMarkers
-        //ASSERT(markers.size() == 1);
-        if (markers.size() > 1)
-            return currentWebVisiblePosition;
-        DocumentMarker* resultMarker = markers.at(0);
-        
-        // FIXME: WebCore doesn't always update markers correctly during editing. Bail if resultMarker extends off the edge of 
-        // this node, because that means it's invalid.
-        if (resultMarker->endOffset() > static_cast<unsigned>(lastOffset))
-            return currentWebVisiblePosition;
-        
-        if (![uikitDelegate isUnperturbedDictationResultMarker:resultMarker->metadata()])
-            return currentWebVisiblePosition;
-        
-        if (resultMarker->endOffset() <= static_cast<unsigned>(lastOffset))
-            return [WebVisiblePosition _wrapVisiblePosition:VisiblePosition(createLegacyEditingPosition(currentNode, resultMarker->endOffset()))];
-        
-        currentVisiblePosition = VisiblePosition(createLegacyEditingPosition(currentNode, lastOffset));
-    }
-    
-    return position;
 }
 
 - (CGRect)elementRectAtPoint:(CGPoint)point

@@ -404,8 +404,8 @@ bool FELighting::drawLighting(Uint8ClampedArray& pixels, int width, int height)
     data.widthDecreasedByOne = width - 1;
     data.heightDecreasedByOne = height - 1;
     
-    FloatComponents lightColor = (operatingColorSpace() == ColorSpace::LinearRGB) ? sRGBColorToLinearComponents(m_lightingColor) : FloatComponents(m_lightingColor);
-    paintingData.initialLightingData.colorVector = FloatPoint3D(lightColor.components[0], lightColor.components[1], lightColor.components[2]);
+    auto lightColor = (operatingColorSpace() == ColorSpace::LinearRGB) ? rgbToLinearComponents(m_lightingColor.toSRGBAComponentsLossy()) : m_lightingColor.toSRGBAComponentsLossy();
+    paintingData.initialLightingData.colorVector = FloatPoint3D(lightColor[0], lightColor[1], lightColor[2]);
     m_lightSource->initPaintingData(*this, paintingData);
 
     // Top left.

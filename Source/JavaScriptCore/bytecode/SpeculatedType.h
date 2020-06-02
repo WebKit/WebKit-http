@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -98,12 +98,19 @@ static constexpr SpeculatedType SpecBoolean                           = 1ull << 
 static constexpr SpeculatedType SpecOther                             = 1ull << 39; // It's definitely either Null or Undefined.
 static constexpr SpeculatedType SpecMisc                              = SpecBoolean | SpecOther; // It's definitely either a boolean, Null, or Undefined.
 static constexpr SpeculatedType SpecEmpty                             = 1ull << 40; // It's definitely an empty value marker.
-static constexpr SpeculatedType SpecBigInt                            = 1ull << 41; // It's definitely a BigInt.
-static constexpr SpeculatedType SpecDataViewObject                    = 1ull << 42; // It's definitely a JSDataView.
+static constexpr SpeculatedType SpecHeapBigInt                        = 1ull << 41; // It's definitely a BigInt that is allocated on the heap
+static constexpr SpeculatedType SpecBigInt32                          = 1ull << 42; // It's definitely a small BigInt that is inline the JSValue
+#if USE(BIGINT32)
+static constexpr SpeculatedType SpecBigInt                            = SpecBigInt32 | SpecHeapBigInt;
+#else
+// We should not include SpecBigInt32. We are using SpecBigInt in various places like prediction. If this includes SpecBigInt32, fixup phase is confused if !USE(BIGINT32) since it is not using AnyBigIntUse.
+static constexpr SpeculatedType SpecBigInt                            = SpecHeapBigInt;
+#endif
+static constexpr SpeculatedType SpecDataViewObject                    = 1ull << 43; // It's definitely a JSDataView.
 static constexpr SpeculatedType SpecPrimitive                         = SpecString | SpecSymbol | SpecBytecodeNumber | SpecMisc | SpecBigInt; // It's any non-Object JSValue.
 static constexpr SpeculatedType SpecObject                            = SpecFinalObject | SpecArray | SpecFunction | SpecTypedArrayView | SpecDirectArguments | SpecScopedArguments | SpecStringObject | SpecRegExpObject | SpecDateObject | SpecPromiseObject | SpecMapObject | SpecSetObject | SpecWeakMapObject | SpecWeakSetObject | SpecProxyObject | SpecDerivedArray | SpecObjectOther | SpecDataViewObject; // Bitmask used for testing for any kind of object prediction.
-static constexpr SpeculatedType SpecCell                              = SpecObject | SpecString | SpecSymbol | SpecCellOther | SpecBigInt; // It's definitely a JSCell.
-static constexpr SpeculatedType SpecHeapTop                           = SpecCell | SpecBytecodeNumber | SpecMisc; // It can be any of the above, except for SpecInt52Only and SpecDoubleImpureNaN.
+static constexpr SpeculatedType SpecCell                              = SpecObject | SpecString | SpecSymbol | SpecCellOther | SpecHeapBigInt; // It's definitely a JSCell.
+static constexpr SpeculatedType SpecHeapTop                           = SpecCell | SpecBigInt32 | SpecBytecodeNumber | SpecMisc; // It can be any of the above, except for SpecInt52Only and SpecDoubleImpureNaN.
 static constexpr SpeculatedType SpecBytecodeTop                       = SpecHeapTop | SpecEmpty; // It can be any of the above, except for SpecInt52Only and SpecDoubleImpureNaN. Corresponds to what could be found in a bytecode local.
 static constexpr SpeculatedType SpecFullTop                           = SpecBytecodeTop | SpecFullNumber; // It can be anything that bytecode could see plus exotic encodings of numbers.
 
@@ -120,6 +127,16 @@ inline bool isAnySpeculation(SpeculatedType)
     return true;
 }
 
+inline bool isSubtypeSpeculation(SpeculatedType value, SpeculatedType category)
+{
+    return !(value & ~category) && value;
+}
+
+inline bool speculationContains(SpeculatedType value, SpeculatedType category)
+{
+    return !!(value & category) && value;
+}
+
 inline bool isCellSpeculation(SpeculatedType value)
 {
     return !!(value & SpecCell) && !(value & ~SpecCell);
@@ -133,6 +150,11 @@ inline bool isCellOrOtherSpeculation(SpeculatedType value)
 inline bool isNotCellSpeculation(SpeculatedType value)
 {
     return !(value & SpecCellCheck) && value;
+}
+
+inline bool isNotCellNorBigIntSpeculation(SpeculatedType value)
+{
+    return !(value & (SpecCellCheck | SpecBigInt)) && value;
 }
 
 inline bool isObjectSpeculation(SpeculatedType value)
@@ -185,9 +207,19 @@ inline bool isSymbolSpeculation(SpeculatedType value)
     return value == SpecSymbol;
 }
 
+inline bool isBigInt32Speculation(SpeculatedType value)
+{
+    return value == SpecBigInt32;
+}
+
+inline bool isHeapBigIntSpeculation(SpeculatedType value)
+{
+    return value == SpecHeapBigInt;
+}
+
 inline bool isBigIntSpeculation(SpeculatedType value)
 {
-    return value == SpecBigInt;
+    return !!value && (value & SpecBigInt) == value;
 }
 
 inline bool isArraySpeculation(SpeculatedType value)
@@ -491,7 +523,10 @@ inline bool speculationChecked(SpeculatedType actual, SpeculatedType desired)
     return (actual | desired) == desired;
 }
 
-SpeculatedType speculationFromClassInfo(const ClassInfo*);
+// The SpeculatedType returned by this function for any cell, c, has the following invariant:
+// ASSERT(!c->inherits(classInfo) || speculationChecked(speculationFromCell(c), speculationFromClassInfoInheritance(classInfo)));
+SpeculatedType speculationFromClassInfoInheritance(const ClassInfo*);
+
 SpeculatedType speculationFromStructure(Structure*);
 SpeculatedType speculationFromCell(JSCell*);
 JS_EXPORT_PRIVATE SpeculatedType speculationFromValue(JSValue);

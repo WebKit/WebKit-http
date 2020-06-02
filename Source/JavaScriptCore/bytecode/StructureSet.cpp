@@ -26,8 +26,7 @@
 #include "config.h"
 #include "StructureSet.h"
 
-#include "JSCInlines.h"
-#include "TrackedReferences.h"
+#include "HeapInlines.h"
 #include <wtf/CommaPrinter.h>
 
 namespace JSC {

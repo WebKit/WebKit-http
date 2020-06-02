@@ -59,6 +59,7 @@ class PeerConnectionFactoryInterface;
 namespace WebCore {
 
 class LibWebRTCAudioModule;
+struct PeerConnectionFactoryAndThreads;
 struct RTCRtpCapabilities;
 
 enum class MDNSRegisterError { NotImplemented, BadParameter, DNSSD, Internal, Timeout };
@@ -103,7 +104,7 @@ public:
     void disableEnumeratingAllNetworkInterfaces();
     void enableEnumeratingAllNetworkInterfaces();
 
-    void supportsVP8(bool value) { m_supportsVP8 = value; }
+    void supportsH265(bool value) { m_supportsH265 = value; }
     virtual void disableNonLocalhostConnections() { m_disableNonLocalhostConnections = true; }
 
     rtc::RTCCertificateGenerator& certificateGenerator();
@@ -134,13 +135,17 @@ protected:
     virtual std::unique_ptr<webrtc::VideoDecoderFactory> createDecoderFactory();
     virtual std::unique_ptr<webrtc::VideoEncoderFactory> createEncoderFactory();
 
+    virtual void startedNetworkThread() { };
+
+    PeerConnectionFactoryAndThreads& getStaticFactoryAndThreads(bool useNetworkThreadWithSocketServer);
+
     bool m_enableEnumeratingAllNetworkInterfaces { false };
     // FIXME: Remove m_useNetworkThreadWithSocketServer member variable and make it a global.
     bool m_useNetworkThreadWithSocketServer { true };
 
     rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> m_factory;
     bool m_disableNonLocalhostConnections { false };
-    bool m_supportsVP8 { false };
+    bool m_supportsH265 { false };
     bool m_enableLogging { true };
     bool m_useDTLS10 { false };
 #endif

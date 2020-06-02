@@ -21,9 +21,7 @@
 #include "config.h"
 #include "ArgList.h"
 
-#include "JSCJSValue.h"
-#include "JSObject.h"
-#include "JSCInlines.h"
+#include "JSCJSValueInlines.h"
 
 using std::min;
 
@@ -85,7 +83,7 @@ void MarkedArgumentBuffer::expandCapacity(int newCapacity)
 {
     setNeedsOverflowCheck();
     ASSERT(m_capacity < newCapacity);
-    auto checkedSize = Checked<size_t, RecordOverflow>(newCapacity) * sizeof(EncodedJSValue);
+    auto checkedSize = CheckedSize(newCapacity) * sizeof(EncodedJSValue);
     if (UNLIKELY(checkedSize.hasOverflowed()))
         return this->overflowed();
     EncodedJSValue* newBuffer = static_cast<EncodedJSValue*>(Gigacage::malloc(Gigacage::JSValue, checkedSize.unsafeGet()));

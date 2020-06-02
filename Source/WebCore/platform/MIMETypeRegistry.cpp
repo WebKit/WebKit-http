@@ -67,10 +67,8 @@
 #include "PreviewConverter.h"
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/AdditionalSystemPreviewTypes.h>
-#else
-#define ADDITIONAL_SYSTEM_PREVIEW_TYPES
+#if USE(GSTREAMER)
+#include "ImageDecoderGStreamer.h"
 #endif
 
 namespace WebCore {
@@ -285,12 +283,6 @@ const HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::unsupportedTe
     return unsupportedTextMIMETypes;
 }
 
-Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>>& overriddenMimeTypesMap()
-{
-    static NeverDestroyed<Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>>> map;
-    return map;
-}
-
 const std::initializer_list<TypeExtensionPair>& commonMediaTypes()
 {
     // A table of common media MIME types and file extensions used when a platform's
@@ -377,7 +369,7 @@ const std::initializer_list<TypeExtensionPair>& commonMediaTypes()
     return commonMediaTypes;
 }
 
-const HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>& commonMimeTypesMap()
+static const HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>& commonMimeTypesMap()
 {
     ASSERT(isMainThread());
     static NeverDestroyed<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>> mimeTypesMap = [] {
@@ -402,12 +394,6 @@ const HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>& commonMimeTypes
 
 static const Vector<String>* typesForCommonExtension(const String& extension)
 {
-    if (overriddenMimeTypesMap().hasValue()) {
-        auto mapEntry = overriddenMimeTypesMap()->find(extension);
-        if (mapEntry == overriddenMimeTypesMap()->end())
-            return nullptr;
-        return &mapEntry->value;
-    }
     auto mapEntry = commonMimeTypesMap().find(extension);
     if (mapEntry == commonMimeTypesMap().end())
         return nullptr;
@@ -480,6 +466,11 @@ bool MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(const String& mimeType
         return true;
 #endif
 
+#if USE(GSTREAMER)
+    if (ImageDecoderGStreamer::supportsContainerType(mimeType))
+        return true;
+#endif
+
     return false;
 }
 
@@ -491,10 +482,12 @@ std::unique_ptr<MIMETypeRegistryThreadGlobalData> MIMETypeRegistry::createMIMETy
     CFIndex count = CFArrayGetCount(supportedTypes.get());
     for (CFIndex i = 0; i < count; i++) {
         CFStringRef supportedType = reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i));
-        if (isSupportedImageType(supportedType)) {
-            String mimeType = MIMETypeForImageType(supportedType);
-            supportedImageMIMETypesForEncoding.add(mimeType);
-        }
+        if (!isSupportedImageType(supportedType))
+            continue;
+        String mimeType = MIMETypeForImageType(supportedType);
+        if (mimeType.isEmpty())
+            continue;
+        supportedImageMIMETypesForEncoding.add(mimeType);
     }
 #else
     HashSet<String, ASCIICaseInsensitiveHash> supportedImageMIMETypesForEncoding = std::initializer_list<String> {
@@ -730,7 +723,8 @@ const HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::systemPreview
         // Unofficial, but supported because we documented them.
         "model/usd",
         "model/vnd.pixar.usd",
-        ADDITIONAL_SYSTEM_PREVIEW_TYPES
+        // Reality files.
+        "model/vnd.reality"
     };
     return systemPreviewMIMETypes;
 }
@@ -821,16 +815,10 @@ String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeType)
 
 String MIMETypeRegistry::appendFileExtensionIfNecessary(const String& filename, const String& mimeType)
 {
-    if (filename.isEmpty())
-        return emptyString();
-
-    if (equalIgnoringASCIICase(mimeType, defaultMIMEType()))
+    if (filename.isEmpty() || filename.contains('.') || equalIgnoringASCIICase(mimeType, defaultMIMEType()))
         return filename;
 
-    if (filename.reverseFind('.') != notFound)
-        return filename;
-
-    String preferredExtension = getPreferredExtensionForMIMEType(mimeType);
+    auto preferredExtension = getPreferredExtensionForMIMEType(mimeType);
     if (preferredExtension.isEmpty())
         return filename;
 

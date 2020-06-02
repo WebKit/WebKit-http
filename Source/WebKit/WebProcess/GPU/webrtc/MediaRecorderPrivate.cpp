@@ -43,7 +43,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-MediaRecorderPrivate::MediaRecorderPrivate(const MediaStreamPrivate& stream)
+MediaRecorderPrivate::MediaRecorderPrivate(MediaStreamPrivate& stream)
     : m_identifier(MediaRecorderIdentifier::generate())
     , m_connection(WebProcess::singleton().ensureGPUProcessConnection().connection())
 {
@@ -64,35 +64,33 @@ MediaRecorderPrivate::MediaRecorderPrivate(const MediaStreamPrivate& stream)
         width = selectedTracks.videoTrack->settings().width();
     }
 
-    m_connection->sendWithAsyncReply(Messages::RemoteMediaRecorderManager::CreateRecorder { m_identifier, !!selectedTracks.audioTrack, width, height }, [this, weakThis = makeWeakPtr(this)](auto&& exception) {
-        if (!weakThis || !exception)
+    m_connection->sendWithAsyncReply(Messages::RemoteMediaRecorderManager::CreateRecorder { m_identifier, !!selectedTracks.audioTrack, width, height }, [this, weakThis = makeWeakPtr(this), audioTrack = makeRefPtr(selectedTracks.audioTrack), videoTrack = makeRefPtr(selectedTracks.videoTrack)](auto&& exception) {
+        if (!weakThis)
             return;
-        m_errorCallback(Exception { exception->code, WTFMove(exception->message) });
+        if (exception)
+            return m_errorCallback(Exception { exception->code, WTFMove(exception->message) });
+        if (audioTrack)
+            setAudioSource(&audioTrack->source());
+        if (videoTrack)
+            setVideoSource(&videoTrack->source());
     }, 0);
 }
 
 MediaRecorderPrivate::~MediaRecorderPrivate()
 {
+    setAudioSource(nullptr);
+    setVideoSource(nullptr);
     m_connection->send(Messages::RemoteMediaRecorderManager::ReleaseRecorder { m_identifier }, 0);
 }
 
-void MediaRecorderPrivate::sampleBufferUpdated(const WebCore::MediaStreamTrackPrivate& track, WebCore::MediaSample& sample)
+void MediaRecorderPrivate::videoSampleAvailable(MediaSample& sample)
 {
-    if (track.id() != m_recordedVideoTrackID)
-        return;
-#if HAVE(IOSURFACE)
     if (auto remoteSample = RemoteVideoSample::create(sample))
         m_connection->send(Messages::RemoteMediaRecorder::VideoSampleAvailable { WTFMove(*remoteSample) }, m_identifier);
-#else
-    ASSERT_NOT_REACHED();
-#endif
 }
 
-void MediaRecorderPrivate::audioSamplesAvailable(const WebCore::MediaStreamTrackPrivate& track, const MediaTime& time, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t numberOfFrames)
+void MediaRecorderPrivate::audioSamplesAvailable(const MediaTime& time, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t numberOfFrames)
 {
-    if (track.id() != m_recordedAudioTrackID)
-        return;
-
     if (m_description != description) {
         ASSERT(description.platformDescription().type == PlatformDescription::CAAudioStreamBasicType);
         m_description = *WTF::get<const AudioStreamBasicDescription*>(description.platformDescription().description);
@@ -130,6 +128,8 @@ void MediaRecorderPrivate::fetchData(CompletionHandler<void(RefPtr<WebCore::Shar
 
 void MediaRecorderPrivate::stopRecording()
 {
+    setAudioSource(nullptr);
+    setVideoSource(nullptr);
     m_connection->send(Messages::RemoteMediaRecorder::StopRecording { }, m_identifier);
 }
 

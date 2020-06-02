@@ -372,7 +372,7 @@ TEST_P(SimpleOperationTest, DrawLine)
 
     ASSERT_GL_NO_ERROR();
 
-    for (auto x = 0; x < getWindowWidth(); x++)
+    for (int x = 0; x < getWindowWidth(); x++)
     {
         EXPECT_PIXEL_COLOR_EQ(x, x, GLColor::green);
     }
@@ -1080,6 +1080,6 @@ TEST_P(SimpleOperationTest, PrimitiveModeNegativeTest)
 
 // Use this to select which configurations (e.g. which renderer, which GLES major version) these
 // tests should be run against.
-ANGLE_INSTANTIATE_TEST_ES2_AND_ES3_AND(SimpleOperationTest, WithNoCommandGraph(ES2_VULKAN()));
+ANGLE_INSTANTIATE_TEST_ES2_AND_ES3(SimpleOperationTest);
 
 }  // namespace
