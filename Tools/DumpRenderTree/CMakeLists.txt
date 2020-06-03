@@ -56,6 +56,23 @@ GENERATE_BINDINGS(DumpRenderTreeBindings
     DESTINATION ${DumpRenderTree_DERIVED_SOURCES_DIR}
     GENERATOR DumpRenderTree)
 
+IF (HAIKU)
+    foreach(inc ${DumpRenderTree_LOCAL_INCLUDE_DIRECTORIES})
+        ADD_DEFINITIONS(-iquote ${inc})
+    endforeach(inc)
+
+    include_directories(
+        ${DumpRenderTree_INCLUDE_DIRECTORIES}
+    )
+
+LIST(APPEND DumpRenderTree_LIBRARIES WebCore translation)
+ELSE (HAIKU)
+    include_directories(
+        ${DumpRenderTree_INCLUDE_DIRECTORIES}
+        ${DumpRenderTree_LOCAL_INCLUDE_DIRECTORIES}
+    )
+ENDIF (HAIKU)
+
 set(DumpRenderTree_DEPENDENCIES DumpRenderTreeBindings)
 
 WEBKIT_EXECUTABLE_DECLARE(DumpRenderTree)
