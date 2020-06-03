@@ -375,6 +375,9 @@ static void webkitWebContextConstructed(GObject* object)
 
     API::ProcessPoolConfiguration configuration;
     configuration.setInjectedBundlePath(FileSystem::stringFromFileSystemRepresentation(bundleFilename.get()));
+#if PLATFORM(WPE)
+    configuration.setProcessSwapsOnNavigation(false);
+#endif
 #if PLATFORM(GTK)
     configuration.setProcessSwapsOnNavigation(priv->psonEnabled);
     if (!priv->psonEnabled) {
