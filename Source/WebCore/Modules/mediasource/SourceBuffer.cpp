@@ -1660,7 +1660,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         if (m_mode == AppendMode::Sequence) {
             // Use the generated timestamps instead of the sample's timestamps.
             sample.setTimestamps(presentationTimestamp, decodeTimestamp);
-        } else if (trackBuffer.roundedTimestampOffset) {
+        } else if (trackBuffer.roundedTimestampOffset.isValid() && trackBuffer.roundedTimestampOffset) {
             // Reflect the timestamp offset into the sample.
             sample.offsetTimestampsBy(trackBuffer.roundedTimestampOffset);
         }
