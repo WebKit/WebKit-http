@@ -1,3 +1,181 @@
+2020-06-03  Santosh Mahto  <santosh.mahto@collabora.com>
+
+        [GTK4] Implement file chooser
+        https://bugs.webkit.org/show_bug.cgi?id=212322
+
+        Reviewed by Carlos Garcia Campos.
+
+        Port FileChooser to gtk4, Now FileChooser uses undeprecated api's.
+        Covered by existing tests.
+
+        * UIProcess/API/gtk/WebKitWebViewGtk.cpp:
+        (fileChooserDialogResponseCallback):
+        (webkitWebViewRunFileChooser):
+
+2020-06-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK4] Implement emoji chooser
+        https://bugs.webkit.org/show_bug.cgi?id=212330
+
+        Reviewed by Adrian Perez de Castro.
+
+        GtkEmojiChooser is public API in GTK4, so just use that instead of our own.
+
+        * UIProcess/API/gtk/WebKitEmojiChooser.cpp:
+        (emojiActivated): Close the popover before emitting emoji-picked for consistency with GTK.
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (_WebKitWebViewBasePrivate::_WebKitWebViewBasePrivate):
+        (_WebKitWebViewBasePrivate::releaseEmojiChooserTimerFired):
+        (webkitWebViewBaseDispose):
+        (emojiChooserClosed):
+        (webkitWebViewBaseShowEmojiChooser):
+
+2020-06-03  Youenn Fablet  <youenn@apple.com>
+
+        Add more logging related to service worker fetch event handling
+        https://bugs.webkit.org/show_bug.cgi?id=212632
+
+        Reviewed by Chris Dumez.
+
+        Add logging to identify the page ID and frame ID used by a service worker.
+        Add logging to identify what is happening in the case of a response being buffered for navigation purposes.
+
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::ServiceWorkerFrameLoaderClient::ServiceWorkerFrameLoaderClient):
+        (WebKit::WebSWContextManagerConnection::installServiceWorker):
+        (WebKit::WebSWContextManagerConnection::continueDidReceiveFetchResponse):
+        * WebProcess/Storage/WebServiceWorkerFetchTaskClient.cpp:
+        (WebKit::WebServiceWorkerFetchTaskClient::didFail):
+        (WebKit::WebServiceWorkerFetchTaskClient::didFinish):
+        (WebKit::WebServiceWorkerFetchTaskClient::continueDidReceiveResponse):
+
+2020-06-02  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] WKProcessAssertionBackgroundTaskManager incorrectly ignores expiration notifications for daemons
+        https://bugs.webkit.org/show_bug.cgi?id=212619
+
+        Reviewed by Alex Christensen.
+
+        WKProcessAssertionBackgroundTaskManager was incorrectly ignoring process assertion expiration notifications
+        for daemons, because it was relying on visibility to make decisions. For daemons (or ViewServices), we would
+        not get application visibility notifications and would therefore always assume the app is visible.
+        As a result, _handleBackgroundTaskExpiration would think it received an outdated expiration notification for
+        a visible app and would simply re-take the assertion right away.
+
+        To address the issue, we now rely on a RunningBoard API that lets us know if the suspension timer has been
+        started or not (and how much remains on the timer). If the suspension timer is not active when get receive
+        the expiration notification, we know it is an outdated notification and we ignore it (release and re-take
+        assertion right away). This can happen if we did not have time to process the expiration notification before
+        suspended and thus only get it upon resuming. It can also happen if the user re-activates the app right after
+        the expiration notice has been sent.
+
+        * Platform/spi/ios/RunningBoardServicesSPI.h:
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (processHasActiveRunTimeLimitation):
+        (-[WKProcessAssertionBackgroundTaskManager init]):
+        (-[WKProcessAssertionBackgroundTaskManager _updateBackgroundTask]):
+        (-[WKProcessAssertionBackgroundTaskManager _handleBackgroundTaskExpiration]):
+        (-[WKProcessAssertionBackgroundTaskManager _handleBackgroundTaskExpirationOnMainThread]):
+        (-[WKProcessAssertionBackgroundTaskManager _releaseBackgroundTask]):
+
+2020-06-02  Christopher Reid  <chris.reid@sony.com>
+
+        REGRESSION[r260844]: [GTK][WPE] Inspector GResource no longer updated after WebInspectorUI file updates
+        https://bugs.webkit.org/show_bug.cgi?id=212583
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add a cmake dependency on inspector resource stamp so the Glib
+        Inspector resources rebuild when the stamp is updated.
+
+        * InspectorGResources.cmake:
+
+2020-06-02  Keith Rollin  <krollin@apple.com>
+
+        Revert FEATURES_DEFINES related changes
+        https://bugs.webkit.org/show_bug.cgi?id=212664
+        <rdar://problem/63893033>
+
+        Reviewed by Andy Estes.
+
+        Bug 262310, Bug 262311, Bug 262318, and Bug 262331 involve changes to
+        FEATURE_DEFINES and how the values there relate to those found in the
+        Platform*.h files. Those changes break XCBuild (by removing the
+        .xcfilelist related to UnifiedSources and the process for generating
+        them), and so are being reverted.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262424.
+
+        Caused webkitpy test failure
+
+        Reverted changeset:
+
+        "Make generated C++ code use modern C++"
+        https://bugs.webkit.org/show_bug.cgi?id=190714
+        https://trac.webkit.org/changeset/262424
+
+2020-06-02  Peng Liu  <peng.liu6@apple.com>
+
+        Stressing webkitSetPresentationMode leads to wrong inline video dimensions
+        https://bugs.webkit.org/show_bug.cgi?id=202425
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/cocoa/VideoFullscreenManager.mm:
+        (WebKit::VideoFullscreenManager::didEnterFullscreen):
+        (WebKit::VideoFullscreenManager::didCleanupFullscreen):
+
+2020-06-02  Kate Cheney  <katherine_cheney@apple.com>
+
+        Assert network process is not suspended when trying to merge new ITP data
+        https://bugs.webkit.org/show_bug.cgi?id=212663
+        <rdar://problem/63892899>
+
+        Reviewed by Chris Dumez.
+
+        Add a debug assert to check if statistics are being merged into the
+        ITP database after prepareToSuspend() has been called. If this assert
+        is hit, it means the ITP database thread is not being stopped when
+        the process is suspended.
+
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+
+2020-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION(r261387): Introduced sandbox violations
+        https://bugs.webkit.org/show_bug.cgi?id=212634
+
+        Reviewed by Darin Adler.
+
+        The change set r261387 introduced some new mach lookup sandbox violations, when attempting to close Launch Services connections that were not open.
+        Fix this by only attempting to close open connections, and do it while holding the extension to the database mapping service.
+
+        No new tests, since this patch is fixing benign sandbox violations.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2020-06-02  Youenn Fablet  <youenn@apple.com>
+
+        Allow using web processes for service workers even though they loaded about URLs
+        https://bugs.webkit.org/show_bug.cgi?id=212464
+
+        Reviewed by Chris Dumez.
+
+        Before the patch, a web process that loads about:blank will not be able to run service workers.
+        A web process that is running service workers and is loading an about:blank page will also kill its service workers.
+        To prevent this, do not take into account about:blank URLs for the computation of the registrable domain of a process.
+
+        Covered by API tests.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didStartProvisionalLoadForMainFrame):
+
 2020-06-02  Tim Horton  <timothy_horton@apple.com>
 
         macCatalyst: WKWebView's tint color is not propagated to Web Content process

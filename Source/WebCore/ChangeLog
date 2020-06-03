@@ -1,3 +1,246 @@
+2020-06-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Dynamically setting "position: absolute" in a grid item doesn't trigger a relayout of that element
+        https://bugs.webkit.org/show_bug.cgi?id=191465
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        From Blink r484620 by Sergio Villar <svillar@igalia.com>
+
+        Containing block overrides not cleared for position:absolute
+
+        Whenever a position:absolute block gets a new containing block the
+        previously set containing block overrides are not cleared. This causes the
+        block not to be properly layout for its new containing block (for example
+        when using relative sizes).
+
+        In particular this affects grid items which always get a containing block
+        override size (which represent the grid areas) in case their
+        containing block switches from the grid container to a grid ancestor.
+
+        No new tests, as this change is covered by current web platform tests.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::insertPositionedObject): Clear the containing block's override width and height.
+
+2020-06-03  Youenn Fablet  <youenn@apple.com>
+
+        Add more logging related to service worker fetch event handling
+        https://bugs.webkit.org/show_bug.cgi?id=212632
+
+        Reviewed by Chris Dumez.
+
+        Add logging related to creating/canceling/deleting fetch event handler related client.
+        No change of behavior.
+
+        * workers/service/context/ServiceWorkerThreadProxy.cpp:
+        (WebCore::ServiceWorkerThreadProxy::startFetch):
+        (WebCore::ServiceWorkerThreadProxy::cancelFetch):
+        (WebCore::ServiceWorkerThreadProxy::removeFetch):
+
+2020-06-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        ASSERTION FAILED: isCell() under WebCore::JSDOMConstructor seen with webaudio/the-audio-api/the-audiocontext-interface/audiocontextoptions.html
+        https://bugs.webkit.org/show_bug.cgi?id=212650
+
+        Reviewed by Mark Lam.
+
+        Some DOM constructor can return jsNull. For example, AudioContext constructor can return jsNull when it exceeds # of hardware audio contexts.
+        However CodeGeneratorJS assumes that DOM constructor always returns an object, or throws an exception.
+        This patch adds object check after DOM constructor call to handle the jsNull case while it does not change the existing semantics.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateConstructorDefinition):
+
+2020-06-02  Simon Fraser  <simon.fraser@apple.com>
+
+        EventRegion::translate() needs to offset the wheel event regions
+        https://bugs.webkit.org/show_bug.cgi?id=212683
+
+        Reviewed by Zalan Bujtas.
+
+        EventRegion::translate() failed to offset the wheel event regions, which resulted 
+        in wrong reasons for GraphicsLayers with a non-zero offsetFromRenderer.
+
+        Test: fast/scrolling/mac/wheel-event-listener-region-layer-offset.html
+
+        * rendering/EventRegion.cpp:
+        (WebCore::EventRegion::translate):
+
+2020-06-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a helper method to populate a DataTransfer before dispatching a "dragstart" event
+        https://bugs.webkit.org/show_bug.cgi?id=212614
+        Work towards <rdar://problem/61368402>
+
+        Reviewed by Tim Horton.
+
+        Add a helper method in DragController to pre-populate the StaticPasteboard-backed DataTransfer before
+        dispatching the "dragstart" event. There should be no change in behavior yet, since StaticPasteboard doesn't
+        implement methods for writing data to the pasteboard, which this new method uses.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::prepareForDragStart const):
+        (WebCore::DragController::hitTestResultForDragStart const):
+        (WebCore::DragController::startDrag):
+        * page/DragController.h:
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::dispatchDragStartEventOnSourceElement):
+
+2020-06-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        AXIsolatedTree::updateNode should not call nodeForID.
+        https://bugs.webkit.org/show_bug.cgi?id=212662
+
+        Reviewed by Chris Fleizach.
+
+        In isolated tree mode AXIsolatedTree::nodeForID should be called only
+        on the secondary AX thread. So removing the need to call nodeForID in
+        updateNode by using AXCoreObject::childrenIDs() instead of retrieving
+        the isolated node to access its children IDs.
+
+        * accessibility/isolatedtree/AXIsolatedTree.cpp:
+        (WebCore::AXIsolatedTree::updateNode):
+
+2020-06-02  Keith Rollin  <krollin@apple.com>
+
+        Revert FEATURES_DEFINES related changes
+        https://bugs.webkit.org/show_bug.cgi?id=212664
+        <rdar://problem/63893033>
+
+        Reviewed by Andy Estes.
+
+        Bug 262310, Bug 262311, Bug 262318, and Bug 262331 involve changes to
+        FEATURE_DEFINES and how the values there relate to those found in the
+        Platform*.h files. Those changes break XCBuild (by removing the
+        .xcfilelist related to UnifiedSources and the process for generating
+        them), and so are being reverted.
+
+        No new tests -- build changes.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/GenerateUnifiedSources.xcconfig: Added.
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Modules/applepay/ApplePayError.idl:
+        * Modules/applepay/ApplePayPaymentAuthorizationResult.idl:
+        * Modules/applepay/ApplePayPaymentContact.idl:
+        * Modules/applepay/ApplePayPaymentMethodUpdate.idl:
+        * Modules/applepay/ApplePayRequestBase.idl:
+        * Modules/applepay/ApplePaySession.idl:
+        * Modules/applepay/ApplePayShippingContactUpdate.idl:
+        * Modules/applepay/ApplePayShippingMethodUpdate.idl:
+        * Modules/applepay/PaymentCoordinatorClient.cpp:
+        (WebCore::PaymentCoordinatorClient::supportsVersion):
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.cpp:
+        (WebCore::ApplePayPaymentHandler::computePaymentMethodErrors const):
+        * Scripts/generate-unified-sources.sh:
+        * UnifiedSources-output.xcfilelist: Added.
+        * WebCore.xcodeproj/project.pbxproj:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::applePayButtonDescription const):
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator ApplePayButtonType const):
+        * css/CSSValueKeywords.in:
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        * rendering/RenderThemeCocoa.mm:
+        (WebCore::toPKPaymentButtonType):
+        * rendering/style/RenderStyleConstants.cpp:
+        (WebCore::operator<<):
+        * rendering/style/RenderStyleConstants.h:
+
+2020-06-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262424.
+
+        Caused webkitpy test failure
+
+        Reverted changeset:
+
+        "Make generated C++ code use modern C++"
+        https://bugs.webkit.org/show_bug.cgi?id=190714
+        https://trac.webkit.org/changeset/262424
+
+2020-06-02  Peng Liu  <peng.liu6@apple.com>
+
+        Stressing webkitSetPresentationMode leads to wrong inline video dimensions
+        https://bugs.webkit.org/show_bug.cgi?id=202425
+
+        Reviewed by Eric Carlson.
+
+        Make the HTMLVideoElement::setFullscreenMode() robust under stress tests
+        by ignoring a request when the video element is not ready yet.
+
+        Manually tested.
+
+        * dom/Element.h:
+        (WebCore::Element::didStopBeingFullscreenElement):
+        Add a callback to indicate that the element has exited fullscreen.
+        * dom/FullscreenManager.cpp:
+        (WebCore::FullscreenManager::didExitFullscreen):
+        Call Element::didStopBeingFullscreenElement() when the element has exited fullscreen.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::enterFullscreen):
+        * html/HTMLMediaElement.h:
+
+        * html/HTMLVideoElement.cpp:
+        (WebCore::HTMLVideoElement::webkitDisplayingFullscreen):
+        This function will return true when a video element is in the process to exit
+        fullscreen/picture-in-picture until it has completed the process. Therefore, a page
+        can safely request the video element to enter fullscreen/picture-in-picture when
+        this function returns false.
+
+        (WebCore::HTMLVideoElement::setFullscreenMode):
+        (WebCore::HTMLVideoElement::didBecomeFullscreenElement):
+        (WebCore::HTMLVideoElement::didStopBeingFullscreenElement):
+        (WebCore::HTMLVideoElement::didEnterFullscreen): Deleted.
+        (WebCore::HTMLVideoElement::didExitFullscreen): Deleted.
+        * html/HTMLVideoElement.h:
+        Add a flag m_isChangingPresentationMode. webkitSetPresentationMode() will only
+        change the presentation mode when the flag is false.
+
+2020-06-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Add ENABLE(WHEEL_EVENT_REGIONS), enabled on macOS which is the only platform that needs wheel event regions for scrolling thread hit-testing
+        https://bugs.webkit.org/show_bug.cgi?id=212620
+
+        Reviewed by Tim Horton.
+
+        Surround code related to wheel event regions with ENABLE(WHEEL_EVENT_REGIONS).
+
+        Eventually we'll use this same code for touch event regions, and when we do, we
+        can rejigger the #ifdefs.
+
+        * rendering/EventRegion.cpp:
+        (WebCore::EventRegion::operator== const):
+        (WebCore::EventRegion::unite):
+        (WebCore::EventRegion::containsEditableElementsInRect const):
+        (WebCore::EventRegion::dump const):
+        * rendering/EventRegion.h:
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::paintDebugOverlays):
+
+2020-06-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        Avoid calling axBackingObject multiple times in [WebAccessibilityObjectWrapper roleDescription].
+        https://bugs.webkit.org/show_bug.cgi?id=212643
+
+        Reviewed by Chris Fleizach.
+
+        No new functionality.
+
+        Avoid unnecessary overhead of calling axBackingObject multiple times in
+        roleDescription. axBackingObject is not just a getter but involves
+        checking whether isolated tree mode is enabled.
+
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper subrole]):
+        (-[WebAccessibilityObjectWrapper roleDescription]):
+
 2020-06-02  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
 
         Pass nullptr for the 2nd argument of FileReaderLoader 
