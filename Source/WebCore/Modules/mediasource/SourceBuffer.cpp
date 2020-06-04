@@ -56,6 +56,7 @@
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/VM.h>
 #include <limits>
+#include <wtf/CheckedArithmetic.h>
 
 namespace WebCore {
 
@@ -76,7 +77,10 @@ struct SourceBuffer::TrackBuffer {
     MediaTime lastFrameDuration;
     MediaTime highestPresentationTimestamp;
     MediaTime lastEnqueuedPresentationTime;
-    MediaTime lastEnqueuedDecodeEndTime;
+    DecodeOrderSampleMap::KeyType lastEnqueuedDecodeKey;
+    MediaTime lastEnqueuedDecodeDuration;
+    MediaTime roundedTimestampOffset;
+    uint32_t lastFrameTimescale { 0 };
     bool needRandomAccessFlag { true };
     bool enabled { false };
     bool needsReenqueueing { false };
@@ -91,7 +95,8 @@ struct SourceBuffer::TrackBuffer {
         , lastFrameDuration(MediaTime::invalidTime())
         , highestPresentationTimestamp(MediaTime::invalidTime())
         , lastEnqueuedPresentationTime(MediaTime::invalidTime())
-        , lastEnqueuedDecodeEndTime(MediaTime::invalidTime())
+        , lastEnqueuedDecodeKey({MediaTime::invalidTime(), MediaTime::invalidTime()})
+        , lastEnqueuedDecodeDuration(MediaTime::invalidTime())
     {
     }
 };
@@ -187,6 +192,11 @@ ExceptionOr<void> SourceBuffer::setTimestampOffset(double offset)
 
     // 7. Update the attribute to the new value.
     m_timestampOffset = newTimestampOffset;
+
+    for (auto& trackBuffer : m_trackBufferMap.values()) {
+        trackBuffer.lastFrameTimescale = 0;
+        trackBuffer.roundedTimestampOffset = MediaTime::invalidTime();
+    }
 
     return { };
 }
@@ -1526,13 +1536,21 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         MediaTime presentationTimestamp;
         MediaTime decodeTimestamp;
 
+        // NOTE: this is out-of-order, but we need the timescale from the
+        // sample's duration for timestamp generation.
+        // 1.2 Let frame duration be a double precision floating point representation of the coded frame's
+        // duration in seconds.
+        MediaTime frameDuration = sample.duration();
+
         if (m_shouldGenerateTimestamps) {
             // ↳ If generate timestamps flag equals true:
             // 1. Let presentation timestamp equal 0.
-            presentationTimestamp = MediaTime::zeroTime();
+            // NOTE: Use the duration timscale for the presentation timestamp, as this will eliminate
+            // timescale rounding when generating timestamps.
+            presentationTimestamp = { 0, frameDuration.timeScale() };
 
             // 2. Let decode timestamp equal 0.
-            decodeTimestamp = MediaTime::zeroTime();
+            decodeTimestamp = { 0, frameDuration.timeScale() };
         } else {
             // ↳ Otherwise:
             // 1. Let presentation timestamp be a double precision floating point representation of
@@ -1544,14 +1562,15 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             decodeTimestamp = sample.decodeTime();
         }
 
-        // 1.2 Let frame duration be a double precision floating point representation of the coded frame's
-        // duration in seconds.
-        MediaTime frameDuration = sample.duration();
-
         // 1.3 If mode equals "sequence" and group start timestamp is set, then run the following steps:
         if (m_mode == AppendMode::Sequence && m_groupStartTimestamp.isValid()) {
             // 1.3.1 Set timestampOffset equal to group start timestamp - presentation timestamp.
             m_timestampOffset = m_groupStartTimestamp;
+
+            for (auto& trackBuffer : m_trackBufferMap.values()) {
+                trackBuffer.lastFrameTimescale = 0;
+                trackBuffer.roundedTimestampOffset = MediaTime::invalidTime();
+            }
 
             // 1.3.2 Set group end timestamp equal to group start timestamp.
             m_groupEndTimestamp = m_groupStartTimestamp;
@@ -1564,15 +1583,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             m_groupStartTimestamp = MediaTime::invalidTime();
         }
 
-        // 1.4 If timestampOffset is not 0, then run the following steps:
-        if (m_timestampOffset) {
-            // 1.4.1 Add timestampOffset to the presentation timestamp.
-            presentationTimestamp += m_timestampOffset;
-
-            // 1.4.2 Add timestampOffset to the decode timestamp.
-            decodeTimestamp += m_timestampOffset;
-        }
-
+        // NOTE: this is out-of-order, but we need TrackBuffer to be able to cache the results of timestamp offset rounding
         // 1.5 Let track buffer equal the track buffer that the coded frame will be added to.
         AtomicString trackID = sample.trackID();
         auto it = m_trackBufferMap.find(trackID);
@@ -1583,6 +1594,33 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             return;
         }
         TrackBuffer& trackBuffer = it->value;
+
+        MediaTime microsecond(1, 1000000);
+
+        auto roundTowardsTimeScaleWithRoundingMargin = [] (const MediaTime& time, uint32_t timeScale, const MediaTime& roundingMargin) {
+            while (true) {
+                MediaTime roundedTime = time.toTimeScale(timeScale);
+                if (abs(roundedTime - time) < roundingMargin || timeScale >= MediaTime::MaximumTimeScale)
+                    return roundedTime;
+
+                if (!WTF::safeMultiply(timeScale, 2, timeScale) || timeScale > MediaTime::MaximumTimeScale)
+                    timeScale = MediaTime::MaximumTimeScale;
+            }
+        };
+
+        // 1.4 If timestampOffset is not 0, then run the following steps:
+        if (m_timestampOffset) {
+            if (!trackBuffer.roundedTimestampOffset.isValid() || presentationTimestamp.timeScale() != trackBuffer.lastFrameTimescale) {
+                trackBuffer.lastFrameTimescale = presentationTimestamp.timeScale();
+                trackBuffer.roundedTimestampOffset = roundTowardsTimeScaleWithRoundingMargin(m_timestampOffset, trackBuffer.lastFrameTimescale, microsecond);
+            }
+
+            // 1.4.1 Add timestampOffset to the presentation timestamp.
+            presentationTimestamp += trackBuffer.roundedTimestampOffset;
+
+            // 1.4.2 Add timestampOffset to the decode timestamp.
+            decodeTimestamp += trackBuffer.roundedTimestampOffset;
+        }
 
         // 1.6 ↳ If last decode timestamp for track buffer is set and decode timestamp is less than last
         // decode timestamp:
@@ -1622,10 +1660,12 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         if (m_mode == AppendMode::Sequence) {
             // Use the generated timestamps instead of the sample's timestamps.
             sample.setTimestamps(presentationTimestamp, decodeTimestamp);
-        } else if (m_timestampOffset) {
+        } else if (trackBuffer.roundedTimestampOffset.isValid() && trackBuffer.roundedTimestampOffset) {
             // Reflect the timestamp offset into the sample.
-            sample.offsetTimestampsBy(m_timestampOffset);
+            sample.offsetTimestampsBy(trackBuffer.roundedTimestampOffset);
         }
+
+        LOG(MediaSourceSamples, "SourceBuffer::sourceBufferPrivateDidReceiveSample(%p) - sample(%s)", this, toString(sample).utf8().data());
 
         // 1.7 Let frame end timestamp equal the sum of presentation timestamp and frame duration.
         MediaTime frameEndTimestamp = presentationTimestamp + frameDuration;
@@ -1672,7 +1712,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // FIXME: Add support for sample splicing.
 
         SampleMap erasedSamples;
-        MediaTime microsecond(1, 1000000);
 
         // 1.14 If last decode timestamp for track buffer is unset and presentation timestamp falls
         // falls within the presentation interval of a coded frame in track buffer, then run the
@@ -1770,6 +1809,14 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             auto nextSyncIter = trackBuffer.samples.decodeOrder().findSyncSampleAfterDecodeIterator(lastDecodeIter);
             dependentSamples.insert(firstDecodeIter, nextSyncIter);
 
+            // NOTE: in the case of b-frames, the previous step may leave in place samples whose presentation
+            // timestamp < presentationTime, but whose decode timestamp >= decodeTime. These will eventually cause
+            // a decode error if left in place, so remove these samples as well.
+            DecodeOrderSampleMap::KeyType decodeKey(sample.decodeTime(), sample.presentationTime());
+            auto samplesWithHigherDecodeTimes = trackBuffer.samples.decodeOrder().findSamplesBetweenDecodeKeys(decodeKey, erasedSamples.decodeOrder().begin()->first);
+            if (samplesWithHigherDecodeTimes.first != samplesWithHigherDecodeTimes.second)
+                dependentSamples.insert(samplesWithHigherDecodeTimes.first, samplesWithHigherDecodeTimes.second);
+
             PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(dependentSamples, trackBuffer, this, "sourceBufferPrivateDidReceiveSample", false);
 
             // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
@@ -1806,9 +1853,9 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // queue are "enqueued" (sent to the inner media framework) in `provideMediaData()`.
         //
         // In order to check whether a frame should be added to the decode queue we check whether it starts after the
-        // lastEnqueuedDecodeEndTime or even a bit before that to accomodate files with imprecise timing information.
-        if (trackBuffer.lastEnqueuedDecodeEndTime.isInvalid() || decodeTimestamp >= (trackBuffer.lastEnqueuedDecodeEndTime - contiguousFrameTolerance)) {
-            DecodeOrderSampleMap::KeyType decodeKey(sample.decodeTime(), sample.presentationTime());
+        // lastEnqueuedDecodeKey.
+        DecodeOrderSampleMap::KeyType decodeKey(sample.decodeTime(), sample.presentationTime());
+        if (trackBuffer.lastEnqueuedDecodeKey.first.isInvalid() || decodeKey > trackBuffer.lastEnqueuedDecodeKey) {
             trackBuffer.decodeQueue.insert(DecodeOrderSampleMap::MapType::value_type(decodeKey, &sample));
         }
 
@@ -1838,8 +1885,13 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             m_groupEndTimestamp = frameEndTimestamp;
 
         // 1.22 If generate timestamps flag equals true, then set timestampOffset equal to frame end timestamp.
-        if (m_shouldGenerateTimestamps)
+        if (m_shouldGenerateTimestamps) {
             m_timestampOffset = frameEndTimestamp;
+            for (auto& trackBuffer : m_trackBufferMap.values()) {
+                trackBuffer.lastFrameTimescale = 0;
+                trackBuffer.roundedTimestampOffset = MediaTime::invalidTime();
+            }
+        }
 
         // Eliminate small gaps between buffered ranges by coalescing
         // disjoint ranges separated by less than a "fudge factor".
@@ -1865,19 +1917,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
     // duration set to the maximum of the current duration and the group end timestamp.
     if (m_groupEndTimestamp > m_source->duration())
         m_source->setDurationInternal(m_groupEndTimestamp);
-
-    // To avoid playback pipeline starvation start providing media data as soon as we can
-    const auto& trackID = sample.trackID();
-    auto it = m_trackBufferMap.find(trackID);
-    if (it != m_trackBufferMap.end() && m_private->isReadyForMoreSamples(trackID)) {
-        TrackBuffer& trackBuffer = it->value;
-        if (!trackBuffer.needsReenqueueing
-            && trackBuffer.lastEnqueuedDecodeEndTime.isValid()
-            && trackBuffer.lastDecodeTimestamp.isValid()
-            && abs(trackBuffer.lastEnqueuedDecodeEndTime - trackBuffer.lastDecodeTimestamp) > MediaTime::createWithDouble(0.350)) {
-            provideMediaData(trackBuffer, trackID);
-        }
-    }
 }
 
 bool SourceBuffer::hasAudio() const
@@ -2070,14 +2109,17 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, const AtomicString
         // new current time without triggering this early return.
         // FIXME(135867): Make this gap detection logic less arbitrary.
         MediaTime oneSecond(1, 1);
-        if (trackBuffer.lastEnqueuedDecodeEndTime.isValid() && sample->decodeTime() - trackBuffer.lastEnqueuedDecodeEndTime > oneSecond)
+        if (trackBuffer.lastEnqueuedDecodeKey.first.isValid()
+            && trackBuffer.lastEnqueuedDecodeDuration.isValid()
+            && sample->decodeTime() - trackBuffer.lastEnqueuedDecodeKey.first > oneSecond + trackBuffer.lastEnqueuedDecodeDuration)
             break;
 
         // Remove the sample from the decode queue now.
         trackBuffer.decodeQueue.erase(trackBuffer.decodeQueue.begin());
 
         trackBuffer.lastEnqueuedPresentationTime = sample->presentationTime();
-        trackBuffer.lastEnqueuedDecodeEndTime = sample->decodeTime() + sample->duration();
+        trackBuffer.lastEnqueuedDecodeKey = {sample->decodeTime(), sample->presentationTime()};
+        trackBuffer.lastEnqueuedDecodeDuration = sample->duration();
         m_private->enqueueSample(sample.releaseNonNull(), trackID);
 #if !LOG_DISABLED
         ++enqueuedSamples;
@@ -2136,12 +2178,16 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, const AtomicS
     }
 
     if (!trackBuffer.decodeQueue.empty()) {
-        auto& lastSample = trackBuffer.decodeQueue.rbegin()->second;
-        trackBuffer.lastEnqueuedPresentationTime = lastSample->presentationTime();
-        trackBuffer.lastEnqueuedDecodeEndTime = lastSample->decodeTime();
+        auto lastSampleIter = trackBuffer.decodeQueue.rbegin();
+        auto lastSampleDecodeKey = lastSampleIter->first;
+        auto lastSampleDuration = lastSampleIter->second->duration();
+        trackBuffer.lastEnqueuedPresentationTime = lastSampleDecodeKey.second;
+        trackBuffer.lastEnqueuedDecodeKey = lastSampleDecodeKey;
+        trackBuffer.lastEnqueuedDecodeDuration = lastSampleDuration;
     } else {
         trackBuffer.lastEnqueuedPresentationTime = MediaTime::invalidTime();
-        trackBuffer.lastEnqueuedDecodeEndTime = MediaTime::invalidTime();
+        trackBuffer.lastEnqueuedDecodeKey = {MediaTime::invalidTime(), MediaTime::invalidTime()};
+        trackBuffer.lastEnqueuedDecodeDuration = MediaTime::invalidTime();
     }
 
     // Fill the decode queue with the remaining samples.
