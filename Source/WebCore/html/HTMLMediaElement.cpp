@@ -440,6 +440,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_haveSetUpCaptionContainer(false)
 #endif
     , m_isScrubbingRemotely(false)
+    , m_waitingToEnterFullscreen(false)
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
     , m_haveVisibleTextTrack(false)
