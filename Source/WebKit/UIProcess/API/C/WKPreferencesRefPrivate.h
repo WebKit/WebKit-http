@@ -517,10 +517,6 @@ WK_EXPORT bool WKPreferencesGetInvisibleMediaAutoplayPermitted(WKPreferencesRef)
 WK_EXPORT void WKPreferencesSetMediaUserGestureInheritsFromDocument(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef);
 
-// Defaults to an empty string
-WK_EXPORT void WKPreferencesSetMediaContentTypesRequiringHardwareSupport(WKPreferencesRef, WKStringRef);
-WK_EXPORT WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPreferencesRef);
-
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetIsSecureContextAttributeEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetIsSecureContextAttributeEnabled(WKPreferencesRef);

@@ -379,6 +379,10 @@ WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
 WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
 
+// Defaults to an empty string
+WK_EXPORT void WKPreferencesSetMediaContentTypesRequiringHardwareSupport(WKPreferencesRef, WKStringRef);
+WK_EXPORT WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPreferencesRef);
+
 #ifdef __cplusplus
 }
 #endif
