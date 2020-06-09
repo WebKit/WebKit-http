@@ -47,6 +47,11 @@
 #include "MediaElementSession.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "MediaKeySession.h"
+#include "MediaKeys.h"
+#endif
+
 namespace WebCore {
 
 class AnimationTimeline;
@@ -936,6 +941,11 @@ public:
     String mediaMIMETypeForExtension(const String& extension);
 
     String focusRingColor();
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    unsigned mediaKeysInternalInstanceObjectRefCount(const MediaKeys&) const;
+    unsigned mediaKeySessionInternalInstanceSessionObjectRefCount(const MediaKeySession&) const;
+#endif
 
 private:
     explicit Internals(Document&);
