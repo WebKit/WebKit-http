@@ -46,6 +46,11 @@ WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef resp
     return toAPI(toImpl(response)->response());
 }
 
+WKURLResponseRef WKNavigationResponseCopyURLResponse(WKNavigationResponseRef response)
+{
+    return toAPI(&API::URLResponse::create(toImpl(response)->response()).leakRef());
+}
+
 bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response)
 {
     return toImpl(response)->frame().isMainFrame();

@@ -36,7 +36,10 @@ WK_EXPORT WKTypeID WKNavigationResponseGetTypeID();
     
 WK_EXPORT bool WKNavigationResponseCanShowMIMEType(WKNavigationResponseRef);
 
+WK_C_DEPRECATED("use WKNavigationResponseCopyURLResponse")
 WK_EXPORT WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef response);
+
+WK_EXPORT WKURLResponseRef WKNavigationResponseCopyURLResponse(WKNavigationResponseRef response);
 
 WK_EXPORT bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response);
 
