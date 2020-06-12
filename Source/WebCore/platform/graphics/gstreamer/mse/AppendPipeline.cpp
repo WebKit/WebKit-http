@@ -544,7 +544,6 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_TRACE("%s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     bool ok = false;
-    bool mustCheckEndOfAppend = false;
 
     switch (oldAppendState) {
     case AppendState::NotStarted:
@@ -664,9 +663,6 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_ERROR("Invalid append state transition %s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     ASSERT(ok);
-
-    if (mustCheckEndOfAppend)
-        checkEndOfAppend();
 
     if (nextAppendState != AppendState::Invalid)
         setAppendState(nextAppendState);
