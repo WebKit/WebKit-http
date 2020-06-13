@@ -509,19 +509,13 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect,
         platformContext()->SetDrawingMode(B_OP_COPY);
 
     clip(enclosingIntRect(destRect));
-    float currentW = phase.x();
-    BRect bTileRect(tileRect);
-    // FIXME app_server doesn't support B_TILE_BITMAP in DrawBitmap calls. This
-    // would be much faster (#11196)
-    while (currentW < destRect.x() + destRect.width()) {
-        float currentH = phase.y();
-        while (currentH < destRect.y() + destRect.height()) {
-            BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
-            platformContext()->DrawBitmapAsync(pixels.get(), bTileRect, bDstRect);
-            currentH += height;
-        }
-        currentW += width;
-    }
+    float phaseOffsetX = destRect.x() - phase.x();
+    float phaseOffsetY = destRect.y() - phase.y();
+    // x mod w, y mod h
+    phaseOffsetX -= std::trunc(phaseOffsetX / tileRect.width()) * tileRect.width();
+    phaseOffsetY -= std::trunc(phaseOffsetY / tileRect.height()) * tileRect.height();
+    platformContext()->DrawTiledBitmapAsync(
+        pixels.get(), destRect, BPoint(phaseOffsetX, phaseOffsetY));
     restore();
 }
 
