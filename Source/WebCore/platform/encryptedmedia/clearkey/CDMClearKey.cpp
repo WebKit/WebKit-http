@@ -430,6 +430,7 @@ Optional<String> CDMPrivateClearKey::sanitizeSessionId(const String& sessionId) 
     return sessionId;
 }
 
+CDMInstanceClearKey::CDMInstanceClearKey() : CDMInstanceProxy("org.w3.clearkey"_s) { };
 CDMInstanceClearKey::~CDMInstanceClearKey() = default;
 
 CDMInstance::SuccessValue CDMInstanceClearKey::initializeWithConfiguration(const CDMKeySystemConfiguration&)
