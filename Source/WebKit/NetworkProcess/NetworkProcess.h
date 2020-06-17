@@ -58,6 +58,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
+#if PLATFORM(IOS_FAMILY)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
+
 #if PLATFORM(COCOA)
 typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
 #endif
@@ -276,7 +280,7 @@ public:
     using CacheStorageRootPathCallback = CompletionHandler<void(String&&)>;
     void cacheStorageRootPath(PAL::SessionID, CacheStorageRootPathCallback&&);
 
-    void preconnectTo(PAL::SessionID, const URL&, const String&, WebCore::StoredCredentialsPolicy, Optional<NavigatingToAppBoundDomain>);
+    void preconnectTo(PAL::SessionID, WebPageProxyIdentifier, WebCore::PageIdentifier, const URL&, const String&, WebCore::StoredCredentialsPolicy, Optional<NavigatingToAppBoundDomain>);
 
     void setSessionIsControlledByAutomation(PAL::SessionID, bool);
     bool sessionIsControlledByAutomation(PAL::SessionID) const;
@@ -551,6 +555,10 @@ private:
 
 #if ENABLE(CONTENT_EXTENSIONS)
     NetworkContentRuleListManager m_networkContentRuleListManager;
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
 #endif
 
     Ref<WorkQueue> m_storageTaskQueue { WorkQueue::create("com.apple.WebKit.StorageTask") };

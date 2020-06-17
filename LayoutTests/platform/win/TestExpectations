@@ -3175,6 +3175,7 @@ accessibility/w3c-svg-description-calculation.html [ Failure ]
 accessibility/w3c-svg-name-calculation.html [ Failure ]
 accessibility/w3c-svg-roles.html [ Failure ]
 accessibility/svg-element-with-aria-role.html [ Failure ]
+accessibility/svg-text.html [ Skip ]
 accessibility/win/select-element-valuechange-event.html [ Failure ]
 css1/box_properties/float_on_text_elements.html [ Failure ]
 css1/units/length_units.html [ Failure ]
@@ -3369,6 +3370,7 @@ fast/inline/hidpi-outline-auto-with-border-radius-horizontal-rtl.html [ ImageOnl
 fast/inline/hidpi-outline-auto-with-border-radius-vertical-ltr.html [ ImageOnlyFailure ]
 fast/inline/hidpi-outline-auto-with-border-radius-vertical-rtl.html [ ImageOnlyFailure ]
 fast/inline/hidpi-outline-auto-with-fractional-radius.html [ ImageOnlyFailure ]
+fast/images/hidpi-image-position-on-device-pixels-with-border-radius.html [ ImageOnlyFailure ]
 fast/inline/outline-corners-with-offset.html [ ImageOnlyFailure ]
 fast/multicol/columns-on-body.html [ ImageOnlyFailure ]
 fast/table/hidpi-collapsed-border-with-odd-pixel-width.html [ ImageOnlyFailure ]
@@ -3604,6 +3606,7 @@ fast/css-generated-content/initial-letter-pagination-sunken.html [ ImageOnlyFail
 fast/css/paint-order-shadow.html [ ImageOnlyFailure ]
 fast/flexbox/aspect-ratio-intrinsic-adjust.html [ ImageOnlyFailure ]
 fast/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
+fast/flexbox/line-clamp-with-anchor-content-only.html [ ImageOnlyFailure ]
 fast/forms/baseline-of-number-inputs.html [ ImageOnlyFailure ]
 fast/images/image-subsampling.html [ ImageOnlyFailure ]
 fast/multicol/flexbox-rows.html [ ImageOnlyFailure ]
@@ -3622,6 +3625,8 @@ editing/selection/character-granularity-select-text-with-click-handler.html [ Sk
 editing/selection/character-granularity-selected-range-after-dismissing-selection.html [ Skip ]
 fast/dom/FileList-iterator-using-open-panel.html [ Skip ]
 fast/forms/file/file-input-reset-using-open-panel.html [ Skip ]
+fast/forms/file/file-input-type-detached-on-change.html [ Skip ]
+fast/forms/file/file-input-webkitdirectory-icon.html [ Skip ]
 fast/forms/file/file-input-user-selection-events.html [ Skip ]
 fast/forms/file/file-reset-in-change-using-open-panel.html [ Skip ]
 fast/forms/file/file-reset-in-change-using-open-panel-with-icon.html [ Skip ]
@@ -4369,8 +4374,6 @@ webkit.org/b/220830 fast/text/emoji-variation-selector.html [ ImageOnlyFailure ]
 
 webkit.org/b/201491 fast/block/float/float-with-anonymous-previous-sibling.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/202460 imported/w3c/web-platform-tests/2dcontext/image-smoothing/imagesmoothing.html [ Failure ]
-
 webkit.org/b/202938 fast/images/reset-image-animation.html [ Failure Pass ]
 
 webkit.org/b/202939 fast/workers/worker-exception-during-navigation.html [ Failure Pass ]
@@ -4466,6 +4469,9 @@ webkit.org/b/209582 webanimations/css-transition-in-flight-reversal-accelerated.
 
 webkit.org/b/209601 animations/many-pseudo-animations.html [ Pass Failure ]
 
+webkit.org/b/213303 http/tests/security/cross-origin-clean-css-resource-timing.html [ Failure ]
+webkit.org/b/213303 http/tests/security/cross-origin-css-resource-timing.html [ Failure ]
+
 # IntersectionObserver is off by default
 http/tests/lazyload [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event.html [ Skip ]
@@ -4476,6 +4482,7 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-into-script-disabled-iframe.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-referrerpolicy-change.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-crossorigin-change.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/move-element-and-scroll.html [ Skip ]
@@ -4483,14 +4490,13 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-image-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-2.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied.html [ Skip ]
-imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-referrer-policy-applied.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/picture-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/remove-element-and-scroll.html [ Skip ]
 
 # prefetch not supported in WK1
 http/wpt/prefetch [ Skip ]
 
-fast/text/combining-character-sequence-vertical.html [ Failure ]
+fast/text/combining-character-sequence-vertical.html [ ImageOnlyFailure ]
 
 fast/forms/file/open-file-panel-crash.html [ Skip ]
 fast/text/text-indent-inside-float.html [ ImageOnlyFailure ]

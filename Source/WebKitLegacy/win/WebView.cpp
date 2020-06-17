@@ -422,7 +422,7 @@ bool WebView::s_allowSiteSpecificHacks = false;
 WebView::WebView()
 {
     JSC::initializeThreading();
-    RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMain();
     WTF::setProcessPrivileges(allPrivileges());
     WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
 
@@ -5166,7 +5166,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setFixedFontFamily(toAtomString(str));
     str.clear();
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     hr = preferences->shouldDisplaySubtitles(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5843,38 +5843,42 @@ HRESULT WebView::visibleContentRect(_Out_ LPRECT rect)
     return S_OK;
 }
 
-static DWORD dragOperationToDragCursor(DragOperation op) {
-    DWORD res = DROPEFFECT_NONE;
-    if (op & DragOperationCopy) 
-        res = DROPEFFECT_COPY;
-    else if (op & DragOperationLink) 
-        res = DROPEFFECT_LINK;
-    else if (op & DragOperationMove) 
-        res = DROPEFFECT_MOVE;
-    else if (op & DragOperationGeneric) 
-        res = DROPEFFECT_MOVE; //This appears to be the Firefox behaviour
-    return res;
+static DWORD dragOperationToDragCursor(Optional<DragOperation> operation)
+{
+    if (!operation)
+        return DROPEFFECT_NONE;
+
+    DWORD result = DROPEFFECT_NONE;
+    if (*operation == DragOperation::Copy)
+        result = DROPEFFECT_COPY;
+    else if (*operation == DragOperation::Link)
+        result = DROPEFFECT_LINK;
+    else if (*operation == DragOperation::Move)
+        result = DROPEFFECT_MOVE;
+    else if (*operation == DragOperation::Generic)
+        result = DROPEFFECT_MOVE; // This appears to be the Firefox behaviour.
+    return result;
 }
 
-DragOperation WebView::keyStateToDragOperation(DWORD grfKeyState) const
+OptionSet<DragOperation> WebView::keyStateToDragOperation(DWORD grfKeyState) const
 {
     if (!m_page)
-        return DragOperationNone;
+        return { };
 
     // Conforms to Microsoft's key combinations as documented for 
     // IDropTarget::DragOver. Note, grfKeyState is the current 
     // state of the keyboard modifier keys on the keyboard. See:
     // <http://msdn.microsoft.com/en-us/library/ms680129(VS.85).aspx>.
-    DragOperation operation = m_page->dragController().sourceDragOperation();
+    auto operationMask = m_page->dragController().sourceDragOperationMask();
 
     if ((grfKeyState & (MK_CONTROL | MK_SHIFT)) == (MK_CONTROL | MK_SHIFT))
-        operation = DragOperationLink;
+        operationMask = { DragOperation::Link };
     else if ((grfKeyState & MK_CONTROL) == MK_CONTROL)
-        operation = DragOperationCopy;
+        operationMask = { DragOperation::Copy };
     else if ((grfKeyState & MK_SHIFT) == MK_SHIFT)
-        operation = DragOperationGeneric;
+        operationMask = { DragOperation::Generic };
 
-    return operation;
+    return operationMask;
 }
 
 HRESULT WebView::DragEnter(IDataObject* pDataObject, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
@@ -5920,8 +5924,7 @@ HRESULT WebView::DragLeave()
         m_dropTargetHelper->DragLeave();
 
     if (m_dragData) {
-        DragData data(m_dragData.get(), IntPoint(), IntPoint(), 
-            DragOperationNone);
+        DragData data(m_dragData.get(), IntPoint(), IntPoint(), { });
         m_page->dragController().dragExited(data);
         m_dragData = 0;
     }
@@ -7154,19 +7157,19 @@ HRESULT WebView::invalidateBackingStore(_In_ const RECT* rect)
 
 HRESULT WebView::addOriginAccessWhitelistEntry(_In_ BSTR sourceOrigin, _In_ BSTR destinationProtocol, _In_ BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
+    SecurityPolicy::addOriginAccessAllowlistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
     return S_OK;
 }
 
 HRESULT WebView::removeOriginAccessWhitelistEntry(_In_ BSTR sourceOrigin, _In_ BSTR destinationProtocol, _In_ BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
+    SecurityPolicy::removeOriginAccessAllowlistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
     return S_OK;
 }
 
 HRESULT WebView::resetOriginAccessWhitelists()
 {
-    SecurityPolicy::resetOriginAccessWhitelists();
+    SecurityPolicy::resetOriginAccessAllowlists();
     return S_OK;
 }
  

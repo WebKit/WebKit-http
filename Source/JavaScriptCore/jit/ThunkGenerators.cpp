@@ -219,6 +219,7 @@ MacroAssemblerCodeRef<JITStubRoutinePtrTag> virtualThunkFor(VM& vm, CallLinkInfo
     }
     jit.farJump(GPRInfo::regT4, JSEntryPtrTag);
 
+    // NullSetterFunctionType does not get the fast path support. But it is OK since using NullSetterFunctionType is extremely rare.
     notJSFunction.link(&jit);
     slowCase.append(jit.branchIfNotType(GPRInfo::regT0, InternalFunctionType));
     void* executableAddress = vm.getCTIInternalFunctionTrampolineFor(callLinkInfo.specializationKind()).executableAddress();
@@ -302,8 +303,8 @@ static MacroAssemblerCodeRef<JITThunkPtrTag> nativeForGenerator(VM& vm, ThunkFun
 
     // Check for an exception
 #if USE(JSVALUE64)
-    jit.load64(vm.addressOfException(), JSInterfaceJIT::regT2);
-    JSInterfaceJIT::Jump exceptionHandler = jit.branchTest64(JSInterfaceJIT::NonZero, JSInterfaceJIT::regT2);
+    jit.loadPtr(vm.addressOfException(), JSInterfaceJIT::regT2);
+    JSInterfaceJIT::Jump exceptionHandler = jit.branchTestPtr(JSInterfaceJIT::NonZero, JSInterfaceJIT::regT2);
 #else
     JSInterfaceJIT::Jump exceptionHandler = jit.branch32(
         JSInterfaceJIT::NotEqual,

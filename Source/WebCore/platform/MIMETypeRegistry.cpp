@@ -67,7 +67,7 @@
 #include "PreviewConverter.h"
 #endif
 
-#if USE(GSTREAMER)
+#if USE(GSTREAMER) && ENABLE(VIDEO)
 #include "ImageDecoderGStreamer.h"
 #endif
 
@@ -466,7 +466,7 @@ bool MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(const String& mimeType
         return true;
 #endif
 
-#if USE(GSTREAMER)
+#if USE(GSTREAMER) && ENABLE(VIDEO)
     if (ImageDecoderGStreamer::supportsContainerType(mimeType))
         return true;
 #endif

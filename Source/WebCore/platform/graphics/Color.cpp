@@ -38,22 +38,6 @@ namespace WebCore {
 static constexpr SimpleColor lightenedBlack { 0xFF545454 };
 static constexpr SimpleColor darkenedWhite { 0xFFABABAB };
 
-int differenceSquared(const Color& c1, const Color& c2)
-{
-    // FIXME: ExtendedColor - needs to handle color spaces.
-    // FIXME: This should probably return a floating point number, but many of the call
-    // sites have picked comparison values based on feel. We'd need to break out
-    // our logarithm tables to change them :)
-
-    auto [c1Red, c1Blue, c1Green, c1Alpha] = c1.toSRGBASimpleColorLossy();
-    auto [c2Red, c2Blue, c2Green, c2Alpha] = c2.toSRGBASimpleColorLossy();
-
-    int dR = c1Red - c2Red;
-    int dG = c1Green - c2Green;
-    int dB = c1Blue - c2Blue;
-    return dR * dR + dG * dG + dB * dB;
-}
-
 Color::Color(const Color& other)
     : m_colorData(other.m_colorData)
 {
@@ -116,16 +100,13 @@ String Color::nameForRenderTreeAsText() const
     return asSimple().serializationForRenderTreeAsText();
 }
 
-Color Color::light() const
+Color Color::lightened() const
 {
     // Hardcode this common case for speed.
-    if (!isExtended() && asSimple() == black)
+    if (isSimple() && asSimple() == black)
         return lightenedBlack;
-    
-    const float scaleFactor = nextafterf(256.0f, 0.0f);
 
-    auto [r, g, b, a] = toSRGBAComponentsLossy();
-
+    auto [r, g, b, a] = toSRGBALossy();
     float v = std::max({ r, g, b });
 
     if (v == 0.0f)
@@ -133,39 +114,27 @@ Color Color::light() const
 
     float multiplier = std::min(1.0f, v + 0.33f) / v;
 
-    return makeSimpleColor(
-        static_cast<int>(multiplier * r * scaleFactor),
-        static_cast<int>(multiplier * g * scaleFactor),
-        static_cast<int>(multiplier * b * scaleFactor),
-        alpha()
-    );
+    return makeSimpleColorFromFloats(multiplier * r, multiplier * g, multiplier * b, a);
 }
 
-Color Color::dark() const
+Color Color::darkened() const
 {
     // Hardcode this common case for speed.
-    if (!isExtended() && asSimple() == white)
+    if (isSimple() && asSimple() == white)
         return darkenedWhite;
     
-    const float scaleFactor = nextafterf(256.0f, 0.0f);
-
-    auto [r, g, b, a] = toSRGBAComponentsLossy();
+    auto [r, g, b, a] = toSRGBALossy();
 
     float v = std::max({ r, g, b });
     float multiplier = std::max(0.0f, (v - 0.33f) / v);
 
-    return makeSimpleColor(
-        static_cast<int>(multiplier * r * scaleFactor),
-        static_cast<int>(multiplier * g * scaleFactor),
-        static_cast<int>(multiplier * b * scaleFactor),
-        alpha()
-    );
+    return makeSimpleColorFromFloats(multiplier * r, multiplier * g, multiplier * b, a);
 }
 
 bool Color::isDark() const
 {
     // FIXME: This should probably be using luminance.
-    auto [r, g, b, a] = toSRGBAComponentsLossy();
+    auto [r, g, b, a] = toSRGBALossy();
     float largestNonAlphaChannel = std::max({ r, g, b });
     return a > 0.5 && largestNonAlphaChannel < 0.5;
 }
@@ -173,7 +142,13 @@ bool Color::isDark() const
 float Color::lightness() const
 {
     // FIXME: This can probably avoid conversion to sRGB by having per-colorspace algorithms for HSL.
-    return WebCore::lightness(toSRGBAComponentsLossy());
+    return WebCore::lightness(toSRGBALossy());
+}
+
+float Color::luminance() const
+{
+    // FIXME: This can probably avoid conversion to sRGB by having per-colorspace algorithms for luminance (e.g. convertToXYZ(c).yComponent()).
+    return WebCore::luminance(toSRGBALossy());
 }
 
 Color Color::blend(const Color& source) const
@@ -235,41 +210,14 @@ Color Color::blendWithWhite() const
     return result;
 }
 
-Color Color::colorWithAlphaMultipliedBy(float amount) const
-{
-    float newAlpha = amount * alphaAsFloat();
-    return colorWithAlpha(newAlpha);
-}
-
-Color Color::colorWithAlphaMultipliedByUsingAlternativeRounding(float amount) const
-{
-    float newAlpha = amount * alphaAsFloat();
-    return colorWithAlphaUsingAlternativeRounding(newAlpha);
-}
-
 Color Color::colorWithAlpha(float alpha) const
 {
     if (isExtended())
         return asExtended().colorWithAlpha(alpha);
 
-    // FIXME: This is where this function differs from colorWithAlphaUsingAlternativeRounding.
-    uint8_t newAlpha = alpha * 0xFF;
+    Color result = asSimple().colorWithAlpha(convertToComponentByte(alpha));
 
-    Color result = asSimple().colorWithAlpha(newAlpha);
-    if (isSemantic())
-        result.tagAsSemantic();
-    return result;
-}
-
-Color Color::colorWithAlphaUsingAlternativeRounding(float alpha) const
-{
-    if (isExtended())
-        return asExtended().colorWithAlpha(alpha);
-
-    // FIXME: This is where this function differs from colorWithAlphaUsing.
-    uint8_t newAlpha = scaleRoundAndClampColorChannel(alpha);
-
-    Color result = asSimple().colorWithAlpha(newAlpha);
+    // FIXME: Why is preserving the semantic bit desired and/or correct here?
     if (isSemantic())
         result.tagAsSemantic();
     return result;
@@ -279,7 +227,7 @@ Color Color::invertedColorWithAlpha(float alpha) const
 {
     if (isExtended())
         return asExtended().invertedColorWithAlpha(alpha);
-    return asSimple().invertedColorWithAlpha(scaleRoundAndClampColorChannel(alpha));
+    return asSimple().invertedColorWithAlpha(convertToComponentByte(alpha));
 }
 
 Color Color::semanticColor() const
@@ -294,21 +242,21 @@ std::pair<ColorSpace, ColorComponents<float>> Color::colorSpaceAndComponents() c
 {
     if (isExtended())
         return { asExtended().colorSpace(), asExtended().components() };
-    return { ColorSpace::SRGB, asSimple().asSRGBFloatComponents() };
+    return { ColorSpace::SRGB, asColorComponents(asSimple().asSRGBA<float>()) };
 }
 
 SimpleColor Color::toSRGBASimpleColorLossy() const
 {
     if (isExtended())
-        return makeSimpleColor(toSRGBAComponentsLossy());
+        return makeSimpleColor(asExtended().toSRGBALossy());
     return asSimple();
 }
 
-ColorComponents<float> Color::toSRGBAComponentsLossy() const
+SRGBA<float> Color::toSRGBALossy() const
 {
     if (isExtended())
-        return asExtended().toSRGBAComponentsLossy();
-    return asSimple().asSRGBFloatComponents();
+        return asExtended().toSRGBALossy();
+    return asSimple().asSRGBA<float>();
 }
 
 Color blend(const Color& from, const Color& to, double progress)
@@ -318,18 +266,18 @@ Color blend(const Color& from, const Color& to, double progress)
     if (progress == 1 && !to.isValid())
         return { };
 
-    // Since makePremultipliedSimpleColor() bails on zero alpha, special-case that.
-    auto premultFrom = from.alpha() ? makePremultipliedSimpleColor(from.toSRGBASimpleColorLossy()) : Color::transparent;
-    auto premultTo = to.alpha() ? makePremultipliedSimpleColor(to.toSRGBASimpleColorLossy()) : Color::transparent;
+    // Since premultiplyCeiling() bails on zero alpha, special-case that.
+    auto premultipliedFrom = from.alpha() ? premultiplyCeiling(from.toSRGBASimpleColorLossy()) : Color::transparent;
+    auto premultipliedTo = to.alpha() ? premultiplyCeiling(to.toSRGBASimpleColorLossy()) : Color::transparent;
 
     SimpleColor premultBlended = makeSimpleColor(
-        WebCore::blend(premultFrom.redComponent(), premultTo.redComponent(), progress),
-        WebCore::blend(premultFrom.greenComponent(), premultTo.greenComponent(), progress),
-        WebCore::blend(premultFrom.blueComponent(), premultTo.blueComponent(), progress),
-        WebCore::blend(premultFrom.alphaComponent(), premultTo.alphaComponent(), progress)
+        WebCore::blend(premultipliedFrom.redComponent(), premultipliedTo.redComponent(), progress),
+        WebCore::blend(premultipliedFrom.greenComponent(), premultipliedTo.greenComponent(), progress),
+        WebCore::blend(premultipliedFrom.blueComponent(), premultipliedTo.blueComponent(), progress),
+        WebCore::blend(premultipliedFrom.alphaComponent(), premultipliedTo.alphaComponent(), progress)
     );
 
-    return makeUnpremultipliedSimpleColor(premultBlended);
+    return unpremultiply(premultBlended);
 }
 
 Color blendWithoutPremultiply(const Color& from, const Color& to, double progress)

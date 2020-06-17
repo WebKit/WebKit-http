@@ -554,8 +554,7 @@ String JSObject::calculatedClassName(JSObject* object)
     // Get the display name of obj.__proto__.constructor.
     // This is useful to get `Foo` for a `new Foo` object.
     if (constructorFunctionName.isNull()) {
-        MethodTable::GetPrototypeFunctionPtr defaultGetPrototype = JSObject::getPrototype;
-        if (LIKELY(structure->classInfo()->methodTable.getPrototype == defaultGetPrototype)) {
+        if (LIKELY(!structure->typeInfo().overridesGetPrototype())) {
             JSValue protoValue = object->getPrototypeDirect(vm);
             if (protoValue.isObject()) {
                 JSObject* protoObject = asObject(protoValue);
@@ -668,6 +667,20 @@ bool JSObject::getOwnPropertySlotByIndex(JSObject* thisObject, JSGlobalObject* g
     
     return false;
 }
+
+#if ASSERT_ENABLED
+// These needs to be unique (not inlined) for ASSERT_ENABLED builds to enable
+// Structure::validateFlags() to do checks using function pointer comparisons.
+
+bool JSObject::getOwnPropertySlot(JSObject* object, JSGlobalObject* globalObject, PropertyName propertyName, PropertySlot& slot)
+{
+    return getOwnPropertySlotImpl(object, globalObject, propertyName, slot);
+}
+
+void JSObject::doPutPropertySecurityCheck(JSObject*, JSGlobalObject*, PropertyName, PutPropertySlot&)
+{
+}
+#endif // ASSERT_ENABLED
 
 // https://tc39.github.io/ecma262/#sec-ordinaryset
 bool ordinarySetSlow(JSGlobalObject* globalObject, JSObject* object, PropertyName propertyName, JSValue value, JSValue receiver, bool shouldThrow)
@@ -2598,7 +2611,7 @@ ALWAYS_INLINE static bool canDoFastPutDirectIndex(VM& vm, JSObject* object)
         || jsDynamicCast<JSFinalObject*>(vm, object);
 }
 
-// Defined in ES5.1 8.12.9
+// https://tc39.es/ecma262/#sec-ordinarydefineownproperty
 bool JSObject::defineOwnIndexedProperty(JSGlobalObject* globalObject, unsigned index, const PropertyDescriptor& descriptor, bool throwException)
 {
     VM& vm = globalObject->vm();
@@ -2609,11 +2622,21 @@ bool JSObject::defineOwnIndexedProperty(JSGlobalObject* globalObject, unsigned i
     ensureWritable(vm);
 
     if (!inSparseIndexingMode()) {
+        const PropertyDescriptor emptyAttributesDescriptor(jsUndefined(), static_cast<unsigned>(PropertyAttribute::None));
+        ASSERT(emptyAttributesDescriptor.attributes() == static_cast<unsigned>(PropertyAttribute::None));
+
+#if ASSERT_ENABLED
+        if (canGetIndexQuickly(index) && canDoFastPutDirectIndex(vm, this)) {
+            PropertyDescriptor currentDescriptor;
+            ASSERT(getOwnPropertyDescriptor(globalObject, Identifier::from(vm, index), currentDescriptor));
+            scope.assertNoException();
+            ASSERT(currentDescriptor.attributes() == emptyAttributesDescriptor.attributes());
+        }
+#endif
         // Fast case: we're putting a regular property to a regular array
-        // FIXME: this will pessimistically assume that if attributes are missing then they'll default to false
-        // however if the property currently exists missing attributes will override from their current 'true'
-        // state (i.e. defineOwnProperty could be used to set a value without needing to entering 'SparseMode').
-        if (!descriptor.attributes() && descriptor.value() && canDoFastPutDirectIndex(vm, this)) {
+        if (descriptor.value()
+            && (!descriptor.attributes() || (canGetIndexQuickly(index) && !descriptor.attributesOverridingCurrent(emptyAttributesDescriptor)))
+            && canDoFastPutDirectIndex(vm, this)) {
             ASSERT(!descriptor.isAccessorDescriptor());
             RELEASE_AND_RETURN(scope, putDirectIndex(globalObject, index, descriptor.value(), 0, throwException ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow));
         }

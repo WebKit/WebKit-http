@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2020 Apple Inc.  All rights reserved.
  * Copyright (C) 2010 Igalia S.L
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,9 +24,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ContextMenuItem_h
-#define ContextMenuItem_h
+#pragma once
 
+#include <wtf/EnumTraits.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -197,6 +197,30 @@ private:
     Vector<ContextMenuItem> m_subMenuItems;
 };
 
-}
+WEBCORE_EXPORT bool isValidContextMenuAction(ContextMenuAction);
 
-#endif // ContextMenuItem_h
+} // namespace WebCore
+
+namespace WTF {
+
+template<>
+class HasCustomIsValidEnum<WebCore::ContextMenuAction> : public std::true_type { };
+
+template<typename E, typename T, std::enable_if_t<std::is_same_v<E, WebCore::ContextMenuAction>>* = nullptr>
+bool isValidEnum(T action)
+{
+    static_assert(sizeof(T) == sizeof(E), "isValidEnum<WebCore::ContextMenuAction> should only be called with 32-bit types");
+    return WebCore::isValidContextMenuAction(static_cast<E>(action));
+};
+
+template<> struct EnumTraits<WebCore::ContextMenuItemType> {
+    using values = EnumValues<
+        WebCore::ContextMenuItemType,
+        WebCore::ContextMenuItemType::ActionType,
+        WebCore::ContextMenuItemType::CheckableActionType,
+        WebCore::ContextMenuItemType::SeparatorType,
+        WebCore::ContextMenuItemType::SubmenuType
+    >;
+};
+
+} // namespace WTF

@@ -244,6 +244,8 @@ public:
 
     void windowServerConnectionStateChanged();
 
+    void setIsHoldingLockedFiles(bool);
+
     ProcessThrottler& throttler() final { return m_throttler; }
 
     void isResponsive(CompletionHandler<void(bool isWebProcessResponsive)>&&);
@@ -475,6 +477,7 @@ private:
     void logDiagnosticMessageForResourceLimitTermination(const String& limitKey);
     
     void updateRegistrationWithDataStore();
+    Vector<String> platformOverrideLanguages() const;
 
     void maybeShutDown();
 
@@ -537,6 +540,7 @@ private:
 
     int m_numberOfTimesSuddenTerminationWasDisabled;
     ProcessThrottler m_throttler;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_activityForHoldingLockedFiles;
     ForegroundWebProcessToken m_foregroundToken;
     BackgroundWebProcessToken m_backgroundToken;
 

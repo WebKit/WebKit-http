@@ -98,11 +98,10 @@ public:
 
     SessionWrapper& sessionWrapperForTask(const WebCore::ResourceRequest&, WebCore::StoredCredentialsPolicy, Optional<NavigatingToAppBoundDomain>);
     void clearAppBoundSession() override;
-    bool isInAppBrowserPrivacyEnabled() const { return m_isInAppBrowserPrivacyEnabled; }
     bool preventsSystemHTTPProxyAuthentication() const { return m_preventsSystemHTTPProxyAuthentication; }
     
     void clientCertificateSuggestedForHost(NetworkDataTaskCocoa::TaskIdentifier, NSURLCredential *, const String& host, uint16_t port);
-    void taskReceivedBytes(NetworkDataTaskCocoa::TaskIdentifier);
+    void taskServerConnectionSucceeded(NetworkDataTaskCocoa::TaskIdentifier);
     void taskFailed(NetworkDataTaskCocoa::TaskIdentifier);
     NSURLCredential *successfulClientCertificateForHost(const String& host, uint16_t port) const;
 
@@ -150,7 +149,6 @@ private:
     Seconds m_loadThrottleLatency;
     bool m_fastServerTrustEvaluationEnabled { false };
     String m_dataConnectionServiceType;
-    bool m_isInAppBrowserPrivacyEnabled { false };
     bool m_preventsSystemHTTPProxyAuthentication { false };
 
     struct SuggestedClientCertificate {

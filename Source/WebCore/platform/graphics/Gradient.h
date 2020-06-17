@@ -174,7 +174,7 @@ private:
 
     mutable ColorStopVector m_stops;
     mutable bool m_stopsSorted { false };
-    GradientSpreadMethod m_spreadMethod { SpreadMethodPad };
+    GradientSpreadMethod m_spreadMethod { GradientSpreadMethod::Pad };
     AffineTransform m_gradientSpaceTransformation;
 
     mutable unsigned m_cachedHash { 0 };
@@ -310,7 +310,7 @@ void Gradient::encode(Encoder& encoder) const
     }
     encoder << m_stops;
     encoder << m_stopsSorted;
-    encoder.encodeEnum(m_spreadMethod);
+    encoder << m_spreadMethod;
     encoder << m_gradientSpaceTransformation;
 }
 
@@ -376,7 +376,7 @@ Optional<Ref<Gradient>> Gradient::decode(Decoder& decoder)
     }
 
     GradientSpreadMethod spreadMethod;
-    if (!decoder.decodeEnum(spreadMethod))
+    if (!decoder.decode(spreadMethod))
         return WTF::nullopt;
 
     gradient->setSpreadMethod(spreadMethod);

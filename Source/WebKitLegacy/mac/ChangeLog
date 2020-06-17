@@ -1,3 +1,325 @@
+2020-06-15  Alex Christensen  <achristensen@webkit.org>
+
+        Provide alternatively-named SPI for user style sheets and scripts
+        https://bugs.webkit.org/show_bug.cgi?id=213206
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (+[WebView _addOriginAccessAllowListEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]):
+        (+[WebView _removeOriginAccessAllowListEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]):
+        (+[WebView _resetOriginAccessAllowLists]):
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserScriptToGroup:world:source:url:includeMatchPatternStrings:excludeMatchPatternStrings:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:includeMatchPatternStrings:excludeMatchPatternStrings:injectedFrames:]):
+        (+[WebView _setFontAllowList:]):
+        (+[WebView _addOriginAccessWhitelistEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]): Deleted.
+        (+[WebView _removeOriginAccessWhitelistEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]): Deleted.
+        (+[WebView _resetOriginAccessWhitelists]): Deleted.
+        (+[WebView _setFontWhitelist:]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2020-06-11  Sam Weinig  <weinig@apple.com>
+
+        Document.currentScript does not work for SVGScriptElements
+        https://bugs.webkit.org/show_bug.cgi?id=213104
+
+        Reviewed by Yusuke Suzuki.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument currentScript]):
+        Update to account for change in Document::currentScript() now returning an
+        Element* that can be either an HTMLScriptElement or an SVGScriptElement. To
+        keep API compatibility, only return non-null for HTMLScriptElements.
+
+2020-06-12  Keith Rollin  <krollin@apple.com>
+
+        Add dependencies for Migrate Headers and Generate Export Files build phases
+        https://bugs.webkit.org/show_bug.cgi?id=213072
+        <rdar://problem/64249345>
+
+        Reviewed by Tim Horton.
+
+        These build phases have incomplete specifications for the files they
+        consume and produce, which can lead to incorrect builds. Address this
+        by:
+
+        - Adding the WebCore/PrivateHeaders directory (which contains the
+          headers being migrated) as input to the Migrate Headers build phase
+        - Touching a timestamp file when re-exporting any headers in the
+          Migrate Headers build phase
+        - Adding the timestamp file as an output of the Migrate Headers build
+          phase
+        - Adding the timestamp file as an input of the Generate Export Files
+          build phase
+        - Adding other files that Generate Export Files consumes to the list
+          of input files
+
+        In this way, if any exported headers are changed, both Migrate Headers
+        and Generate Export Files will be run.
+
+        * MigrateHeaders.make:
+
+2020-06-11  Beth Dakin  <bdakin@apple.com>
+
+        Replace instances of whitelist in WebCore with allowlist
+        https://bugs.webkit.org/show_bug.cgi?id=213068
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (+[WebView _addOriginAccessWhitelistEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]):
+        (+[WebView _removeOriginAccessWhitelistEntryWithSourceOrigin:destinationProtocol:destinationHost:allowDestinationSubdomains:]):
+        (+[WebView _resetOriginAccessWhitelists]):
+        (+[WebView _setFontWhitelist:]):
+
+2020-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for DragSourceAction
+        <https://webkit.org/b/212885>
+        <rdar://problem/64094134>
+
+        Reviewed by Darin Adler.
+
+        Summary:
+        - Add and use conversion functions between
+          OptionSet<WebCore::DragSourceAction> and WebDragSourceAction.
+        - Update method signatures.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (coreDragSourceActionMask): Add.
+        (WebDragClient::dragSourceActionMaskForPoint):
+        (WebDragClient::willPerformDragSourceAction):
+        (WebDragClient::startDrag):
+        * WebView/WebView.mm:
+        (kit): Add.
+        - Convert from Optional<WebCore::DragSourceAction> to
+          WebDragSourceAction.
+        (-[WebView _startDrag:]):
+        * WebView/WebViewInternal.h:
+        (kit): Add declaration to reuse function in WebDragClient.mm.
+
+2020-06-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Some style improvements to main thread code
+        https://bugs.webkit.org/show_bug.cgi?id=213051
+
+        Reviewed by Darin Adler.
+
+        Updated for rename.
+
+        * History/WebBackForwardList.mm:
+        (+[WebBackForwardList initialize]):
+        * History/WebHistoryItem.mm:
+        (+[WebHistoryItem initialize]):
+        * Misc/WebCache.mm:
+        (+[WebCache initialize]):
+        * Misc/WebElementDictionary.mm:
+        (+[WebElementDictionary initialize]):
+        * Misc/WebIconDatabase.mm:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (+[WebHostedNetscapePluginView initialize]):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.mm:
+        (+[WebBasePluginPackage initialize]):
+        * Plugins/WebNetscapePluginView.mm:
+        (+[WebNetscapePluginView initialize]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (+[WebUndoStep initialize]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (+[WebFramePolicyListener initialize]):
+        * WebView/WebArchive.mm:
+        (+[WebArchivePrivate initialize]):
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource initialize]):
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLViewPrivate initialize]):
+        (+[WebHTMLView initialize]):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebResource.mm:
+        (+[WebResourcePrivate initialize]):
+        * WebView/WebTextIterator.mm:
+        (+[WebTextIteratorPrivate initialize]):
+        * WebView/WebView.mm:
+        (+[WebView initialize]):
+        * WebView/WebViewData.mm:
+        (+[WebViewPrivate initialize]):
+
+2020-06-09  Dean Jackson  <dino@apple.com>
+
+        Stop using discriminatory names for WebGL and Plugin blocking
+        https://bugs.webkit.org/show_bug.cgi?id=213000
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (shouldBlockPlugin):
+        (shouldBlockWebGL):
+
+2020-06-08  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitLegacy: Exclude NSURLConnectionSPI.h from watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=212942
+        <rdar://problem/64141877>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebDownload.h: Exclude NSURLConnectionSPI.h from watchOS, replace
+        CFNSURLConnection.h with NSURLConnectionSPI.h.
+
+2020-06-08  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for DragOperation
+        <https://webkit.org/b/212870>
+        <rdar://problem/64069940>
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLView.mm:
+        (kit):
+        * WebView/WebView.mm:
+        (coreDragOperationMask):
+        (kit):
+
+2020-06-07  Philippe Normand  <pnormand@igalia.com>
+
+        Remove ENABLE_VIDEO_TRACK ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=212568
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2020-06-06  David Kilzer  <ddkilzer@apple.com>
+
+        Use OptionSet<DragOperation> for mask values
+        <https://webkit.org/b/212605>
+
+        Reviewed by Darin Adler.
+
+        In broad strokes:
+        - Replace use of DragOperation with OptionSet<DragOperation> or
+          Optional<DragOperation>.
+        - Rename function parameters and local variables to denote use
+          of mask values.
+        - Remove DragOperationNone enum value.
+        - Replace DragOperationEvery enum value with anyDragOperation().
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dragSourceEndedAt:operation:]):
+        * WebView/WebHTMLView.mm:
+        (kit): Add conversion function.
+        (-[WebHTMLView draggingSourceOperationMaskForLocal:]):
+        (-[WebHTMLView draggingSession:sourceOperationMaskForDraggingContext:]):
+        * WebView/WebView.mm:
+        (coreDragOperationMask): Add conversion function.
+        (kit): Ditto.
+        - Map WebCore::DragOperationGeneric to _UIDragOperationMove
+          based on logic in WebCore.  All other WebCore::DragOperation
+          enum values map to _UIDragOperationNone.
+        (-[WebView dragDataForSession:client:global:operation:]):
+        (-[WebView _enteredDataInteraction:client:global:operation:]):
+        (-[WebView _updatedDataInteraction:client:global:operation:]):
+        (-[WebView draggingEntered:]):
+        (-[WebView draggingUpdated:]):
+        (-[WebView draggingExited:]):
+        (-[WebView performDragOperation:]):
+        * WebView/WebViewInternal.h:
+        (CocoaDragOperation):
+        - Add typedef so coreDragOperationMask() may be shared across
+          platforms.
+        (coreDragOperationMask): Add declaration.
+        (coreOptions):
+        - Remove redundant parameter name.
+
+2020-06-06  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitLegacy: Link to framework stubs for watchOS and tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=212855
+        <rdar://problem/64049486>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Define tvOS and watchOS major version macros.
+        * Configurations/WebKitLegacy.xcconfig: Link to framework stubs for watchOS and tvOS.
+
+2020-06-05  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitLegacy: Feature guard WebChromeClient declarations
+        https://bugs.webkit.org/show_bug.cgi?id=212857
+        <rdar://problem/64050523>
+
+        Unreviewed build fix.
+
+        * WebCoreSupport/WebChromeClient.h: m_mockVideoPresentationModeEnabled declaration
+        should be guarded on ENABLE(VIDEO_PRESENTATION_MODE).
+
+2020-06-05  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for AutocapitalizeType
+        <https://webkit.org/b/212846>
+        <rdar://problem/64042825>
+
+        Reviewed by Darin Adler.
+
+        Summary:
+        - Move AutocapitalizeType into WebCore namespace.
+        - Convert AutocapitalizeType to an enum class.
+        - Add WTF::EnumTraits<AutocapitalizeType> for IPC.
+
+        * DOM/DOMHTML.mm:
+        (webAutocapitalizeType):
+
+2020-06-05  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for PluginLoadClientPolicy
+        <https://webkit.org/b/212827>
+        <rdar://problem/64030431>
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        - Update for renamed PluginLoadClientPolicy enum.
+
+2020-06-05  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove conditionals for ENABLE_APPLE_PAY_SESSION_V(3|4)
+        https://bugs.webkit.org/show_bug.cgi?id=212541
+        <rdar://problem/63781452>
+
+        Reviewed by Darin Adler.
+
+        APPLE_PAY_SESSION_V(3|4) is now enabled whenever APPLE_PAY itself is enabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-04  Tim Horton  <timothy_horton@apple.com>
+
+        Work around broken system version macro
+        https://bugs.webkit.org/show_bug.cgi?id=212726
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2020-06-04  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Re-enable content filtering in the simulator build
+        https://bugs.webkit.org/show_bug.cgi?id=212711
+        <rdar://problem/63938350>
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2020-06-02  Keith Rollin  <krollin@apple.com>
 
         Revert FEATURES_DEFINES related changes

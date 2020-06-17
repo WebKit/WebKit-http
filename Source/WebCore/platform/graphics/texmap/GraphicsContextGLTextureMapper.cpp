@@ -30,7 +30,7 @@
 #if ENABLE(GRAPHICS_CONTEXT_GL) && USE(TEXTURE_MAPPER)
 
 #include "GraphicsContextGLOpenGLPrivate.h"
-#include "TextureMapperGC3DPlatformLayer.h"
+#include "TextureMapperGCGLPlatformLayer.h"
 #include <ANGLE/ShaderLang.h>
 #include <wtf/Deque.h>
 #include <wtf/NeverDestroyed.h>
@@ -74,9 +74,9 @@ typedef void* GLeglContext;
 
 #if USE(NICOSIA)
 #if USE(ANGLE)
-#include "NicosiaGC3DANGLELayer.h"
+#include "NicosiaGCGLANGLELayer.h"
 #else
-#include "NicosiaGC3DLayer.h"
+#include "NicosiaGCGLLayer.h"
 #endif
 #endif
 
@@ -134,9 +134,9 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
 {
     ASSERT_UNUSED(sharedContext, !sharedContext);
 #if USE(NICOSIA)
-    m_nicosiaLayer = WTF::makeUnique<Nicosia::GC3DANGLELayer>(*this, destination);
+    m_nicosiaLayer = WTF::makeUnique<Nicosia::GCGLANGLELayer>(*this, destination);
 #else
-    m_texmapLayer = WTF::makeUnique<TextureMapperGC3DPlatformLayer>(*this, destination);
+    m_texmapLayer = WTF::makeUnique<TextureMapperGCGLPlatformLayer>(*this, destination);
 #endif
     makeContextCurrent();
 
@@ -207,9 +207,9 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
 {
     ASSERT_UNUSED(sharedContext, !sharedContext);
 #if USE(NICOSIA)
-    m_nicosiaLayer = makeUnique<Nicosia::GC3DLayer>(*this, destination);
+    m_nicosiaLayer = makeUnique<Nicosia::GCGLLayer>(*this, destination);
 #else
-    m_texmapLayer = makeUnique<TextureMapperGC3DPlatformLayer>(*this, destination);
+    m_texmapLayer = makeUnique<TextureMapperGCGLPlatformLayer>(*this, destination);
 #endif
 
     makeContextCurrent();

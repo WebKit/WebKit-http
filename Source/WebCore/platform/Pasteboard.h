@@ -122,6 +122,7 @@ struct PasteboardImage {
     RefPtr<Image> image;
 #if PLATFORM(MAC)
     RefPtr<SharedBuffer> dataInWebArchiveFormat;
+    String dataInHTMLFormat;
 #endif
 #if !PLATFORM(WIN)
     PasteboardURL url;
@@ -218,6 +219,8 @@ public:
     virtual WEBCORE_EXPORT void read(PasteboardWebContentReader&, WebContentReadingPolicy = WebContentReadingPolicy::AnyType, Optional<size_t> itemIndex = WTF::nullopt);
     virtual WEBCORE_EXPORT void read(PasteboardFileReader&, Optional<size_t> itemIndex = WTF::nullopt);
 
+    static bool canWriteTrustworthyWebURLsPboardType();
+
     virtual WEBCORE_EXPORT void write(const Color&);
     virtual WEBCORE_EXPORT void write(const PasteboardURL&);
     virtual WEBCORE_EXPORT void writeTrustworthyWebURLsPboardType(const PasteboardURL&);
@@ -226,7 +229,7 @@ public:
 
     virtual WEBCORE_EXPORT void writeCustomData(const Vector<PasteboardCustomData>&);
 
-    enum class FileContentState { NoFileOrImageData, InMemoryImage, MayContainFilePaths };
+    enum class FileContentState : uint8_t { NoFileOrImageData, InMemoryImage, MayContainFilePaths };
     virtual WEBCORE_EXPORT FileContentState fileContentState();
     virtual WEBCORE_EXPORT bool canSmartReplace();
 

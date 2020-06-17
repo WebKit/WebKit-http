@@ -41,6 +41,7 @@
 #include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
 #include "PageLoadState.h"
+#include "PluginProcessAttributes.h"
 #include "PolicyDecision.h"
 #include "ProcessTerminationReason.h"
 #include "ProcessThrottler.h"
@@ -120,6 +121,7 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS_FAMILY)
+#include "EndowmentStateTracker.h"
 #include "GestureTypes.h"
 #include "WebAutocorrectionContext.h"
 #endif
@@ -432,7 +434,12 @@ class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
     , public WebCore::PlatformSpeechSynthesisUtteranceClient
     , public WebCore::PlatformSpeechSynthesizerClient
 #endif
-    , public CanMakeWeakPtr<WebPageProxy> {
+#if PLATFORM(IOS_FAMILY)
+    , public EndowmentStateTracker::Client
+#else
+    , public CanMakeWeakPtr<WebPageProxy>
+#endif
+    {
 public:
     static Ref<WebPageProxy> create(PageClient&, WebProcessProxy&, Ref<API::PageConfiguration>&&);
     virtual ~WebPageProxy();
@@ -826,8 +833,8 @@ public:
 #if ENABLE(DRAG_SUPPORT)
     void didHandleDragStartRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
-    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions);
-    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions);
+    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask);
     void insertDroppedImagePlaceholders(const Vector<WebCore::IntSize>&, CompletionHandler<void(const Vector<WebCore::IntRect>&, Optional<WebCore::TextIndicatorData>)>&& reply);
     void willReceiveEditDragSnapshot();
     void didReceiveEditDragSnapshot(Optional<WebCore::TextIndicatorData>);
@@ -1156,8 +1163,8 @@ public:
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
     void didPerformDragOperation(bool handled);
 
-    void didPerformDragControllerAction(uint64_t dragOperation, WebCore::DragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect, const WebCore::IntRect& editableElementRect);
-    void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
+    void didPerformDragControllerAction(Optional<WebCore::DragOperation>, WebCore::DragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect, const WebCore::IntRect& editableElementRect);
+    void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragOperation>);
     void didStartDrag();
     void dragCancelled();
     void setDragCaretRect(const WebCore::IntRect&);
@@ -1167,7 +1174,7 @@ public:
                          const String& title, const String& url, const String& visibleURL, const SharedMemory::Handle& archiveHandle, uint64_t archiveSize);
 #endif
 #if PLATFORM(GTK)
-    void startDrag(WebCore::SelectionData&&, uint64_t dragOperation, const ShareableBitmap::Handle& dragImage);
+    void startDrag(WebCore::SelectionData&&, OptionSet<WebCore::DragOperation>, const ShareableBitmap::Handle& dragImage);
 #endif
 #endif
 
@@ -1182,6 +1189,8 @@ public:
 #if PLATFORM(IOS_FAMILY)
     void processWillBecomeSuspended();
     void processWillBecomeForeground();
+    void isUserFacingChanged(bool) final;
+    void isVisibleChanged(bool) final;
 #endif
 
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
@@ -1226,7 +1235,7 @@ public:
     void launchInitialProcessIfNecessary();
 
 #if ENABLE(DRAG_SUPPORT)
-    WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
+    Optional<WebCore::DragOperation> currentDragOperation() const { return m_currentDragOperation; }
     WebCore::DragHandlingMethod currentDragHandlingMethod() const { return m_currentDragHandlingMethod; }
     bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
     unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
@@ -1295,8 +1304,8 @@ public:
     void saveDataToFileInDownloadsFolder(String&& suggestedFilename, String&& mimeType, URL&& originatingURL, API::Data&);
     void savePDFToFileInDownloadsFolder(String&& suggestedFilename, URL&& originatingURL, const IPC::DataReference&);
 #if PLATFORM(COCOA)
-    void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const IPC::DataReference&, const String& pdfUUID);
-    void openPDFFromTemporaryFolderWithNativeApplication(const String& pdfUUID);
+    void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, FrameInfoData&&, const IPC::DataReference&, const String& pdfUUID);
+    void openPDFFromTemporaryFolderWithNativeApplication(FrameInfoData&&, const String& pdfUUID);
 #endif
 
 #if ENABLE(PDFKIT_PLUGIN)
@@ -1773,6 +1782,8 @@ public:
 
     WebPopupMenuProxy* activePopupMenu() const { return m_activePopupMenu.get(); }
 
+    void preconnectTo(const URL&);
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, Ref<API::PageConfiguration>&&);
     void platformInitialize();
@@ -1846,8 +1857,6 @@ private:
     void didChangeProgress(double);
     void didFinishProgress();
     void setNetworkRequestsInProgress(bool);
-
-    void preconnectTo(const URL&);
 
     void didDestroyNavigation(uint64_t navigationID);
 
@@ -2204,7 +2213,7 @@ private:
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    void findPlugin(const String& mimeType, uint32_t processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, Messages::WebPageProxy::FindPluginDelayedReply&&);
+    void findPlugin(const String& mimeType, WebKit::PluginProcessType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, Messages::WebPageProxy::FindPluginDelayedReply&&);
 #endif
 
 #if USE(QUICK_LOOK)
@@ -2607,7 +2616,7 @@ private:
 #if ENABLE(DRAG_SUPPORT)
     // Current drag destination details are delivered as an asynchronous response,
     // so we preserve them to be used when the next dragging delegate call is made.
-    WebCore::DragOperation m_currentDragOperation { WebCore::DragOperationNone };
+    Optional<WebCore::DragOperation> m_currentDragOperation;
     WebCore::DragHandlingMethod m_currentDragHandlingMethod { WebCore::DragHandlingMethod::None };
     bool m_currentDragIsOverFileInput { false };
     unsigned m_currentDragNumberOfFilesToBeAccepted { 0 };

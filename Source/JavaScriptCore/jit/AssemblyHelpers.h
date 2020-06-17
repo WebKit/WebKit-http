@@ -102,6 +102,15 @@ public:
             store32(src.gpr(), dst);
     }
 
+    void storeReg(Reg src, Address dst)
+    {
+#if USE(JSVALUE64)
+        store64FromReg(src, dst);
+#else
+        store32FromReg(src, dst);
+#endif
+    }
+
 #if USE(JSVALUE64)
     void load64ToReg(Address src, Reg dst)
     {
@@ -118,6 +127,15 @@ public:
             loadFloat(src, dst.fpr());
         else
             load32(src, dst.gpr());
+    }
+
+    void loadReg(Address src, Reg dst)
+    {
+#if USE(JSVALUE64)
+        load64ToReg(src, dst);
+#else
+        load32ToReg(src, dst);
+#endif
     }
 
     template<typename T>
@@ -498,7 +516,7 @@ public:
     {
 #if USE(JSVALUE64)
         move(MacroAssembler::TrustedImm64(JSValue::NumberTag), GPRInfo::numberTagRegister);
-        orPtr(MacroAssembler::TrustedImm32(JSValue::OtherTag), GPRInfo::numberTagRegister, GPRInfo::notCellMaskRegister);
+        or64(MacroAssembler::TrustedImm32(JSValue::OtherTag), GPRInfo::numberTagRegister, GPRInfo::notCellMaskRegister);
 #endif
     }
 
@@ -540,6 +558,37 @@ public:
     {
         push(address);
     }
+
+    // dest = base + index << shift.
+    void shiftAndAdd(RegisterID base, RegisterID index, uint8_t shift, RegisterID dest, Optional<RegisterID> optionalScratch = { })
+    {
+        ASSERT(shift < 32);
+        if (shift <= 3) {
+            x86Lea64(BaseIndex(base, index, static_cast<Scale>(shift)), dest);
+            return;
+        }
+
+        RegisterID scratch = dest;
+        bool needToPreserveIndexRegister = false;
+        if (base == dest) {
+            scratch = optionalScratch ? optionalScratch.value() : scratchRegister();
+            if (base == scratch) {
+                scratch = index;
+                needToPreserveIndexRegister = true;
+            } else if (index == scratch)
+                needToPreserveIndexRegister = true;
+            if (needToPreserveIndexRegister)
+                push(index);
+        }
+
+        move(index, scratch);
+        lshift64(TrustedImm32(shift), scratch);
+        m_assembler.leaq_mr(0, base, scratch, 0, dest);
+
+        if (needToPreserveIndexRegister)
+            pop(index);
+    }
+
 #endif // CPU(X86_64)
 
 #if CPU(ARM_THUMB2) || CPU(ARM64)
@@ -581,6 +630,16 @@ public:
     {
         loadPtr(address, linkRegister);
     }
+
+#if CPU(ARM64)
+    // dest = base + index << shift.
+    void shiftAndAdd(RegisterID base, RegisterID index, uint8_t shift, RegisterID dest, Optional<RegisterID> = { })
+    {
+        ASSERT(shift < 32);
+        ASSERT(base != index);
+        getEffectiveAddress(BaseIndex(base, index, static_cast<Scale>(shift)), dest);
+    }
+#endif // CPU(ARM64)
 #endif
 
 #if CPU(MIPS)
@@ -625,25 +684,30 @@ public:
 
     void emitGetFromCallFrameHeaderPtr(VirtualRegister entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
     {
+        ASSERT(entry.isHeader());
         loadPtr(Address(from, entry.offset() * sizeof(Register)), to);
     }
     void emitGetFromCallFrameHeader32(VirtualRegister entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
     {
+        ASSERT(entry.isHeader());
         load32(Address(from, entry.offset() * sizeof(Register)), to);
     }
 #if USE(JSVALUE64)
     void emitGetFromCallFrameHeader64(VirtualRegister entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
     {
+        ASSERT(entry.isHeader());
         load64(Address(from, entry.offset() * sizeof(Register)), to);
     }
 #endif // USE(JSVALUE64)
     void emitPutToCallFrameHeader(GPRReg from, VirtualRegister entry)
     {
+        ASSERT(entry.isHeader());
         storePtr(from, Address(GPRInfo::callFrameRegister, entry.offset() * sizeof(Register)));
     }
 
     void emitPutToCallFrameHeader(void* value, VirtualRegister entry)
     {
+        ASSERT(entry.isHeader());
         storePtr(TrustedImmPtr(value), Address(GPRInfo::callFrameRegister, entry.offset() * sizeof(Register)));
     }
 

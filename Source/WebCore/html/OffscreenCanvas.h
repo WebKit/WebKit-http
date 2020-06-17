@@ -33,6 +33,7 @@
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "IDLTypes.h"
+#include "ImageBuffer.h"
 #include "IntSize.h"
 #include "ScriptWrappable.h"
 #include <wtf/Forward.h>
@@ -63,6 +64,13 @@ public:
     std::unique_ptr<ImageBuffer> takeImageBuffer();
     const IntSize& size() const { return m_size; }
     bool originClean() const { return m_originClean; }
+    size_t memoryCost() const
+    {
+        auto* buffer = m_buffer.get();
+        if (buffer)
+            return buffer->memoryCost();
+        return 0;
+    }
 
 private:
     std::unique_ptr<ImageBuffer> m_buffer;

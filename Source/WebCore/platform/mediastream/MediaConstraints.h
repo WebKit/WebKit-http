@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 
 #include "RealtimeMediaSourceSupportedConstraints.h"
 #include <cstdlib>
+#include <wtf/EnumTraits.h>
 #include <wtf/Function.h>
 #include <wtf/Vector.h>
 
@@ -55,20 +56,20 @@ public:
 
     template <class Encoder> void encode(Encoder& encoder) const
     {
-        encoder.encodeEnum(m_constraintType);
+        encoder << m_constraintType;
         encoder << m_name;
-        encoder.encodeEnum(m_dataType);
+        encoder << m_dataType;
     }
 
     template <class Decoder> static WARN_UNUSED_RETURN bool decode(Decoder& decoder, MediaConstraint& constraint)
     {
-        if (!decoder.decodeEnum(constraint.m_constraintType))
+        if (!decoder.decode(constraint.m_constraintType))
             return false;
 
         if (!decoder.decode(constraint.m_name))
             return false;
 
-        if (!decoder.decodeEnum(constraint.m_dataType))
+        if (!decoder.decode(constraint.m_dataType))
             return false;
 
         return true;
@@ -903,5 +904,20 @@ SPECIALIZE_TYPE_TRAITS_MEDIACONSTRAINT(IntConstraint, isInt())
 SPECIALIZE_TYPE_TRAITS_MEDIACONSTRAINT(DoubleConstraint, isDouble())
 SPECIALIZE_TYPE_TRAITS_MEDIACONSTRAINT(StringConstraint, isString())
 SPECIALIZE_TYPE_TRAITS_MEDIACONSTRAINT(BooleanConstraint, isBoolean())
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::MediaConstraint::DataType> {
+    using values = EnumValues<
+        WebCore::MediaConstraint::DataType,
+        WebCore::MediaConstraint::DataType::None,
+        WebCore::MediaConstraint::DataType::Integer,
+        WebCore::MediaConstraint::DataType::Double,
+        WebCore::MediaConstraint::DataType::Boolean,
+        WebCore::MediaConstraint::DataType::String
+    >;
+};
+
+} // namespace WTF
 
 #endif // ENABLE(MEDIA_STREAM)

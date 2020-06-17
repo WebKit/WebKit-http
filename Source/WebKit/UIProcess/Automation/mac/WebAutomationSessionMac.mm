@@ -73,13 +73,16 @@ static const void *synthesizedAutomationEventAssociatedObjectKey = &synthesizedA
 void WebAutomationSession::sendSynthesizedEventsToPage(WebPageProxy& page, NSArray *eventsToSend)
 {
     NSWindow *window = page.platformWindow();
+    [window makeKeyAndOrderFront:nil];
+    page.makeFirstResponder();
 
     for (NSEvent *event in eventsToSend) {
         LOG(Automation, "Sending event[%p] to window[%p]: %@", event, window, event);
 
         // Take focus back in case the Inspector became focused while the prior command or
         // NSEvent was delivered to the window.
-        [window becomeKeyWindow];
+        [window makeKeyAndOrderFront:nil];
+        page.makeFirstResponder();
 
         markEventAsSynthesizedForAutomation(event);
         [window sendEvent:event];
@@ -137,7 +140,7 @@ void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, 
 {
     IntRect windowRect;
 
-    IntPoint locationInView = WebCore::IntPoint(locationInViewport.x(), locationInViewport.y());
+    IntPoint locationInView = locationInViewport + IntPoint(0, page.topContentInset());
     page.rootViewToWindow(IntRect(locationInView, IntSize()), windowRect);
     IntPoint locationInWindow = windowRect.location();
 
@@ -225,6 +228,25 @@ void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, 
 
     sendSynthesizedEventsToPage(page, eventsToBeSent.get());
 }
+
+OptionSet<WebEvent::Modifier> WebAutomationSession::platformWebModifiersFromRaw(unsigned modifiers)
+{
+    OptionSet<WebEvent::Modifier> webModifiers;
+
+    if (modifiers & NSEventModifierFlagCommand)
+        webModifiers.add(WebEvent::Modifier::MetaKey);
+    if (modifiers & NSEventModifierFlagOption)
+        webModifiers.add(WebEvent::Modifier::AltKey);
+    if (modifiers & NSEventModifierFlagControl)
+        webModifiers.add(WebEvent::Modifier::ControlKey);
+    if (modifiers & NSEventModifierFlagShift)
+        webModifiers.add(WebEvent::Modifier::ShiftKey);
+    if (modifiers & NSEventModifierFlagCapsLock)
+        webModifiers.add(WebEvent::Modifier::CapsLockKey);
+
+    return webModifiers;
+}
+
 #endif // ENABLE(WEBDRIVER_MOUSE_INTERACTIONS)
 
 #if ENABLE(WEBDRIVER_KEYBOARD_INTERACTIONS)

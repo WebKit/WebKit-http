@@ -27,6 +27,7 @@
 
 #include "FloatRect.h"
 #include "PlatformScreen.h"
+#include <wtf/EnumTraits.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
@@ -43,9 +44,9 @@ struct ScreenData {
     int screenDepthPerComponent { 0 };
     bool screenSupportsExtendedColor { false };
     bool screenHasInvertedColors { false };
-    bool screenIsMonochrome { false };
     bool screenSupportsHighDynamicRange { false };
 #if PLATFORM(MAC)
+    bool screenIsMonochrome { false };
     uint32_t displayMask { 0 };
     IORegistryGPUID gpuID { 0 };
 #endif
@@ -91,16 +92,16 @@ Optional<ScreenProperties> ScreenProperties::decode(Decoder& decoder)
 template<class Encoder>
 void ScreenData::encode(Encoder& encoder) const
 {
-    encoder << screenAvailableRect << screenRect << screenDepth << screenDepthPerComponent << screenSupportsExtendedColor << screenHasInvertedColors << screenIsMonochrome << screenSupportsHighDynamicRange;
+    encoder << screenAvailableRect << screenRect << screenDepth << screenDepthPerComponent << screenSupportsExtendedColor << screenHasInvertedColors << screenSupportsHighDynamicRange;
 
 #if PLATFORM(MAC)
-    encoder << displayMask << gpuID;
+    encoder << screenIsMonochrome << displayMask << gpuID;
 #endif
 
     if (colorSpace) {
         // Try to encode the name.
         if (auto name = adoptCF(CGColorSpaceCopyName(colorSpace.get()))) {
-            encoder.encodeEnum(ColorSpaceType::Name);
+            encoder << ColorSpaceType::Name;
             encoder << String(name.get());
             return;
         }
@@ -110,14 +111,14 @@ void ScreenData::encode(Encoder& encoder) const
             Vector<uint8_t> iccData;
             iccData.append(CFDataGetBytePtr(profileData.get()), CFDataGetLength(profileData.get()));
 
-            encoder.encodeEnum(ColorSpaceType::Data);
+            encoder << ColorSpaceType::Data;
             encoder << iccData;
             return;
         }
     }
 
     // The color space was null or failed to be encoded.
-    encoder.encodeEnum(ColorSpaceType::None);
+    encoder << ColorSpaceType::None;
 }
 
 template<class Decoder>
@@ -153,17 +154,17 @@ Optional<ScreenData> ScreenData::decode(Decoder& decoder)
     if (!screenHasInvertedColors)
         return WTF::nullopt;
 
-    Optional<bool> screenIsMonochrome;
-    decoder >> screenIsMonochrome;
-    if (!screenIsMonochrome)
-        return WTF::nullopt;
-
     Optional<bool> screenSupportsHighDynamicRange;
     decoder >> screenSupportsHighDynamicRange;
     if (!screenSupportsHighDynamicRange)
         return WTF::nullopt;
 
 #if PLATFORM(MAC)
+    Optional<bool> screenIsMonochrome;
+    decoder >> screenIsMonochrome;
+    if (!screenIsMonochrome)
+        return WTF::nullopt;
+
     Optional<uint32_t> displayMask;
     decoder >> displayMask;
     if (!displayMask)
@@ -176,7 +177,7 @@ Optional<ScreenData> ScreenData::decode(Decoder& decoder)
 #endif
 
     ColorSpaceType dataType;
-    if (!decoder.decodeEnum(dataType))
+    if (!decoder.decode(dataType))
         return WTF::nullopt;
 
     RetainPtr<CGColorSpaceRef> cgColorSpace;
@@ -214,9 +215,9 @@ Optional<ScreenData> ScreenData::decode(Decoder& decoder)
         WTFMove(*screenDepthPerComponent),
         WTFMove(*screenSupportsExtendedColor),
         WTFMove(*screenHasInvertedColors),
-        WTFMove(*screenIsMonochrome),
         WTFMove(*screenSupportsHighDynamicRange),
 #if PLATFORM(MAC)
+        WTFMove(*screenIsMonochrome),
         WTFMove(*displayMask),
         WTFMove(*gpuID)
 #endif
@@ -224,3 +225,16 @@ Optional<ScreenData> ScreenData::decode(Decoder& decoder)
 }
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::ScreenData::ColorSpaceType> {
+    using values = EnumValues<
+        WebCore::ScreenData::ColorSpaceType,
+        WebCore::ScreenData::ColorSpaceType::None,
+        WebCore::ScreenData::ColorSpaceType::Name,
+        WebCore::ScreenData::ColorSpaceType::Data
+    >;
+};
+
+} // namespace WTF

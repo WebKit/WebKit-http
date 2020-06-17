@@ -2703,7 +2703,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         JSValue childConst = forNode(node->child1()).value();
         if (childConst && (childConst.isNumber() || childConst.isBigInt())) {
             didFoldClobberWorld();
-            setConstant(node, childConst);
+            if (childConst.isCell())
+                setConstant(node, *m_graph.freeze(childConst.asCell()));
+            else
+                setConstant(node, childConst);
             break;
         }
 
@@ -3527,6 +3530,25 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         filterClassInfo(value, classInfo);
         break;
     }
+    case CheckNotJSCast: {
+        const ClassInfo* classInfo = node->classInfo();
+        JSValue constant = forNode(node->child1()).value();
+        if (constant) {
+            if (constant.isCell() && !constant.asCell()->inherits(m_vm, classInfo)) {
+                ASSERT(!classInfo->inheritsJSTypeRange || !classInfo->inheritsJSTypeRange->contains(constant.asCell()->type()));
+                m_state.setShouldTryConstantFolding(true);
+                ASSERT(constant);
+                break;
+            }
+        }
+
+        AbstractValue& value = forNode(node->child1());
+
+        if (value.m_structure.isNotSubClassOf(classInfo))
+            m_state.setShouldTryConstantFolding(true);
+        break;
+    }
+
     case CallDOMGetter: {
         CallDOMGetterData* callDOMGetterData = node->callDOMGetterData();
         DOMJIT::CallDOMGetterSnippet* snippet = callDOMGetterData->snippet;
@@ -3698,9 +3720,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             bool canFold = !value.m_structure.isClear();
             JSValue prototype;
             value.m_structure.forEach([&] (RegisteredStructure structure) {
-                auto getPrototypeMethod = structure->classInfo()->methodTable.getPrototype;
-                MethodTable::GetPrototypeFunctionPtr defaultGetPrototype = JSObject::getPrototype;
-                if (getPrototypeMethod != defaultGetPrototype) {
+                if (structure->typeInfo().overridesGetPrototype()) {
                     canFold = false;
                     return;
                 }
@@ -4280,7 +4300,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case ForceOSRExit:
-    case CheckBadCell:
+    case CheckBadValue:
         m_state.setIsValid(false);
         break;
         

@@ -81,6 +81,8 @@ class ResourceLoadStatisticsDatabaseStore final : public ResourceLoadStatisticsS
 public:
     ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore&, WorkQueue&, ShouldIncludeLocalhost, const String& storageDirectoryPath, PAL::SessionID);
     ~ResourceLoadStatisticsDatabaseStore();
+
+    static HashSet<ResourceLoadStatisticsDatabaseStore*>& allStores();
     void populateFromMemoryStore(const ResourceLoadStatisticsMemoryStore&);
     void mergeStatistics(Vector<ResourceLoadStatistics>&&) override;
     void clear(CompletionHandler<void()>&&) override;
@@ -91,8 +93,9 @@ public:
     void updateCookieBlocking(CompletionHandler<void()>&&) override;
 
     void classifyPrevalentResources() override;
-    void syncStorageIfNeeded() override;
-    void syncStorageImmediately() override;
+    void syncStorageIfNeeded() override { };
+    void syncStorageImmediately() override { };
+    void runIncrementalVacuumCommand();
 
     void requestStorageAccessUnderOpener(DomainInNeedOfStorageAccess&&, WebCore::PageIdentifier openerID, OpenerDomain&&) override;
 
@@ -144,6 +147,7 @@ public:
     bool domainIDExistsInDatabase(int);
     Optional<Vector<String>> checkForMissingTablesInSchema();
     void insertExpiredStatisticForTesting(const RegistrableDomain&, bool hasUserInteraction, bool isScheduledForAllButCookieDataRemoval, bool isPrevalent) override;
+    void interrupt();
 
 private:
     void includeTodayAsOperatingDateIfNecessary() override;

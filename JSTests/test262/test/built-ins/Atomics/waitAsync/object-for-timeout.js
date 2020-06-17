@@ -19,9 +19,10 @@ info: |
       Let primValue be ? ToPrimitive(argument, hint Number).
       Return ? ToNumber(primValue).
 
-features: [Atomics.waitAsync, SharedArrayBuffer, Symbol, Symbol.toPrimitive, TypedArray, computed-property-names, Atomics]
+features: [Atomics.waitAsync, SharedArrayBuffer, Symbol, Symbol.toPrimitive, TypedArray, computed-property-names, Atomics, arrow-function]
 flags: [async]
 ---*/
+assert.sameValue(typeof Atomics.waitAsync, 'function');
 const i32a = new Int32Array(
   new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4)
 );

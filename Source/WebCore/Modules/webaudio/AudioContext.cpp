@@ -118,17 +118,21 @@ bool AudioContext::isSampleRateRangeGood(float sampleRate)
     return sampleRate >= 44100 && sampleRate <= 96000;
 }
 
+#if OS(WINDOWS)
 // Don't allow more than this number of simultaneous AudioContexts talking to hardware.
-const unsigned MaxHardwareContexts = 4;
+constexpr unsigned maxHardwareContexts = 4;
+#endif
 unsigned AudioContext::s_hardwareContextCount = 0;
     
-RefPtr<AudioContext> AudioContext::create(Document& document)
+ExceptionOr<Ref<AudioContext>> AudioContext::create(Document& document)
 {
     ASSERT(isMainThread());
-    if (s_hardwareContextCount >= MaxHardwareContexts)
-        return nullptr;
+#if OS(WINDOWS)
+    if (s_hardwareContextCount >= maxHardwareContexts)
+        return Exception { QuotaExceededError };
+#endif
 
-    RefPtr<AudioContext> audioContext(adoptRef(new AudioContext(document)));
+    auto audioContext = adoptRef(*new AudioContext(document));
     audioContext->suspendIfNeeded();
     return audioContext;
 }
@@ -1082,6 +1086,13 @@ void AudioContext::nodeWillBeginPlayback()
         startRendering();
 }
 
+static bool shouldDocumentAllowWebAudioToAutoPlay(const Document& document)
+{
+    if (document.processingUserGestureForMedia() || document.isCapturing())
+        return true;
+    return document.quirks().shouldAutoplayWebAudioForArbitraryUserGesture() && document.topDocument().hasHadUserInteraction();
+}
+
 bool AudioContext::willBeginPlayback()
 {
     auto* document = this->document();
@@ -1089,7 +1100,7 @@ bool AudioContext::willBeginPlayback()
         return false;
 
     if (userGestureRequiredForAudioStart()) {
-        if (!document->processingUserGestureForMedia() && !document->isCapturing()) {
+        if (!shouldDocumentAllowWebAudioToAutoPlay(*document)) {
             ALWAYS_LOG(LOGIDENTIFIER, "returning false, not processing user gesture or capturing");
             return false;
         }

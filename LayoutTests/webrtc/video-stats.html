@@ -29,6 +29,34 @@ function checkStatsReportIterator(report)
         assert_equals(pair.length, 2);
 }
 
+function getAudioSourceStats(connection)
+{
+    return connection.getStats().then((report) => {
+        checkStatsReportIterator(report);
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === "media-source" && statItem.kind === "audio") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
+function getVideoSourceStats(connection)
+{
+    return connection.getStats().then((report) => {
+        checkStatsReportIterator(report);
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === "media-source" && statItem.kind === "video") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
 function getInboundRTPStats(connection)
 {
     return connection.getStats().then((report) => {
@@ -50,6 +78,20 @@ function getOutboundRTPStats(connection)
         var stats;
         report.forEach((statItem) => {
             if (statItem.type === "outbound-rtp") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
+function getStatsOfType(connection, type)
+{
+    return connection.getStats().then((report) => {
+        checkStatsReportIterator(report);
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === type) {
                 stats = statItem;
             }
         });
@@ -104,13 +146,15 @@ promise_test(async (test) => {
     if (window.testRunner)
         testRunner.setUserMediaPermission(true);
 
-    const localStream = await navigator.mediaDevices.getUserMedia({ video: true});
+    const localStream = await navigator.mediaDevices.getUserMedia({ audio : true, video: true});
     await new Promise((resolve, reject) => {
         createConnections((connection) => {
             firstConnection = connection;
+            firstConnection.addTrack(localStream.getAudioTracks()[0], localStream);
             firstConnection.addTrack(localStream.getVideoTracks()[0], localStream);
         }, (connection) => {
             secondConnection = connection;
+            secondConnection.addTrack(localStream.getAudioTracks()[0], localStream);
             secondConnection.addTrack(localStream.getVideoTracks()[0], localStream);
             secondConnection.ontrack = (trackEvent) => {
                 resolve();
@@ -122,25 +166,42 @@ promise_test(async (test) => {
     let stats = await getOutboundRTPStats(firstConnection);
     assert_true(!!stats, "outbound-rtp stats should not be null");
     assert_true(Number.isInteger(stats.framesEncoded), "framesEncoded should be an integer");
-    assert_true(Number.isInteger(stats.qpSum), "outbound qpSum should be an integer");
+    assert_true(!stats.qpSum || Number.isInteger(stats.qpSum), "outbound qpSum should be an integer");
     assert_true(typeof stats.timestamp === "number", "timestamp should be a double");
     statsFirstConnection = stats;
 
     stats = await getInboundRTPStats(secondConnection);
     assert_true(!!stats, "inbound-rtp stats should not be null");
     assert_true(Number.isInteger(stats.framesDecoded), "framesDecoded should be an integer");
-    assert_true(Number.isInteger(stats.qpSum), "inbound qpSum should be an integer");
+    assert_true(!stats.qpSum || Number.isInteger(stats.qpSum), "inbound qpSum should be an integer");
     assert_true(typeof stats.timestamp === "number", "timestamp should be a double");
     statsSecondConnection = stats;
 
     await checkInboundFramesNumberIncreased(secondConnection, statsSecondConnection, 0);
     await checkOutboundFramesNumberIncreased(firstConnection, statsFirstConnection, 0);
 
-    let types = await getStatsType(firstConnection);
-    assert_array_equals(types, ["candidate-pair", "certificate", "codec", "inbound-rtp", "local-candidate", "outbound-rtp", "peer-connection", "remote-candidate", "track", "transport"]);
+    let types;
+    do {
+        types = await getStatsType(firstConnection);
+        if (types.length != 12)
+            types = undefined;
+    } while(!types);
 
-    types = await getStatsType(secondConnection);
-    assert_array_equals(types, ["candidate-pair", "certificate", "codec", "inbound-rtp", "local-candidate", "outbound-rtp", "peer-connection", "remote-candidate", "track", "transport"]);
+    assert_array_equals(types, ["candidate-pair", "certificate", "codec", "inbound-rtp", "local-candidate", "media-source", "outbound-rtp", "peer-connection", "remote-candidate", "remote-inbound-rtp", "track", "transport"], "first connection");
+
+    do {
+        types = await getStatsType(secondConnection);
+        if (types.length != 12)
+            types = undefined;
+    } while(!types);
+
+    assert_array_equals(types, ["candidate-pair", "certificate", "codec", "inbound-rtp", "local-candidate", "media-source", "outbound-rtp", "peer-connection", "remote-candidate", "remote-inbound-rtp", "track", "transport"], "second connection");
+
+     const audioSourceStats = await getAudioSourceStats(firstConnection);
+     assert_true(!!audioSourceStats, "audio source presence");
+
+     const videoSourceStats = await getVideoSourceStats(firstConnection);
+     assert_true(!!videoSourceStats, "video source presence");
 }, "Basic video stats");
 
 promise_test(async (test) => {
@@ -170,6 +231,18 @@ promise_test(async (test) => {
     assert_false(!!outstats);
     assert_true(!!instats);
 }, "Receiver stats");
+
+promise_test(async (test) => {
+    const report = await secondConnection.getReceivers()[0].getStats();
+    let stats = await getStatsOfType(secondConnection, "transport");
+
+    assert_equals(stats.dtlsState, "connected");
+    assert_true(!!stats.dtlsCipher, "dtlsCipher");
+    assert_true(!!stats.srtpCipher, "srtpCipher");
+    assert_true(!!stats.tlsVersion, "tlsVersion");
+    assert_true(!!stats.bytesReceived, "bytesReceived");
+    assert_true(!!stats.bytesSent, "bytesSent");
+}, "Transport stats");
 
 promise_test(async (test) => {
     let instats1, instats2;

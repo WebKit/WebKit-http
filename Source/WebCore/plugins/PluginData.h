@@ -1,6 +1,6 @@
 /*
     Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
-    Copyright (C) 2015 Apple Inc. All rights reserved.
+    Copyright (C) 2015-2020 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
+#include <wtf/EnumTraits.h>
 #include <wtf/RefCounted.h>
 #include <wtf/URL.h>
 #include <wtf/Vector.h>
@@ -31,26 +30,23 @@
 namespace WebCore {
 
 class Page;
-struct PluginInfo;
 
-enum PluginLoadClientPolicy : uint8_t {
+enum class PluginLoadClientPolicy : uint8_t {
     // No client-specific plug-in load policy has been defined. The plug-in should be visible in navigator.plugins and WebKit should synchronously
     // ask the client whether the plug-in should be loaded.
-    PluginLoadClientPolicyUndefined = 0,
+    Undefined = 0,
 
     // The plug-in module should be blocked from being instantiated. The plug-in should be hidden in navigator.plugins.
-    PluginLoadClientPolicyBlock,
+    Block,
 
     // WebKit should synchronously ask the client whether the plug-in should be loaded. The plug-in should be visible in navigator.plugins.
-    PluginLoadClientPolicyAsk,
+    Ask,
 
     // The plug-in module may be loaded if WebKit is not blocking it.
-    PluginLoadClientPolicyAllow,
+    Allow,
 
     // The plug-in module should be loaded irrespective of whether WebKit has asked it to be blocked.
-    PluginLoadClientPolicyAllowAlways,
-
-    PluginLoadClientPolicyMaximum = PluginLoadClientPolicyAllowAlways
+    AllowAlways,
 };
 
 struct MimeClassInfo {
@@ -69,9 +65,9 @@ struct PluginInfo {
     String file;
     String desc;
     Vector<MimeClassInfo> mimes;
-    bool isApplicationPlugin;
+    bool isApplicationPlugin { false };
 
-    PluginLoadClientPolicy clientLoadPolicy;
+    PluginLoadClientPolicy clientLoadPolicy { PluginLoadClientPolicy::Undefined };
 
     String bundleIdentifier;
 #if PLATFORM(MAC)
@@ -103,27 +99,23 @@ public:
 
     const Vector<PluginInfo>& plugins() const { return m_plugins; }
     WEBCORE_EXPORT const Vector<PluginInfo>& webVisiblePlugins() const;
-    Vector<PluginInfo> publiclyVisiblePlugins() const;
-    WEBCORE_EXPORT void getWebVisibleMimesAndPluginIndices(Vector<MimeClassInfo>&, Vector<size_t>&) const;
+    std::pair<Vector<PluginInfo>, Vector<PluginInfo>> publiclyVisiblePluginsAndAdditionalWebVisiblePlugins() const;
+
+    WEBCORE_EXPORT Vector<MimeClassInfo> webVisibleMimeTypes() const;
 
     enum AllowedPluginTypes {
         AllPlugins,
         OnlyApplicationPlugins
     };
-
-    WEBCORE_EXPORT bool supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes) const;
-    String pluginFileForWebVisibleMimeType(const String& mimeType) const;
-
     WEBCORE_EXPORT bool supportsMimeType(const String& mimeType, const AllowedPluginTypes) const;
+    WEBCORE_EXPORT bool supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes) const;
     WEBCORE_EXPORT bool supportsWebVisibleMimeTypeForURL(const String& mimeType, const AllowedPluginTypes, const URL&) const;
+
+    String pluginFileForWebVisibleMimeType(const String& mimeType) const;
 
 private:
     explicit PluginData(Page&);
     void initPlugins();
-    bool getPluginInfoForWebVisibleMimeType(const String& mimeType, PluginInfo&) const;
-    void getMimesAndPluginIndices(Vector<MimeClassInfo>&, Vector<size_t>&) const;
-    void getMimesAndPluginIndiciesForPlugins(const Vector<PluginInfo>&, Vector<MimeClassInfo>&, Vector<size_t>&) const;
-    bool supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes, const Vector<PluginInfo>&) const;
 
 protected:
     Page& m_page;
@@ -166,3 +158,18 @@ template<class Encoder> inline void SupportedPluginIdentifier::encode(Encoder& e
 }
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::PluginLoadClientPolicy> {
+    using values = EnumValues<
+        WebCore::PluginLoadClientPolicy,
+        WebCore::PluginLoadClientPolicy::Undefined,
+        WebCore::PluginLoadClientPolicy::Block,
+        WebCore::PluginLoadClientPolicy::Ask,
+        WebCore::PluginLoadClientPolicy::Allow,
+        WebCore::PluginLoadClientPolicy::AllowAlways
+    >;
+};
+
+} // namespace WTF

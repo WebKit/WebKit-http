@@ -31,8 +31,11 @@
 #include "config.h"
 #include "FileReader.h"
 
+#include "DOMException.h"
 #include "EventLoop.h"
 #include "EventNames.h"
+#include "Exception.h"
+#include "ExceptionCode.h"
 #include "File.h"
 #include "Logging.h"
 #include "ProgressEvent.h"
@@ -162,7 +165,7 @@ void FileReader::abort()
         stop();
         m_aborting = false;
 
-        m_error = FileError::create(FileError::ABORT_ERR);
+        m_error = DOMException::create(Exception { AbortError });
 
         fireEvent(eventNames().errorEvent);
         fireEvent(eventNames().abortEvent);
@@ -207,7 +210,7 @@ void FileReader::didFinishLoading()
     });
 }
 
-void FileReader::didFail(int errorCode)
+void FileReader::didFail(ExceptionCode errorCode)
 {
     // If we're aborting, do not proceed with normal error handling since it is covered in aborting code.
     if (m_aborting)
@@ -217,7 +220,8 @@ void FileReader::didFail(int errorCode)
         ASSERT(m_state != DONE);
         m_state = DONE;
 
-        m_error = FileError::create(static_cast<FileError::ErrorCode>(errorCode));
+        m_error = DOMException::create(Exception { errorCode });
+
         fireEvent(eventNames().errorEvent);
         fireEvent(eventNames().loadendEvent);
     });

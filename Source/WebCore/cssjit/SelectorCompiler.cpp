@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Yusuke Suzuki <utatane.tea@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -400,7 +400,7 @@ void compileSelector(CompiledSelector& compiledSelector, const CSSSelector* sele
 {
     ASSERT(compiledSelector.status == SelectorCompilationStatus::NotCompiled);
 
-    if (!JSC::VM::canUseJIT()) {
+    if (!JSC::Options::useJIT()) {
         compiledSelector.status = SelectorCompilationStatus::CannotCompile;
         return;
     }
@@ -621,7 +621,7 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
         return FunctionType::SimpleSelectorChecker;
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     case CSSSelector::PseudoClassFuture:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr<CSSOperationPtrTag>(matchesFutureCuePseudoClass));
         return FunctionType::SimpleSelectorChecker;
@@ -3501,7 +3501,7 @@ void SelectorCodeGenerator::generateElementHasClasses(Assembler::JumpList& failu
         Assembler::Label loopStart(m_assembler.label());
 
         // If the pointers match, proceed to the next matcher.
-        Assembler::Jump classFound = m_assembler.branchPtr(Assembler::Equal, Assembler::BaseIndex(spaceSplitStringData, indexRegister, Assembler::timesPtr(), SpaceSplitStringData::tokensMemoryOffset()), classNameToMatch);
+        Assembler::Jump classFound = m_assembler.branchPtr(Assembler::Equal, Assembler::BaseIndex(spaceSplitStringData, indexRegister, Assembler::ScalePtr, SpaceSplitStringData::tokensMemoryOffset()), classNameToMatch);
 
         // Increment the index.
         m_assembler.add32(Assembler::TrustedImm32(1), indexRegister);

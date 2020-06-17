@@ -196,13 +196,6 @@
 
 namespace JSC {
 
-#if ENABLE(JIT)
-#if ASSERT_ENABLED
-bool VM::s_canUseJITIsSet = false;
-#endif
-bool VM::s_canUseJIT = false;
-#endif
-
 Atomic<unsigned> VM::s_numberOfIDs;
 
 DEFINE_ALLOCATOR_WITH_HEAP_IDENTIFIER(VM);
@@ -250,10 +243,10 @@ void VM::computeCanUseJIT()
 {
 #if ENABLE(JIT)
 #if ASSERT_ENABLED
-    RELEASE_ASSERT(!s_canUseJITIsSet);
-    s_canUseJITIsSet = true;
+    RELEASE_ASSERT(!g_jscConfig.vm.canUseJITIsSet);
+    g_jscConfig.vm.canUseJITIsSet = true;
 #endif
-    s_canUseJIT = VM::canUseAssembler() && Options::useJIT();
+    g_jscConfig.vm.canUseJIT = VM::canUseAssembler() && Options::useJIT();
 #endif
 }
 
@@ -285,7 +278,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , immutableButterflyHeapCellType(makeUnique<HeapCellType>(CellAttributes(DoesNotNeedDestruction, HeapCell::JSCellWithInteriorPointers)))
     , cellHeapCellType(makeUnique<HeapCellType>(CellAttributes(DoesNotNeedDestruction, HeapCell::JSCell)))
     , destructibleCellHeapCellType(makeUnique<HeapCellType>(CellAttributes(NeedsDestruction, HeapCell::JSCell)))
-    , aggregateErrorHeapCellType(IsoHeapCellType::create<AggregateError>())
     , apiGlobalObjectHeapCellType(IsoHeapCellType::create<JSAPIGlobalObject>())
     , callbackConstructorHeapCellType(IsoHeapCellType::create<JSCallbackConstructor>())
     , callbackGlobalObjectHeapCellType(IsoHeapCellType::create<JSCallbackObject<JSGlobalObject>>())
@@ -468,7 +460,7 @@ VM::VM(VMType vmType, HeapType heapType)
     executableToCodeBlockEdgeStructure.set(*this, ExecutableToCodeBlockEdge::createStructure(*this, nullptr, jsNull()));
 
     // Eagerly initialize constant cells since the concurrent compiler can access them.
-    if (canUseJIT()) {
+    if (Options::useJIT()) {
         sentinelMapBucket();
         sentinelSetBucket();
     }
@@ -548,7 +540,7 @@ VM::VM(VMType vmType, HeapType heapType)
 
 #if ENABLE(JIT)
     // Make sure that any stubs that the JIT is going to use are initialized in non-compilation threads.
-    if (canUseJIT()) {
+    if (Options::useJIT()) {
         jitStubs = makeUnique<JITThunks>();
 #if ENABLE(FTL_JIT)
         ftlThunks = makeUnique<FTL::Thunks>();
@@ -798,7 +790,7 @@ static Ref<NativeJITCode> jitCodeForConstructTrampoline()
 NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrinsic, NativeFunction constructor, const DOMJIT::Signature* signature, const String& name)
 {
 #if ENABLE(JIT)
-    if (canUseJIT()) {
+    if (Options::useJIT()) {
         return jitStubs->hostFunctionStub(
             *this, function, constructor,
             intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : nullptr,
@@ -838,7 +830,7 @@ NativeExecutable* VM::getBoundFunction(bool isJSFunction, bool canConstruct)
 MacroAssemblerCodePtr<JSEntryPtrTag> VM::getCTIInternalFunctionTrampolineFor(CodeSpecializationKind kind)
 {
 #if ENABLE(JIT)
-    if (canUseJIT()) {
+    if (Options::useJIT()) {
         if (kind == CodeForCall)
             return jitStubs->ctiInternalFunctionCall(*this).retagged<JSEntryPtrTag>();
         return jitStubs->ctiInternalFunctionConstruct(*this).retagged<JSEntryPtrTag>();
@@ -855,11 +847,11 @@ VM::ClientData::~ClientData()
 
 void VM::resetDateCache()
 {
-    utcTimeOffsetCache.reset();
-    localTimeOffsetCache.reset();
-    cachedDateString = String();
-    cachedDateStringValue = std::numeric_limits<double>::quiet_NaN();
-    dateInstanceCache.reset();
+    dateCache.utcTimeOffsetCache.reset();
+    dateCache.localTimeOffsetCache.reset();
+    dateCache.cachedDateString = String();
+    dateCache.cachedDateStringValue = std::numeric_limits<double>::quiet_NaN();
+    dateCache.dateInstanceCache.reset();
 }
 
 void VM::whenIdle(Function<void()>&& callback)
@@ -1420,7 +1412,6 @@ void VM::ensureShadowChicken()
     }
 
 
-DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(aggregateErrorSpace, aggregateErrorHeapCellType.get(), AggregateError)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiGlobalObjectSpace, apiGlobalObjectHeapCellType.get(), JSAPIGlobalObject)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiValueWrapperSpace, cellHeapCellType.get(), JSAPIValueWrapper)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(arrayBufferSpace, cellHeapCellType.get(), JSArrayBuffer)

@@ -40,8 +40,6 @@ public:
     static constexpr unsigned numGPRs = 16;
     static constexpr unsigned numFPRs = 16;
     
-    static constexpr Scale ScalePtr = TimesEight;
-
     static constexpr RegisterID InvalidGPRReg = X86Registers::InvalidGPRReg;
 
     using MacroAssemblerX86Common::add32;
@@ -975,6 +973,22 @@ public:
     void store64(TrustedImm32 imm, BaseIndex address)
     {
         m_assembler.movq_i32m(imm.m_value, address.offset, address.base, address.index, address.scale);
+    }
+
+    void store64(TrustedImm64 imm, void* address)
+    {
+        if (CAN_SIGN_EXTEND_32_64(imm.m_value)) {
+            auto addressReg = scratchRegister();
+            move(TrustedImmPtr(address), addressReg);
+            store64(TrustedImm32(static_cast<int32_t>(imm.m_value)), addressReg);
+            return;
+        }
+
+        auto src = scratchRegister();
+        move(imm, src);
+        swap(src, X86Registers::eax);
+        m_assembler.movq_EAXm(address);
+        swap(src, X86Registers::eax);
     }
 
     void store64(TrustedImm64 imm, ImplicitAddress address)

@@ -54,7 +54,6 @@
 #include "ComposedTreeIterator.h"
 #include "CookieJar.h"
 #include "Cursor.h"
-#include "CustomHeaderFields.h"
 #include "DOMRect.h"
 #include "DOMRectList.h"
 #include "DOMStringList.h"
@@ -122,6 +121,8 @@
 #include "MallocStatistics.h"
 #include "MediaDevices.h"
 #include "MediaEngineConfigurationFactory.h"
+#include "MediaKeySession.h"
+#include "MediaKeys.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
 #include "MediaRecorderProvider.h"
@@ -239,15 +240,12 @@
 #include "MockCDMFactory.h"
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
 #include "CaptionUserPreferences.h"
+#include "HTMLMediaElement.h"
 #include "PageGroup.h"
 #include "TextTrack.h"
 #include "TextTrackCueGeneric.h"
-#endif
-
-#if ENABLE(VIDEO)
-#include "HTMLMediaElement.h"
 #include "TimeRanges.h"
 #endif
 
@@ -512,12 +510,6 @@ void Internals::resetToConsistentState(Page& page)
     overrideUserPreferredLanguages(Vector<String>());
     WebCore::DeprecatedGlobalSettings::setUsesOverlayScrollbars(false);
     WebCore::DeprecatedGlobalSettings::setUsesMockScrollAnimator(false);
-#if ENABLE(VIDEO_TRACK)
-    page.group().captionPreferences().setTestingMode(true);
-    page.group().captionPreferences().setCaptionDisplayMode(CaptionUserPreferences::ForcedOnly);
-    page.group().captionPreferences().setCaptionsStyleSheetOverride(emptyString());
-    page.group().captionPreferences().setTestingMode(false);
-#endif
     if (!page.mainFrame().editor().isContinuousSpellCheckingEnabled())
         page.mainFrame().editor().toggleContinuousSpellChecking();
     if (page.mainFrame().editor().isOverwriteModeEnabled())
@@ -525,6 +517,10 @@ void Internals::resetToConsistentState(Page& page)
     page.mainFrame().loader().clearTestingOverrides();
     page.applicationCacheStorage().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
+    page.group().captionPreferences().setTestingMode(true);
+    page.group().captionPreferences().setCaptionDisplayMode(CaptionUserPreferences::ForcedOnly);
+    page.group().captionPreferences().setCaptionsStyleSheetOverride(emptyString());
+    page.group().captionPreferences().setTestingMode(false);
     PlatformMediaSessionManager::sharedManager().resetRestrictions();
     PlatformMediaSessionManager::sharedManager().setWillIgnoreSystemInterruptions(true);
 #endif
@@ -547,7 +543,9 @@ void Internals::resetToConsistentState(Page& page)
     page.setMockMediaPlaybackTargetPickerState(emptyString(), MediaPlaybackTargetContext::Unknown);
 #endif
 
+#if ENABLE(VIDEO)
     MediaResourceLoader::recordResponsesForTesting();
+#endif
 
     page.setShowAllPlugins(false);
     page.setLowPowerModeEnabledOverrideForTesting(WTF::nullopt);
@@ -577,7 +575,6 @@ void Internals::resetToConsistentState(Page& page)
 #if ENABLE(MEDIA_STREAM)
     RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(false);
     WebCore::MediaRecorder::setCustomPrivateRecorderCreator(nullptr);
-    page.mediaRecorderProvider().setUseGPUProcess(true);
 #endif
 
     HTMLCanvasElement::setMaxPixelMemoryForTesting(0); // This means use the default value.
@@ -590,7 +587,7 @@ Internals::Internals(Document& document)
     , m_orientationNotifier(0)
 #endif
 {
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     if (document.page())
         document.page()->group().captionPreferences().setTestingMode(true);
 #endif
@@ -1852,6 +1849,51 @@ ExceptionOr<void> Internals::unconstrainedScrollTo(Element& element, double x, d
     return { };
 }
 
+ExceptionOr<void> Internals::scrollBySimulatingWheelEvent(Element& element, double deltaX, double deltaY)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view())
+        return Exception { InvalidAccessError };
+
+    if (!element.renderBox())
+        return Exception { InvalidAccessError };
+
+    RenderBox& box = *element.renderBox();
+    ScrollableArea* scrollableArea;
+
+    if (&element == document->scrollingElementForAPI()) {
+        FrameView* frameView = box.frame().mainFrame().view();
+        if (!frameView || !frameView->isScrollable())
+            return Exception { InvalidAccessError };
+
+        scrollableArea = frameView;
+    } else {
+        if (!box.canBeScrolledAndHasScrollableArea())
+            return Exception { InvalidAccessError };
+
+        scrollableArea = box.layer();
+    }
+    
+    if (!scrollableArea)
+        return Exception { InvalidAccessError };
+
+    auto scrollingNodeID = scrollableArea->scrollingNodeID();
+    if (!scrollingNodeID)
+        return Exception { InvalidAccessError };
+
+    auto page = document->page();
+    if (!page)
+        return Exception { InvalidAccessError };
+
+    auto scrollingCoordinator = page->scrollingCoordinator();
+    if (!scrollingCoordinator)
+        return Exception { InvalidAccessError };
+
+    scrollingCoordinator->scrollBySimulatingWheelEventForTesting(scrollingNodeID, FloatSize(deltaX, deltaY));
+
+    return { };
+}
+
 ExceptionOr<Ref<DOMRect>> Internals::layoutViewportRect()
 {
     Document* document = contextDocument();
@@ -2159,7 +2201,7 @@ Vector<String> Internals::userPreferredAudioCharacteristics() const
     Document* document = contextDocument();
     if (!document || !document->page())
         return Vector<String>();
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     return document->page()->group().captionPreferences().preferredAudioCharacteristics();
 #else
     return Vector<String>();
@@ -2171,7 +2213,7 @@ void Internals::setUserPreferredAudioCharacteristic(const String& characteristic
     Document* document = contextDocument();
     if (!document || !document->page())
         return;
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     document->page()->group().captionPreferences().setPreferredAudioCharacteristic(characteristic);
 #else
     UNUSED_PARAM(characteristic);
@@ -3810,7 +3852,7 @@ ExceptionOr<String> Internals::captionsStyleSheetOverride()
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     return document->page()->group().captionPreferences().captionsStyleSheetOverride();
 #else
     return String { emptyString() };
@@ -3823,7 +3865,7 @@ ExceptionOr<void> Internals::setCaptionsStyleSheetOverride(const String& overrid
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     document->page()->group().captionPreferences().setCaptionsStyleSheetOverride(override);
 #else
     UNUSED_PARAM(override);
@@ -3837,7 +3879,7 @@ ExceptionOr<void> Internals::setPrimaryAudioTrackLanguageOverride(const String& 
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     document->page()->group().captionPreferences().setPrimaryAudioTrackLanguageOverride(language);
 #else
     UNUSED_PARAM(language);
@@ -3851,7 +3893,7 @@ ExceptionOr<void> Internals::setCaptionDisplayMode(const String& mode)
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     auto& captionPreferences = document->page()->group().captionPreferences();
 
     if (equalLettersIgnoringASCIICase(mode, "automatic"))
@@ -3870,7 +3912,7 @@ ExceptionOr<void> Internals::setCaptionDisplayMode(const String& mode)
     return { };
 }
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
 RefPtr<TextTrackCueGeneric> Internals::createGenericCue(double startTime, double endTime, String text)
 {
     Document* document = contextDocument();
@@ -3883,9 +3925,6 @@ ExceptionOr<String> Internals::textTrackBCP47Language(TextTrack& track)
 {
     return String { track.validBCP47Language() };
 }
-#endif
-
-#if ENABLE(VIDEO)
 
 Ref<TimeRanges> Internals::createTimeRanges(Float32Array& startTimes, Float32Array& endTimes)
 {
@@ -4676,7 +4715,12 @@ ExceptionOr<String> Internals::pathStringWithShrinkWrappedRects(const Vector<dou
 
 String Internals::getCurrentMediaControlsStatusForElement(HTMLMediaElement& mediaElement)
 {
+#if ENABLE(VIDEO)
     return mediaElement.getCurrentMediaControlsStatus();
+#else
+    UNUSED_PARAM(mediaElement);
+    return { };
+#endif
 }
 
 #if !PLATFORM(COCOA)
@@ -5138,7 +5182,7 @@ void Internals::videoSampleAvailable(MediaSample& sample)
     
     auto imageData = ImageData::create(rgba.releaseNonNull(), videoSettings.width(), videoSettings.height());
     if (!imageData.hasException())
-        m_nextTrackFramePromise->resolve(imageData.releaseReturnValue().releaseNonNull());
+        m_nextTrackFramePromise->resolve(imageData.releaseReturnValue());
     else
         m_nextTrackFramePromise->reject(imageData.exception().code());
     m_nextTrackFramePromise = nullptr;
@@ -5172,6 +5216,16 @@ void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& 
 void Internals::setMediaStreamSourceInterrupted(MediaStreamTrack& track, bool interrupted)
 {
     track.source().setInterruptedForTesting(interrupted);
+}
+
+bool Internals::isMediaStreamSourceInterrupted(MediaStreamTrack& track) const
+{
+    return track.source().interrupted();
+}
+
+bool Internals::isMediaStreamSourceEnded(MediaStreamTrack& track) const
+{
+    return track.source().isEnded();
 }
 
 bool Internals::isMockRealtimeMediaSourceCenterEnabled()
@@ -5768,5 +5822,16 @@ ExceptionOr<RefPtr<WebXRTest>> Internals::xrTest()
 
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+unsigned Internals::mediaKeysInternalInstanceObjectRefCount(const MediaKeys& mediaKeys) const
+{
+    return mediaKeys.internalInstanceObjectRefCount();
+}
+
+unsigned Internals::mediaKeySessionInternalInstanceSessionObjectRefCount(const MediaKeySession& mediaKeySession) const
+{
+    return mediaKeySession.internalInstanceSessionObjectRefCount();
+}
+#endif
 
 } // namespace WebCore

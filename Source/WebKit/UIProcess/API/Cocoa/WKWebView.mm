@@ -1709,7 +1709,7 @@ static WebCore::TextManipulationController::TokenIdentifier coreTextManipulation
 
 static RetainPtr<NSMutableArray> makeFailureSetForAllTextManipulationItems(NSArray<_WKTextManipulationItem *> *items)
 {
-    RetainPtr<NSMutableArray> wkFailures = adoptNS([[[NSMutableArray alloc] initWithCapacity:items.count] autorelease]);
+    RetainPtr<NSMutableArray> wkFailures = adoptNS([[NSMutableArray alloc] initWithCapacity:items.count]);
     for (_WKTextManipulationItem *item in items)
         [wkFailures addObject:[NSError errorWithDomain:_WKTextManipulationItemErrorDomain code:_WKTextManipulationItemErrorNotAvailable userInfo:@{_WKTextManipulationItemErrorItemKey: item}]];
     return wkFailures;
@@ -2154,24 +2154,33 @@ static RetainPtr<NSArray> wkTextManipulationErrors(NSArray<_WKTextManipulationIt
 
 - (void)_showSafeBrowsingWarningWithTitle:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(BOOL))completionHandler
 {
-    // FIXME: Adopt _showSafeBrowsingWarningWithURL and remove this function.
-    [self _showSafeBrowsingWarningWithURL:nil title:title warning:warning details:details completionHandler:completionHandler];
+    [self _showSafeBrowsingWarningWithURL:nil title:title warning:warning detailsWithLinks:details completionHandler:^(BOOL continueUnsafeLoad, NSURL *url) {
+        ASSERT(!url);
+        completionHandler(continueUnsafeLoad);
+    }];
 }
 
 - (void)_showSafeBrowsingWarningWithURL:(NSURL *)url title:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(BOOL))completionHandler
+{
+    [self _showSafeBrowsingWarningWithURL:nil title:title warning:warning detailsWithLinks:details completionHandler:^(BOOL continueUnsafeLoad, NSURL *url) {
+        ASSERT(!url);
+        completionHandler(continueUnsafeLoad);
+    }];
+}
+
+- (void)_showSafeBrowsingWarningWithURL:(NSURL *)url title:(NSString *)title warning:(NSString *)warning detailsWithLinks:(NSAttributedString *)details completionHandler:(void(^)(BOOL, NSURL *))completionHandler
 {
     auto safeBrowsingWarning = WebKit::SafeBrowsingWarning::create(url, title, warning, details);
     auto wrapper = [completionHandler = makeBlockPtr(completionHandler)] (Variant<WebKit::ContinueUnsafeLoad, URL>&& variant) {
         switchOn(variant, [&] (WebKit::ContinueUnsafeLoad continueUnsafeLoad) {
             switch (continueUnsafeLoad) {
             case WebKit::ContinueUnsafeLoad::Yes:
-                return completionHandler(YES);
+                return completionHandler(YES, nil);
             case WebKit::ContinueUnsafeLoad::No:
-                return completionHandler(NO);
+                return completionHandler(NO, nil);
             }
-        }, [&] (URL) {
-            ASSERT_NOT_REACHED();
-            completionHandler(NO);
+        }, [&] (URL url) {
+            completionHandler(NO, url);
         });
     };
 #if PLATFORM(MAC)
@@ -2639,6 +2648,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->clearServiceWorkerEntitlementOverride([completionHandler = makeBlockPtr(completionHandler)] {
         completionHandler();
     });
+}
+
+- (void)_preconnectToServer:(NSURL *)url
+{
+    _page->preconnectTo(url);
 }
 
 - (id <_WKInputDelegate>)_inputDelegate

@@ -79,7 +79,12 @@ shouldBe(JSON.stringify(Intl.PluralRules.supportedLocalesOf({ length: 4, 1: 'en'
 // Deduplicates tags.
 shouldBe(JSON.stringify(Intl.PluralRules.supportedLocalesOf([ 'en', 'pt', 'en', 'es' ])), '["en","pt","es"]');
 // Canonicalizes tags.
-shouldBe(JSON.stringify(Intl.PluralRules.supportedLocalesOf('En-laTn-us-variAnt-fOObar-1abc-U-kn-tRue-A-aa-aaa-x-RESERVED')), '["en-Latn-US-variant-foobar-1abc-a-aa-aaa-u-kn-true-x-reserved"]');
+shouldBe(
+    JSON.stringify(Intl.PluralRules.supportedLocalesOf('En-laTn-us-variAnt-fOObar-1abc-U-kn-tRue-A-aa-aaa-x-RESERVED')),
+    $vm.icuVersion() >= 67
+        ? '["en-Latn-US-1abc-foobar-variant-a-aa-aaa-u-kn-x-reserved"]'
+        : '["en-Latn-US-variant-foobar-1abc-a-aa-aaa-u-kn-true-x-reserved"]'
+);
 // Replaces outdated tags.
 shouldBe(JSON.stringify(Intl.PluralRules.supportedLocalesOf('no-bok')), '["nb"]');
 // Doesn't throw, but ignores private tags.
@@ -136,9 +141,9 @@ shouldBe(Object.getPrototypeOf(Intl.PluralRules.prototype), Object.prototype);
 shouldBe(Intl.PluralRules.prototype.constructor, Intl.PluralRules);
 
 // 13.4.2 Intl.PluralRules.prototype [ @@toStringTag ]
-// The initial value of the @@toStringTag property is the string value Object.
-shouldBe(Intl.PluralRules.prototype[Symbol.toStringTag], 'Object');
-shouldBe(Object.prototype.toString.call(Intl.PluralRules.prototype), '[object Object]');
+// The initial value of the @@toStringTag property is the string value "Intl.PluralRules".
+shouldBe(Intl.PluralRules.prototype[Symbol.toStringTag], 'Intl.PluralRules');
+shouldBe(Object.prototype.toString.call(Intl.PluralRules.prototype), '[object Intl.PluralRules]');
 // This property has the attributes { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }.
 shouldBe(Object.getOwnPropertyDescriptor(Intl.PluralRules.prototype, Symbol.toStringTag).writable, false);
 shouldBe(Object.getOwnPropertyDescriptor(Intl.PluralRules.prototype, Symbol.toStringTag).enumerable, false);

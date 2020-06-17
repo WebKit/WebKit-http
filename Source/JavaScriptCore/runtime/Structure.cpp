@@ -162,6 +162,68 @@ void Structure::dumpStatistics()
 #endif
 }
 
+#if ASSERT_ENABLED
+void Structure::validateFlags()
+{
+    const MethodTable& methodTable = m_classInfo->methodTable;
+
+    bool overridesGetCallData = methodTable.getCallData != JSCell::getCallData;
+    RELEASE_ASSERT(overridesGetCallData == typeInfo().overridesGetCallData());
+
+    bool overridesGetOwnPropertySlot =
+        methodTable.getOwnPropertySlot != JSObject::getOwnPropertySlot
+        && methodTable.getOwnPropertySlot != JSCell::getOwnPropertySlot;
+    // We can strengthen this into an equivalence test if there are no classes
+    // that specifies this flag without overriding getOwnPropertySlot.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=212956
+    if (overridesGetOwnPropertySlot)
+        RELEASE_ASSERT(typeInfo().overridesGetOwnPropertySlot());
+
+    bool overridesGetOwnPropertySlotByIndex =
+        methodTable.getOwnPropertySlotByIndex != JSObject::getOwnPropertySlotByIndex
+        && methodTable.getOwnPropertySlotByIndex != JSCell::getOwnPropertySlotByIndex;
+    // We can strengthen this into an equivalence test if there are no classes
+    // that specifies this flag without overriding getOwnPropertySlotByIndex.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=212958
+    if (overridesGetOwnPropertySlotByIndex)
+        RELEASE_ASSERT(typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero());
+
+    bool overridesPutPropertySecurityCheck =
+        methodTable.doPutPropertySecurityCheck != JSObject::doPutPropertySecurityCheck
+        && methodTable.doPutPropertySecurityCheck != JSCell::doPutPropertySecurityCheck;
+    RELEASE_ASSERT(overridesPutPropertySecurityCheck == typeInfo().hasPutPropertySecurityCheck());
+
+    bool overridesGetPropertyNames =
+        methodTable.getPropertyNames != JSObject::getPropertyNames
+        && methodTable.getPropertyNames != JSCell::getPropertyNames;
+    bool overridesGetOwnPropertyNames =
+        methodTable.getOwnPropertyNames != JSObject::getOwnPropertyNames
+        && methodTable.getOwnPropertyNames != JSCell::getOwnPropertyNames;
+    bool overridesGetOwnNonIndexPropertyNames =
+        methodTable.getOwnNonIndexPropertyNames != JSObject::getOwnNonIndexPropertyNames
+        && methodTable.getOwnNonIndexPropertyNames != JSCell::getOwnNonIndexPropertyNames;
+
+    RELEASE_ASSERT(overridesGetPropertyNames == typeInfo().overridesGetPropertyNames());
+
+    // We can strengthen this into an equivalence test if there are no classes
+    // that specifies this flag without overriding any of the forms of getPropertyNames.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=212954
+    if (overridesGetPropertyNames
+        || overridesGetOwnPropertyNames
+        || overridesGetOwnNonIndexPropertyNames)
+        RELEASE_ASSERT(typeInfo().overridesAnyFormOfGetPropertyNames());
+
+    bool overridesGetPrototype =
+        methodTable.getPrototype != static_cast<MethodTable::GetPrototypeFunctionPtr>(JSObject::getPrototype)
+        && methodTable.getPrototype != JSCell::getPrototype;
+
+    if (overridesGetPrototype)
+        RELEASE_ASSERT(typeInfo().overridesGetPrototype());
+}
+#else
+inline void Structure::validateFlags() { }
+#endif
+
 Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, const TypeInfo& typeInfo, const ClassInfo* classInfo, IndexingType indexingType, unsigned inlineCapacity)
     : JSCell(vm, vm.structureStructure.get())
     , m_blob(vm.heap.structureIDTable().allocateID(this), indexingType, typeInfo)
@@ -195,9 +257,10 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     ASSERT(inlineCapacity <= JSFinalObject::maxInlineCapacity());
     ASSERT(static_cast<PropertyOffset>(inlineCapacity) < firstOutOfLineOffset);
     ASSERT(!hasRareData());
-    ASSERT(hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !m_classInfo->hasStaticSetterOrReadonlyProperties());
-    ASSERT(hasGetterSetterProperties() || !m_classInfo->hasStaticSetterOrReadonlyProperties());
-    ASSERT(!this->typeInfo().overridesGetCallData() || m_classInfo->methodTable.getCallData != &JSCell::getCallData);
+    ASSERT(hasReadOnlyOrGetterSetterPropertiesExcludingProto() == m_classInfo->hasStaticSetterOrReadonlyProperties());
+    ASSERT(hasGetterSetterProperties() == m_classInfo->hasStaticSetterOrReadonlyProperties());
+
+    validateFlags();
 }
 
 const ClassInfo Structure::s_info = { "Structure", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(Structure) };
@@ -377,14 +440,14 @@ PropertyTable* Structure::materializePropertyTable(VM& vm, bool setPropertyTable
         if (structure->isPropertyDeletionTransition()) {
             auto item = table->find(structure->m_transitionPropertyName.get());
             ASSERT(item.first);
-            table->remove(item);
+            table->remove(vm, item);
             table->addDeletedOffset(structure->transitionOffset());
             continue;
         }
         PropertyMapEntry entry(structure->m_transitionPropertyName.get(), structure->transitionOffset(), structure->transitionPropertyAttributes());
         auto nextOffset = table->nextOffset(structure->inlineCapacity());
         ASSERT_UNUSED(nextOffset, nextOffset == structure->transitionOffset());
-        auto result = table->add(entry);
+        auto result = table->add(vm, entry);
         ASSERT_UNUSED(result, result.second);
         ASSERT_UNUSED(result, result.first.first->offset == nextOffset);
     }

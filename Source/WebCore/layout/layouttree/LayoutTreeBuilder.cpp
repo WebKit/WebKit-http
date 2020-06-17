@@ -145,9 +145,9 @@ void TreeBuilder::buildTree()
     buildSubTree(m_layoutTreeContent.rootRenderer(), m_layoutTreeContent.rootLayoutBox());
 }
 
-Box& TreeBuilder::createReplacedBox(RenderStyle&& style)
+Box& TreeBuilder::createReplacedBox(Optional<Box::ElementAttributes> elementAttributes, RenderStyle&& style)
 {
-    auto newBox = makeUnique<ReplacedBox>(WTFMove(style));
+    auto newBox = makeUnique<ReplacedBox>(elementAttributes, WTFMove(style));
     auto& box = *newBox;
     m_layoutTreeContent.addBox(WTFMove(newBox));
     return box;
@@ -236,7 +236,7 @@ Box* TreeBuilder::createLayoutBox(const ContainerBox& parentContainer, const Ren
             childLayoutBox = &createContainer(Box::ElementAttributes { Box::ElementType::TableWrapperBox }, WTFMove(tableWrapperBoxStyle));
             childLayoutBox->setIsAnonymous();
         } else if (is<RenderReplaced>(renderer)) {
-            childLayoutBox = &createReplacedBox(WTFMove(clonedStyle));
+            childLayoutBox = &createReplacedBox(elementAttributes(renderer), WTFMove(clonedStyle));
             // FIXME: We don't yet support all replaced elements and this is temporary anyway.
             downcast<ReplacedBox>(*childLayoutBox).setIntrinsicSize(downcast<RenderReplaced>(renderer).intrinsicSize());
             if (is<RenderImage>(renderer)) {
@@ -278,14 +278,17 @@ Box* TreeBuilder::createLayoutBox(const ContainerBox& parentContainer, const Ren
         }
 
         if (is<RenderTableCell>(renderer)) {
-            auto& cellElement = downcast<HTMLTableCellElement>(*renderer.element());
-            auto rowSpan = cellElement.rowSpan();
-            if (rowSpan > 1)
-                childLayoutBox->setRowSpan(rowSpan);
+            auto* tableCellElement = renderer.element();
+            if (is<HTMLTableCellElement>(tableCellElement)) {
+                auto& cellElement = downcast<HTMLTableCellElement>(*tableCellElement);
+                auto rowSpan = cellElement.rowSpan();
+                if (rowSpan > 1)
+                    childLayoutBox->setRowSpan(rowSpan);
 
-            auto columnSpan = cellElement.colSpan();
-            if (columnSpan > 1)
-                childLayoutBox->setColumnSpan(columnSpan);
+                auto columnSpan = cellElement.colSpan();
+                if (columnSpan > 1)
+                    childLayoutBox->setColumnSpan(columnSpan);
+            }
         }
 
         if (childRenderer.isAnonymous())

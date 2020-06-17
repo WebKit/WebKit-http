@@ -28,9 +28,14 @@
 
 #if ENABLE(APPLE_PAY)
 
+#import "APIUIClient.h"
+#import "ApplePayPaymentSetupFeaturesWebKit.h"
+#import "PaymentSetupConfigurationWebKit.h"
 #import "WKPaymentAuthorizationDelegate.h"
+#import "WebPageProxy.h"
 #import "WebPaymentCoordinatorProxy.h"
 #import "WebPaymentCoordinatorProxyMessages.h"
+#import "WebProcessProxy.h"
 #import <WebCore/PaymentAuthorizationStatus.h>
 #import <WebCore/PaymentHeaders.h>
 #import <wtf/BlockPtr.h>
@@ -38,27 +43,12 @@
 #import <wtf/URL.h>
 #import <wtf/cocoa/VectorCocoa.h>
 
-#if HAVE(PASSKIT_PAYMENT_SETUP)
-#import "APIUIClient.h"
-#import "ApplePayPaymentSetupFeaturesWebKit.h"
-#import "PaymentSetupConfigurationWebKit.h"
-#import "WebPageProxy.h"
-#import "WebProcessProxy.h"
-#endif
-
 #import <pal/cocoa/PassKitSoftLink.h>
 
 // FIXME: We don't support any platforms without -setThumbnailURLs:, so this can be removed.
 @interface PKPaymentRequest ()
 @property (nonatomic, strong) NSURL *thumbnailURL;
 @end
-
-#if HAVE(PASSKIT_BOUND_INTERFACE_IDENTIFIER)
-// FIXME: Remove once rdar://problem/48041516 is widely available in SDKs.
-@interface PKPaymentRequest (Staging)
-@property (nonatomic, copy) NSString *boundInterfaceIdentifier;
-@end
-#endif
 
 namespace WebKit {
 
@@ -250,9 +240,8 @@ RetainPtr<PKPaymentRequest> WebPaymentCoordinatorProxy::platformPaymentRequest(c
     [result setSupportedCountries:toNSSet(paymentRequest.supportedCountries()).get()];
 
 #if HAVE(PASSKIT_BOUND_INTERFACE_IDENTIFIER)
-    // FIXME: Remove -respondsToSelector: check once rdar://problem/48041516 is widely available in SDKs.
     auto& boundInterfaceIdentifier = m_client.paymentCoordinatorBoundInterfaceIdentifier(*this);
-    if (!boundInterfaceIdentifier.isEmpty() && [result respondsToSelector:@selector(setBoundInterfaceIdentifier:)])
+    if (!boundInterfaceIdentifier.isEmpty())
         [result setBoundInterfaceIdentifier:boundInterfaceIdentifier];
 #endif
 
@@ -300,8 +289,6 @@ void WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection(const Op
 {
     m_authorizationPresenter->completePaymentMethodSelection(update);
 }
-
-#if HAVE(PASSKIT_PAYMENT_SETUP)
 
 void WebPaymentCoordinatorProxy::getSetupFeatures(const PaymentSetupConfiguration& configuration, Messages::WebPaymentCoordinatorProxy::GetSetupFeatures::AsyncReply&& reply)
 {
@@ -401,8 +388,6 @@ void WebPaymentCoordinatorProxy::platformEndApplePaySetup()
 }
 
 #endif // PLATFORM(MAC)
-
-#endif // HAVE(PASSKIT_PAYMENT_SETUP)
 
 } // namespace WebKit
 

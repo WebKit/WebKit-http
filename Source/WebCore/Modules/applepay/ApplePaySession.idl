@@ -26,12 +26,11 @@
 [
     ActiveDOMObject,
     Conditional=APPLE_PAY,
-    Constructor(unsigned long version, ApplePayPaymentRequest paymentRequest),
-    ConstructorCallWith=Document,
-    ConstructorMayThrowException,
     EnabledBySetting=ApplePay,
     EnabledForContext,
 ] interface ApplePaySession : EventTarget {
+    [CallWith=Document, MayThrowException] constructor(unsigned long version, ApplePayPaymentRequest paymentRequest);
+
     const unsigned short STATUS_SUCCESS = 0;
     const unsigned short STATUS_FAILURE = 1;
     const unsigned short STATUS_INVALID_BILLING_POSTAL_ADDRESS = 2;
@@ -49,10 +48,10 @@
     [CallWith=Document, MayThrowException] void begin();
     [MayThrowException] void abort();
     [MayThrowException, CallWith=GlobalObject] void completeMerchantValidation(any merchantSession);
-    [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completeShippingMethodSelection(ApplePayShippingMethodUpdate update);
-    [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completeShippingContactSelection(ApplePayShippingContactUpdate update);
-    [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completePaymentMethodSelection(ApplePayPaymentMethodUpdate update);
-    [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completePayment(ApplePayPaymentAuthorizationResult result);
+    [MayThrowException] void completeShippingMethodSelection(ApplePayShippingMethodUpdate update);
+    [MayThrowException] void completeShippingContactSelection(ApplePayShippingContactUpdate update);
+    [MayThrowException] void completePaymentMethodSelection(ApplePayPaymentMethodUpdate update);
+    [MayThrowException] void completePayment(ApplePayPaymentAuthorizationResult result);
 
     [MayThrowException] void completeShippingMethodSelection(unsigned short status, ApplePayLineItem newTotal, sequence<ApplePayLineItem> newLineItems);
     [MayThrowException] void completeShippingContactSelection(unsigned short status, sequence<ApplePayShippingMethod> newShippingMethods, ApplePayLineItem newTotal, sequence<ApplePayLineItem> newLineItems);

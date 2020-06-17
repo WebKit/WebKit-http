@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007-2020 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,10 +64,10 @@ bool DragController::isCopyKeyDown(const DragData& dragData)
     return dragData.flags() & DragApplicationIsCopyKeyDown;
 }
     
-DragOperation DragController::dragOperation(const DragData& dragData)
+Optional<DragOperation> DragController::dragOperation(const DragData& dragData)
 {
     if (dragData.flags() & DragApplicationIsModal)
-        return DragOperationNone;
+        return WTF::nullopt;
 
     bool mayContainURL;
     if (canLoadDataFromDraggingPasteboard())
@@ -76,12 +76,12 @@ DragOperation DragController::dragOperation(const DragData& dragData)
         mayContainURL = dragData.containsURLTypeIdentifier();
 
     if (!mayContainURL && !dragData.containsPromise())
-        return DragOperationNone;
+        return WTF::nullopt;
 
     if (!m_documentUnderMouse || (!(dragData.flags() & (DragApplicationHasAttachedSheet | DragApplicationIsSource))))
-        return DragOperationCopy;
+        return DragOperation::Copy;
 
-    return DragOperationNone;
+    return WTF::nullopt;
 }
 
 const IntSize& DragController::maxDragImageSize()
@@ -111,7 +111,7 @@ DragOperation DragController::platformGenericDragOperation()
 {
     // On iOS, UIKit skips the -performDrop invocation altogether if MOVE is forbidden.
     // Thus, if MOVE is not allowed in the drag source operation mask, fall back to only other allowable action, COPY.
-    return DragOperationCopy;
+    return DragOperation::Copy;
 }
 
 void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHandlingMethod dragHandlingMethod, const DragData& dragData) const

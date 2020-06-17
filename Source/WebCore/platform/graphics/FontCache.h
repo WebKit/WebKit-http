@@ -78,7 +78,7 @@ struct FontDescriptionKey {
         : m_size(description.computedPixelSize())
         , m_fontSelectionRequest(description.fontSelectionRequest())
         , m_flags(makeFlagsKey(description))
-        , m_locale(description.locale())
+        , m_locale(description.specifiedLocale())
         , m_featureSettings(description.featureSettings())
 #if ENABLE(VARIATION_FONTS)
         , m_variationSettings(description.variationSettings())
@@ -157,7 +157,6 @@ private:
         return {{ first, second }};
     }
 
-    // FontCascade::locale() is explicitly not included in this struct.
     bool m_isDeletedValue { false };
     unsigned m_size { 0 };
     FontSelectionRequest m_fontSelectionRequest;
@@ -199,7 +198,7 @@ public:
     static bool isSystemFontForbiddenForEditing(const String&);
 
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT static void setFontWhitelist(const Vector<String>&);
+    WEBCORE_EXPORT static void setFontAllowlist(const Vector<String>&);
 #endif
 #if PLATFORM(WIN)
     IMLangFontLinkType* getFontLinkInterface();

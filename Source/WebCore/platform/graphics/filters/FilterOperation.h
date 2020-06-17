@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "Color.h"
 #include "LayoutSize.h"
 #include "Length.h"
+#include <wtf/EnumTraits.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
@@ -45,7 +46,7 @@ class CachedResourceLoader;
 class CachedSVGDocumentReference;
 class FilterEffect;
 struct ResourceLoaderOptions;
-template<typename> struct ColorComponents;
+template<typename> struct SRGBA;
 
 class FilterOperation : public ThreadSafeRefCounted<FilterOperation> {
 public:
@@ -79,8 +80,8 @@ public:
         return nullptr;
     }
     
-    virtual bool transformColor(ColorComponents<float>&) const { return false; }
-    virtual bool inverseTransformColor(ColorComponents<float>&) const { return false; }
+    virtual bool transformColor(SRGBA<float>&) const { return false; }
+    virtual bool inverseTransformColor(SRGBA<float>&) const { return false; }
 
     OperationType type() const { return m_type; }
 
@@ -228,7 +229,7 @@ private:
     {
     }
 
-    bool transformColor(ColorComponents<float>&) const override;
+    bool transformColor(SRGBA<float>&) const override;
 
     double m_amount;
 };
@@ -263,7 +264,7 @@ private:
     {
     }
 
-    bool transformColor(ColorComponents<float>&) const override;
+    bool transformColor(SRGBA<float>&) const override;
 
     double m_amount;
 };
@@ -290,8 +291,8 @@ private:
     {
     }
 
-    bool transformColor(ColorComponents<float>&) const final;
-    bool inverseTransformColor(ColorComponents<float>&) const final;
+    bool transformColor(SRGBA<float>&) const final;
+    bool inverseTransformColor(SRGBA<float>&) const final;
 };
 
 class WEBCORE_EXPORT BlurFilterOperation : public FilterOperation {
@@ -382,3 +383,27 @@ SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(InvertLightnessFilterOperation, type() ==
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BlurFilterOperation, type() == WebCore::FilterOperation::BLUR)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(DropShadowFilterOperation, type() == WebCore::FilterOperation::DROP_SHADOW)
 
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::FilterOperation::OperationType> {
+    using values = EnumValues<
+        WebCore::FilterOperation::OperationType,
+        WebCore::FilterOperation::OperationType::REFERENCE,
+        WebCore::FilterOperation::OperationType::GRAYSCALE,
+        WebCore::FilterOperation::OperationType::SEPIA,
+        WebCore::FilterOperation::OperationType::SATURATE,
+        WebCore::FilterOperation::OperationType::HUE_ROTATE,
+        WebCore::FilterOperation::OperationType::INVERT,
+        WebCore::FilterOperation::OperationType::APPLE_INVERT_LIGHTNESS,
+        WebCore::FilterOperation::OperationType::OPACITY,
+        WebCore::FilterOperation::OperationType::BRIGHTNESS,
+        WebCore::FilterOperation::OperationType::CONTRAST,
+        WebCore::FilterOperation::OperationType::BLUR,
+        WebCore::FilterOperation::OperationType::DROP_SHADOW,
+        WebCore::FilterOperation::OperationType::PASSTHROUGH,
+        WebCore::FilterOperation::OperationType::DEFAULT,
+        WebCore::FilterOperation::OperationType::NONE
+    >;
+};
+
+} // namespace WTF

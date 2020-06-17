@@ -62,7 +62,7 @@ namespace JSC { namespace DFG {
 static constexpr bool dumpOSRAvailabilityData = false;
 
 // Creates an array of stringized names.
-static const char* dfgOpNames[] = {
+static const char* const dfgOpNames[] = {
 #define STRINGIZE_DFG_OP_ENUM(opcode, flags) #opcode ,
     FOR_EACH_DFG_OP(STRINGIZE_DFG_OP_ENUM)
 #undef STRINGIZE_DFG_OP_ENUM
@@ -1152,8 +1152,8 @@ bool Graph::isLiveInBytecode(Operand operand, CodeOrigin codeOrigin)
             if (!codeBlock->numTmps() || operandIndex < tmpOffset)
                 continue;
 
-            auto bitMap = tmpLivenessForCheckpoint(*codeBlock, codeOriginPtr->bytecodeIndex());
-            return bitMap.get(operandIndex - tmpOffset);
+            auto live = livenessForCheckpoint(*codeBlock, codeOriginPtr->bytecodeIndex());
+            return live.contains(operand);
         }
 
         VirtualRegister reg = operand.virtualRegister() - codeOriginPtr->stackOffset();

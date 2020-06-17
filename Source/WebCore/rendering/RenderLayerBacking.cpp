@@ -472,7 +472,10 @@ void RenderLayerBacking::updateDebugIndicators(bool showBorder, bool showRepaint
     
     if (m_contentsContainmentLayer)
         m_contentsContainmentLayer->setShowDebugBorder(showBorder);
-    
+
+    if (m_childContainmentLayer)
+        m_childContainmentLayer->setShowDebugBorder(showBorder);
+
     if (m_backgroundLayer) {
         m_backgroundLayer->setShowDebugBorder(showBorder);
         m_backgroundLayer->setShowRepaintCounter(showRepaintCounter);
@@ -612,7 +615,7 @@ static LayoutRect clippingLayerBox(const RenderBox& renderBox)
     return result;
 }
 
-static LayoutRect overflowControlsHostLayerBox(const RenderBox& renderBox)
+static LayoutRect overflowControlsHostLayerRect(const RenderBox& renderBox)
 {
     return renderBox.paddingBoxRectIncludingScrollbar();
 }
@@ -1413,7 +1416,7 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
     }
 
     if (m_overflowControlsContainer) {
-        LayoutRect overflowControlsBox = overflowControlsHostLayerBox(downcast<RenderBox>(renderer()));
+        LayoutRect overflowControlsBox = overflowControlsHostLayerRect(downcast<RenderBox>(renderer()));
         LayoutSize boxOffsetFromGraphicsLayer = toLayoutSize(overflowControlsBox.location()) + rendererOffset.fromPrimaryGraphicsLayer();
         SnappedRectInfo snappedBoxInfo = snappedGraphicsLayer(boxOffsetFromGraphicsLayer, overflowControlsBox.size(), deviceScaleFactor);
 
@@ -3085,6 +3088,7 @@ OptionSet<RenderLayer::PaintLayerFlag> RenderLayerBacking::paintFlagsForLayer(co
     return paintFlags;
 }
 
+#if ENABLE(TOUCH_ACTION_REGIONS) || ENABLE(WHEEL_EVENT_REGIONS)
 struct PatternDescription {
     ASCIILiteral name;
     FloatSize phase;
@@ -3127,6 +3131,7 @@ static RefPtr<Pattern> patternForDescription(PatternDescription description, Flo
 
     return fillPattern;
 };
+#endif
 
 #if ENABLE(TOUCH_ACTION_REGIONS)
 static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize contentOffset, GraphicsContext& destContext)
@@ -3200,7 +3205,9 @@ void RenderLayerBacking::paintDebugOverlays(const GraphicsLayer* graphicsLayer, 
     auto contentOffset = roundedIntSize(contentOffsetInCompositingLayer());
     context.translate(-contentOffset);
 
+#if ENABLE(TOUCH_ACTION_REGIONS) || ENABLE(WHEEL_EVENT_REGIONS) || ENABLE(EDITABLE_REGION)
     auto visibleDebugOverlayRegions = renderer().settings().visibleDebugOverlayRegions();
+#endif
 
     // The interactive part.
 #if ENABLE(TOUCH_ACTION_REGIONS)

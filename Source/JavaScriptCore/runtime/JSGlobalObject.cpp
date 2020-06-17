@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -294,6 +294,14 @@ static EncodedJSValue JSC_HOST_CALL hasOwnLengthProperty(JSGlobalObject* globalO
     RELEASE_AND_RETURN(scope, JSValue::encode(jsBoolean(target->hasOwnProperty(globalObject, vm.propertyNames->length))));
 }
 
+// FIXME: use a bytecode or intrinsic for creating a private symbol.
+// https://bugs.webkit.org/show_bug.cgi?id=212782
+static EncodedJSValue JSC_HOST_CALL createPrivateSymbol(JSGlobalObject* globalObject, CallFrame*)
+{
+    VM& vm = globalObject->vm();
+    return JSValue::encode(Symbol::create(vm, PrivateSymbolImpl::createNullSymbol().get()));
+}
+
 #if ASSERT_ENABLED
 static EncodedJSValue JSC_HOST_CALL assertCall(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
@@ -531,7 +539,7 @@ void JSGlobalObject::initializeErrorConstructor(LazyClassStructure::Initializer&
 
 void JSGlobalObject::initializeAggregateErrorConstructor(LazyClassStructure::Initializer& init)
 {
-    init.setPrototype(AggregateErrorPrototype::create(init.vm, this, AggregateErrorPrototype::createStructure(init.vm, this, m_errorStructure.prototype(this))));
+    init.setPrototype(AggregateErrorPrototype::create(init.vm, AggregateErrorPrototype::createStructure(init.vm, this, m_errorStructure.prototype(this))));
     init.setStructure(AggregateError::createStructure(init.vm, this, init.prototype));
     init.setConstructor(AggregateErrorConstructor::create(init.vm, AggregateErrorConstructor::createStructure(init.vm, this, m_errorStructure.constructor(this)), jsCast<AggregateErrorPrototype*>(init.prototype)));
 }
@@ -625,7 +633,9 @@ void JSGlobalObject::init(VM& vm)
         });
 
     m_nullGetterFunction.set(vm, this, NullGetterFunction::create(vm, NullGetterFunction::createStructure(vm, this, m_functionPrototype.get())));
-    m_nullSetterFunction.set(vm, this, NullSetterFunction::create(vm, NullSetterFunction::createStructure(vm, this, m_functionPrototype.get())));
+    Structure* nullSetterFunctionStructure = NullSetterFunction::createStructure(vm, this, m_functionPrototype.get());
+    m_nullSetterFunction.set(vm, this, NullSetterFunction::create(vm, nullSetterFunctionStructure, ECMAMode::sloppy()));
+    m_nullSetterStrictFunction.set(vm, this, NullSetterFunction::create(vm, nullSetterFunctionStructure, ECMAMode::strict()));
     m_objectPrototype.set(vm, this, ObjectPrototype::create(vm, this, ObjectPrototype::createStructure(vm, this, jsNull())));
     // We have to manually set this here because we make it a prototype without transition below.
     m_objectPrototype.get()->didBecomePrototype();
@@ -1225,6 +1235,11 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
             init.set(JSFunction::create(init.vm, jsCast<JSGlobalObject*>(init.owner), 0, String(), globalFuncDateTimeFormat));
         });
 
+    // PrivateSymbols / PrivateNames
+    m_linkTimeConstants[static_cast<unsigned>(LinkTimeConstant::createPrivateSymbol)].initLater([] (const Initializer<JSCell>& init) {
+            init.set(JSFunction::create(init.vm, jsCast<JSGlobalObject*>(init.owner), 0, String(), createPrivateSymbol));
+        });
+
 #if ENABLE(WEBASSEMBLY) && ENABLE(WEBASSEMBLY_STREAMING_API)
     // WebAssembly Streaming API
     m_linkTimeConstants[static_cast<unsigned>(LinkTimeConstant::webAssemblyCompileStreamingInternal)].initLater([] (const Initializer<JSCell>& init) {
@@ -1336,7 +1351,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     }
 
     // Unfortunately, the prototype objects of the builtin objects can be touched from concurrent compilers. So eagerly initialize them only if we use JIT.
-    if (VM::canUseJIT()) {
+    if (Options::useJIT()) {
         this->booleanPrototype();
         this->numberPrototype();
         this->symbolPrototype();
@@ -1824,6 +1839,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     visitor.append(thisObject->m_nullGetterFunction);
     visitor.append(thisObject->m_nullSetterFunction);
+    visitor.append(thisObject->m_nullSetterStrictFunction);
 
     thisObject->m_parseIntFunction.visit(visitor);
     thisObject->m_parseFloatFunction.visit(visitor);

@@ -1892,6 +1892,11 @@ bool BytecodeGenerator::instantiateLexicalVariables(const VariableEnvironment& l
 
             SymbolTableEntry newEntry(varOffset, static_cast<unsigned>(entry.value.isConst() ? PropertyAttribute::ReadOnly : PropertyAttribute::None));
             symbolTable->add(NoLockingNecessary, entry.key.get(), newEntry);
+
+            // FIXME: only do this if there is an eval() within a nested scope --- otherwise it isn't needed.
+            // https://bugs.webkit.org/show_bug.cgi?id=206663
+            if (entry.value.isPrivateName())
+                symbolTable->addPrivateName(entry.key.get());
         }
     }
     return hasCapturedVariables;
@@ -2681,6 +2686,12 @@ RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, R
     return dst;
 }
 
+RegisterID* BytecodeGenerator::emitGetPrototypeOf(RegisterID* dst, RegisterID* value)
+{
+    OpGetPrototypeOf::emit(this, dst, value);
+    return dst;
+}
+
 RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* property, RegisterID* value)
 {
     OpPutByVal::emit(this, base, property, value, ecmaMode());
@@ -2693,9 +2704,15 @@ RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* thisVa
     return value;
 }
 
+RegisterID* BytecodeGenerator::emitDirectGetByVal(RegisterID* dst, RegisterID* base, RegisterID* property)
+{
+    OpGetPrivateName::emit(this, dst, base, property);
+    return dst;
+}
+
 RegisterID* BytecodeGenerator::emitDirectPutByVal(RegisterID* base, RegisterID* property, RegisterID* value)
 {
-    OpPutByValDirect::emit(this, base, property, value, ecmaMode());
+    OpPutByValDirect::emit(this, base, property, value, PutByValFlags::createDirect(ecmaMode()));
     return value;
 }
 
@@ -2714,6 +2731,18 @@ RegisterID* BytecodeGenerator::emitGetInternalField(RegisterID* dst, RegisterID*
 RegisterID* BytecodeGenerator::emitPutInternalField(RegisterID* base, unsigned index, RegisterID* value)
 {
     OpPutInternalField::emit(this, base, index, value);
+    return value;
+}
+
+RegisterID* BytecodeGenerator::emitDefinePrivateField(RegisterID* base, RegisterID* property, RegisterID* value)
+{
+    OpPutByValDirect::emit(this, base, property, value, PutByValFlags::createDefinePrivateField(ecmaMode()));
+    return value;
+}
+
+RegisterID* BytecodeGenerator::emitPrivateFieldPut(RegisterID* base, RegisterID* property, RegisterID* value)
+{
+    OpPutByValDirect::emit(this, base, property, value, PutByValFlags::createPutPrivateField(ecmaMode()));
     return value;
 }
 
@@ -4723,7 +4752,7 @@ void BytecodeGenerator::emitIteratorGenericClose(RegisterID* iterator, const Thr
 {
     Ref<Label> done = newLabel();
     RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator, propertyNames().returnKeyword);
-    emitJumpIfTrue(emitIsUndefined(newTemporary(), returnMethod.get()), done.get());
+    emitJumpIfTrue(emitIsUndefinedOrNull(newTemporary(), returnMethod.get()), done.get());
 
     RefPtr<RegisterID> value = newTemporary();
     CallArguments returnArguments(*this, nullptr);
@@ -4746,7 +4775,7 @@ RegisterID* BytecodeGenerator::emitGetAsyncIterator(RegisterID* argument, Throwa
     Ref<Label> asyncIteratorFound = newLabel();
     Ref<Label> iteratorReceived = newLabel();
 
-    emitJumpIfTrue(emitUnaryOp<OpEqNull>(newTemporary(), iterator.get()), asyncIteratorNotFound.get());
+    emitJumpIfTrue(emitIsUndefinedOrNull(newTemporary(), iterator.get()), asyncIteratorNotFound.get());
 
     emitJump(asyncIteratorFound.get());
     emitLabel(asyncIteratorNotFound.get());
@@ -4815,7 +4844,7 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
                 {
                     Ref<Label> throwMethodFound = newLabel();
                     RefPtr<RegisterID> throwMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().throwKeyword);
-                    emitJumpIfFalse(emitIsUndefined(newTemporary(), throwMethod.get()), throwMethodFound.get());
+                    emitJumpIfFalse(emitIsUndefinedOrNull(newTemporary(), throwMethod.get()), throwMethodFound.get());
 
                     EmitAwait emitAwaitInIteratorClose = parseMode() == SourceParseMode::AsyncGeneratorBodyMode ? EmitAwait::Yes : EmitAwait::No;
                     emitIteratorGenericClose(iterator.get(), node, emitAwaitInIteratorClose);
@@ -4836,9 +4865,12 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
                 {
                     Ref<Label> returnMethodFound = newLabel();
                     RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().returnKeyword);
-                    emitJumpIfFalse(emitIsUndefined(newTemporary(), returnMethod.get()), returnMethodFound.get());
+                    emitJumpIfFalse(emitIsUndefinedOrNull(newTemporary(), returnMethod.get()), returnMethodFound.get());
 
                     move(value.get(), generatorValueRegister());
+
+                    if (parseMode() == SourceParseMode::AsyncGeneratorBodyMode)
+                        emitAwait(value.get());
 
                     Ref<Label> returnSequence = newLabel();
                     emitJump(returnSequence.get());

@@ -124,6 +124,7 @@ public:
     void start();
     void stop();
     virtual void requestToEnd(Observer& callingObserver);
+    bool isEnded() const { return m_isEnded; }
 
     bool muted() const { return m_muted; }
     void setMuted(bool);
@@ -214,7 +215,7 @@ public:
 
     // Testing only
     virtual void delaySamples(Seconds) { };
-    void setInterruptedForTesting(bool);
+    virtual void setInterruptedForTesting(bool);
 
     virtual bool setShouldApplyRotation(bool) { return false; }
 
@@ -247,6 +248,8 @@ protected:
     void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t);
 
     void forEachObserver(const Function<void(Observer&)>&);
+
+    void end(Observer* = nullptr);
 
 private:
     virtual void startProducingData() { }

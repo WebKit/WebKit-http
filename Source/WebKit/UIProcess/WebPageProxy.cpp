@@ -525,6 +525,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
     
     if (m_configuration->preferences()->serviceWorkerEntitlementDisabledForTesting())
         disableServiceWorkerEntitlementInNetworkProcess();
+
+    EndowmentStateTracker::singleton().addClient(*this);
 #endif
 
 #if PLATFORM(COCOA)
@@ -565,6 +567,10 @@ WebPageProxy::~WebPageProxy()
 
 #ifndef NDEBUG
     webPageProxyCounter.decrement();
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    EndowmentStateTracker::singleton().removeClient(*this);
 #endif
 }
 
@@ -2424,11 +2430,9 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
 #endif
 }
 
-void WebPageProxy::didPerformDragControllerAction(uint64_t dragOperation, WebCore::DragHandlingMethod dragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const IntRect& insertionRect, const IntRect& editableElementRect)
+void WebPageProxy::didPerformDragControllerAction(Optional<WebCore::DragOperation> dragOperation, WebCore::DragHandlingMethod dragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const IntRect& insertionRect, const IntRect& editableElementRect)
 {
-    MESSAGE_CHECK(m_process, dragOperation <= DragOperationDelete);
-
-    m_currentDragOperation = static_cast<DragOperation>(dragOperation);
+    m_currentDragOperation = dragOperation;
     m_currentDragHandlingMethod = dragHandlingMethod;
     m_currentDragIsOverFileInput = mouseIsOverFileInput;
     m_currentDragNumberOfFilesToBeAccepted = numberOfItemsToBeAccepted;
@@ -2438,20 +2442,20 @@ void WebPageProxy::didPerformDragControllerAction(uint64_t dragOperation, WebCor
 }
 
 #if PLATFORM(GTK)
-void WebPageProxy::startDrag(SelectionData&& selectionData, uint64_t dragOperation, const ShareableBitmap::Handle& dragImageHandle)
+void WebPageProxy::startDrag(SelectionData&& selectionData, OptionSet<WebCore::DragOperation> dragOperationMask, const ShareableBitmap::Handle& dragImageHandle)
 {
     RefPtr<ShareableBitmap> dragImage = !dragImageHandle.isNull() ? ShareableBitmap::create(dragImageHandle) : nullptr;
-    pageClient().startDrag(WTFMove(selectionData), static_cast<WebCore::DragOperation>(dragOperation), WTFMove(dragImage));
+    pageClient().startDrag(WTFMove(selectionData), dragOperationMask, WTFMove(dragImage));
 
     didStartDrag();
 }
 #endif
 
-void WebPageProxy::dragEnded(const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t operation)
+void WebPageProxy::dragEnded(const IntPoint& clientPosition, const IntPoint& globalPosition, OptionSet<WebCore::DragOperation> dragOperationMask)
 {
     if (!hasRunningProcess())
         return;
-    send(Messages::WebPage::DragEnded(clientPosition, globalPosition, operation));
+    send(Messages::WebPage::DragEnded(clientPosition, globalPosition, dragOperationMask));
     setDragCaretRect({ });
 }
 
@@ -2482,7 +2486,7 @@ void WebPageProxy::didEndDragging()
 
 void WebPageProxy::resetCurrentDragInformation()
 {
-    m_currentDragOperation = WebCore::DragOperationNone;
+    m_currentDragOperation = WTF::nullopt;
     m_currentDragHandlingMethod = DragHandlingMethod::None;
     m_currentDragIsOverFileInput = false;
     m_currentDragNumberOfFilesToBeAccepted = 0;
@@ -2773,7 +2777,7 @@ WebPreferencesStore WebPageProxy::preferencesStore() const
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, Messages::WebPageProxy::FindPlugin::DelayedReply&& reply)
+void WebPageProxy::findPlugin(const String& mimeType, PluginProcessType processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, Messages::WebPageProxy::FindPlugin::DelayedReply&& reply)
 {
     PageClientProtector protector(pageClient());
 
@@ -2803,13 +2807,13 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 #endif
 
     auto findPluginCompletion = [processType, reply = WTFMove(reply), newMimeType = WTFMove(newMimeType), plugin = WTFMove(plugin)] (uint32_t pluginLoadPolicy, const String& unavailabilityDescription) mutable {
-        PluginProcessSandboxPolicy pluginProcessSandboxPolicy = PluginProcessSandboxPolicyNormal;
+        PluginProcessSandboxPolicy pluginProcessSandboxPolicy = PluginProcessSandboxPolicy::Normal;
         switch (pluginLoadPolicy) {
         case PluginModuleLoadNormally:
-            pluginProcessSandboxPolicy = PluginProcessSandboxPolicyNormal;
+            pluginProcessSandboxPolicy = PluginProcessSandboxPolicy::Normal;
             break;
         case PluginModuleLoadUnsandboxed:
-            pluginProcessSandboxPolicy = PluginProcessSandboxPolicyUnsandboxed;
+            pluginProcessSandboxPolicy = PluginProcessSandboxPolicy::Unsandboxed;
             break;
 
         case PluginModuleBlockedForSecurity:
@@ -2818,7 +2822,7 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
             return;
         }
 
-        reply(PluginProcessManager::singleton().pluginProcessToken(plugin, static_cast<PluginProcessType>(processType), pluginProcessSandboxPolicy), newMimeType, pluginLoadPolicy, unavailabilityDescription, false);
+        reply(PluginProcessManager::singleton().pluginProcessToken(plugin, processType, pluginProcessSandboxPolicy), newMimeType, pluginLoadPolicy, unavailabilityDescription, false);
     };
 
 #if PLATFORM(COCOA)
@@ -4410,8 +4414,7 @@ void WebPageProxy::preconnectTo(const URL& url)
     if (!m_websiteDataStore->configuration().allowsServerPreconnect())
         return;
 
-    if (auto* networkProcess = m_process->processPool().networkProcess())
-        networkProcess->preconnectTo(sessionID(), url, userAgent(), WebCore::StoredCredentialsPolicy::Use, m_isNavigatingToAppBoundDomain);
+    m_process->processPool().ensureNetworkProcess().preconnectTo(sessionID(), identifier(), webPageID(), url, userAgent(), WebCore::StoredCredentialsPolicy::Use, m_isNavigatingToAppBoundDomain);
 }
 
 void WebPageProxy::didDestroyNavigation(uint64_t navigationID)
@@ -4603,7 +4606,7 @@ void WebPageProxy::didFailProvisionalLoadForFrame(FrameIdentifier frameID, Frame
 void WebPageProxy::didFailProvisionalLoadForFrameShared(Ref<WebProcessProxy>&& process, FrameIdentifier frameID, FrameInfoData&& frameInfo, WebCore::ResourceRequest&& request, uint64_t navigationID, const String& provisionalURL, const ResourceError& error, WillContinueLoading willContinueLoading, const UserData& userData)
 {
     LOG(Loading, "(Loading) WebPageProxy %" PRIu64 " in web process pid %i didFailProvisionalLoadForFrame to provisionalURL %s", m_identifier.toUInt64(), process->processIdentifier(), provisionalURL.utf8().data());
-    RELEASE_LOG_IF_ALLOWED(Process, "didFailProvisionalLoadForFrame: frameID = %" PRIu64 ", domain = %s, code = %d", frameID.toUInt64(), error.domain().utf8().data(), error.errorCode());
+    RELEASE_LOG_ERROR_IF_ALLOWED(Process, "didFailProvisionalLoadForFrame: frameID = %" PRIu64 ", domain = %s, code = %d", frameID.toUInt64(), error.domain().utf8().data(), error.errorCode());
 
     PageClientProtector protector(pageClient());
 
@@ -4879,7 +4882,7 @@ void WebPageProxy::didFinishLoadForFrame(FrameIdentifier frameID, FrameInfoData&
 
 void WebPageProxy::didFailLoadForFrame(FrameIdentifier frameID, FrameInfoData&& frameInfo, ResourceRequest&& request, uint64_t navigationID, const ResourceError& error, const UserData& userData)
 {
-    RELEASE_LOG_IF_ALLOWED(Loading, "didFailLoadForFrame: frameID = %" PRIu64 ", domain = %s, code = %d", frameID.toUInt64(), error.domain().utf8().data(), error.errorCode());
+    RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "didFailLoadForFrame: frameID = %" PRIu64 ", domain = %s, code = %d", frameID.toUInt64(), error.domain().utf8().data(), error.errorCode());
 
     PageClientProtector protector(pageClient());
 
@@ -5233,7 +5236,7 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
                 }, [&] (ContinueUnsafeLoad continueUnsafeLoad) {
                     switch (continueUnsafeLoad) {
                     case ContinueUnsafeLoad::No:
-                        if (!hasCommittedAnyProvisionalLoads() && !m_sessionStateWasRestoredByAPIRequest)
+                        if (!hasCommittedAnyProvisionalLoads())
                             m_uiClient->close(protectedThis.ptr());
                         completionHandler(PolicyAction::Ignore);
                         break;
@@ -6663,7 +6666,9 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
 #endif
 
     SandboxExtension::Handle frontboardServicesSandboxExtension, iconServicesSandboxExtension;
+#if HAVE(FRONTBOARD_SYSTEM_APP_SERVICES)
     SandboxExtension::createHandleForMachLookup("com.apple.frontboard.systemappservices", WTF::nullopt, frontboardServicesSandboxExtension);
+#endif
     SandboxExtension::createHandleForMachLookup("com.apple.iconservices", WTF::nullopt, iconServicesSandboxExtension);
 
     send(Messages::WebPage::DidChooseFilesForOpenPanelWithDisplayStringAndIcon(fileURLs, displayString, iconData ? iconData->dataReference() : IPC::DataReference(), frontboardServicesSandboxExtension, iconServicesSandboxExtension));
@@ -7364,7 +7369,7 @@ URL WebPageProxy::currentResourceDirectoryURL() const
 void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
 {
     if (reason != ProcessTerminationReason::NavigationSwap)
-        RELEASE_LOG_IF_ALLOWED(Process, "processDidTerminate: (pid %d), reason %d", processIdentifier(), reason);
+        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "processDidTerminate: (pid %d), reason %d", processIdentifier(), reason);
 
     ASSERT(m_hasRunningProcess);
 
@@ -7419,7 +7424,7 @@ static bool shouldReloadAfterProcessTermination(ProcessTerminationReason reason)
 
 void WebPageProxy::dispatchProcessDidTerminate(ProcessTerminationReason reason)
 {
-    RELEASE_LOG_IF_ALLOWED(Loading, "dispatchProcessDidTerminate: reason = %d", reason);
+    RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "dispatchProcessDidTerminate: reason = %d", reason);
 
     bool handledByClient = false;
     if (m_loaderClient)
@@ -7436,7 +7441,7 @@ void WebPageProxy::tryReloadAfterProcessTermination()
     m_resetRecentCrashCountTimer.stop();
 
     if (++m_recentCrashCount > maximumWebProcessRelaunchAttempts) {
-        RELEASE_LOG_IF_ALLOWED(Process, "tryReloadAfterProcessTermination: process crashed and the client did not handle it, not reloading the page because we reached the maximum number of attempts");
+        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "tryReloadAfterProcessTermination: process crashed and the client did not handle it, not reloading the page because we reached the maximum number of attempts");
         m_recentCrashCount = 0;
         return;
     }
@@ -7463,29 +7468,6 @@ void WebPageProxy::stopAllURLSchemeTasks(WebProcessProxy* process)
     for (auto* handler : handlers)
         handler->stopAllTasksForPage(*this, process);
 }
-
-#if PLATFORM(IOS_FAMILY)
-void WebPageProxy::processWillBecomeSuspended()
-{
-    if (!hasRunningProcess())
-        return;
-
-    m_hasNetworkRequestsOnSuspended = m_pageLoadState.networkRequestsInProgress();
-    if (m_hasNetworkRequestsOnSuspended)
-        setNetworkRequestsInProgress(false);
-}
-
-void WebPageProxy::processWillBecomeForeground()
-{
-    if (!hasRunningProcess())
-        return;
-
-    if (m_hasNetworkRequestsOnSuspended) {
-        setNetworkRequestsInProgress(true);
-        m_hasNetworkRequestsOnSuspended = false;
-    }
-}
-#endif
 
 void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
@@ -9227,13 +9209,13 @@ void WebPageProxy::playbackTargetPickerWasDismissed(uint64_t contextId)
 
 void WebPageProxy::didExceedInactiveMemoryLimitWhileActive()
 {
-    RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "didExceedInactiveMemoryLimitWhileActive");
+    RELEASE_LOG_ERROR_IF_ALLOWED(PerformanceLogging, "didExceedInactiveMemoryLimitWhileActive");
     m_uiClient->didExceedBackgroundResourceLimitWhileInForeground(*this, kWKResourceLimitMemory);
 }
 
 void WebPageProxy::didExceedBackgroundCPULimitWhileInForeground()
 {
-    RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "didExceedBackgroundCPULimitWhileInForeground");
+    RELEASE_LOG_ERROR_IF_ALLOWED(PerformanceLogging, "didExceedBackgroundCPULimitWhileInForeground");
     m_uiClient->didExceedBackgroundResourceLimitWhileInForeground(*this, kWKResourceLimitCPU);
 }
 

@@ -58,7 +58,14 @@ public:
     bool isDetached() const override;
 
     void setParent(AXID);
-    void appendChild(AXID);
+    void setChildrenIDs(Vector<AXID>&& childrenIDs)
+    {
+        // FIXME: The following ASSERT should be met but it is commented out at the
+        // moment because of <rdar://problem/63985646> After calling _AXUIElementUseSecondaryAXThread(true),
+        // still receives client request on main thread.
+        // ASSERT(axObjectCache()->canUseSecondaryAXThread() ? !isMainThread() : isMainThread());
+        m_childrenIDs = childrenIDs;
+    }
 
 private:
     void detachRemoteParts(AccessibilityDetachmentType) override;
@@ -639,8 +646,8 @@ private:
     String documentEncoding() const override;
     bool preventKeyboardDOMEventDispatch() const override;
 
+    PlainTextRange selectedTextRange() const override;
     // TODO: Text ranges and selection.
-    PlainTextRange selectedTextRange() const override { return PlainTextRange(); }
     unsigned selectionStart() const override { return 0; }
     unsigned selectionEnd() const override { return 0; }
     VisibleSelection selection() const override { return VisibleSelection(); }

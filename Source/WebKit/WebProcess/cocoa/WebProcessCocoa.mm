@@ -185,23 +185,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
         ASSERT(String(uti.get()) == String(adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, CFSTR("text/html"), 0)).get()));
     }
 
-#if PLATFORM(IOS_FAMILY)
-    if (parameters.runningboardExtensionHandle) {
-        auto extension = SandboxExtension::create(WTFMove(*parameters.runningboardExtensionHandle));
-        bool consumed = extension->consume();
-        ASSERT_UNUSED(consumed, consumed);
-
-        ASSERT(!m_uiProcessDependencyProcessAssertion);
-        if (auto remoteProcessID = parentProcessConnection()->remoteProcessID())
-            m_uiProcessDependencyProcessAssertion = makeUnique<ProcessAssertion>(remoteProcessID, "WebContent process dependency on UIProcess"_s, ProcessAssertionType::DependentProcessLink);
-        else
-            RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "Unable to create a process dependency assertion on UIProcess because remoteProcessID is 0");
-
-        bool revoked = extension->revoke();
-        ASSERT_UNUSED(revoked, revoked);
-    }
-#endif
-
 #if !LOG_DISABLED || !RELEASE_LOG_DISABLED
     WebCore::initializeLogChannelsIfNecessary(parameters.webCoreLoggingChannels);
     WebKit::initializeLogChannelsIfNecessary(parameters.webKitLoggingChannels);
@@ -229,7 +212,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     [NSURLCache setSharedURLCache:urlCache.get()];
 
 #if PLATFORM(MAC)
-    WebCore::FontCache::setFontWhitelist(parameters.fontWhitelist);
+    WebCore::FontCache::setFontAllowlist(parameters.fontWhitelist);
 #endif
 
     m_compositingRenderServerPort = WTFMove(parameters.acceleratedCompositingPort);
@@ -301,9 +284,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    if (parameters.diagnosticsExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.diagnosticsExtensionHandle);
-
+    SandboxExtension::consumePermanently(parameters.diagnosticsExtensionHandles);
     SandboxExtension::consumePermanently(parameters.dynamicMachExtensionHandles);
     SandboxExtension::consumePermanently(parameters.dynamicIOKitExtensionHandles);
 #endif
@@ -521,8 +502,6 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
     RELEASE_ASSERT(retval == kCGErrorSuccess);
     // Make sure that we close any WindowServer connections after checking in with Launch Services.
     CGSShutdownServerConnections();
-
-    SwitchingGPUClient::setSingleton(WebSwitchingGPUClient::singleton());
 #else
 
     if (![NSApp isRunning]) {
@@ -531,6 +510,8 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
         launchServicesCheckIn();
     }
 #endif // ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+
+    SwitchingGPUClient::setSingleton(WebSwitchingGPUClient::singleton());
 #endif // PLATFORM(MAC)
 
     if (parameters.extraInitializationData.get("inspector-process"_s) == "1")
@@ -552,7 +533,7 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
     registerWithStateDumper();
 #endif
 
-#if HAVE(APP_SSO)
+#if HAVE(APP_SSO) || PLATFORM(MACCATALYST)
     [NSURLSession _disableAppSSO];
 #endif
 
@@ -922,15 +903,6 @@ static const WTF::String& userAccentColorPreferenceKey()
 }
 #endif
 
-static bool shouldWriteToAppDomainForPreferenceKey(const String& key)
-{
-#if USE(APPKIT)
-    return key == userAccentColorPreferenceKey();
-#else
-    return false;
-#endif
-}
-
 static void dispatchSimulatedNotificationsForPreferenceChange(const String& key)
 {
 #if USE(APPKIT)
@@ -942,22 +914,19 @@ static void dispatchSimulatedNotificationsForPreferenceChange(const String& key)
 #endif
 }
 
+static void setPreferenceValue(const String& domain, const String& key, id value)
+{
+    if (domain.isEmpty()) {
+        CFPreferencesSetValue(key.createCFString().get(), (__bridge CFPropertyListRef)value, kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        ASSERT([[[NSUserDefaults standardUserDefaults] objectForKey:key] isEqual:value]);
+    } else
+        CFPreferencesSetValue(key.createCFString().get(), (__bridge CFPropertyListRef)value, domain.createCFString().get(), kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+}
+
 void WebProcess::notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue)
 {
-    // FIXME (212627): In the case of global preference changes, the domain that we are notified in is
-    // not the correct domain to write to; it is an arbitrary domain affected by the global change.
-    // Work around this by writing to the app's domain in cases where we know that is OK
-    // (because the code that uses the default in the Web Content process reads from
-    // -standardUserDefaults, not from a specific domain). PreferenceObserver needs to be fixed
-    // to find the correct domain, but we currently have no mechanism to do so.
-    RetainPtr<NSUserDefaults> defaults;
-    if (shouldWriteToAppDomainForPreferenceKey(key))
-        defaults = [NSUserDefaults standardUserDefaults];
-    else
-        defaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:domain]);
-
     if (!encodedValue.hasValue()) {
-        [defaults setObject:nil forKey:key];
+        setPreferenceValue(domain, key, nil);
         dispatchSimulatedNotificationsForPreferenceChange(key);
         return;
     }
@@ -970,7 +939,7 @@ void WebProcess::notifyPreferencesChanged(const String& domain, const String& ke
     ASSERT(!err);
     if (err)
         return;
-    [defaults setObject:object forKey:key];
+    setPreferenceValue(domain, key, object);
     dispatchSimulatedNotificationsForPreferenceChange(key);
 }
 

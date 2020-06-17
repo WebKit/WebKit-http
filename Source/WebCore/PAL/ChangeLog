@@ -1,3 +1,235 @@
+2020-06-17  Andy Estes  <aestes@apple.com>
+
+        Another unreviewed build fix after r263150
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-06-17  Andy Estes  <aestes@apple.com>
+
+        Unreviewed build fix after r263150
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Enable layout tests on more platforms
+        https://bugs.webkit.org/show_bug.cgi?id=212955
+        <rdar://problem/64174156>
+
+        Reviewed by Alex Christensen.
+
+        PassKit added SPIs for Apple Pay installments over a series of iOS 13 and macOS Catalina
+        minor updates. WebKit trunk is still built across a range of iOS 13 and macOS Catalina minor
+        update SDKs that contain none, some, or all of the installment SPIs. It's not possible to
+        reliably detect the SDK minor version at compile-time, so instead we now use our own SPI
+        declarations unless we know all minor versions of the major SDK version contain all of the
+        installments definitions.
+
+        * PAL.xcodeproj/project.pbxproj: Added PassKitInstallmentsSPI.h.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm: Used SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL_WITH_EXPORT on both
+        Mac and iOS to soft-link PKPaymentInstallmentConfiguration and PKPaymentInstallmentItem.
+
+        * pal/spi/cocoa/PassKitInstallmentSPI.h: Added. When building against an SDK that is known
+        to declare the PassKit installments SPIs, this file includes the SPI headers. Otherwise, it
+        declares the SPIs.
+        * pal/spi/cocoa/PassKitSPI.h: Moved PassKit installments SPI declarations to
+        PassKitInstallmentSPI.h.
+
+2020-06-11  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable download resume tests
+        https://bugs.webkit.org/show_bug.cgi?id=213098
+        <rdar://problem/63512518>
+
+        Reviewed by Geoffrey Garen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-06-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS]: The File Picker of the <input> file element should show the selection filter
+        https://bugs.webkit.org/show_bug.cgi?id=212485
+
+        Reviewed by Darin Adler.
+
+        Expose an SPI from CoreServcies to get all the UTIs known by the system.
+
+        * pal/spi/cocoa/CoreServicesSPI.h:
+
+2020-06-09  Tim Horton  <timothy_horton@apple.com>
+
+        Stop using the wrong LaunchServices SPI for getting an app's localized name
+        https://bugs.webkit.org/show_bug.cgi?id=213003
+        <rdar://problem/64169000>
+
+        Reviewed by Sam Weinig.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-06-08  Jonathan Bedard  <jbedard@apple.com>
+
+        WebCore: Guard _preconnect declaration with ENABLE(SERVER_PRECONNECT)
+        https://bugs.webkit.org/show_bug.cgi?id=212935
+        <rdar://problem/64139060>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-06-08  Jonathan Bedard  <jbedard@apple.com>
+
+        WebCore: Add tvOS and watchOS SPI headers
+        https://bugs.webkit.org/show_bug.cgi?id=212853
+        <rdar://problem/64048485>
+
+        Reviewed by Andy Estes.
+
+        * PAL.xcodeproj/project.pbxproj: Add CoreMotionSPI.h.
+        * pal/spi/cf/CFNetworkSPI.h: CFNetwork SPI should be available on watchOS and tvOS.
+        * pal/spi/cocoa/CoreMotionSPI.h: Added.
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove ENABLE_APPLE_PAY_SETUP, ENABLE_APPLE_PAY_SESSION_V7, and HAVE_PASSKIT_PAYMENT_SETUP
+        https://bugs.webkit.org/show_bug.cgi?id=212883
+        <rdar://problem/64090763>
+
+        Reviewed by Youenn Fablet.
+
+        These macros evaluate to true whenever ENABLE(APPLE_PAY) is true on platforms supported by
+        trunk WebKit, so we can either remove them or replace them with ENABLE(APPLE_PAY).
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-06-08  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        <rdar://problem/58985368>
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-06-07  Philippe Normand  <pnormand@igalia.com>
+
+        Remove ENABLE_VIDEO_TRACK ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=212568
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262619, r262625, and r262641.
+
+        Caused mediarecorder layout test crashes.
+
+        Reverted changesets:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262619
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262625
+
+        "Unreviewed, silence deprecation warning to fix build with
+        latest SDK."
+        https://trac.webkit.org/changeset/262641
+
+2020-06-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Adopt read-only mode for preferences in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cf/CFUtilitiesSPI.h:
+
+2020-06-05  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove conditionals for ENABLE_APPLE_PAY_SESSION_V(3|4)
+        https://bugs.webkit.org/show_bug.cgi?id=212541
+        <rdar://problem/63781452>
+
+        Reviewed by Darin Adler.
+
+        APPLE_PAY_SESSION_V(3|4) is now enabled whenever APPLE_PAY itself is enabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-05  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        <rdar://problem/58985368>
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-06-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r262546.
+
+        This commit caused internal build failures
+
+        Reverted changeset:
+
+        "[Cocoa] Adopt read-only mode for preferences in the
+        WebContent process"
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+        https://trac.webkit.org/changeset/262546
+
+2020-06-04  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Adopt read-only mode for preferences in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cf/CFUtilitiesSPI.h:
+
+2020-06-04  Tim Horton  <timothy_horton@apple.com>
+
+        Work around broken system version macro
+        https://bugs.webkit.org/show_bug.cgi?id=212726
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2020-06-04  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Re-enable content filtering in the simulator build
+        https://bugs.webkit.org/show_bug.cgi?id=212711
+        <rdar://problem/63938350>
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2020-06-02  Keith Rollin  <krollin@apple.com>
 
         Revert FEATURES_DEFINES related changes

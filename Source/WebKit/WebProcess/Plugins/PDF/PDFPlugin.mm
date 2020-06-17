@@ -30,6 +30,7 @@
 
 #import "ArgumentCoders.h"
 #import "DataReference.h"
+#import "FrameInfoData.h"
 #import "Logging.h"
 #import "PDFAnnotationTextWidgetDetails.h"
 #import "PDFContextMenu.h"
@@ -1059,12 +1060,10 @@ bool PDFPlugin::ByteRangeRequest::maybeComplete(PDFPlugin& plugin)
 
 void PDFPlugin::ByteRangeRequest::completeUnconditionally(PDFPlugin& plugin)
 {
-    if (m_position >= plugin.m_streamedBytes) {
+    if (m_position >= plugin.m_streamedBytes || !plugin.m_data) {
         completeWithBytes(nullptr, 0, plugin);
         return;
     }
-
-    ASSERT(plugin.m_data);
 
     auto count = m_position + m_count > plugin.m_streamedBytes ? plugin.m_streamedBytes - m_position : m_count;
     completeWithBytes(CFDataGetBytePtr(plugin.m_data.get()) + m_position, count, plugin);
@@ -1181,7 +1180,7 @@ PluginInfo PDFPlugin::pluginInfo()
     PluginInfo info;
     info.name = builtInPDFPluginName();
     info.isApplicationPlugin = true;
-    info.clientLoadPolicy = PluginLoadClientPolicyUndefined;
+    info.clientLoadPolicy = PluginLoadClientPolicy::Undefined;
     info.bundleIdentifier = "com.apple.webkit.builtinpdfplugin"_s;
 
     MimeClassInfo pdfMimeClassInfo;
@@ -1623,10 +1622,8 @@ void PDFPlugin::manualStreamDidReceiveResponse(const URL& responseURL, uint32_t 
 
 void PDFPlugin::ensureDataBufferLength(uint64_t targetLength)
 {
-    if (!m_data) {
-        m_data = adoptCF(CFDataCreateMutable(0, targetLength));
-        return;
-    }
+    if (!m_data)
+        m_data = adoptCF(CFDataCreateMutable(0, 0));
 
     auto currentLength = CFDataGetLength(m_data.get());
     ASSERT(currentLength >= 0);
@@ -1741,9 +1738,14 @@ void PDFPlugin::attemptToUnlockPDF(const String& password)
 
 void PDFPlugin::updatePageAndDeviceScaleFactors()
 {
+    if (!controller())
+        return;
+
     double newScaleFactor = controller()->contentsScaleFactor();
-    if (!handlesPageScaleFactor())
-        newScaleFactor *= m_frame.page()->pageScaleFactor();
+    if (!handlesPageScaleFactor()) {
+        if (auto* page = m_frame.page())
+            newScaleFactor *= page->pageScaleFactor();
+    }
 
     if (newScaleFactor != [m_pdfLayerController deviceScaleFactor])
         [m_pdfLayerController setDeviceScaleFactor:newScaleFactor];
@@ -2398,11 +2400,11 @@ void PDFPlugin::openWithNativeApplication()
         m_temporaryPDFUUID = createCanonicalUUIDString();
         ASSERT(m_temporaryPDFUUID);
 
-        m_frame.page()->savePDFToTemporaryFolderAndOpenWithNativeApplication(m_suggestedFilename, m_frame.url().string(), static_cast<const unsigned char *>([data bytes]), [data length], m_temporaryPDFUUID);
+        m_frame.page()->savePDFToTemporaryFolderAndOpenWithNativeApplication(m_suggestedFilename, m_frame.info(), static_cast<const unsigned char *>([data bytes]), [data length], m_temporaryPDFUUID);
         return;
     }
 
-    m_frame.page()->send(Messages::WebPageProxy::OpenPDFFromTemporaryFolderWithNativeApplication(m_temporaryPDFUUID));
+    m_frame.page()->send(Messages::WebPageProxy::OpenPDFFromTemporaryFolderWithNativeApplication(m_frame.info(), m_temporaryPDFUUID));
 }
 
 void PDFPlugin::writeItemsToPasteboard(NSString *pasteboardName, NSArray *items, NSArray *types)

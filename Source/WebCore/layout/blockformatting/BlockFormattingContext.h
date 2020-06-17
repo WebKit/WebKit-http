@@ -52,8 +52,8 @@ public:
 
 protected:
     struct ConstraintsPair {
-        const ConstraintsForInFlowContent formattingContextRoot;
-        const ConstraintsForInFlowContent containingBlock;
+        ConstraintsForInFlowContent formattingContextRoot;
+        ConstraintsForInFlowContent containingBlock;
     };
     void placeInFlowPositionedChildren(const ContainerBox&, const HorizontalConstraints&);
 
@@ -65,10 +65,10 @@ protected:
     void computePositionToAvoidFloats(const FloatingContext&, const Box&, const ConstraintsPair&);
     void computeVerticalPositionForFloatClear(const FloatingContext&, const Box&);
 
-    void precomputeVerticalPositionForAncestors(const Box&, const ConstraintsPair&);
     void precomputeVerticalPositionForBoxAndAncestors(const Box&, const ConstraintsPair&);
 
     IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
+
     LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&, const VerticalConstraints&) const;
 
     // This class implements positioning and sizing for boxes participating in a block formatting context.
@@ -85,10 +85,12 @@ protected:
 
         IntrinsicWidthConstraints intrinsicWidthConstraints(const Box&);
 
+        ContentWidthAndMargin computedWidthAndMargin(const Box&, const ConstraintsPair&);
+
     private:
         ContentHeightAndMargin inFlowNonReplacedHeightAndMargin(const Box&, const HorizontalConstraints&, const OverrideVerticalValues&);
-        ContentWidthAndMargin inFlowNonReplacedWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&) const;
-        ContentWidthAndMargin inFlowReplacedWidthAndMargin(const ReplacedBox&, const HorizontalConstraints&, const OverrideHorizontalValues&) const;
+        ContentWidthAndMargin inFlowNonReplacedWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&);
+        ContentWidthAndMargin inFlowReplacedWidthAndMargin(const ReplacedBox&, const HorizontalConstraints&, const OverrideHorizontalValues&);
 
         const BlockFormattingContext& formattingContext() const { return downcast<BlockFormattingContext>(FormattingContext::Geometry::formattingContext()); }
     };

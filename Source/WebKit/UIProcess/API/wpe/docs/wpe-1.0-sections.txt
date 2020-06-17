@@ -172,6 +172,7 @@ WebKitSaveMode
 WebKitInsecureContentEvent
 WebKitWebProcessTerminationReason
 WebKitFrameDisplayedCallback
+WebKitAutoplayPolicy
 
 <SUBSECTION Editing Commands>
 WEBKIT_EDITING_COMMAND_CUT
@@ -260,6 +261,7 @@ webkit_web_view_send_message_to_page
 webkit_web_view_send_message_to_page_finish
 webkit_web_view_set_input_method_context
 webkit_web_view_get_input_method_context
+webkit_web_view_get_website_policies
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -846,11 +848,32 @@ webkit_notification_permission_request_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitWebsiteDataAccessPermissionRequest</FILE>
+WebKitWebsiteDataAccessPermissionRequest
+webkit_website_data_access_permission_request_get_requesting_domain
+webkit_website_data_access_permission_request_get_current_domain
+
+<SUBSECTION Standard>
+WebKitWebsiteDataAccessPermissionRequestClass
+WEBKIT_TYPE_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST
+WEBKIT_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST
+WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST
+WEBKIT_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST_CLASS
+WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST_CLASS
+WEBKIT_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebsiteDataAccessPermissionRequestPrivate
+webkit_website_data_access_permission_request_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitPolicyDecision</FILE>
 WebKitPolicyDecision
 webkit_policy_decision_download
 webkit_policy_decision_ignore
 webkit_policy_decision_use
+webkit_policy_decision_use_with_policies
 
 <SUBSECTION Standard>
 WebKitPolicyDecisionClass
@@ -1372,7 +1395,10 @@ webkit_website_data_manager_get_offline_application_cache_directory
 webkit_website_data_manager_get_indexeddb_directory
 webkit_website_data_manager_get_websql_directory
 webkit_website_data_manager_get_hsts_cache_directory
+webkit_website_data_manager_get_itp_directory
 webkit_website_data_manager_get_cookie_manager
+webkit_website_data_manager_set_itp_enabled
+webkit_website_data_manager_get_itp_enabled
 webkit_website_data_manager_fetch
 webkit_website_data_manager_fetch_finish
 webkit_website_data_manager_remove
@@ -1544,4 +1570,25 @@ WEBKIT_TYPE_INPUT_METHOD_UNDERLINE
 <SECTION>
 <FILE>WebKitURIUtilities</FILE>
 webkit_uri_for_display
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebsitePolicies</FILE>
+WebKitWebsitePolicies
+webkit_website_policies_new
+webkit_website_policies_new_with_policies
+webkit_website_policies_get_autoplay_policy
+
+<SUBSECTION Standard>
+WebKitWebsitePoliciesClass
+WEBKIT_IS_WEBSITE_POLICIES
+WEBKIT_IS_WEBSITE_POLICIES_CLASS
+WEBKIT_TYPE_WEBSITE_POLICIES
+WEBKIT_WEBSITE_POLICIES
+WEBKIT_WEBSITE_POLICIES_CLASS
+WEBKIT_WEBSITE_POLICIES_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebsitePoliciesPrivate
+webkit_website_policies_get_type
 </SECTION>

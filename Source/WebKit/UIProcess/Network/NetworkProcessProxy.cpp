@@ -276,6 +276,8 @@ void NetworkProcessProxy::didClose(IPC::Connection&)
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     m_customProtocolManagerProxy.invalidate();
 #endif
+
+    m_activityForHoldingLockedFiles = nullptr;
     
     m_syncAllCookiesActivity = nullptr;
     m_syncAllCookiesCounter = 0;
@@ -1223,6 +1225,19 @@ void NetworkProcessProxy::sendProcessDidResume()
     if (canSendMessage())
         send(Messages::NetworkProcess::ProcessDidResume(), 0);
 }
+    
+void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
+{
+    if (!isHoldingLockedFiles) {
+        RELEASE_LOG(ProcessSuspension, "UIProcess is releasing a background assertion because the Network process is no longer holding locked files");
+        m_activityForHoldingLockedFiles = nullptr;
+        return;
+    }
+    if (!m_activityForHoldingLockedFiles) {
+        RELEASE_LOG(ProcessSuspension, "UIProcess is taking a background assertion because the Network process is holding locked files");
+        m_activityForHoldingLockedFiles = m_throttler.backgroundActivity("Holding locked files"_s).moveToUniquePtr();
+    }
+}
 
 void NetworkProcessProxy::syncAllCookies()
 {
@@ -1470,11 +1485,11 @@ void NetworkProcessProxy::getLocalStorageDetails(PAL::SessionID sessionID, Compl
     sendWithAsyncReply(Messages::NetworkProcess::GetLocalStorageOriginDetails(sessionID), WTFMove(completionHandler));
 }
 
-void NetworkProcessProxy::preconnectTo(PAL::SessionID sessionID, const URL& url, const String& userAgent, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain)
+void NetworkProcessProxy::preconnectTo(PAL::SessionID sessionID, WebPageProxyIdentifier webPageProxyID, WebCore::PageIdentifier webPageID, const URL& url, const String& userAgent, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain)
 {
-    if (!url.isValid() || !url.protocolIsInHTTPFamily() || SecurityOrigin::isLocalHostOrLoopbackIPAddress(url.host()))
+    if (!url.isValid() || !url.protocolIsInHTTPFamily())
         return;
-    send(Messages::NetworkProcess::PreconnectTo(sessionID, url, userAgent, storedCredentialsPolicy, isNavigatingToAppBoundDomain), 0);
+    send(Messages::NetworkProcess::PreconnectTo(sessionID, webPageProxyID, webPageID, url, userAgent, storedCredentialsPolicy, isNavigatingToAppBoundDomain), 0);
 }
 
 void NetworkProcessProxy::updateProcessAssertion()

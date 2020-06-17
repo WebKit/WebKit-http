@@ -228,6 +228,7 @@ UserMediaCaptureManagerProxy& GPUConnectionToWebProcess::userMediaCaptureManager
     return *m_userMediaCaptureManagerProxy;
 }
 
+#if HAVE(AVASSETWRITERDELEGATE)
 RemoteMediaRecorderManager& GPUConnectionToWebProcess::mediaRecorderManager()
 {
     if (!m_remoteMediaRecorderManager)
@@ -235,8 +236,8 @@ RemoteMediaRecorderManager& GPUConnectionToWebProcess::mediaRecorderManager()
 
     return *m_remoteMediaRecorderManager;
 }
+#endif
 
-#if ENABLE(VIDEO_TRACK)
 RemoteAudioMediaStreamTrackRendererManager& GPUConnectionToWebProcess::audioTrackRendererManager()
 {
     if (!m_audioTrackRendererManager)
@@ -252,8 +253,7 @@ RemoteSampleBufferDisplayLayerManager& GPUConnectionToWebProcess::sampleBufferDi
 
     return *m_sampleBufferDisplayLayerManager;
 }
-#endif
-#endif
+#endif //  PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
 
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
 LibWebRTCCodecsProxy& GPUConnectionToWebProcess::libWebRTCCodecsProxy()
@@ -371,6 +371,7 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         userMediaCaptureManagerProxy().didReceiveMessageFromGPUProcess(connection, decoder);
         return true;
     }
+#if HAVE(AVASSETWRITERDELEGATE)
     if (decoder.messageReceiverName() == Messages::RemoteMediaRecorderManager::messageReceiverName()) {
         mediaRecorderManager().didReceiveMessageFromWebProcess(connection, decoder);
         return true;
@@ -379,7 +380,7 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         mediaRecorderManager().didReceiveRemoteMediaRecorderMessage(connection, decoder);
         return true;
     }
-#if ENABLE(VIDEO_TRACK)
+#endif // HAVE(AVASSETWRITERDELEGATE)
     if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRendererManager::messageReceiverName()) {
         audioTrackRendererManager().didReceiveMessageFromWebProcess(connection, decoder);
         return true;
@@ -396,8 +397,7 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         sampleBufferDisplayLayerManager().didReceiveLayerMessage(connection, decoder);
         return true;
     }
-#endif
-#endif
+#endif // PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
     if (decoder.messageReceiverName() == Messages::LibWebRTCCodecsProxy::messageReceiverName()) {
         libWebRTCCodecsProxy().didReceiveMessageFromWebProcess(connection, decoder);

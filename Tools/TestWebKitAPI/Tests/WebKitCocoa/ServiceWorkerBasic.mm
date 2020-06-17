@@ -1576,6 +1576,8 @@ TEST(ServiceWorkers, ParallelProcessLaunch)
     waitUntilServiceWorkerProcessCount(processPool, 2);
 }
 
+#if HAVE(NETWORK_FRAMEWORK)
+
 static size_t launchServiceWorkerProcess(bool useSeparateServiceWorkerProcess, bool loadAboutBlankBeforePage)
 {
     [WKWebsiteDataStore _allowWebsiteDataRecordsForAllOrigins];
@@ -1592,9 +1594,9 @@ static size_t launchServiceWorkerProcess(bool useSeparateServiceWorkerProcess, b
     auto messageHandler = adoptNS([[SWMessageHandler alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:messageHandler.get() name:@"sw"];
 
-    ServiceWorkerTCPServer server({
-        { "text/html", mainBytes },
-        { "application/javascript", scriptBytes },
+    TestWebKitAPI::HTTPServer server({
+        { "/", { mainBytes } },
+        { "/sw.js", { {{ "Content-Type", "application/javascript" }}, scriptBytes } }
     });
 
     auto *processPool = configuration.get().processPool;
@@ -1637,6 +1639,8 @@ TEST(ServiceWorkers, LoadAboutBlankBeforeNavigatingThroughServiceWorker)
     EXPECT_EQ(1u, launchServiceWorkerProcess(!useSeparateServiceWorkerProcess, firstLoadAboutBlank));
     EXPECT_EQ(2u, launchServiceWorkerProcess(useSeparateServiceWorkerProcess, firstLoadAboutBlank));
 }
+
+#endif // HAVE(NETWORK_FRAMEWORK)
 
 void waitUntilServiceWorkerProcessForegroundActivityState(WKWebView *page, bool shouldHaveActivity)
 {

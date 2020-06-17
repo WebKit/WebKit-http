@@ -148,7 +148,6 @@ class HTMLImageElement;
 class HTMLMapElement;
 class HTMLMediaElement;
 class HTMLVideoElement;
-class HTMLScriptElement;
 class HighlightMap;
 class HitTestLocation;
 class HitTestRequest;
@@ -187,7 +186,6 @@ class SVGDocumentExtensions;
 class SVGSVGElement;
 class SVGUseElement;
 class SWClientConnection;
-class ScriptElementData;
 class ScriptModuleLoader;
 class ScriptRunner;
 class ScriptableDocumentParser;
@@ -1038,8 +1036,8 @@ public:
     ScriptRunner& scriptRunner() { return *m_scriptRunner; }
     ScriptModuleLoader& moduleLoader() { return *m_moduleLoader; }
 
-    HTMLScriptElement* currentScript() const { return !m_currentScriptStack.isEmpty() ? m_currentScriptStack.last().get() : nullptr; }
-    void pushCurrentScript(HTMLScriptElement*);
+    Element* currentScript() const { return !m_currentScriptStack.isEmpty() ? m_currentScriptStack.last().get() : nullptr; }
+    void pushCurrentScript(Element*);
     void popCurrentScript();
 
     bool shouldDeferAsynchronousScriptsUntilParsingFinishes() const;
@@ -1106,8 +1104,10 @@ public:
     void suspend(ReasonForSuspension);
     void resume(ReasonForSuspension);
 
+#if ENABLE(VIDEO)
     void registerMediaElement(HTMLMediaElement&);
     void unregisterMediaElement(HTMLMediaElement&);
+#endif
 
     bool audioPlaybackRequiresUserGesture() const;
     bool videoPlaybackRequiresUserGesture() const;
@@ -1121,7 +1121,7 @@ public:
 
     void storageBlockingStateDidChange();
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     void registerForCaptionPreferencesChangedCallbacks(HTMLMediaElement&);
     void unregisterForCaptionPreferencesChangedCallbacks(HTMLMediaElement&);
     void captionPreferencesChanged();
@@ -1596,6 +1596,7 @@ public:
     const FrameSelection& selection() const { return m_selection; }
 
     void prepareCanvasesForDisplayIfNeeded();
+    void clearCanvasPreparation(HTMLCanvasElement*);
     void canvasChanged(CanvasBase&, const FloatRect&) final;
     void canvasResized(CanvasBase&) final { };
     void canvasDestroyed(CanvasBase&) final;
@@ -1789,7 +1790,7 @@ private:
     std::unique_ptr<ScriptRunner> m_scriptRunner;
     std::unique_ptr<ScriptModuleLoader> m_moduleLoader;
 
-    Vector<RefPtr<HTMLScriptElement>> m_currentScriptStack;
+    Vector<RefPtr<Element>> m_currentScriptStack;
 
 #if ENABLE(XSLT)
     void applyPendingXSLTransformsTimerFired();
@@ -1836,7 +1837,7 @@ private:
     HashSet<HTMLMediaElement*> m_mediaElements;
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     HashSet<HTMLMediaElement*> m_captionPreferencesChangedElements;
     WeakPtr<HTMLMediaElement> m_mediaElementShowingTextTrack;
 #endif

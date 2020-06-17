@@ -53,8 +53,8 @@ enum FontLoadTimingOverride { "Block", "Swap", "Failure" };
 
     // Media
     [MayThrowException] void setCanStartMedia(boolean enabled);
-    [Conditional=VIDEO_TRACK, MayThrowException] void setShouldDisplayTrackKind(DOMString kind, boolean enabled);
-    [Conditional=VIDEO_TRACK, MayThrowException] boolean shouldDisplayTrackKind(DOMString trackKind);
+    [MayThrowException] void setShouldDisplayTrackKind(DOMString kind, boolean enabled);
+    [MayThrowException] boolean shouldDisplayTrackKind(DOMString trackKind);
     [MayThrowException] void setDefaultVideoPosterURL(DOMString poster);
     [MayThrowException] void setTimeWithoutMouseMovementBeforeHidingControls(unrestricted double time);
     [MayThrowException] void setMediaTypeOverride(DOMString mediaTypeOverride);
@@ -120,5 +120,7 @@ enum FontLoadTimingOverride { "Block", "Swap", "Failure" };
     [EnabledAtRuntime=WebAnimations] boolean webAnimationsCSSIntegrationEnabled();
 
     void setShouldDeactivateAudioSession(boolean shouldDeactivate);
+    
+    void setStorageAccessAPIPerPageScopeEnabled(boolean enabled);
 };
 

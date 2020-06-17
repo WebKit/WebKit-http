@@ -173,6 +173,7 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-into-script-disabled-iframe.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-referrerpolicy-change.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-crossorigin-change.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/move-element-and-scroll.html [ Skip ]
@@ -180,7 +181,6 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-image-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-2.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied.html [ Skip ]
-imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-referrer-policy-applied.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/picture-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/remove-element-and-scroll.html [ Skip ]
 
@@ -410,8 +410,6 @@ fast/images/async-image-background-change.html
 fast/images/async-image-src-change.html
 http/tests/multipart/multipart-async-image.html
 
-fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
-
 css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
 webkit.org/b/152178 fast/replaced/replaced-breaking.html [ Failure ]
@@ -482,7 +480,6 @@ webkit.org/b/156084 accessibility/mac/video-tag-hit-test.html [ Skip ]
 webkit.org/b/172222 imported/w3c/web-platform-tests/notifications/event-onclose.html [ Skip ]
 
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument.html [ Pass Failure ]
-imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray.html [ Pass Failure ]
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri.html [ Pass Failure ]
 
 # Newly imported WPT tests that are flaky only on WK1.
@@ -573,6 +570,18 @@ http/tests/inspector/network/local-resource-override-main-resource.html [ Failur
 http/tests/inspector/network/local-resource-override-script-tag.html [ Failure ]
 http/tests/inspector/network/resource-response-inspector-override.html [ Failure ]
 inspector/network/local-resource-override-continue-response.html [ Skip ]
+
+# Request interception is not available in WebKit1
+http/tests/inspector/network/intercept-aborted-request.html [ Skip ]
+http/tests/inspector/network/intercept-request-continue.html [ Skip ]
+http/tests/inspector/network/intercept-request-fragment.html [ Skip ]
+http/tests/inspector/network/intercept-request-main-resource.html [ Skip ]
+http/tests/inspector/network/intercept-request-main-resource-with-response.html [ Skip ]
+http/tests/inspector/network/intercept-request-properties.html [ Skip ]
+http/tests/inspector/network/intercept-request-subresource.html [ Skip ]
+http/tests/inspector/network/intercept-request-subresource-with-error.html [ Skip ]
+http/tests/inspector/network/intercept-request-subresource-with-response.html [ Skip ]
+http/tests/inspector/network/intercept-request-with-response.html [ Skip ]
 
 webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 
@@ -946,3 +955,13 @@ webkit.org/b/208477 accessibility/mac/text-marker-for-index.html [ Skip ]
 webkit.org/b/211923 imported/w3c/web-platform-tests/fetch/api/basic/stream-safe-creation.any.html [ Pass Crash ]
 
 webkit.org/b/212665 svg/custom/textPath-insert-path.svg [ Pass ImageOnlyFailure ]
+
+webkit.org/b/212828 http/tests/media/reload-after-dialog.html [ Pass Failure ]
+
+# Mac-WK1 does not support Picture-in-Picture
+media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
+media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+media/presentationmodechanged-fired-once.html [ Skip ]
+media/video-presentation-mode.html [ Skip ]
+
+webkit.org/b/212851 [ Mojave Release ] js/dom/unhandled-promise-rejection-console-no-report.html [ Pass Failure ]

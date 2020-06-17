@@ -29,16 +29,7 @@
 #if PLATFORM(WATCHOS)
 
 #import "UIKitSPI.h"
-#import <PepperUICore/PUICQuickboardListViewController.h>
-#import <PepperUICore/PUICQuickboardListViewControllerSubclass.h>
-#import <PepperUICore/PUICResources.h>
-#import <PepperUICore/PUICTableView.h>
-#import <PepperUICore/PUICTableViewCell.h>
 #import <wtf/RetainPtr.h>
-
-#if HAVE(QUICKBOARD_COLLECTION_VIEWS)
-#import <PepperUICore/PUICQuickboardListCollectionViewItemCell.h>
-#endif
 
 static const CGFloat checkmarkImageViewWidth = 32;
 static const CGFloat selectMenuItemHorizontalMargin = 9;
@@ -276,7 +267,12 @@ typedef NS_ENUM(NSInteger, PUICQuickboardListSection) {
 
 - (void)selectItemAtIndex:(NSInteger)index
 {
-    [self didSelectListItem:index];
+#if HAVE(QUICKBOARD_COLLECTION_VIEWS)
+    NSInteger itemSection = 0;
+#else
+    NSInteger itemSection = PUICQuickboardListSectionTextOptions;
+#endif
+    [self didSelectListItemAtIndexPath:[NSIndexPath indexPathForRow:index inSection:itemSection]];
 }
 
 @end

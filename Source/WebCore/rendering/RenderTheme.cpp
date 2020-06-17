@@ -1281,7 +1281,12 @@ Color RenderTheme::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Opti
     case CSSValueWebkitLink:
         return options.contains(StyleColor::Options::ForVisitedLink) ? SimpleColor { 0xFF551A8B } : SimpleColor { 0xFF0000EE };
     case CSSValueWebkitActivelink:
+    case CSSValueActivetext:
         return SimpleColor { 0xFFFF0000 };
+    case CSSValueLinktext:
+        return SimpleColor { 0xFF0000EE };
+    case CSSValueVisitedtext:
+        return SimpleColor { 0xFF551A8B };
     case CSSValueActiveborder:
         return Color::white;
     case CSSValueActivebuttontext:
@@ -1301,6 +1306,14 @@ Color RenderTheme::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Opti
     case CSSValueButtontext:
         return Color::black;
     case CSSValueCaptiontext:
+        return Color::black;
+    case CSSValueCanvas:
+        return Color::white;
+    case CSSValueCanvastext:
+        return Color::black;
+    case CSSValueField:
+        return Color::white;
+    case CSSValueFieldtext:
         return Color::black;
     case CSSValueGraytext:
         return SimpleColor { 0xFF808080 };
@@ -1370,26 +1383,27 @@ Color RenderTheme::tapHighlightColor()
 #endif
 
 // Value chosen by observation. This can be tweaked.
-static const int minColorContrastValue = 1300;
+constexpr float minColorContrastValue = 1.1f;
+
 // For transparent or translucent background color, use lightening.
-static const float minDisabledColorAlphaValue = 0.5;
+constexpr float minDisabledColorAlphaValue = 0.5f;
 
 Color RenderTheme::disabledTextColor(const Color& textColor, const Color& backgroundColor) const
 {
     // The explicit check for black is an optimization for the 99% case (black on white).
     // This also means that black on black will turn into grey on black when disabled.
     Color disabledColor;
-    if (Color::isBlackColor(textColor) || backgroundColor.alphaAsFloat() < minDisabledColorAlphaValue || differenceSquared(textColor, Color::white) > differenceSquared(backgroundColor, Color::white))
-        disabledColor = textColor.light();
+    if (equalIgnoringSemanticColor(textColor, Color::black) || backgroundColor.alphaAsFloat() < minDisabledColorAlphaValue || textColor.luminance() < backgroundColor.luminance())
+        disabledColor = textColor.lightened();
     else
-        disabledColor = textColor.dark();
+        disabledColor = textColor.darkened();
     
     // If there's not very much contrast between the disabled color and the background color,
     // just leave the text color alone. We don't want to change a good contrast color scheme so that it has really bad contrast.
     // If the contrast was already poor, then it doesn't do any good to change it to a different poor contrast color scheme.
-    if (differenceSquared(disabledColor, backgroundColor) < minColorContrastValue)
+    if (contrastRatio(disabledColor.toSRGBALossy(), backgroundColor.toSRGBALossy()) < minColorContrastValue)
         return textColor;
-    
+
     return disabledColor;
 }
 

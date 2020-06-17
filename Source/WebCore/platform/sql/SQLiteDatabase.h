@@ -66,12 +66,12 @@ public:
     WEBCORE_EXPORT bool tableExists(const String&);
     WEBCORE_EXPORT void clearAllTables();
     WEBCORE_EXPORT int runVacuumCommand();
-    int runIncrementalVacuumCommand();
+    WEBCORE_EXPORT int runIncrementalVacuumCommand();
     
     bool transactionInProgress() const { return m_transactionInProgress; }
 
     // Aborts the current database operation. This is thread safe.
-    void interrupt();
+    WEBCORE_EXPORT void interrupt();
 
     int64_t lastInsertRowID();
     int lastChanges();

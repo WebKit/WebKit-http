@@ -58,6 +58,7 @@
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/HTMLFrameOwnerElement.h>
+#include <WebCore/InspectorInstrumentationWebKit.h>
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/NetworkLoadInformation.h>
 #include <WebCore/PlatformStrategies.h>
@@ -152,9 +153,7 @@ static Seconds maximumBufferingTime(CachedResource* resource)
     case CachedResource::Type::RawResource:
     case CachedResource::Type::SVGDocumentResource:
     case CachedResource::Type::LinkPrefetch:
-#if ENABLE(VIDEO_TRACK)
     case CachedResource::Type::TextTrackResource:
-#endif
 #if ENABLE(XSLT)
     case CachedResource::Type::XSLStyleSheet:
 #endif
@@ -230,6 +229,13 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
 
     if (!tryLoadingUsingURLSchemeHandler(resourceLoader, trackingParameters)) {
         WEBLOADERSTRATEGY_RELEASE_LOG_IF_ALLOWED("scheduleLoad: URL will be scheduled with the NetworkProcess");
+
+        if (!resourceLoader.options().serviceWorkerRegistrationIdentifier && InspectorInstrumentationWebKit::shouldInterceptRequest(resourceLoader.frame(), resourceLoader.request())) {
+            InspectorInstrumentationWebKit::interceptRequest(resourceLoader, [this, protectedResourceLoader = makeRefPtr(&resourceLoader), trackingParameters, shouldClearReferrerOnHTTPSToHTTPRedirect, resource](const ResourceRequest& request) {
+                scheduleLoadFromNetworkProcess(*protectedResourceLoader, request, trackingParameters, shouldClearReferrerOnHTTPSToHTTPRedirect, maximumBufferingTime(resource));
+            });
+            return;
+        }
         scheduleLoadFromNetworkProcess(resourceLoader, resourceLoader.request(), trackingParameters, shouldClearReferrerOnHTTPSToHTTPRedirect, maximumBufferingTime(resource));
         return;
     }
@@ -315,7 +321,7 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     addParametersShared(frame, loadParameters);
 
 #if ENABLE(SERVICE_WORKER)
-    loadParameters.serviceWorkersMode = resourceLoader.options().serviceWorkersMode;
+    loadParameters.serviceWorkersMode = resourceLoader.options().loadedFromOpaqueSource == LoadedFromOpaqueSource::No ? resourceLoader.options().serviceWorkersMode : ServiceWorkersMode::None;
     loadParameters.serviceWorkerRegistrationIdentifier = resourceLoader.options().serviceWorkerRegistrationIdentifier;
     loadParameters.httpHeadersToKeep = resourceLoader.options().httpHeadersToKeep;
 #endif

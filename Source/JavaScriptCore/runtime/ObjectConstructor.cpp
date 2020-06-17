@@ -144,11 +144,7 @@ static EncodedJSValue JSC_HOST_CALL callObjectConstructor(JSGlobalObject* global
 
 EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
-    VM& vm = globalObject->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    JSObject* object = callFrame->argument(0).toObject(globalObject);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    RELEASE_AND_RETURN(scope, JSValue::encode(object->getPrototype(vm, globalObject)));
+    return JSValue::encode(callFrame->argument(0).getPrototype(globalObject));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorSetPrototypeOf(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -302,7 +298,7 @@ EncodedJSValue JSC_HOST_CALL objectConstructorAssign(JSGlobalObject* globalObjec
             auto canPerformFastPropertyEnumerationForObjectAssign = [] (Structure* structure) {
                 if (structure->typeInfo().overridesGetOwnPropertySlot())
                     return false;
-                if (structure->typeInfo().overridesGetPropertyNames())
+                if (structure->typeInfo().overridesAnyFormOfGetPropertyNames())
                     return false;
                 // FIXME: Indexed properties can be handled.
                 // https://bugs.webkit.org/show_bug.cgi?id=185358

@@ -32,9 +32,9 @@
 [
     Exposed=(Window,Worker),
     ActiveDOMObject,
-    Constructor,
-    ConstructorCallWith=ScriptExecutionContext,
 ] interface FileReader : EventTarget {
+    [CallWith=ScriptExecutionContext] constructor();
+
     // ready states
     const unsigned short EMPTY = 0;
     const unsigned short LOADING = 1;
@@ -52,7 +52,7 @@
 
     readonly attribute (DOMString or ArrayBuffer)? result;
 
-    readonly attribute FileError error;
+    readonly attribute DOMException? error;
 
     attribute EventHandler onloadstart;
     attribute EventHandler onprogress;

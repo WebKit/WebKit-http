@@ -1,3 +1,566 @@
+2020-06-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Freeze JSBigInt when setting it as a constant in AI
+        https://bugs.webkit.org/show_bug.cgi?id=213310
+        <rdar://problem/64450410>
+
+        Reviewed by Mark Lam.
+
+        * stress/bigint-constant-fold-to-numeric.js: Added.
+        (foo):
+
+2020-06-17  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Update test262 to commit 8d3dd2d1a0a5
+        https://bugs.webkit.org/show_bug.cgi?id=213312
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        * test262/latest-changes-summary.txt:
+        * test262/test/*: Updated.
+        * test262/test262-Revision.txt:
+
+2020-06-17  Keith Miller  <keith_miller@apple.com>
+
+        $vm.haveABadTime/isHavingABadTime should work with non-globalObject parameters
+        https://bugs.webkit.org/show_bug.cgi?id=213304
+
+        Reviewed by Mark Lam.
+
+        * stress/dollarVM-have-a-bad-time-no-params.js: Added.
+        * stress/dollarVM-have-a-bad-time-works-for-non-global-object-params.js: Added.
+
+2020-06-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Check NullSetterFunction under strict-mode context since structure / PropertyCondition are unaware of this
+        https://bugs.webkit.org/show_bug.cgi?id=213266
+
+        Reviewed by Mark Lam.
+
+        * stress/null-setter-frame.js: Added.
+        (shouldBe):
+        (realm.runString.test):
+        (object.get value):
+        (i.catch):
+        * stress/setter-throw-in-strict.js: Added.
+        (foo):
+
+2020-06-16  Mark Lam  <mark.lam@apple.com>
+
+        Add SIGABRT handler for non OS(DARWIN) builds to the jsc shell with the -s option.
+        https://bugs.webkit.org/show_bug.cgi?id=213200
+
+        Reviewed by Michael Catanzaro.
+
+        * stress/ensure-crash.js:
+        - unskip this test since expected crashes should now be handled on non-darwin builds.
+
+2020-06-15  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Bytecode liveness should be aware of checkpoints
+        https://bugs.webkit.org/show_bug.cgi?id=213106
+        <rdar://problem/63416838>
+
+        Reviewed by Keith Miller.
+
+        * stress/iterator-open-checkpoint-liveness.js: Added.
+        (f):
+        (next):
+        (iterator):
+        (catch):
+
+2020-06-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Expand JSObject::defineOwnIndexedProperty() fast path for existing properties
+        https://bugs.webkit.org/show_bug.cgi?id=213133
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/array-redefine-index-and-reverse.js: Added.
+        * microbenchmarks/array-redefine-index.js: Added.
+        * stress/define-own-indexed-property-fast-path.js: Added.
+
+2020-06-15  Caio Lima  <ticaiolima@gmail.com>
+
+        [ARMv7][MIPS][JSC] Skip check-is-constant-non-cell-should-not-array-profile-during-osr-exit.js
+        https://bugs.webkit.org/show_bug.cgi?id=213208
+
+        Unreviewed Gardening.
+
+        * stress/check-is-constant-non-cell-should-not-array-profile-during-osr-exit.js:
+
+2020-06-15  Keith Miller  <keith_miller@apple.com>
+
+        CheckIsConstant should not use BadCache exit kind
+        https://bugs.webkit.org/show_bug.cgi?id=213141
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/check-is-constant-non-cell-should-not-array-profile-during-osr-exit.js: Added.
+        (foo.bar):
+
+2020-06-15  Keith Miller  <keith_miller@apple.com>
+
+        JIT thunks should work on arm64_32
+        https://bugs.webkit.org/show_bug.cgi?id=213103
+
+        Reviewed by Saam Barati.
+
+        skip test on memory limited since it breaks on watch with JIT.
+
+        * stress/array-buffer-view-watchpoint-can-be-fired-in-really-add-in-dfg.js:
+
+2020-06-15  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] add machinery to disable JIT tiers when experimental features are enabled
+        https://bugs.webkit.org/show_bug.cgi?id=213193
+
+        Reviewed by Mark Lam.
+
+        * stress/get-private-name.js:
+        * stress/put-by-val-direct-addprivate.js:
+        * stress/put-by-val-direct-putprivate.js:
+
+2020-06-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        super should not depend on __proto__
+        https://bugs.webkit.org/show_bug.cgi?id=157972
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/object-get-prototype-of-primitive.js: Added.
+        * stress/class-syntax-derived-default-constructor.js:
+        * stress/get-prototype-of.js: Added.
+        * stress/super-property-access.js:
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2020-06-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Add wasm regresion test for loop
+        https://bugs.webkit.org/show_bug.cgi?id=213176
+
+        Reviewed by Darin Adler.
+
+        This patch adds one more regression test for r246134.
+
+        * wasm/regress/regression-with-loop.js: Added.
+
+2020-06-13  Devin Rousso  <drousso@apple.com>
+
+        Make `errors` an own property of `AggregateError` instead of a prototype accessor
+        https://bugs.webkit.org/show_bug.cgi?id=212677
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/AggregateError-own-property-errors.js: Added.
+
+        * test262/expectations.yaml:
+        Mark 9 tests as failing while waiting for test262 to update to match the spec.
+
+2020-06-12  Robin Morisset  <rmorisset@apple.com>
+
+        The ||= operator (and similar ones) should produce valid bytecode even if the right side is a static error
+        https://bugs.webkit.org/show_bug.cgi?id=213154
+
+        Reviewed by Devin Rousso.
+
+        * stress/bytecode-for-rmw-with-invalid-right-side.js: Added.
+        (catch):
+
+2020-06-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] el(Greek) characters' upper-case conversion is locale-sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=213155
+        <rdar://problem/55018467>
+
+        Reviewed by Darin Adler.
+
+        * stress/intl-el-case.js: Added.
+        (shouldBe):
+
+2020-06-12  Keith Miller  <keith_miller@apple.com>
+
+        Tests expecting a crash should use a signal handler in the JSC CLI process
+        https://bugs.webkit.org/show_bug.cgi?id=212479
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/ensure-crash.js:
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-bad-transition-debug.js:
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-bad-transition.js:
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-debug.js: Removed.
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior.js:
+        * stress/incorrect-put-could-generate-invalid-ic-involving-dictionary-flatten-debug.js:
+
+2020-06-12  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        AsyncGenerator should await "return" completions
+        https://bugs.webkit.org/show_bug.cgi?id=212774
+
+        Reviewed by Ross Kirsling.
+
+        With this change, async generator stress tests now pass in Chrome and Firefox (tested manually).
+
+        * stress/async-iteration-yield-star-interface.js:
+        * stress/async-iteration-yield-star.js:
+        * test262/expectations.yaml: Mark 8 test cases as passing.
+
+2020-06-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add sampling-profiler code-origin lookup test
+        https://bugs.webkit.org/show_bug.cgi?id=213108
+        <rdar://problem/52044072>
+
+        Reviewed by Saam Barati.
+
+        This is fixed by r262920. This patch just adds a test additionally.
+        We are keeping CallSiteIndex valid until corresponding JIT stub is destroyed.
+        This fixes SamplingProfiler too since SamplingProfiler also collects CallSiteIndex and gets corresponding CodeOrigin.
+        Since SamplingProfiler does this CallSiteIndex => CodeOrigin before running GC finalizer, validity of CallSiteIndex
+        should be kept correctly.
+
+        * stress/sampling-profiler-code-origin.js: Added.
+        (let.oThrow.get f):
+        (foo):
+        (return.get f):
+        (f):
+
+2020-06-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Return DisposableCallSiteIndex when destroying GCAwareJITStubRoutineWithExceptionHandler
+        https://bugs.webkit.org/show_bug.cgi?id=213069
+        <rdar://problem/64205186>
+
+        Reviewed by Saam Barati.
+
+        * stress/dont-dispose-callsiteindex-while-executing.js: Added.
+        (emptyFunction):
+        (foo.bar.set catch):
+        (foo.bar):
+        (foo):
+
+2020-06-11  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        RegExp.prototype getters should throw on cross-realm access
+        https://bugs.webkit.org/show_bug.cgi?id=213075
+
+        Reviewed by Saam Barati.
+
+        * test262/expectations.yaml: Mark 14 test cases as passing.
+
+2020-06-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        REGRESSION(r260697): [Intl] "missing script" locales like zh-TW are no longer mapped
+        https://bugs.webkit.org/show_bug.cgi?id=213007
+
+        Reviewed by Darin Adler.
+
+        * stress/intl-missing-script-locales.js: Added.
+
+2020-06-10  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] add stress test for op_get_private_name
+        https://bugs.webkit.org/show_bug.cgi?id=213024
+
+        Reviewed by Mark Lam.
+
+        * stress/get-private-name.js: Added.
+
+2020-06-09  Mark Lam  <mark.lam@apple.com>
+
+        Stringifier::appendStringifiedValue() should not assume it is always safe to recurse.
+        https://bugs.webkit.org/show_bug.cgi?id=213006
+        <rdar://problem/64154840>
+
+        Reviewed by Keith Miller.
+
+        * stress/json-stringify-executing-in-reserved-zone.js: Added.
+
+2020-06-09  Mark Lam  <mark.lam@apple.com>
+
+        Disambiguate the OverridesGetPropertyNames structure flag
+        https://bugs.webkit.org/show_bug.cgi?id=212909
+        <rdar://problem/63823557>
+
+        Reviewed by Saam Barati.
+
+        * stress/unexpected-stack-overflow-below-JSObject-getPropertyNames.js: Added.
+
+2020-06-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Intl] Update tests to support ICU 67
+        https://bugs.webkit.org/show_bug.cgi?id=212943
+
+        Reviewed by Yusuke Suzuki.
+
+        Our tests have been assuming ICU 60-64 results but WinCairo and PlayStation are now on ICU 67,
+        which includes fixes for variant alphabetization and non-explicit "-true" values in locale strings.
+
+        * stress/intl-collator.js:
+        (explicitTrueBeforeICU67):
+        (shouldBe.testCollator.Intl.Collator):
+        * stress/intl-datetimeformat.js:
+        * stress/intl-locale.js:
+        * stress/intl-numberformat.js:
+        * stress/intl-object.js:
+        * stress/intl-pluralrules.js:
+        * stress/intl-relativetimeformat.js:
+
+2020-06-08  Keith Miller  <keith_miller@apple.com>
+
+        Fix tests that time out on Series 4 Watch
+        https://bugs.webkit.org/show_bug.cgi?id=212911
+
+        Reviewed by Saam Barati.
+
+        Simplify some logic about when to skip microbenchmarks to $jitTests.
+        Also reduce iteration count for
+        dont-range-based-iterate-vector-that-is-mutated.js
+
+        Also, mark wasm tests as not run on watch.
+
+        * microbenchmarks/bit-test-constant.js:
+        * microbenchmarks/bit-test-nonconstant.js:
+        * microbenchmarks/interpreter-wasm.js:
+        * microbenchmarks/memcpy-typed-loop-large.js:
+        * microbenchmarks/memcpy-typed-loop-small.js:
+        * microbenchmarks/mul-immediate-sub.js:
+        * stress/dont-range-based-iterate-vector-that-is-mutated.js:
+        * stress/sampling-profiler-richards.js:
+
+2020-06-08  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.stringify should throw stack overflow error
+        https://bugs.webkit.org/show_bug.cgi?id=143511
+
+        Reviewed by Ross Kirsling and Mark Lam.
+
+        * stress/json-stringify-stack-overflow.js: Added.
+        * stress/json-stringify-string-builder-overflow.js:
+
+2020-06-05  Saam Barati  <sbarati@apple.com>
+
+        Audit safe to execute
+        https://bugs.webkit.org/show_bug.cgi?id=207075
+        <rdar://problem/59085094>
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/licm-dom-jit.js: Added.
+        (assert):
+        (foo):
+        (bar):
+
+2020-06-05  Saam Barati  <sbarati@apple.com>
+
+        Try to reduce jetsams further on iOS devices running jsc stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=212786
+
+        Reviewed by Mark Lam.
+
+        * wasm/references/multitable.js:
+        (string_appeared_here.vm.isMemoryLimited.tableInsanity):
+        (string_appeared_here.vm.isMemoryLimited.):
+        (string_appeared_here.vm.isMemoryLimited):
+        (string_appeared_here.tableInsanity): Deleted.
+        (I32Const.0.GetLocal.0.TableSet.1.End.End.WebAssembly.): Deleted.
+        (I32Const.0.GetLocal.0.TableSet.1.End.End.WebAssembly): Deleted.
+
+2020-06-05  Devin Rousso  <drousso@apple.com>
+
+        Logical Assignment: perform NamedEvaluation of anonymous functions
+        https://bugs.webkit.org/show_bug.cgi?id=212679
+
+        Reviewed by Ross Kirsling.
+
+        * stress/logical-assignment-operator-and.js:
+        * stress/logical-assignment-operator-coalesce.js:
+        * stress/logical-assignment-operator-or.js:
+
+2020-06-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Add support for private class fields
+        https://bugs.webkit.org/show_bug.cgi?id=206431
+
+        Reviewed by Saam Barati.
+
+        Expands upon the earlier public fields patch, adding a number of private
+        field tests.
+
+        * stress/class-fields-private-as-function.js: Added.
+        * stress/class-fields-private-cached-bytecode.js: Added.
+        * stress/class-fields-private-freeze-out-of-line.js: Added.
+        * stress/class-fields-private-freeze.js: Added.
+        * stress/class-fields-private-on-proxy.js: Added.
+        * stress/class-fields-private-out-of-line.js: Added.
+        * stress/class-fields-private-prevent-extensions-out-of-line.js: Added.
+        * stress/class-fields-private-prevent-extensions.js: Added.
+        * stress/class-fields-private-seal-out-of-line.js: Added.
+        * stress/class-fields-private-seal.js: Added.
+        * stress/class-fields-private-use-eval.js: Added.
+        * stress/class-fields-stress-instance.js:
+        * stress/optional-chaining-and-private-fields.js: Added.
+        * stress/private-name-access-in-computed-property.js: Added.
+        * stress/put-by-val-direct-addprivate.js: Added.
+        * stress/put-by-val-direct-putprivate.js: Added.
+        * test262/config.yaml:
+
+2020-06-04  Paulo Matos  <pmatos@igalia.com>
+
+        Skip microbenchmarks/interpreter-wasm.js on MIPS/ARM
+
+        Unreviewed Gardening.
+
+        There's no native wasm support on 32bits atm - skipping.
+
+        * microbenchmarks/interpreter-wasm.js:
+
+2020-06-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Intl classes should have meaningful @@toStringTag values
+        https://bugs.webkit.org/show_bug.cgi?id=212769
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        Mark 16 test cases as passing.
+
+        * stress/intl-collator.js:
+        * stress/intl-datetimeformat.js:
+        * stress/intl-numberformat.js:
+        * stress/intl-pluralrules.js:
+        Update stress tests.
+
+2020-06-04  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        GetMethod isn't performed properly on iterators
+        https://bugs.webkit.org/show_bug.cgi?id=212771
+
+        Reviewed by Saam Barati.
+
+        * test262/expectations.yaml: Mark 26 test cases as passing.
+
+2020-06-04  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Update test262 to commit 290ceba31fea
+        https://bugs.webkit.org/show_bug.cgi?id=212752
+
+        Reviewed by Ross Kirsling.
+
+        * test262/config.yaml: Unskip tests fixed in r260990.
+        * test262/expectations.yaml:
+        * test262/latest-changes-summary.txt:
+        * test262/test/*: Updated.
+        * test262/test262-Revision.txt:
+
+2020-06-03  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Disable B3 hoistLoopInvariantValues by default
+        https://bugs.webkit.org/show_bug.cgi?id=212511
+        <rdar://problem/63813245>
+
+        Reviewed by Mark Lam.
+
+        * microbenchmarks/interpreter-wasm.js: Added.
+        (key.in.Module.Module.hasOwnProperty):
+        (quit_):
+        (locateFile):
+        (ENVIRONMENT_IS_NODE.read_):
+        (ENVIRONMENT_IS_NODE.readBinary):
+        (ENVIRONMENT_IS_NODE.quit_):
+        (ENVIRONMENT_IS_NODE.Module.string_appeared_here):
+        (else.read_):
+        (else.readBinary):
+        (else.quit_):
+        (else):
+        (else.xhr.onload):
+        (else.readAsync):
+        (else.setWindowTitle):
+        (key.in.moduleOverrides.moduleOverrides.hasOwnProperty):
+        (dynamicAlloc):
+        (getNativeTypeSize):
+        (warnOnce):
+        (convertJsFunctionToWasm):
+        (addFunctionWasm):
+        (removeFunctionWasm):
+        (setTempRet0):
+        (setValue):
+        (assert):
+        (getCFunc):
+        (toC.string_appeared_here):
+        (convertReturnValue):
+        (ccall):
+        (UTF8ArrayToString):
+        (UTF8ToString):
+        (stringToUTF8Array):
+        (stringToUTF8):
+        (lengthBytesUTF8):
+        (allocateUTF8OnStack):
+        (writeArrayToMemory):
+        (writeAsciiToMemory):
+        (updateGlobalBufferAndViews):
+        (callRuntimeCallbacks):
+        (preRun):
+        (initRuntime):
+        (preMain):
+        (exitRuntime):
+        (postRun):
+        (addOnPreRun):
+        (addOnPostRun):
+        (addRunDependency):
+        (removeRunDependency):
+        (hasPrefix):
+        (isDataURI):
+        (isFileURI):
+        (getBinary):
+        (getBinaryPromise):
+        (createWasm.receiveInstance):
+        (createWasm.receiveInstantiatedSource):
+        (createWasm.instantiateArrayBuffer):
+        (createWasm.instantiateAsync.):
+        (createWasm.instantiateAsync):
+        (createWasm):
+        (__ATINIT__.push.func):
+        (demangle):
+        (demangleAll):
+        (_emscripten_get_sbrk_ptr):
+        (_emscripten_memcpy_big):
+        (abortOnCannotGrowMemory):
+        (_emscripten_resize_heap):
+        (PATH.splitPath):
+        (PATH.normalizeArray):
+        (PATH.normalize):
+        (PATH.dirname):
+        (PATH.basename):
+        (PATH.extname):
+        (PATH.join):
+        (PATH.join2):
+        (SYSCALLS.printChar):
+        (SYSCALLS.getStr):
+        (SYSCALLS.get64):
+        (_fd_write):
+        (_setTempRet0):
+        (___wasm_call_ctors.Module.string_appeared_here):
+        (_main.Module.string_appeared_here):
+        (_malloc.Module.string_appeared_here):
+        (___errno_location.Module.string_appeared_here):
+        (_free.Module.string_appeared_here):
+        (stackSave.Module.string_appeared_here):
+        (stackAlloc.Module.string_appeared_here):
+        (stackRestore.Module.string_appeared_here):
+        (__growWasmMemory.Module.string_appeared_here):
+        (dynCall_ii.Module.string_appeared_here):
+        (dynCall_iiii.Module.string_appeared_here):
+        (dynCall_jiji.Module.string_appeared_here):
+        (ExitStatus):
+        (dependenciesFulfilled):
+        (callMain):
+        (run.doRun):
+        (run):
+        (exit):
+        * microbenchmarks/interpreter-wasm.wasm: Added.
+
 2020-06-02  Saam Barati  <sbarati@apple.com>
 
         MultiDeleteByOffset should not always def

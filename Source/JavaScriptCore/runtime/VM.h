@@ -372,7 +372,6 @@ public:
     std::unique_ptr<HeapCellType> immutableButterflyHeapCellType;
     std::unique_ptr<HeapCellType> cellHeapCellType;
     std::unique_ptr<HeapCellType> destructibleCellHeapCellType;
-    std::unique_ptr<IsoHeapCellType> aggregateErrorHeapCellType;
     std::unique_ptr<IsoHeapCellType> apiGlobalObjectHeapCellType;
     std::unique_ptr<IsoHeapCellType> callbackConstructorHeapCellType;
     std::unique_ptr<IsoHeapCellType> callbackGlobalObjectHeapCellType;
@@ -498,7 +497,6 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(jscCallbackFunctionSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(callbackAPIWrapperGlobalObjectSpace)
 #endif
-    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(aggregateErrorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(apiGlobalObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(apiValueWrapperSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(arrayBufferSpace)
@@ -723,7 +721,6 @@ public:
     const ArgList* emptyList;
     SmallStrings smallStrings;
     NumericStrings numericStrings;
-    DateInstanceCache dateInstanceCache;
     std::unique_ptr<SimpleStats> machineCodeBytesPerBytecodeWordForBaselineJIT;
     WeakGCMap<std::pair<CustomGetterSetter*, int>, JSCustomGetterSetterFunction> customGetterSetterFunctionMap;
     WeakGCMap<StringImpl*, JSString, PtrHash<StringImpl*>> stringCache;
@@ -792,7 +789,7 @@ public:
     static JS_EXPORT_PRIVATE bool canUseAssembler();
     static bool isInMiniMode()
     {
-        return !canUseJIT() || Options::forceMiniVMMode();
+        return !Options::useJIT() || Options::forceMiniVMMode();
     }
 
     static bool useUnlinkedCodeBlockJettisoning()
@@ -801,15 +798,6 @@ public:
     }
 
     static void computeCanUseJIT();
-    ALWAYS_INLINE static bool canUseJIT()
-    {
-#if ENABLE(JIT)
-        ASSERT(s_canUseJITIsSet);
-        return s_canUseJIT;
-#else
-        return false;
-#endif
-    }
 
     SourceProviderCache* addSourceProviderCache(SourceProvider*);
     void clearSourceProviderCaches();
@@ -962,12 +950,16 @@ public:
 
     JSObject* stringRecursionCheckFirstObject { nullptr };
     HashSet<JSObject*> stringRecursionCheckVisitedObjects;
-    
-    LocalTimeOffsetCache utcTimeOffsetCache;
-    LocalTimeOffsetCache localTimeOffsetCache;
 
-    String cachedDateString;
-    double cachedDateStringValue;
+    struct DateCache {
+        DateInstanceCache dateInstanceCache;
+        LocalTimeOffsetCache utcTimeOffsetCache;
+        LocalTimeOffsetCache localTimeOffsetCache;
+
+        String cachedDateString;
+        double cachedDateStringValue;
+    };
+    DateCache dateCache;
 
     std::unique_ptr<Profiler::Database> m_perBytecodeProfiler;
     RefPtr<TypedArrayController> m_typedArrayController;
@@ -1231,13 +1223,6 @@ private:
 
     WTF::Function<void(VM&)> m_onEachMicrotaskTick;
     uintptr_t m_currentWeakRefVersion { 0 };
-
-#if ENABLE(JIT)
-#if ASSERT_ENABLED
-    JS_EXPORT_PRIVATE static bool s_canUseJITIsSet;
-#endif
-    JS_EXPORT_PRIVATE static bool s_canUseJIT;
-#endif
 
     VM* m_prev; // Required by DoublyLinkedListNode.
     VM* m_next; // Required by DoublyLinkedListNode.

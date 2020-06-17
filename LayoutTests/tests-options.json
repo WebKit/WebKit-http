@@ -17,10 +17,136 @@
     "imported/w3c/css/css-values/vh_not_refreshing_on_chrome.html": [
         "slow"
     ],
+    "imported/w3c/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/clearkey-mp4-playback-temporary-two-videos.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/clearkey-mp4-requestmediakeysystemaccess.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-events.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-expiration.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-keystatuses-multiple-sessions.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-keystatuses.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-destroy-persistent-license.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-persistent-license-events.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-persistent-license.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-persistent-usage-record-events.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-persistent-usage-record.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-retrieve-destroy-persistent-license.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-retrieve-persistent-license.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-retrieve-persistent-usage-record.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-clear-encrypted.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-encrypted-clear-sources.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-encrypted-clear.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-events.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-expired.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-multikey-sequential-readyState.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-multikey-sequential.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-multikey.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-multisession.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-after-src.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-after-update.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-immediately.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-setMediaKeys-onencrypted.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-two-videos.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary-waitingforkey.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-playback-temporary.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-again-after-playback.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-again-after-resetting-src.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-at-same-time.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-multiple-times-with-different-mediakeys.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-multiple-times-with-the-same-mediakeys.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-setmediakeys-to-multiple-video-elements.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-mp4-waiting-for-a-key.https.html": [
+        "slow"
+    ],
+    "imported/w3c/encrypted-media/drm-temporary-license-type.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-animations/timing-model/animations/updating-the-finished-state.html": [
         "slow"
     ],
     "imported/w3c/web-animations/timing-model/timelines/update-and-send-events.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/FileAPI/url/sandboxed-iframe.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/IndexedDB/idb-binary-key-roundtrip.htm": [
@@ -1374,6 +1500,96 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/compositing/2d.composite.uncovered.fill.destination-in.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.3arg.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.5arg.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.9arg.basic.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.9arg.destpos.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.9arg.destsize.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.9arg.sourcepos.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.9arg.sourcesize.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.alpha.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.animated.poster.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.broken.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.canvas.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.clip.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.composite.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.floatsource.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.negativedest.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.negativedir.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.negativesource.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.nonfinite.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.nowrap.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.null.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.path.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.self.1.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.self.2.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.svg.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.transform.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.wrongtype.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.zerocanvas.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.zerosource.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.zerosource.image.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/none.https.html": [

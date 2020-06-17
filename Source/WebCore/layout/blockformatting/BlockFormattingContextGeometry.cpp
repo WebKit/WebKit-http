@@ -112,7 +112,7 @@ ContentHeightAndMargin BlockFormattingContext::Geometry::inFlowNonReplacedHeight
     return compute(overrideVerticalValues);
 }
 
-ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin(const Box& layoutBox, const HorizontalConstraints& horizontalConstraints, const OverrideHorizontalValues& overrideHorizontalValues) const
+ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin(const Box& layoutBox, const HorizontalConstraints& horizontalConstraints, const OverrideHorizontalValues& overrideHorizontalValues)
 {
     ASSERT(layoutBox.isInFlow());
 
@@ -202,7 +202,7 @@ ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowNonReplacedWidthAn
     return contentWidthAndMargin;
 }
 
-ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin(const ReplacedBox& replacedBox, const HorizontalConstraints& horizontalConstraints, const OverrideHorizontalValues& overrideHorizontalValues) const
+ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin(const ReplacedBox& replacedBox, const HorizontalConstraints& horizontalConstraints, const OverrideHorizontalValues& overrideHorizontalValues)
 {
     ASSERT(replacedBox.isInFlow());
 
@@ -283,6 +283,36 @@ ContentWidthAndMargin BlockFormattingContext::Geometry::inFlowWidthAndMargin(con
     return inFlowReplacedWidthAndMargin(downcast<ReplacedBox>(layoutBox), horizontalConstraints, overrideHorizontalValues);
 }
 
+ContentWidthAndMargin BlockFormattingContext::Geometry::computedWidthAndMargin(const Box& layoutBox, const ConstraintsPair& constraintsPair)
+{
+    auto& horizontalConstraints = constraintsPair.containingBlock.horizontal;
+    auto compute = [&](Optional<LayoutUnit> usedWidth) {
+        if (layoutBox.isFloatingPositioned())
+            return floatingWidthAndMargin(layoutBox, horizontalConstraints, { usedWidth, { } });
+
+        if (layoutBox.isInFlow())
+            return inFlowWidthAndMargin(layoutBox, horizontalConstraints, { usedWidth, { } });
+
+        ASSERT_NOT_REACHED();
+        return ContentWidthAndMargin { };
+    };
+
+    auto contentWidthAndMargin = compute({ });
+
+    auto availableWidth = horizontalConstraints.logicalWidth;
+    if (auto maxWidth = computedMaxWidth(layoutBox, availableWidth)) {
+        auto maxWidthAndMargin = compute(maxWidth);
+        if (contentWidthAndMargin.contentWidth > maxWidthAndMargin.contentWidth)
+            contentWidthAndMargin = maxWidthAndMargin;
+    }
+
+    auto minWidth = computedMinWidth(layoutBox, availableWidth).valueOr(0);
+    auto minWidthAndMargin = compute(minWidth);
+    if (contentWidthAndMargin.contentWidth < minWidthAndMargin.contentWidth)
+        contentWidthAndMargin = minWidthAndMargin;
+    return contentWidthAndMargin;
+}
+
 FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::Geometry::intrinsicWidthConstraints(const Box& layoutBox)
 {
     auto fixedMarginBorderAndPadding = [&](auto& layoutBox) {
@@ -296,13 +326,14 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::Geometry::i
     };
 
     auto computedIntrinsicWidthConstraints = [&]() -> IntrinsicWidthConstraints {
-        auto& style = layoutBox.style();
-        if (auto width = fixedValue(style.logicalWidth()))
-            return { *width, *width };
-
+        auto logicalWidth = layoutBox.style().logicalWidth();
         // Minimum/maximum width can't be depending on the containing block's width.
-        if (!style.logicalWidth().isAuto())
+        auto needsResolvedContainingBlockWidth = logicalWidth.isCalculated() || logicalWidth.isPercent() || logicalWidth.isRelative();
+        if (needsResolvedContainingBlockWidth)
             return { };
+
+        if (auto width = fixedValue(logicalWidth))
+            return { *width, *width };
 
         if (layoutBox.isReplacedBox()) {
             auto& replacedBox = downcast<ReplacedBox>(layoutBox);
@@ -316,8 +347,14 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::Geometry::i
         if (!is<ContainerBox>(layoutBox) || !downcast<ContainerBox>(layoutBox).hasInFlowOrFloatingChild())
             return { };
 
-        if (layoutBox.establishesFormattingContext())
-            return LayoutContext::createFormattingContext(downcast<ContainerBox>(layoutBox), layoutState())->computedIntrinsicWidthConstraints();
+        if (layoutBox.establishesFormattingContext()) {
+            auto intrinsicWidthConstraints = LayoutContext::createFormattingContext(downcast<ContainerBox>(layoutBox), layoutState())->computedIntrinsicWidthConstraints();
+            if (logicalWidth.isMinContent())
+                return { intrinsicWidthConstraints.minimum, intrinsicWidthConstraints.minimum };
+            if (logicalWidth.isMaxContent())
+                return { intrinsicWidthConstraints.maximum, intrinsicWidthConstraints.maximum };
+            return intrinsicWidthConstraints;
+        }
 
         auto intrinsicWidthConstraints = IntrinsicWidthConstraints { };
         auto& formattingState = layoutState().formattingStateForBox(layoutBox);

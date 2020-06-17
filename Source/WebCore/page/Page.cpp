@@ -37,7 +37,6 @@
 #include "ContextMenuClient.h"
 #include "ContextMenuController.h"
 #include "CookieJar.h"
-#include "CustomHeaderFields.h"
 #include "DOMRect.h"
 #include "DOMRectList.h"
 #include "DatabaseProvider.h"
@@ -1073,11 +1072,15 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
 #endif
     }
 
+#if ENABLE(VIDEO)
     if (inStableState) {
         forEachMediaElement([] (HTMLMediaElement& element) {
             element.pageScaleFactorChanged();
         });
     }
+#else
+    UNUSED_PARAM(inStableState);
+#endif
 }
 
 void Page::setDelegatesScaling(bool delegatesScaling)
@@ -1144,10 +1147,11 @@ void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInte
         return;
 
     m_userInterfaceLayoutDirection = userInterfaceLayoutDirection;
-
+#if ENABLE(VIDEO)
     forEachMediaElement([] (HTMLMediaElement& element) {
         element.userInterfaceLayoutDirectionChanged();
     });
+#endif
 }
 
 #if ENABLE(VIDEO)
@@ -1446,7 +1450,7 @@ void Page::doAfterUpdateRendering()
         document.updateHighlightPositions();
     });
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     forEachDocument([] (Document& document) {
         document.updateTextTrackRepresentationImageIfNeeded();
     });
@@ -2480,7 +2484,7 @@ void Page::hiddenPageCSSAnimationSuspensionStateChanged()
     }
 }
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
 
 void Page::captionPreferencesChanged()
 {
@@ -3032,6 +3036,8 @@ void Page::forEachMediaElement(const Function<void(HTMLMediaElement&)>& functor)
     forEachDocument([&] (Document& document) {
         document.forEachMediaElement(functor);
     });
+#else
+    UNUSED_PARAM(functor);
 #endif
 }
 

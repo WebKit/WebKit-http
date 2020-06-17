@@ -31,6 +31,7 @@
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvertInterface.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMIterator.h"
 #include "JSDOMOperation.h"
@@ -49,10 +50,6 @@
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
 #include <wtf/URL.h>
-
-#if ENABLE(Condition1) || ENABLE(Condition11) || ENABLE(Condition12) || ENABLE(Condition2) || ENABLE(Condition22) || ENABLE(Condition23)
-#include "JSDOMConvertStrings.h"
-#endif
 
 #if ENABLE(Condition11) || ENABLE(Condition12)
 #include "TestSupplementalBuiltins.h"
@@ -282,12 +279,12 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(JS
     auto str2 = argument1.value().isUndefined() ? "defaultString"_s : convert<IDLDOMString>(*lexicalGlobalObject, argument1.value());
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestInterface::create(*context, WTFMove(str1), WTFMove(str2));
+    static_assert(IsExceptionOr<decltype(object)>::value);
+    static_assert(decltype(object)::ReturnType::isRef);
     auto jsValue = toJSNewlyCreated<IDLInterface<TestInterface>>(*lexicalGlobalObject, *castedThis->globalObject(), throwScope, WTFMove(object));
     RETURN_IF_EXCEPTION(throwScope, { });
-    if (auto* object = jsDynamicCast<JSObject*>(vm, jsValue)) {
-        setSubclassStructureIfNeeded<TestInterface>(lexicalGlobalObject, callFrame, object);
-        RETURN_IF_EXCEPTION(throwScope, { });
-    }
+    setSubclassStructureIfNeeded<TestInterface>(lexicalGlobalObject, callFrame, asObject(jsValue));
+    RETURN_IF_EXCEPTION(throwScope, { });
     return JSValue::encode(jsValue);
 }
 

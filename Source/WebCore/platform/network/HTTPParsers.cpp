@@ -129,7 +129,6 @@ bool isValidHTTPHeaderValue(const String& value)
         return false;
     for (unsigned i = 0; i < value.length(); ++i) {
         c = value[i];
-        ASSERT(isLatin1(c));
         if (c == 0x00 || c == 0x0A || c == 0x0D)
             return false;
     }
@@ -142,7 +141,7 @@ bool isValidAcceptHeaderValue(const String& value)
     for (unsigned i = 0; i < value.length(); ++i) {
         UChar c = value[i];
 
-        // First check for alphanumeric for performance reasons then whitelist four delimiter characters.
+        // First check for alphanumeric for performance reasons then allowlist four delimiter characters.
         if (isASCIIAlphanumeric(c) || c == ',' || c == '/' || c == ';' || c == '=')
             continue;
 

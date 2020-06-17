@@ -205,6 +205,7 @@ media/deactivate-audio-session.html [ Skip ]
 # ApplePay is only available on iOS (greater than iOS 10) and macOS (greater than macOS 10.12) and only for WebKit2.
 fast/css/appearance-apple-pay-button.html [ Skip ]
 fast/css/appearance-apple-pay-button-border-radius.html [ Skip ]
+fast/css/appearance-apple-pay-button-default-corners.html [ Skip ]
 fast/css/getComputedStyle/computed-style-apple-pay-button.html [ Skip ]
 http/tests/ssl/applepay/ [ Skip ]
 
@@ -309,6 +310,7 @@ imported/w3c/web-platform-tests/server-timing/navigation_timing_idl.https.html [
 # Console log lines may appear in a different order so we silence them.
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr Failure Pass ]
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-invalid-args.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/workers/WorkerGlobalScope_ErrorEvent_lineno.htm [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-disconnect-audioparam.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-automation-basic.html [ DumpJSConsoleLogInStdErr ]
@@ -387,7 +389,6 @@ imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/checkbox-
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/radio-detached-change-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-summary-element/anchor-with-inline-element.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/json-module/parse-error.tentative.html [ Skip ]
-imported/w3c/web-platform-tests/2dcontext/wide-gamut-canvas/canvas-createImageBitmap-e_srgb.html [ Skip ]
 
 # Newly imported WPT ref tests failures.
 imported/w3c/web-platform-tests/html/editing/editing-0/spelling-and-grammar-checking/spelling-markers-008.html [ ImageOnlyFailure ]
@@ -446,9 +447,6 @@ imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/phrasing-co
 
 # Cross-Origin Opener Policy is not supported.
 imported/w3c/web-platform-tests/html/cross-origin-opener-policy [ Skip ]
-
-# Sometimes prints weird output at the beginning of the tests.
-imported/w3c/web-platform-tests/2dcontext/wide-gamut-canvas [ Failure Pass ]
 
 # Newly imported WPT tests that are crashing.
 [ Debug ] imported/w3c/web-platform-tests/html/rendering/replaced-elements/embedded-content/video-controls-vertical-writing-mode.html [ Crash ]
@@ -880,7 +878,10 @@ http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-window-bits.ht
 # OffscreenCanvas is only enabled on GTK and WPE by default
 webkit.org/b/203146 fast/canvas/offscreen-enabled.html [ Skip ]
 webkit.org/b/203146 http/wpt/offscreen-canvas [ Skip ]
-webkit.org/b/203146 imported/w3c/web-platform-tests/offscreen-canvas [ Skip ]
+webkit.org/b/203146 imported/w3c/web-platform-tests/html/canvas/offscreen [ Skip ]
+
+# Tests a setting behind the ENABLE_FULLSCREEN_API flag, which is WK2-only
+media/video-supports-fullscreen.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -1058,6 +1059,19 @@ imported/w3c/web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-d
 imported/w3c/web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-013.html [ Pass Failure ]
 imported/w3c/web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-015.html [ Pass Failure ]
 webkit.org/b/191367 imported/w3c/web-platform-tests/css/css-grid/grid-model/grid-container-ignores-first-letter-002.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-item-dynamic-min-contribution-001.html [ Failure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-003.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-004.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-005.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-006.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-007.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-008.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-009.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-010.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-paddings-005.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-paddings-006.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-paddings-009.html [ ImageOnlyFailure ]
+webkit.org/b/209461 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-paddings-010.html [ ImageOnlyFailure ]
 webkit.org/b/191461 imported/w3c/web-platform-tests/css/css-grid/grid-items/percentage-size-subitems-001.html [ ImageOnlyFailure ]
 webkit.org/b/191462 imported/w3c/web-platform-tests/css/css-grid/grid-items/percentage-size-replaced-subitems-001.html [ ImageOnlyFailure ]
 webkit.org/b/191463 imported/w3c/web-platform-tests/css/css-grid/grid-items/explicitly-sized-grid-item-as-table.html [ ImageOnlyFailure ]
@@ -1065,10 +1079,6 @@ webkit.org/b/191627 imported/w3c/web-platform-tests/css/css-grid/alignment/grid-
 webkit.org/b/149890 fast/css-grid-layout/grid-shorthands-style-format.html [ Failure ]
 webkit.org/b/191507 fast/css-grid-layout/positioned-grid-container-percentage-tracks.html [ Failure ]
 webkit.org/b/191508 fast/css-grid-layout/crash-large-positions.html [ Skip ]
-webkit.org/b/209282 imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-as-flex-item-should-not-shrink-to-fit-001.html [ ImageOnlyFailure ]
-webkit.org/b/209282 imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-as-flex-item-should-not-shrink-to-fit-003.html [ ImageOnlyFailure ]
-webkit.org/b/209282 imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-as-flex-item-should-not-shrink-to-fit-007.html [ ImageOnlyFailure ]
-webkit.org/b/209282 imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-as-flex-item-should-not-shrink-to-fit-008.html [ ImageOnlyFailure ]
 
 # Flaky tests at import time
 imported/w3c/web-platform-tests/css/css-scoping/css-scoping-shadow-host-namespace.html [ ImageOnlyFailure ]
@@ -1363,7 +1373,6 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/decode/image-decode-path-changes.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/decode/image-decode.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/invalid-src.html [ Skip ]
-imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/relevant-mutations.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-object-element/object-events.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/intrinsicsize/intrinsicsize-without-unsized-media.tentative.https.sub.html [ Skip ]
 
@@ -2937,7 +2946,6 @@ imported/w3c/web-platform-tests/websockets/Send-65K-data.any.worker.html [ Skip 
 imported/w3c/web-platform-tests/websockets/Send-Unpaired-Surrogates.any.worker.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/close/close-connecting.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/close/close-basic.html [ Pass Failure ]
-imported/w3c/web-platform-tests/websockets/Close-reason-unpaired-surrogates.any.worker.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/Close-undefined.any.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/readyState/006.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/015.html [ Pass Failure ]
@@ -2955,7 +2963,6 @@ imported/w3c/web-platform-tests/websockets/Secure-Close-3000-verify-code.any.wor
 imported/w3c/web-platform-tests/websockets/Create-Secure-valid-url-protocol-string.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Send-65K-data.any.worker.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Close-1005.any.worker.html [ Skip ]
-imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Create-on-worker-shutdown.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Close-server-initiated-close.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Send-binary-arraybuffer.any.worker.html [ Skip ]
@@ -3004,7 +3011,6 @@ imported/w3c/web-platform-tests/websockets/Secure-Close-1000-verify-code.any.wor
 imported/w3c/web-platform-tests/websockets/Secure-Send-binary-65K-arraybuffer.any.worker.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Close-1000-reason.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Create-Secure-valid-url-array-protocols.any.worker.html [ Skip ]
-imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.worker.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Send-binary-65K-arraybuffer.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Secure-Close-readyState-Closed.any.html [ Skip ]
 imported/w3c/web-platform-tests/websockets/Create-Secure-valid-url.any.worker.html [ Skip ]
@@ -3051,8 +3057,6 @@ fast/text/design-system-ui-16.html [ ImageOnlyFailure ]
 # Lazy load for iframes is not supported yet.
 webkit.org/b/196698 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-lazy.html [ Skip ]
 webkit.org/b/196698 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-001.sub.html [ Skip ]
-
-webkit.org/b/202517 imported/w3c/web-platform-tests/2dcontext/text-styles/2d.text.draw.baseline.ideographic.html [ Skip ]
 
 # wpt css-images failures
 webkit.org/b/200207 imported/w3c/web-platform-tests/css/css-images/css-image-fallbacks-and-annotations002.html [ ImageOnlyFailure ]
@@ -3303,7 +3307,10 @@ webgl/1.0.3/conformance/textures/texture-npot-video.html [ Skip ]
 webgl/1.0.3/conformance/canvas/rapid-resizing.html [ Skip ]
 webgl/1.0.3/conformance/extensions/webgl-draw-buffers.html [ Skip ]
 
-webkit.org/b/197673 http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable.html [ Pass Failure Timeout ]
+# Not supported by default
+http/wpt/mediarecorder [ Skip ]
+imported/w3c/web-platform-tests/mediacapture-record [ Skip ]
+fast/history/page-cache-media-recorder.html [ Skip ]
 
 # WebGL 2 Conformance Suite rules for regular bots post ANGLE backend adoption.
 # DEQP is skipped on the main fleet of bots because of the long run time.
@@ -4233,7 +4240,6 @@ webkit.org/b/206767 imported/w3c/web-platform-tests/css/css-flexbox/gap-014.html
 webkit.org/b/206767 imported/w3c/web-platform-tests/css/css-flexbox/gap-015.html [ ImageOnlyFailure ]
 webkit.org/b/206767 imported/w3c/web-platform-tests/css/css-flexbox/gap-016.html [ ImageOnlyFailure ]
 webkit.org/b/209649 imported/w3c/web-platform-tests/css/css-flexbox/padding-overflow-crash.html [ ImageOnlyFailure ]
-webkit.org/b/209871 imported/w3c/web-platform-tests/css/css-flexbox/flex-wrap-005.html [ ImageOnlyFailure ]
 webkit.org/b/210077 imported/w3c/web-platform-tests/css/css-flexbox/flex-aspect-ratio-img-column-010.html [ ImageOnlyFailure ]
 webkit.org/b/210077 imported/w3c/web-platform-tests/css/css-flexbox/flex-basis-010.html [ ImageOnlyFailure ]
 webkit.org/b/210089 imported/w3c/web-platform-tests/css/css-flexbox/flex-minimum-height-flex-items-011.xht [ ImageOnlyFailure ]
@@ -4257,6 +4263,22 @@ webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-h
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-size-subitems-001.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/scrollbars-auto.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/scrollbars.html [ ImageOnlyFailure ]
+
+# Newly imported Canvas WPT tests that are failing.
+imported/w3c/web-platform-tests/html/canvas/element/building-paths/canvas_complexshapes_arcto_001.htm [ ImageOnlyFailure Pass ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/2d.drawImage.broken.html [ Failure Pass ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-bitmap-orientation-none.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-bitmap-swap-width-height-orientation-none.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-bitmap-swap-width-height.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-bitmap.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-blob.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-element-orientation-none.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-element-swap-width-height-orientation-none.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-element-swap-width-height.tentative.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/image-orientation/drawImage-from-element.tentative.html [ ImageOnlyFailure ]
+
+# Sometimes prints weird output at the beginning of the tests.
+imported/w3c/web-platform-tests/html/canvas/element/wide-gamut-canvas [ Failure Pass ]
 
 # CSS Masonry Layout not supported.
 imported/w3c/web-platform-tests/css/css-grid/masonry.tentative [ Skip ]

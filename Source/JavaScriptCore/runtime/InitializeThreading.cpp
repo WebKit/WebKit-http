@@ -63,11 +63,18 @@ void initializeThreading()
 #if ENABLE(WRITE_BARRIER_PROFILING)
         WriteBarrierCounters::initialize();
 #endif
+        {
+            Options::AllowUnfinalizedAccessScope scope;
+            ExecutableAllocator::initialize();
+            VM::computeCanUseJIT();
+            if (!g_jscConfig.vm.canUseJIT) {
+                Options::useJIT() = false;
+                Options::recomputeDependentOptions();
+            }
+        }
+        Options::finalize();
 
-        ExecutableAllocator::initialize();
-        VM::computeCanUseJIT();
-
-        if (VM::canUseJIT() && Options::useSigillCrashAnalyzer())
+        if (Options::useSigillCrashAnalyzer())
             enableSigillCrashAnalyzer();
 
         LLInt::initialize();
@@ -95,7 +102,7 @@ void initializeThreading()
 #endif
         VMTraps::initializeSignals();
 #if ENABLE(WEBASSEMBLY)
-        Wasm::enableFastMemory();
+        Wasm::prepareFastMemory();
 #endif
 
         WTF::compilerFence();

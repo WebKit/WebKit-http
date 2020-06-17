@@ -31,11 +31,13 @@
 #pragma once
 
 #include "ActiveDOMObject.h"
+#include "DOMException.h"
 #include "EventTarget.h"
+#include "ExceptionCode.h"
 #include "ExceptionOr.h"
-#include "FileError.h"
 #include "FileReaderLoader.h"
 #include "FileReaderLoaderClient.h"
+#include "FileReaderSync.h"
 #include <wtf/HashMap.h>
 #include <wtf/UniqueRef.h>
 
@@ -69,7 +71,7 @@ public:
     void doAbort();
 
     ReadyState readyState() const { return m_state; }
-    RefPtr<FileError> error() { return m_error; }
+    DOMException* error() { return m_error.get(); }
     FileReaderLoader::ReadType readType() const { return m_readType; }
     Optional<Variant<String, RefPtr<JSC::ArrayBuffer>>> result() const;
 
@@ -94,7 +96,7 @@ private:
     void didStartLoading() final;
     void didReceiveData() final;
     void didFinishLoading() final;
-    void didFail(int errorCode) final;
+    void didFail(ExceptionCode errorCode) final;
 
     ExceptionOr<void> readInternal(Blob&, FileReaderLoader::ReadType);
     void fireErrorEvent(int httpStatusCode);
@@ -106,7 +108,7 @@ private:
     FileReaderLoader::ReadType m_readType { FileReaderLoader::ReadAsBinaryString };
     String m_encoding;
     std::unique_ptr<FileReaderLoader> m_loader;
-    RefPtr<FileError> m_error;
+    RefPtr<DOMException> m_error;
     MonotonicTime m_lastProgressNotificationTime { MonotonicTime::nan() };
     HashMap<uint64_t, Function<void()>> m_pendingTasks;
 };

@@ -1,3 +1,94 @@
+2020-06-17  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        REGRESSION(r260760): ENABLE_GRAPHICS_CONTEXT_GL should be ON, not TRUE
+        https://bugs.webkit.org/show_bug.cgi?id=212057
+
+        Reviewed by Carlos Garcia Campos.
+
+        This is already set by feature policy. Don't clobber it.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-06-10  Dean Jackson  <dino@apple.com>
+
+        Add a dynamic library target for ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=207591
+
+        Reviewed by Tim Horton.
+
+        In preparation for moving to a dynamic library, start
+        by compiling and linking it. It isn't used anywhere
+        but getting it into the build will help Apple's
+        build system remain happy as we migrate, as well
+        as have the system know it exists for building
+        the shared system cache.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2020-06-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Build is broken with EVENT_LOOP_TYPE=GLib
+        https://bugs.webkit.org/show_bug.cgi?id=212987
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/OptionsJSCOnly.cmake: Add gio-unix as a required component of the GLib
+        package, as it is needed for the remote inspector support with EVENT_LOOP_TYPE=GLib.
+
+2020-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK4] Get MiniBrowser ready for GTK4
+        https://bugs.webkit.org/show_bug.cgi?id=210276
+
+        Reviewed by Adrian Perez de Castro.
+
+        Bump GTK4 required version.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-06-07  Philippe Normand  <pnormand@igalia.com>
+
+        Remove ENABLE_VIDEO_TRACK ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=212568
+
+        Reviewed by Youenn Fablet.
+
+        VIDEO_TRACK has been enabled by default on all ports for a long time. As the spec is stable,
+        the feature can unconditionally be enabled and is now guarded under ENABLE(VIDEO).
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2020-06-05  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove conditionals for ENABLE_APPLE_PAY_SESSION_V(3|4)
+        https://bugs.webkit.org/show_bug.cgi?id=212541
+        <rdar://problem/63781452>
+
+        Reviewed by Darin Adler.
+
+        APPLE_PAY_SESSION_V(3|4) is now enabled whenever APPLE_PAY itself is enabled.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2020-06-04  Mark Lam  <mark.lam@apple.com>
+
+        Editors should not automatically trim trailing whitespace.
+        https://bugs.webkit.org/show_bug.cgi?id=212763
+
+        Reviewed by Yusuke Suzuki.
+
+        Doing so would force a lot of unnecessary code changes and make patches hard to
+        review.  It is common WebKit practice to not make unrelated changes in patches.
+
+        * .editorconfig:
+
 2020-06-02  Keith Rollin  <krollin@apple.com>
 
         Revert FEATURES_DEFINES related changes

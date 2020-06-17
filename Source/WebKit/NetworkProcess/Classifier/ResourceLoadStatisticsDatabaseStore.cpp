@@ -277,6 +277,13 @@ static const HashMap<String, String>& createTableQueries()
     return createTableQueries;
 }
 
+HashSet<ResourceLoadStatisticsDatabaseStore*>& ResourceLoadStatisticsDatabaseStore::allStores()
+{
+    ASSERT(!RunLoop::isMain());
+
+    static NeverDestroyed<HashSet<ResourceLoadStatisticsDatabaseStore*>> map;
+    return map;
+}
 
 ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue, ShouldIncludeLocalhost shouldIncludeLocalhost, const String& storageDirectoryPath, PAL::SessionID sessionID)
     : ResourceLoadStatisticsStore(store, workQueue, shouldIncludeLocalhost)
@@ -300,11 +307,13 @@ ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebReso
     });
 
     includeTodayAsOperatingDateIfNecessary();
+    allStores().add(this);
 }
 
 ResourceLoadStatisticsDatabaseStore::~ResourceLoadStatisticsDatabaseStore()
 {
     close();
+    allStores().remove(this);
 }
 
 void ResourceLoadStatisticsDatabaseStore::close()
@@ -523,6 +532,12 @@ SQLiteStatementAutoResetScope ResourceLoadStatisticsDatabaseStore::scopedStateme
     return SQLiteStatementAutoResetScope { statement.get() };
 }
 
+void ResourceLoadStatisticsDatabaseStore::interrupt()
+{
+    if (m_database.isOpen())
+        m_database.interrupt();
+}
+
 bool ResourceLoadStatisticsDatabaseStore::isEmpty() const
 {
     ASSERT(!RunLoop::isMain());
@@ -736,6 +751,7 @@ Optional<unsigned> ResourceLoadStatisticsDatabaseStore::domainID(const Registrab
     if (!scopedStatement
         || scopedStatement->bindText(1, domain.string()) != SQLITE_OK) {
         RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::domainIDFromString failed, error message: %{private}s", this, m_database.lastErrorMsg());
+        ASSERT_NOT_REACHED();
         return WTF::nullopt;
     }
     
@@ -1455,16 +1471,10 @@ void ResourceLoadStatisticsDatabaseStore::classifyPrevalentResources()
     reclassifyResources();
 }
 
-void ResourceLoadStatisticsDatabaseStore::syncStorageIfNeeded()
+void ResourceLoadStatisticsDatabaseStore::runIncrementalVacuumCommand()
 {
     ASSERT(!RunLoop::isMain());
-    m_database.runVacuumCommand();
-}
-
-void ResourceLoadStatisticsDatabaseStore::syncStorageImmediately()
-{
-    ASSERT(!RunLoop::isMain());
-    m_database.runVacuumCommand();
+    m_database.runIncrementalVacuumCommand();
 }
 
 bool ResourceLoadStatisticsDatabaseStore::hasStorageAccess(const TopFrameDomain& topFrameDomain, const SubFrameDomain& subFrameDomain) const
@@ -2197,18 +2207,20 @@ void ResourceLoadStatisticsDatabaseStore::setTopFrameUniqueRedirectFrom(const To
 std::pair<ResourceLoadStatisticsDatabaseStore::AddedRecord, Optional<unsigned>> ResourceLoadStatisticsDatabaseStore::ensureResourceStatisticsForRegistrableDomain(const RegistrableDomain& domain)
 {
     ASSERT(!RunLoop::isMain());
-    
-    auto scopedStatement = this->scopedStatement(m_domainIDFromStringStatement, domainIDFromStringQuery, "ensureResourceStatisticsForRegistrableDomain"_s);
-    if (!scopedStatement
-        || scopedStatement->bindText(1, domain.string()) != SQLITE_OK) {
-        RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::ensureResourceStatisticsForRegistrableDomain failed, error message: %{private}s", this, m_database.lastErrorMsg());
-        ASSERT_NOT_REACHED();
-        return { AddedRecord::No, 0 };
-    }
-    
-    if (scopedStatement->step() == SQLITE_ROW) {
-        unsigned domainID = scopedStatement->getColumnInt(0);
-        return { AddedRecord::No, domainID };
+
+    {
+        auto scopedStatement = this->scopedStatement(m_domainIDFromStringStatement, domainIDFromStringQuery, "ensureResourceStatisticsForRegistrableDomain"_s);
+        if (!scopedStatement
+            || scopedStatement->bindText(1, domain.string()) != SQLITE_OK) {
+            RELEASE_LOG_ERROR_IF_ALLOWED(m_sessionID, "%p - ResourceLoadStatisticsDatabaseStore::ensureResourceStatisticsForRegistrableDomain failed, error message: %{private}s", this, m_database.lastErrorMsg());
+            ASSERT_NOT_REACHED();
+            return { AddedRecord::No, 0 };
+        }
+
+        if (scopedStatement->step() == SQLITE_ROW) {
+            unsigned domainID = scopedStatement->getColumnInt(0);
+            return { AddedRecord::No, domainID };
+        }
     }
 
     ResourceLoadStatistics newObservation(domain);

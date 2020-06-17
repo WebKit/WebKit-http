@@ -1061,6 +1061,7 @@ private:
         }
 
         case CheckJSCast:
+        case CheckNotJSCast:
             break;
 
         case SkipScope:
@@ -1408,7 +1409,7 @@ private:
         case CheckNotEmpty:
         case AssertNotEmpty:
         case CheckIdent:
-        case CheckBadCell:
+        case CheckBadValue:
         case PutStructure:
         case Phantom:
         case Check:

@@ -36,6 +36,7 @@
 #include "WebXRSpace.h"
 #include "XREnvironmentBlendMode.h"
 #include "XRFrameRequestCallback.h"
+#include "XRInteractionMode.h"
 #include "XRReferenceSpaceType.h"
 #include "XRSessionMode.h"
 #include "XRVisibilityState.h"
@@ -64,6 +65,7 @@ public:
     using RefCounted<WebXRSession>::deref;
 
     XREnvironmentBlendMode environmentBlendMode() const;
+    XRInteractionMode interactionMode() const;
     XRVisibilityState visibilityState() const;
     const WebXRRenderState& renderState() const;
     const WebXRInputSourceArray& inputSources() const;
@@ -72,7 +74,7 @@ public:
     void requestReferenceSpace(XRReferenceSpaceType, RequestReferenceSpacePromise&&);
 
     XRFrameRequestCallback::Id requestAnimationFrame(Ref<XRFrameRequestCallback>&&);
-    void cancelAnimationFrame(int handle);
+    void cancelAnimationFrame(XRFrameRequestCallback::Id handle);
 
     void end(EndPromise&&);
 
@@ -99,6 +101,7 @@ private:
     bool referenceSpaceIsSupported(XRReferenceSpaceType) const;
 
     XREnvironmentBlendMode m_environmentBlendMode;
+    XRInteractionMode m_interactionMode;
     XRVisibilityState m_visibilityState;
     RefPtr<WebXRInputSourceArray> m_inputSources;
     bool m_ended { false };

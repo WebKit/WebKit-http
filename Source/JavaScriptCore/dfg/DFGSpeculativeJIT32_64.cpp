@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 #include "CallFrameShuffler.h"
 #include "DFGAbstractInterpreterInlines.h"
 #include "DFGCallArrayAllocatorSlowPathGenerator.h"
+#include "DFGDoesGC.h"
 #include "DFGOperations.h"
 #include "DFGSlowPathGenerator.h"
 #include "DirectArguments.h"
@@ -1805,6 +1806,13 @@ void SpeculativeJIT::compileContiguousPutByVal(Node* node, BaseOperandType& base
 void SpeculativeJIT::compile(Node* node)
 {
     NodeType op = node->op();
+
+    if constexpr (validateDFGDoesGC) {
+        if (Options::validateDoesGC()) {
+            bool expectDoesGC = doesGC(m_jit.graph(), node);
+            m_jit.store32(TrustedImm32(DoesGCCheck::encode(expectDoesGC, node->index(), node->op())), vm().heap.addressOfDoesGC());
+        }
+    }
 
 #if ENABLE(DFG_REGISTER_ALLOCATION_VALIDATION)
     m_jit.clearRegisterAllocationOffsets();
@@ -4179,6 +4187,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case CheckJSCast:
+    case CheckNotJSCast:
         compileCheckJSCast(node);
         break;
 
@@ -4231,7 +4240,7 @@ void SpeculativeJIT::compile(Node* node)
     case MultiGetByOffset:
     case MultiPutByOffset:
     case MultiDeleteByOffset:
-    case CheckBadCell:
+    case CheckBadValue:
     case BottomValue:
     case PhantomNewObject:
     case PhantomNewFunction:

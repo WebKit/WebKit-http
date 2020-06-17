@@ -58,12 +58,6 @@ class PatchAnalysisTaskDelegate(object):
     def run_command(self, command):
         raise NotImplementedError("subclasses must implement")
 
-    def command_passed(self, message, patch):
-        raise NotImplementedError("subclasses must implement")
-
-    def command_failed(self, message, script_error, patch):
-        raise NotImplementedError("subclasses must implement")
-
     def refetch_patch(self, patch):
         raise NotImplementedError("subclasses must implement")
 
@@ -98,11 +92,9 @@ class PatchAnalysisTask(object):
             raise PatchIsNotValid(self._patch, self.error)
         try:
             self._delegate.run_command(command)
-            self._delegate.command_passed(success_message, patch=self._patch)
             return True
         except ScriptError as e:
             self._script_error = e
-            self.failure_status_id = self._delegate.command_failed(failure_message, script_error=self._script_error, patch=self._patch)
             return False
 
     def _clean(self):
@@ -368,8 +360,6 @@ class PatchAnalysisTask(object):
             return self._retry_jsc_tests()
         elif hasattr(self._delegate, 'group') and self._delegate.group() == "bindings":
             return self._retry_bindings_tests()
-        elif hasattr(self._delegate, 'group') and self._delegate.group() == "webkitpy":
-            return self.report_failure()
         else:
             return self._retry_layout_tests()
 

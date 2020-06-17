@@ -434,6 +434,7 @@ Optional<String> CDMPrivateClearKey::sanitizeSessionId(const String& sessionId) 
     return sessionId;
 }
 
+CDMInstanceClearKey::CDMInstanceClearKey() : CDMInstanceProxy("org.w3.clearkey"_s) { };
 CDMInstanceClearKey::~CDMInstanceClearKey() = default;
 
 void CDMInstanceClearKey::initializeWithConfiguration(const CDMKeySystemConfiguration&, AllowDistinctiveIdentifiers distinctiveIdentifiers, AllowPersistentState persistentState, SuccessCallback&& callback)
@@ -461,8 +462,8 @@ const String& CDMInstanceClearKey::keySystem() const
 
 RefPtr<CDMInstanceSession> CDMInstanceClearKey::createSession()
 {
-    RefPtr<CDMInstanceSession> newSession = adoptRef(new CDMInstanceSessionClearKey(*this));
-    trackSession(newSession);
+    auto newSession = adoptRef(new CDMInstanceSessionClearKey(*this));
+    trackSession(*newSession);
     return newSession;
 }
 

@@ -899,7 +899,7 @@ public:
     void restoreSelectionInFocusedEditableElement();
 
 #if ENABLE(DRAG_SUPPORT) && PLATFORM(GTK)
-    void performDragControllerAction(DragControllerAction, const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebCore::SelectionData&&, uint32_t flags);
+    void performDragControllerAction(DragControllerAction, const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragOperation> draggingSourceOperationMask, WebCore::SelectionData&&, uint32_t flags);
 #endif
 
 #if ENABLE(DRAG_SUPPORT) && !PLATFORM(GTK)
@@ -907,7 +907,7 @@ public:
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
-    void dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t operation);
+    void dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, OptionSet<WebCore::DragOperation>);
 
     void willPerformLoadDragDestinationAction();
     void mayPerformUploadDragDestinationAction();
@@ -915,7 +915,7 @@ public:
     void willStartDrag() { ASSERT(!m_isStartingDrag); m_isStartingDrag = true; }
     void didStartDrag();
     void dragCancelled();
-    WebCore::DragSourceAction allowedDragSourceActions() const { return m_allowedDragSourceActions; }
+    OptionSet<WebCore::DragSourceAction> allowedDragSourceActions() const { return m_allowedDragSourceActions; }
 #endif
 
     void beginPrinting(WebCore::FrameIdentifier, const PrintInfo&);
@@ -1068,7 +1068,7 @@ public:
     void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const URL& originatingURL, const uint8_t* data, unsigned long size);
 
 #if PLATFORM(COCOA)
-    void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
+    void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, FrameInfoData&&, const uint8_t* data, unsigned long size, const String& pdfUUID);
 #endif
 
     bool mainFrameIsScrollable() const { return m_mainFrameIsScrollable; }
@@ -1339,6 +1339,8 @@ public:
     uint64_t nativeWindowHandle() { return m_nativeWindowHandle; }
 #endif
 
+    static void updatePreferencesGenerated(const WebPreferencesStore&);
+
 private:
     WebPage(WebCore::PageIdentifier, WebPageCreationParameters&&);
 
@@ -1404,8 +1406,8 @@ private:
 #endif
 
 #if PLATFORM(IOS_FAMILY) && ENABLE(DATA_INTERACTION)
-    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t allowedActions);
-    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t allowedActions);
+    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask);
     void insertDroppedImagePlaceholders(const Vector<WebCore::IntSize>&, CompletionHandler<void(const Vector<WebCore::IntRect>&, Optional<WebCore::TextIndicatorData>)>&& reply);
     void computeAndSendEditDragSnapshot();
 #endif
@@ -1531,7 +1533,7 @@ private:
 
     void preferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
-    void updatePreferencesGenerated(const WebPreferencesStore&);
+    void updateSettingsGenerated(const WebPreferencesStore&);
 
 #if PLATFORM(IOS_FAMILY)
     bool parentProcessHasServiceWorkerEntitlement() const;
@@ -1931,7 +1933,7 @@ private:
 
 #if ENABLE(DRAG_SUPPORT)
     bool m_isStartingDrag { false };
-    WebCore::DragSourceAction m_allowedDragSourceActions { WebCore::DragSourceActionAny };
+    OptionSet<WebCore::DragSourceAction> m_allowedDragSourceActions { WebCore::anyDragSourceAction() };
 #endif
 
 #if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)

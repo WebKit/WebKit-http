@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
@@ -48,7 +48,6 @@
 #include "ContentFilter.h"
 #include "ContentRuleListResults.h"
 #include "ContentSecurityPolicy.h"
-#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "DatabaseManager.h"
 #include "DiagnosticLoggingClient.h"
@@ -437,7 +436,8 @@ void FrameLoader::changeLocation(FrameLoadRequest&& frameRequest, Event* trigger
 
     Ref<Frame> protect(m_frame);
 
-    if (m_frame.script().executeIfJavaScriptURL(frameRequest.resourceRequest().url(), &frameRequest.requester().securityOrigin(), frameRequest.shouldReplaceDocumentIfJavaScriptURL())) {
+    if (frameRequest.resourceRequest().url().protocolIsJavaScript()) {
+        m_frame.script().executeJavaScriptURL(frameRequest.resourceRequest().url(), &frameRequest.requester().securityOrigin(), frameRequest.shouldReplaceDocumentIfJavaScriptURL());
         m_quickRedirectComing = false;
         return;
     }
@@ -469,12 +469,14 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
         return;
     }
 
-    if (submission->action().protocolIsJavaScript()) {
-        if (!m_frame.document()->contentSecurityPolicy()->allowFormAction(URL(submission->action())))
-            return;
+    URL formAction = submission->action();
+    if (!m_frame.document()->contentSecurityPolicy()->allowFormAction(formAction))
+        return;
+
+    if (formAction.protocolIsJavaScript()) {
         m_isExecutingJavaScriptFormAction = true;
         Ref<Frame> protect(m_frame);
-        m_frame.script().executeIfJavaScriptURL(submission->action(), nullptr, DoNotReplaceDocumentIfJavaScriptURL);
+        m_frame.script().executeJavaScriptURL(submission->action(), nullptr, DoNotReplaceDocumentIfJavaScriptURL);
         m_isExecutingJavaScriptFormAction = false;
         return;
     }
@@ -1077,15 +1079,6 @@ void FrameLoader::setOpener(Frame* opener)
 
     if (m_frame.document())
         m_frame.document()->initSecurityContext();
-}
-
-// FIXME: This does not belong in FrameLoader!
-void FrameLoader::handleFallbackContent()
-{
-    HTMLFrameOwnerElement* owner = m_frame.ownerElement();
-    if (!is<HTMLObjectElement>(owner))
-        return;
-    downcast<HTMLObjectElement>(*owner).renderFallbackContent();
 }
 
 void FrameLoader::provisionalLoadStarted()
@@ -2363,12 +2356,6 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
         checkCompleted();
 }
 
-bool FrameLoader::isHostedByObjectElement() const
-{
-    HTMLFrameOwnerElement* owner = m_frame.ownerElement();
-    return owner && owner->hasTagName(objectTag);
-}
-
 bool FrameLoader::isReplacing() const
 {
     return m_loadType == FrameLoadType::Replace;
@@ -3136,8 +3123,11 @@ void FrameLoader::receivedMainResourceError(const ResourceError& error)
     // FIXME: Don't want to do this if an entirely new load is going, so should check
     // that both data sources on the frame are either this or nil.
     stop();
-    if (m_client->shouldFallBack(error))
-        handleFallbackContent();
+    if (m_client->shouldFallBack(error)) {
+        HTMLFrameOwnerElement* owner = m_frame.ownerElement();
+        if (is<HTMLObjectElement>(owner))
+            downcast<HTMLObjectElement>(*owner).renderFallbackContent();
+    }
 
     if (m_state == FrameStateProvisional && m_provisionalDocumentLoader) {
         if (m_submittedFormURL == m_provisionalDocumentLoader->originalRequestCopy().url())

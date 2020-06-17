@@ -320,11 +320,14 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediasession/MediaRemoteControls.idl
     Modules/mediasession/MediaSession.idl
 
+    Modules/mediasource/AudioTrackMediaSource.idl
     Modules/mediasource/DOMURLMediaSource.idl
     Modules/mediasource/MediaSource.idl
     Modules/mediasource/SourceBuffer.idl
     Modules/mediasource/SourceBufferList.idl
+    Modules/mediasource/TextTrackMediaSource.idl
     Modules/mediasource/VideoPlaybackQuality.idl
+    Modules/mediasource/VideoTrackMediaSource.idl
 
     Modules/mediastream/CanvasCaptureMediaStreamTrack.idl
     Modules/mediastream/DoubleRange.idl
@@ -697,6 +700,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DocumentFragment.idl
     dom/DocumentFullscreen.idl
     dom/DocumentOrShadowRoot.idl
+    dom/DocumentStorageAccess.idl
     dom/DocumentTouch.idl
     dom/DocumentType.idl
     dom/DragEvent.idl
@@ -766,10 +770,9 @@ set(WebCore_NON_SVG_IDL_FILES
 
     fileapi/Blob.idl
     fileapi/BlobCallback.idl
-    fileapi/BlobLineEndings.idl
     fileapi/BlobPropertyBag.idl
+    fileapi/EndingType.idl
     fileapi/File.idl
-    fileapi/FileError.idl
     fileapi/FileList.idl
     fileapi/FileReader.idl
     fileapi/FileReaderSync.idl
@@ -904,6 +907,21 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/PaintRenderingContext2D.idl
     html/canvas/Path2D.idl
 
+    html/track/AudioTrack.idl
+    html/track/AudioTrackList.idl
+    html/track/DataCue.idl
+    html/track/TextTrack.idl
+    html/track/TextTrackCue.idl
+    html/track/TextTrackCueGeneric.idl
+    html/track/TextTrackCueList.idl
+    html/track/TextTrackList.idl
+    html/track/TrackEvent.idl
+    html/track/VTTCue.idl
+    html/track/VTTRegion.idl
+    html/track/VTTRegionList.idl
+    html/track/VideoTrack.idl
+    html/track/VideoTrackList.idl
+
     inspector/CommandLineAPIHost.idl
     inspector/InspectorAuditAccessibilityObject.idl
     inspector/InspectorAuditDOMObject.idl
@@ -931,6 +949,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/NavigatorID.idl
     page/NavigatorLanguage.idl
     page/NavigatorOnLine.idl
+    page/NavigatorPlugins.idl
     page/NavigatorServiceWorker.idl
     page/NavigatorShare.idl
     page/Performance.idl
@@ -1210,6 +1229,7 @@ if (ENABLE_WEBXR)
         Modules/webxr/XRHandedness.idl
         Modules/webxr/XRInputSourceEvent.idl
         Modules/webxr/XRInputSourcesChangeEvent.idl
+        Modules/webxr/XRInteractionMode.idl
         Modules/webxr/XRReferenceSpaceEvent.idl
         Modules/webxr/XRReferenceSpaceType.idl
         Modules/webxr/XRRenderStateInit.idl
@@ -1430,67 +1450,6 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLUniformLocation.idl
         html/canvas/WebGLVertexArrayObject.idl
         html/canvas/WebGLVertexArrayObjectOES.idl
-    )
-endif ()
-
-if (ENABLE_VIDEO_TRACK)
-    list(APPEND WebCore_IDL_FILES
-        html/track/AudioTrack.idl
-        html/track/AudioTrackList.idl
-        html/track/DataCue.idl
-        html/track/TextTrack.idl
-        html/track/TextTrackCue.idl
-        html/track/TextTrackCueGeneric.idl
-        html/track/TextTrackCueList.idl
-        html/track/TextTrackList.idl
-        html/track/TrackEvent.idl
-        html/track/VTTCue.idl
-        html/track/VTTRegion.idl
-        html/track/VTTRegionList.idl
-        html/track/VideoTrack.idl
-        html/track/VideoTrackList.idl
-    )
-
-    if (ENABLE_MEDIA_SOURCE)
-        list(APPEND WebCore_IDL_FILES
-            Modules/mediasource/AudioTrackMediaSource.idl
-            Modules/mediasource/TextTrackMediaSource.idl
-            Modules/mediasource/VideoTrackMediaSource.idl
-        )
-    endif ()
-
-    list(APPEND WebCore_SOURCES
-        html/track/AudioTrack.cpp
-        html/track/AudioTrackList.cpp
-        html/track/BufferedLineReader.cpp
-        html/track/DataCue.cpp
-        html/track/InbandDataTextTrack.cpp
-        html/track/InbandGenericTextTrack.cpp
-        html/track/InbandTextTrack.cpp
-        html/track/InbandWebVTTTextTrack.cpp
-        html/track/LoadableTextTrack.cpp
-        html/track/TextTrack.cpp
-        html/track/TextTrackCue.cpp
-        html/track/TextTrackCueGeneric.cpp
-        html/track/TextTrackCueList.cpp
-        html/track/TextTrackList.cpp
-        html/track/TrackBase.cpp
-        html/track/TrackEvent.cpp
-        html/track/TrackListBase.cpp
-        html/track/VTTCue.cpp
-        html/track/VTTRegion.cpp
-        html/track/VTTRegionList.cpp
-        html/track/VTTScanner.cpp
-        html/track/VideoTrack.cpp
-        html/track/VideoTrackList.cpp
-        html/track/WebVTTElement.cpp
-        html/track/WebVTTParser.cpp
-        html/track/WebVTTTokenizer.cpp
-
-        loader/cache/CachedTextTrack.cpp
-
-        platform/graphics/TextTrackRepresentation.cpp
-        platform/graphics/TrackPrivateBase.cpp
     )
 endif ()
 
@@ -2058,6 +2017,13 @@ WEBKIT_COPY_FILES(WebCore_CopyPrivateHeaders
     FLATTENED
 )
 list(APPEND WebCore_INTERFACE_DEPENDENCIES WebCore_CopyPrivateHeaders)
+# WebCore_CopyPrivateHeaders needs to have a direct or indirect
+# dependency of WebCore target for CMake Visual Studio generator to
+# eliminate duplicated custom commands. Otherwise, CSSPropertyNames.h
+# will be generated in both projects.
+if (NOT INTERNAL_BUILD)
+    add_dependencies(WebCore_CopyPrivateHeaders WebCore)
+endif ()
 
 WEBKIT_FRAMEWORK(WebCore)
 WEBKIT_FRAMEWORK_TARGET(WebCore)

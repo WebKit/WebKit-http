@@ -72,7 +72,7 @@ public:
 
     struct DynamicMediaQueryRules {
         Vector<Ref<const MediaQuerySet>> mediaQuerySets;
-        HashSet<size_t, DefaultHash<size_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<size_t>> affectedRulePositions;
+        Vector<size_t> affectedRulePositions;
         Vector<RuleFeature> ruleFeatures;
         bool requiresFullReset { false };
         bool result { true };
@@ -113,7 +113,7 @@ public:
 
     bool hasViewportDependentMediaQueries() const { return m_hasViewportDependentMediaQueries; }
 
-    Optional<DynamicMediaQueryEvaluationChanges> evaluteDynamicMediaQueryRules(const MediaQueryEvaluator&);
+    Optional<DynamicMediaQueryEvaluationChanges> evaluateDynamicMediaQueryRules(const MediaQueryEvaluator&);
 
     const RuleFeatureSet& features() const { return m_features; }
 
@@ -122,7 +122,7 @@ public:
     const RuleDataVector* tagRules(const AtomString& key, bool isHTMLName) const;
     const RuleDataVector* shadowPseudoElementRules(const AtomString& key) const { return m_shadowPseudoElementRules.get(key); }
     const RuleDataVector* linkPseudoClassRules() const { return &m_linkPseudoClassRules; }
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     const RuleDataVector* cuePseudoRules() const { return &m_cuePseudoRules; }
 #endif
     const RuleDataVector& hostPseudoClassRules() const { return m_hostPseudoClassRules; }
@@ -149,7 +149,7 @@ private:
         Vector<size_t> changedQueryIndexes { };
         Vector<const Vector<RuleFeature>*> ruleFeatures { };
     };
-    CollectedMediaQueryChanges evaluteDynamicMediaQueryRules(const MediaQueryEvaluator&, size_t startIndex);
+    CollectedMediaQueryChanges evaluateDynamicMediaQueryRules(const MediaQueryEvaluator&, size_t startIndex);
 
     template<typename Function> void traverseRuleDatas(Function&&);
 
@@ -160,7 +160,7 @@ private:
     AtomRuleMap m_tagLowercaseLocalNameRules;
     AtomRuleMap m_shadowPseudoElementRules;
     RuleDataVector m_linkPseudoClassRules;
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     RuleDataVector m_cuePseudoRules;
 #endif
     RuleDataVector m_hostPseudoClassRules;

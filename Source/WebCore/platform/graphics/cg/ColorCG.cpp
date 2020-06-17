@@ -78,8 +78,7 @@ static SimpleColor makeSimpleColorFromCGColor(CGColorRef color)
         ASSERT_NOT_REACHED();
     }
 
-    static const double scaleFactor = nextafter(256.0, 0.0);
-    return makeSimpleColor(r * scaleFactor, g * scaleFactor, b * scaleFactor, a * scaleFactor);
+    return makeSimpleColorFromFloats(r, g, b, a);
 }
 
 Color::Color(CGColorRef color)
@@ -129,7 +128,7 @@ static CGColorRef leakCGColor(const Color& color)
 
 CGColorRef cachedCGColor(const Color& color)
 {
-    if (!color.isExtended()) {
+    if (color.isSimple()) {
         switch (color.asSimple().value()) {
         case Color::transparent.value(): {
             static CGColorRef transparentCGColor = leakCGColor(color);

@@ -49,6 +49,7 @@ types [
     :ProfileTypeBytecodeFlag,
     :PropertyOffset,
     :PutByIdFlags,
+    :PutByValFlags,
     :ResolveType,
     :Structure,
     :StructureID,
@@ -497,6 +498,15 @@ op :get_by_id_direct,
         offset: unsigned,
     }
 
+op :get_prototype_of,
+    args: {
+        dst: VirtualRegister,
+        value: VirtualRegister,
+    },
+    metadata: {
+        profile: ValueProfile,
+    }
+
 op :try_get_by_id,
     args: {
         dst: VirtualRegister,
@@ -550,6 +560,19 @@ op :get_by_val,
         seenIdentifiers: GetByValHistory,
     }
 
+op :get_private_name,
+    args: {
+        dst: VirtualRegister,
+        base: VirtualRegister,
+        property: VirtualRegister,
+    },
+    metadata: {
+        profile: ValueProfile,
+        structureID: StructureID,
+        offset: unsigned,
+        property: WriteBarrier[JSCell],
+    }
+
 op :put_by_val,
     args: {
         base: VirtualRegister,
@@ -575,7 +598,7 @@ op :put_by_val_direct,
         base: VirtualRegister,
         property: VirtualRegister,
         value: VirtualRegister,
-        ecmaMode: ECMAMode,
+        flags: PutByValFlags,
     },
     metadata: {
         arrayProfile: ArrayProfile,

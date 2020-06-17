@@ -66,6 +66,11 @@ XREnvironmentBlendMode WebXRSession::environmentBlendMode() const
     return m_environmentBlendMode;
 }
 
+XRInteractionMode WebXRSession::interactionMode() const
+{
+    return m_interactionMode;
+}
+
 XRVisibilityState WebXRSession::visibilityState() const
 {
     return m_visibilityState;
@@ -209,7 +214,7 @@ XRFrameRequestCallback::Id WebXRSession::requestAnimationFrame(Ref<XRFrameReques
 }
 
 // https://immersive-web.github.io/webxr/#dom-xrsession-cancelanimationframe
-void WebXRSession::cancelAnimationFrame(int callbackId)
+void WebXRSession::cancelAnimationFrame(XRFrameRequestCallback::Id callbackId)
 {
     // 1. Let session be the target XRSession object.
     // 2. Find the entry in session's list of animation frame callbacks or session's list of

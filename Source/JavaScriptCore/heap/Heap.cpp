@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2020 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -611,8 +611,6 @@ void Heap::finalizeUnconditionalFinalizers()
         finalizeMarkedUnconditionalFinalizers<JSWeakObjectRef>(*vm().m_weakObjectRefSpace);
     if (vm().m_errorInstanceSpace)
         finalizeMarkedUnconditionalFinalizers<ErrorInstance>(*vm().m_errorInstanceSpace);
-    if (vm().m_aggregateErrorSpace)
-        finalizeMarkedUnconditionalFinalizers<ErrorInstance>(*vm().m_aggregateErrorSpace);
 
 #if ENABLE(WEBASSEMBLY)
     if (vm().m_webAssemblyCodeBlockSpace)
@@ -632,7 +630,7 @@ void Heap::didFinishIterating()
 
 void Heap::completeAllJITPlans()
 {
-    if (!VM::canUseJIT())
+    if (!Options::useJIT())
         return;
 #if ENABLE(JIT)
     JITWorklist::ensureGlobalWorklist().completeAllForVM(m_vm);
@@ -644,7 +642,7 @@ template<typename Func>
 void Heap::iterateExecutingAndCompilingCodeBlocks(const Func& func)
 {
     m_codeBlocks->iterateCurrentlyExecuting(func);
-    if (VM::canUseJIT())
+    if (Options::useJIT())
         DFG::iterateCodeBlocksForGC(m_vm, func);
 }
 
@@ -703,7 +701,7 @@ void Heap::gatherJSStackRoots(ConservativeRoots& roots)
 void Heap::gatherScratchBufferRoots(ConservativeRoots& roots)
 {
 #if ENABLE(DFG_JIT)
-    if (!VM::canUseJIT())
+    if (!Options::useJIT())
         return;
     m_vm.gatherScratchBufferRoots(roots);
     m_vm.scanSideState(roots);
@@ -723,7 +721,7 @@ void Heap::beginMarking()
 void Heap::removeDeadCompilerWorklistEntries()
 {
 #if ENABLE(DFG_JIT)
-    if (!VM::canUseJIT())
+    if (!Options::useJIT())
         return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::existingWorklistForIndex(i).removeDeadPlans(m_vm);
@@ -1063,8 +1061,8 @@ void Heap::collect(Synchronousness synchronousness, GCRequest request)
 
 void Heap::collectNow(Synchronousness synchronousness, GCRequest request)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     switch (synchronousness) {
     case Async: {
@@ -1096,8 +1094,8 @@ void Heap::collectNow(Synchronousness synchronousness, GCRequest request)
 
 void Heap::collectAsync(GCRequest request)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     if (!m_isSafeToCollect)
         return;
@@ -1120,8 +1118,8 @@ void Heap::collectAsync(GCRequest request)
 
 void Heap::collectSync(GCRequest request)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     if (!m_isSafeToCollect)
         return;
@@ -1303,7 +1301,7 @@ NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
 
             {
                 ParallelModeEnabler parallelModeEnabler(*slotVisitor);
-                slotVisitor->drainFromShared(SlotVisitor::SlaveDrain);
+                slotVisitor->drainFromShared(SlotVisitor::HelperDrain);
             }
 
             {
@@ -1640,7 +1638,7 @@ void Heap::stopThePeriphery(GCConductor conn)
         });
 
 #if ENABLE(JIT)
-    if (VM::canUseJIT()) {
+    if (Options::useJIT()) {
         DeferGCForAWhile awhile(*this);
         if (JITWorklist::ensureGlobalWorklist().completeAllForVM(m_vm)
             && conn == GCConductor::Collector)
@@ -1783,8 +1781,8 @@ NEVER_INLINE void Heap::resumeTheMutator()
 
 void Heap::stopIfNecessarySlow()
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     while (stopIfNecessarySlow(m_worldState.load())) { }
     
@@ -1798,8 +1796,8 @@ void Heap::stopIfNecessarySlow()
 
 bool Heap::stopIfNecessarySlow(unsigned oldState)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     RELEASE_ASSERT(oldState & hasAccessBit);
     RELEASE_ASSERT(!(oldState & stoppedBit));
@@ -2156,7 +2154,7 @@ void Heap::suspendCompilerThreads()
     // We ensure the worklists so that it's not possible for the mutator to start a new worklist
     // after we have suspended the ones that he had started before. That's not very expensive since
     // the worklists use AutomaticThreads anyway.
-    if (!VM::canUseJIT())
+    if (!Options::useJIT())
         return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::ensureWorklistForIndex(i).suspendAllThreads();
@@ -2367,7 +2365,7 @@ void Heap::didFinishCollection()
 void Heap::resumeCompilerThreads()
 {
 #if ENABLE(DFG_JIT)
-    if (!VM::canUseJIT())
+    if (!Options::useJIT())
         return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::existingWorklistForIndex(i).resumeAllThreads();
@@ -2600,8 +2598,8 @@ void Heap::reportExternalMemoryVisited(size_t size)
 void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
 {
     ASSERT(deferralContext || isDeferred() || !DisallowGC::isInEffectOnCurrentThread());
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     if (!m_isSafeToCollect)
         return;
@@ -2717,7 +2715,7 @@ void Heap::addCoreConstraints()
                 SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::ConservativeScan);
                 slotVisitor.append(conservativeRoots);
             }
-            if (VM::canUseJIT()) {
+            if (Options::useJIT()) {
                 // JITStubRoutines must be visited after scanning ConservativeRoots since JITStubRoutines depend on the hook executed during gathering ConservativeRoots.
                 SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::JITStubRoutines);
                 m_jitStubRoutines->traceMarkedStubRoutines(slotVisitor);
@@ -2825,7 +2823,7 @@ void Heap::addCoreConstraints()
         ConstraintParallelism::Parallel);
     
 #if ENABLE(DFG_JIT)
-    if (VM::canUseJIT()) {
+    if (Options::useJIT()) {
         m_constraintSet->add(
             "Dw", "DFG Worklists",
             [this] (SlotVisitor& slotVisitor) {

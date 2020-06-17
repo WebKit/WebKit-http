@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc. All rights reserved.
  * Copyright (C) 2010 Research In Motion Limited. All rights reserved.
  *
@@ -42,6 +42,7 @@
 
 #pragma once
 
+#include "VMInlines.h"
 #include <wtf/DateMath.h>
 #include <wtf/GregorianDateTime.h>
 
@@ -50,9 +51,9 @@ namespace JSC {
 class JSGlobalObject;
 class VM;
 
-JS_EXPORT_PRIVATE void msToGregorianDateTime(VM&, double, WTF::TimeType outputTimeType, GregorianDateTime&);
-JS_EXPORT_PRIVATE double gregorianDateTimeToMS(VM&, const GregorianDateTime&, double, WTF::TimeType inputTimeType);
-JS_EXPORT_PRIVATE double getUTCOffset(VM&);
+JS_EXPORT_PRIVATE void msToGregorianDateTime(VM::DateCache&, double, WTF::TimeType outputTimeType, GregorianDateTime&);
+JS_EXPORT_PRIVATE double gregorianDateTimeToMS(VM::DateCache&, const GregorianDateTime&, double, WTF::TimeType inputTimeType);
+JS_EXPORT_PRIVATE double getUTCOffset(VM::DateCache&);
 JS_EXPORT_PRIVATE double parseDate(JSGlobalObject*, VM&, const WTF::String&);
 
 } // namespace JSC

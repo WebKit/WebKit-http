@@ -120,7 +120,7 @@ public:
     // Delegated scrolling/zooming has caused the viewport to change, so update viewport-constrained layers
     WEBCORE_EXPORT void mainFrameViewportChangedViaDelegatedScrolling(const FloatPoint& scrollPosition, const WebCore::FloatRect& layoutViewport, double scale);
 
-    void didScrollByDelegatedScrolling() { m_wasScrolledByDelegatedScrollingSincePreviousCommit = true; }
+    void setNeedsApplyLayerPositionsAfterCommit() { m_needsApplyLayerPositionsAfterCommit = true; }
 
     void notifyRelatedNodesAfterScrollPositionChange(ScrollingTreeScrollingNode& changedNode);
 
@@ -192,6 +192,8 @@ public:
 
     bool isMonitoringWheelEvents() const { return m_isMonitoringWheelEvents; }
     bool inCommitTreeState() const { return m_inCommitTreeState; }
+
+    void scrollBySimulatingWheelEventForTesting(ScrollingNodeID, FloatSize);
 
     virtual void lockLayersForHitTesting() { }
     virtual void unlockLayersForHitTesting() { }
@@ -272,7 +274,7 @@ private:
     bool m_isMonitoringWheelEvents { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
     bool m_asyncFrameOrOverflowScrollingEnabled { false };
-    bool m_wasScrolledByDelegatedScrollingSincePreviousCommit { false };
+    bool m_needsApplyLayerPositionsAfterCommit { false };
     bool m_inCommitTreeState { false };
 };
 

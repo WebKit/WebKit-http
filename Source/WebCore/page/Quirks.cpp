@@ -26,7 +26,6 @@
 #include "config.h"
 #include "Quirks.h"
 
-#include "CustomHeaderFields.h"
 #include "DOMTokenList.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -129,6 +128,15 @@ bool Quirks::shouldAutoplayForArbitraryUserGesture() const
     auto host = m_document->url().host();
     return equalLettersIgnoringASCIICase(host, "twitter.com") || host.endsWithIgnoringASCIICase(".twitter.com");
 #endif
+}
+
+bool Quirks::shouldAutoplayWebAudioForArbitraryUserGesture() const
+{
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+    return equalLettersIgnoringASCIICase(host, "www.bing.com");
 }
 
 bool Quirks::hasBrokenEncryptedMediaAPISupportQuirk() const

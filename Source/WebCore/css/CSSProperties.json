@@ -620,7 +620,8 @@
             "codegen-properties": {
                 "custom": "Value",
                 "font-property": true,
-                "high-priority": true
+                "high-priority": true,
+                "name-for-methods": "SpecifiedLocale"
             },
             "status": "non-standard"
         },
@@ -3730,7 +3731,6 @@
             "inherited": true,
             "codegen-properties": {
                 "custom": "Value",
-                "initial": "currentColor",
                 "visited-link-color-support": true
             },
             "status": "supported",

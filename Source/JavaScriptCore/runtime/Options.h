@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,8 @@
 #include "JSExportMacros.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <wtf/ForbidHeapAllocation.h>
+#include <wtf/Noncopyable.h>
 #include <wtf/PrintStream.h>
 #include <wtf/StdLibExtras.h>
 
@@ -73,7 +75,35 @@ public:
         GCLogLevel,
     };
 
+    class AllowUnfinalizedAccessScope {
+        WTF_MAKE_NONCOPYABLE(AllowUnfinalizedAccessScope);
+        WTF_FORBID_HEAP_ALLOCATION;
+    public:
+#if ASSERT_ENABLED
+        AllowUnfinalizedAccessScope()
+        {
+            if (!g_jscConfig.options.isFinalized) {
+                m_savedAllowUnfinalizedUse = g_jscConfig.options.allowUnfinalizedAccess;
+                g_jscConfig.options.allowUnfinalizedAccess = true;
+            }
+        }
+
+        ~AllowUnfinalizedAccessScope()
+        {
+            if (!g_jscConfig.options.isFinalized)
+                g_jscConfig.options.allowUnfinalizedAccess = m_savedAllowUnfinalizedUse;
+        }
+
+    private:
+        bool m_savedAllowUnfinalizedUse;
+#else
+        ALWAYS_INLINE AllowUnfinalizedAccessScope() = default;
+        ALWAYS_INLINE ~AllowUnfinalizedAccessScope() { }
+#endif
+    };
+
     JS_EXPORT_PRIVATE static void initialize();
+    static void finalize();
 
     // Parses a string of options where each option is of the format "--<optionName>=<value>"
     // and are separated by a space. The leading "--" is optional and will be ignored.
@@ -87,10 +117,17 @@ public:
     JS_EXPORT_PRIVATE static void dumpAllOptionsInALine(StringBuilder&);
 
     JS_EXPORT_PRIVATE static void ensureOptionsAreCoherent();
+    static void recomputeDependentOptions();
 
 #define DECLARE_OPTION_ACCESSORS(type_, name_, defaultValue_, availability_, description_) \
-    ALWAYS_INLINE static OptionsStorage::type_& name_() { return g_jscConfig.options.name_; }  \
-    ALWAYS_INLINE static OptionsStorage::type_& name_##Default() { return g_jscConfig.options.name_##Default; }
+private: \
+    ALWAYS_INLINE static OptionsStorage::type_& name_##Default() { return g_jscConfig.options.name_##Default; } \
+public: \
+    ALWAYS_INLINE static OptionsStorage::type_& name_() \
+    { \
+        ASSERT(g_jscConfig.options.allowUnfinalizedAccess || g_jscConfig.options.isFinalized); \
+        return g_jscConfig.options.name_; \
+    }
 
     FOR_EACH_JSC_OPTION(DECLARE_OPTION_ACCESSORS)
 #undef DECLARE_OPTION_ACCESSORS

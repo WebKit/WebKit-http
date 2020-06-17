@@ -18,8 +18,9 @@ info: |
   5. If waitable is true, then
     a. If typeName is not "Int32Array" or "BigInt64Array", throw a TypeError exception.
 
-features: [Atomics.waitAsync, ArrayBuffer, Atomics, TypedArray]
+features: [Atomics.waitAsync, ArrayBuffer, Atomics, TypedArray, arrow-function]
 ---*/
+assert.sameValue(typeof Atomics.waitAsync, 'function');
 const i32a = new Int32Array(
   new ArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4)
 );
@@ -31,9 +32,9 @@ const poisoned = {
 };
 
 assert.throws(TypeError, () => {
-  Atomics.wait(i32a, 0, 0, 0);
-}, '`Atomics.wait(i32a, 0, 0, 0)` throws TypeError');
+  Atomics.waitAsync(i32a, 0, 0, 0);
+}, '`Atomics.waitAsync(i32a, 0, 0, 0)` throws TypeError');
 
 assert.throws(TypeError, () => {
-  Atomics.wait(i32a, poisoned, poisoned, poisoned);
-}, '`Atomics.wait(i32a, poisoned, poisoned, poisoned)` throws TypeError');
+  Atomics.waitAsync(i32a, poisoned, poisoned, poisoned);
+}, '`Atomics.waitAsync(i32a, poisoned, poisoned, poisoned)` throws TypeError');

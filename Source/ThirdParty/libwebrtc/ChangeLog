@@ -1,3 +1,61 @@
+2020-06-17  Youenn Fablet  <youenn@apple.com>
+
+        Improve SCTP cookie generation
+        https://bugs.webkit.org/show_bug.cgi?id=213284
+        <rdar://problem/64438133>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/media/sctp/sctp_transport.cc:
+        * Source/webrtc/media/sctp/sctp_transport.h:
+
+2020-06-12  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] Check enum values in IPC::Decoder::decodeEnum() an IPC::Encoder::encodeEnum()
+        <https://webkit.org/b/211988>
+        <rdar://problem/63137695>
+
+        Reviewed by Darin Adler.
+
+        Replace decodeEnum() with decode() and encodeEnum() with
+        operator<<().
+
+        * Source/webrtc/sdk/WebKit/WebKitEncoder.h:
+        (webrtc::WebKitEncodedFrameInfo::decode):
+        (webrtc::WebKitEncodedFrameInfo::encode const):
+
+2020-06-08  Youenn Fablet  <youenn@apple.com>
+
+        Add missed WebRTC media-source and remote-inbound-rtp stats
+        https://bugs.webkit.org/show_bug.cgi?id=206645
+        <rdar://problem/58833958>
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+
+2020-06-05  Youenn Fablet  <youenn@apple.com>
+
+        Ad support for media-source stats
+        https://bugs.webkit.org/show_bug.cgi?id=212702
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+
+2020-06-04  Tim Horton  <timothy_horton@apple.com>
+
+        Work around broken system version macro
+        https://bugs.webkit.org/show_bug.cgi?id=212726
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
 2020-06-02  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, reverting r262290.

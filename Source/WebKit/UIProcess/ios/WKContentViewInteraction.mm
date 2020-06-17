@@ -927,6 +927,8 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
     _additionalContextForStrongPasswordAssistance = nil;
     _waitingForEditDragSnapshot = NO;
 
+    _lastAutocorrectionContext = { };
+
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
     _candidateViewNeedsUpdate = NO;
     _seenHardwareKeyDownInNonEditableElement = NO;
@@ -934,6 +936,7 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 
     _textInteractionDidChangeFocusedElement = NO;
     _textInteractionIsHappening = NO;
+    _pointInsideLastFocusedTextInputContext = WTF::nullopt;
 
     if (_interactionViewsContainerView) {
         [self.layer removeObserver:self forKeyPath:@"transform"];
@@ -1858,10 +1861,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         return;
     }
 
+    auto currentScale = self._contentZoomScale;
     auto targetScale = _smartMagnificationController->zoomFactorForTargetRect(renderRect, fitEntireRect, viewportMinimumScale, viewportMaximumScale);
-
-    auto initialScale = [self _initialScaleFactor];
-    if (std::min(targetScale, initialScale) / std::max(targetScale, initialScale) > fasterTapSignificantZoomThreshold) {
+    if (std::min(targetScale, currentScale) / std::max(targetScale, currentScale) > fasterTapSignificantZoomThreshold) {
         RELEASE_LOG(ViewGestures, "Potential tap would not cause a significant zoom. Trigger click. (%p)", self);
         [self _setDoubleTapGesturesEnabled:NO];
         return;
@@ -1914,6 +1916,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (BOOL)_shouldShowAutomaticKeyboardUIIgnoringInputMode
 {
+    if (_focusedElementInformation.isReadOnly)
+        return NO;
+
     switch (_focusedElementInformation.elementType) {
     case WebKit::InputType::None:
     case WebKit::InputType::Drawing:
@@ -1926,8 +1931,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 #if ENABLE(INPUT_TYPE_COLOR)
     case WebKit::InputType::Color:
 #endif
+        return !WebKit::currentUserInterfaceIdiomIsPad();
     default:
-        return !_focusedElementInformation.isReadOnly;
+        return YES;
     }
     return NO;
 }
@@ -3292,7 +3298,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
         || action == @selector(_moveToStartOfParagraph:withHistory:) || action == @selector(_moveToStartOfWord:withHistory:) || action == @selector(_moveUp:withHistory:))
         return !editorState.selectionIsNone;
 
-    if (action == @selector(_deleteByWord) || action == @selector(_deleteForwardAndNotify:) || action == @selector(_deleteToEndOfParagraph) || action == @selector(_deleteToStartOfLine)
+    if (action == @selector(_deleteByWord) || action == @selector(_deleteForwardByWord) || action == @selector(_deleteForwardAndNotify:) || action == @selector(_deleteToEndOfParagraph) || action == @selector(_deleteToStartOfLine)
         || action == @selector(_transpose))
         return editorState.isContentEditable;
 
@@ -4245,6 +4251,11 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         return;
     }
 
+    if (_domPasteRequestHandler) {
+        completionHandler([WKAutocorrectionContext autocorrectionContextWithWebContext:_lastAutocorrectionContext]);
+        return;
+    }
+
     // FIXME: Remove the synchronous call when <rdar://problem/16207002> is fixed.
     const bool useSyncRequest = true;
 
@@ -4264,6 +4275,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)_handleAutocorrectionContext:(const WebKit::WebAutocorrectionContext&)context
 {
+    _lastAutocorrectionContext = context;
     [self _invokePendingAutocorrectionContextHandler:[WKAutocorrectionContext autocorrectionContextWithWebContext:context]];
 }
 
@@ -4290,6 +4302,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
     _textInteractionDidChangeFocusedElement = NO;
     _textInteractionIsHappening = NO;
+    _pointInsideLastFocusedTextInputContext = WTF::nullopt;
     _hasValidPositionInformation = NO;
     _positionInformation = { };
 }
@@ -4842,18 +4855,18 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 
 // end of UITextInput protocol implementation
 
-static UITextAutocapitalizationType toUITextAutocapitalize(AutocapitalizeType webkitType)
+static UITextAutocapitalizationType toUITextAutocapitalize(WebCore::AutocapitalizeType webkitType)
 {
     switch (webkitType) {
-    case AutocapitalizeTypeDefault:
+    case WebCore::AutocapitalizeType::Default:
         return UITextAutocapitalizationTypeSentences;
-    case AutocapitalizeTypeNone:
+    case WebCore::AutocapitalizeType::None:
         return UITextAutocapitalizationTypeNone;
-    case AutocapitalizeTypeWords:
+    case WebCore::AutocapitalizeType::Words:
         return UITextAutocapitalizationTypeWords;
-    case AutocapitalizeTypeSentences:
+    case WebCore::AutocapitalizeType::Sentences:
         return UITextAutocapitalizationTypeSentences;
-    case AutocapitalizeTypeAllCharacters:
+    case WebCore::AutocapitalizeType::AllCharacters:
         return UITextAutocapitalizationTypeAllCharacters;
     }
 
@@ -5161,10 +5174,12 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         completionHandler(nil);
         return;
     }
-    if ([self _isTextInputContextFocused:context]) {
+    WebCore::IntPoint pointInsideTextInputContext { point };
+    if ([self _isTextInputContextFocused:context] && _pointInsideLastFocusedTextInputContext == pointInsideTextInputContext) {
         completionHandler(_focusedElementInformation.isReadOnly ? nil : self);
         return;
     }
+    _pointInsideLastFocusedTextInputContext = pointInsideTextInputContext;
     _usingGestureForSelection = YES;
     auto checkFocusedElement = [weakSelf = WeakObjCPtr<WKContentView> { self }, context = adoptNS([context copy]), completionHandler = makeBlockPtr(completionHandler)] (bool success) {
         auto strongSelf = weakSelf.get();
@@ -5178,7 +5193,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         strongSelf->_usingGestureForSelection = NO;
         completionHandler(isFocused && isEditable ? strongSelf.get() : nil);
     };
-    _page->focusTextInputContextAndPlaceCaret(context._textInputContext, WebCore::IntPoint { point }, WTFMove(checkFocusedElement));
+    _page->focusTextInputContextAndPlaceCaret(context._textInputContext, pointInsideTextInputContext, WTFMove(checkFocusedElement));
 }
 
 - (void)_requestTextInputContextsInRect:(CGRect)rect completionHandler:(void (^)(NSArray<_WKTextInputContext *> *))completionHandler
@@ -5486,6 +5501,11 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)_deleteByWord
 {
     [self executeEditCommandWithCallback:@"deleteWordBackward"];
+}
+
+- (void)_deleteForwardByWord
+{
+    [self executeEditCommandWithCallback:@"deleteWordForward"];
 }
 
 - (void)_deleteToStartOfLine
@@ -7236,7 +7256,7 @@ static BOOL shouldEnableDragInteractionForPolicy(_WKDragInteractionPolicy policy
 
 - (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const WebCore::DragItem&)item
 {
-    ASSERT(item.sourceAction != WebCore::DragSourceActionNone);
+    ASSERT(item.sourceAction);
 
     if (item.promisedAttachmentInfo)
         [self _prepareToDragPromisedAttachment:item.promisedAttachmentInfo];
@@ -7285,7 +7305,7 @@ static BOOL shouldEnableDragInteractionForPolicy(_WKDragInteractionPolicy policy
         if (started) {
             // A client of the Objective C SPI or UIKit might have prevented the drag from beginning entirely in the UI process, in which case
             // we need to balance the `dragstart` event with a `dragend`.
-            _page->dragEnded(positionForDragEnd, positionForDragEnd, WebCore::DragOperationNone);
+            _page->dragEnded(positionForDragEnd, positionForDragEnd, { });
         }
     }
 }
@@ -7303,15 +7323,31 @@ static BOOL shouldEnableDragInteractionForPolicy(_WKDragInteractionPolicy policy
         *outGlobalPoint = locationInContentView;
 }
 
-static UIDropOperation dropOperationForWebCoreDragOperation(WebCore::DragOperation operation)
+static UIDropOperation dropOperationForWebCoreDragOperation(Optional<WebCore::DragOperation> operation)
 {
-    if (operation & WebCore::DragOperationMove)
-        return UIDropOperationMove;
-
-    if (operation & WebCore::DragOperationCopy)
-        return UIDropOperationCopy;
-
+    if (operation) {
+        if (*operation == WebCore::DragOperation::Move)
+            return UIDropOperationMove;
+        if (*operation == WebCore::DragOperation::Copy)
+            return UIDropOperationCopy;
+    }
     return UIDropOperationCancel;
+}
+
+static Optional<WebCore::DragOperation> coreDragOperationForUIDropOperation(UIDropOperation dropOperation)
+{
+    switch (dropOperation) {
+    case UIDropOperationCancel:
+        return WTF::nullopt;
+    case UIDropOperationForbidden:
+        return WebCore::DragOperation::Private;
+    case UIDropOperationCopy:
+        return WebCore::DragOperation::Copy;
+    case UIDropOperationMove:
+        return WebCore::DragOperation::Move;
+    }
+    ASSERT_NOT_REACHED();
+    return WTF::nullopt;
 }
 
 - (WebCore::DragData)dragDataForDropSession:(id <UIDropSession>)session dragDestinationAction:(WKDragDestinationAction)dragDestinationAction
@@ -7320,7 +7356,9 @@ static UIDropOperation dropOperationForWebCoreDragOperation(WebCore::DragOperati
     CGPoint client;
     [self computeClientAndGlobalPointsForDropSession:session outClientPoint:&client outGlobalPoint:&global];
 
-    WebCore::DragOperation dragOperationMask = static_cast<WebCore::DragOperation>(session.allowsMoveOperation ? WebCore::DragOperationEvery : (WebCore::DragOperationEvery & ~WebCore::DragOperationMove));
+    auto dragOperationMask = WebCore::anyDragOperation();
+    if (!session.allowsMoveOperation)
+        dragOperationMask.remove(WebCore::DragOperation::Move);
     return { session, WebCore::roundedIntPoint(client), WebCore::roundedIntPoint(global), dragOperationMask, WebCore::DragApplicationNone, WebKit::coreDragDestinationActionMask(dragDestinationAction) };
 }
 
@@ -7424,7 +7462,8 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     CGPoint client;
     [self computeClientAndGlobalPointsForDropSession:dropSession outClientPoint:&client outGlobalPoint:&global];
     [self cleanUpDragSourceSessionState];
-    _page->dragEnded(WebCore::roundedIntPoint(client), WebCore::roundedIntPoint(global), _page->currentDragOperation());
+    auto currentDragOperation = _page->currentDragOperation();
+    _page->dragEnded(WebCore::roundedIntPoint(client), WebCore::roundedIntPoint(global), currentDragOperation ? *currentDragOperation : OptionSet<WebCore::DragOperation>({ }));
 }
 
 - (void)_didChangeDragCaretRect:(CGRect)previousRect currentRect:(CGRect)rect
@@ -7518,12 +7557,12 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     return WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
 }
 
-- (WebCore::DragSourceAction)_allowedDragSourceActions
+- (OptionSet<WebCore::DragSourceAction>)_allowedDragSourceActions
 {
-    auto allowedActions = WebCore::DragSourceActionAny;
+    auto allowedActions = WebCore::anyDragSourceAction();
     if (!self.isFirstResponder || !_suppressSelectionAssistantReasons.isEmpty()) {
         // Don't allow starting a drag on a selection when selection views are not visible.
-        allowedActions = static_cast<WebCore::DragSourceAction>(allowedActions & ~WebCore::DragSourceActionSelection);
+        allowedActions.remove(WebCore::DragSourceAction::Selection);
     }
     return allowedActions;
 }
@@ -7994,7 +8033,7 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
 - (void)dragInteraction:(UIDragInteraction *)interaction willAnimateLiftWithAnimator:(id <UIDragAnimating>)animator session:(id <UIDragSession>)session
 {
     RELEASE_LOG(DragAndDrop, "Drag session willAnimateLiftWithAnimator: %p", session);
-    if (_dragDropInteractionState.anyActiveDragSourceIs(WebCore::DragSourceActionSelection)) {
+    if (_dragDropInteractionState.anyActiveDragSourceIs(WebCore::DragSourceAction::Selection)) {
         [self cancelActiveTextInteractionGestures];
         if (!_shouldRestoreCalloutBarAfterDrop) {
             // FIXME: This SPI should be renamed in UIKit to reflect a more general purpose of hiding interaction assistant controls.
@@ -8013,7 +8052,7 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
             RELEASE_LOG(DragAndDrop, "Drag session ended at start: %p", session);
             // The lift was canceled, so -dropInteraction:sessionDidEnd: will never be invoked. This is the last chance to clean up.
             [protectedSelf cleanUpDragSourceSessionState];
-            page->dragEnded(positionForDragEnd, positionForDragEnd, WebCore::DragOperationNone);
+            page->dragEnded(positionForDragEnd, positionForDragEnd, { });
         }
 #if !RELEASE_LOG_DISABLED
         else
@@ -8048,7 +8087,7 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
         return;
 
     [self cleanUpDragSourceSessionState];
-    _page->dragEnded(WebCore::roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd()), WebCore::roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd()), operation);
+    _page->dragEnded(WebCore::roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd()), WebCore::roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd()), coreDragOperationForUIDropOperation(operation));
 }
 
 - (UITargetedDragPreview *)dragInteraction:(UIDragInteraction *)interaction previewForCancellingItem:(UIDragItem *)item withDefault:(UITargetedDragPreview *)defaultPreview
@@ -8267,7 +8306,7 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
     CGPoint client;
     [self computeClientAndGlobalPointsForDropSession:session outClientPoint:&client outGlobalPoint:&global];
     [self cleanUpDragSourceSessionState];
-    _page->dragEnded(WebCore::roundedIntPoint(client), WebCore::roundedIntPoint(global), WebCore::DragOperationNone);
+    _page->dragEnded(WebCore::roundedIntPoint(client), WebCore::roundedIntPoint(global), { });
 }
 
 #endif

@@ -1,3 +1,39 @@
+2020-06-12  Lauro Moura  <lmoura@igalia.com>
+
+        [WebDriver][WPE] Add remaining WPE failures to expectations.
+
+        Unreviewed test gardening.
+
+        * TestExpectations.json:
+
+2020-06-08  Lauro Moura  <lmoura@igalia.com>
+
+        [WebDriver][WPE] Gardening most of the remaining WPE failures.
+
+        Unreviewed test gardening.
+
+        * TestExpectations.json:
+
+2020-06-08  Lauro Moura  <lmoura@igalia.com>
+
+        [WebDriver][GTK][WPE] Fix overwritten expectations.
+
+        WPE's set_window_rect/set.py expectations were in a block after the
+        existing ones from other ports, overwriting them. This commit now
+        merges them to be in a single block.
+
+        Unreviewed test gardening.
+
+        * TestExpectations.json:
+
+2020-06-08  Lauro Moura  <lmoura@igalia.com>
+
+        [WebDriver][GTK] Update test expectations after modifier fix
+
+        Unreviewed test gardening.
+
+        * TestExpectations.json:
+
 2020-05-30  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] WebDriver: stop using GdkEvent API in preparation for GTK4

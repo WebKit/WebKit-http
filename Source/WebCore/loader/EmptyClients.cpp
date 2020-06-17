@@ -152,7 +152,7 @@ class EmptyDatabaseProvider final : public DatabaseProvider {
         void abortOpenAndUpgradeNeeded(uint64_t, const IDBResourceIdentifier&) final { }
         void didFireVersionChangeEvent(uint64_t, const IDBResourceIdentifier&, const IndexedDB::ConnectionClosedOnBehalfOfServer) final { }
         void openDBRequestCancelled(const IDBRequestData&) final { }
-        void getAllDatabaseNames(const SecurityOriginData&, const SecurityOriginData&, uint64_t) final { }
+        void getAllDatabaseNamesAndVersions(const IDBResourceIdentifier&, const ClientOrigin&) final { }
         ~EmptyIDBConnectionToServerDeletegate() { }
     };
 
@@ -178,7 +178,7 @@ class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
 class EmptyDragClient final : public DragClient {
     void willPerformDragDestinationAction(DragDestinationAction, const DragData&) final { }
     void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&) final { }
-    DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) final { return DragSourceActionNone; }
+    OptionSet<DragSourceAction> dragSourceActionMaskForPoint(const IntPoint&) final { return { }; }
     void startDrag(DragItem, DataTransfer&, Frame&) final { }
 };
 

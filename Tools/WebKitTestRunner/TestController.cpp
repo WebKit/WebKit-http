@@ -445,7 +445,7 @@ void TestController::initialize(int argc, const char* argv[])
     AutodrainedPool pool;
 
     JSC::initializeThreading();
-    RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMain();
     WTF::setProcessPrivileges(allPrivileges());
 
     platformInitialize();
@@ -853,6 +853,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 #if PLATFORM(COCOA)
     WKPreferencesSetCaptureVideoInUIProcessEnabled(preferences, options.enableCaptureVideoInUIProcess);
     WKPreferencesSetCaptureVideoInGPUProcessEnabled(preferences, options.enableCaptureVideoInGPUProcess);
+    WKPreferencesSetCaptureAudioInUIProcessEnabled(preferences, options.enableCaptureAudioInUIProcess);
     WKPreferencesSetCaptureAudioInGPUProcessEnabled(preferences, options.enableCaptureAudioInGPUProcess);
 #endif
     WKPreferencesSetProcessSwapOnNavigationEnabled(preferences, options.contextOptions.shouldEnableProcessSwapOnNavigation());
@@ -1535,6 +1536,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableCaptureVideoInUIProcess = parseBooleanTestHeaderValue(value);
         else if (key == "enableCaptureVideoInGPUProcess")
             testOptions.enableCaptureVideoInGPUProcess = parseBooleanTestHeaderValue(value);
+        else if (key == "enableCaptureAudioInUIProcess")
+            testOptions.enableCaptureAudioInUIProcess = parseBooleanTestHeaderValue(value);
         else if (key == "enableCaptureAudioInGPUProcess")
             testOptions.enableCaptureAudioInGPUProcess = parseBooleanTestHeaderValue(value);
         else if (key == "allowTopNavigationToDataURLs")
@@ -3165,8 +3168,47 @@ void TestController::removeAllSessionCredentials()
 {
 }
 
+struct GetAllStorageAccessEntriesCallbackContext {
+    GetAllStorageAccessEntriesCallbackContext(TestController& controller, CompletionHandler<void(Vector<String>&&)>&& handler)
+        : testController(controller)
+        , completionHandler(WTFMove(handler))
+    {
+    }
+
+    TestController& testController;
+    CompletionHandler<void(Vector<String>&&)> completionHandler;
+    bool done { false };
+};
+
+void getAllStorageAccessEntriesCallback(void* userData, WKArrayRef domainList)
+{
+    auto* context = static_cast<GetAllStorageAccessEntriesCallbackContext*>(userData);
+
+    Vector<String> resultDomains;
+    for (int i = 0; i < WKArrayGetSize(domainList); i++) {
+        auto domain =  reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(domainList, i));
+        auto buffer = std::vector<char>(WKStringGetMaximumUTF8CStringSize(domain));
+        auto stringLength = WKStringGetUTF8CString(domain, buffer.data(), buffer.size());
+
+        resultDomains.append(String::fromUTF8(buffer.data(), stringLength - 1));
+    }
+
+    if (context->completionHandler)
+        context->completionHandler(WTFMove(resultDomains));
+
+    context->done = true;
+    context->testController.notifyDone();
+}
+
 void TestController::getAllStorageAccessEntries()
 {
+    auto dataStore = WKContextGetWebsiteDataStore(platformContext());
+    GetAllStorageAccessEntriesCallbackContext context(*this, [this] (Vector<String>&& domains) {
+        m_currentInvocation->didReceiveAllStorageAccessEntries(WTFMove(domains));
+    });
+
+    WKWebsiteDataStoreGetAllStorageAccessEntries(dataStore, m_mainWebView->page(), &context, getAllStorageAccessEntriesCallback);
+    runUntil(context.done, noTimeout);
 }
 
 struct LoadedThirdPartyDomainsCallbackContext {

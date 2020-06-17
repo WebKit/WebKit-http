@@ -444,7 +444,7 @@ void WebProcessPool::languageChanged(void* context)
 
 void WebProcessPool::languageChanged()
 {
-    sendToAllProcesses(Messages::WebProcess::UserPreferredLanguagesChanged(userPreferredLanguages()));
+    sendToAllProcesses(Messages::WebProcess::UserPreferredLanguagesChanged());
 #if USE(SOUP)
     if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::UserPreferredLanguagesChanged(userPreferredLanguages()), 0);
@@ -1029,7 +1029,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 #endif
 
     parameters.cacheModel = LegacyGlobalSettings::singleton().cacheModel();
-    parameters.languages = configuration().overrideLanguages().isEmpty() ? userPreferredLanguages() : configuration().overrideLanguages();
+    parameters.overrideLanguages = configuration().overrideLanguages();
 
     parameters.urlSchemesRegisteredAsEmptyDocument = copyToVector(m_schemesToRegisterAsEmptyDocument);
     parameters.urlSchemesRegisteredAsSecure = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsSecure());
@@ -1195,10 +1195,9 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
     if (m_prewarmedProcess == process) {
         ASSERT(m_prewarmedProcess->isPrewarmed());
         m_prewarmedProcess = nullptr;
-    } else {
-        auto dummyProcessIterator = m_dummyProcessProxies.find(process->sessionID());
-        if (dummyProcessIterator != m_dummyProcessProxies.end() && dummyProcessIterator->value == process)
-            m_dummyProcessProxies.remove(dummyProcessIterator);
+    } else if (process->isDummyProcessProxy()) {
+        auto removedProcess = m_dummyProcessProxies.take(process->sessionID());
+        ASSERT_UNUSED(removedProcess, removedProcess == process);
     }
 
     // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls of the other supplements are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
@@ -2026,14 +2025,18 @@ void WebProcessPool::setPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
 {
-    auto& policiesForHost = m_pluginLoadClientPolicies.ensure(host, [] { return HashMap<String, HashMap<String, uint8_t>>(); }).iterator->value;
-    auto& versionsToPolicies = policiesForHost.ensure(bundleIdentifier, [] { return HashMap<String, uint8_t>(); }).iterator->value;
+    auto& policiesForHost = m_pluginLoadClientPolicies.ensure(host, [] {
+        return HashMap<String, HashMap<String, WebCore::PluginLoadClientPolicy>>();
+    }).iterator->value;
+    auto& versionsToPolicies = policiesForHost.ensure(bundleIdentifier, [] {
+        return HashMap<String, WebCore::PluginLoadClientPolicy>();
+    }).iterator->value;
     versionsToPolicies.set(versionString, policy);
 
     sendToAllProcesses(Messages::WebProcess::SetPluginLoadClientPolicy(policy, host, bundleIdentifier, versionString));
 }
 
-void WebProcessPool::resetPluginLoadClientPolicies(HashMap<String, HashMap<String, HashMap<String, uint8_t>>>&& pluginLoadClientPolicies)
+void WebProcessPool::resetPluginLoadClientPolicies(HashMap<String, HashMap<String, HashMap<String, WebCore::PluginLoadClientPolicy>>>&& pluginLoadClientPolicies)
 {
     m_pluginLoadClientPolicies = WTFMove(pluginLoadClientPolicies);
     sendToAllProcesses(Messages::WebProcess::ResetPluginLoadClientPolicies(m_pluginLoadClientPolicies));
@@ -2071,7 +2074,7 @@ void WebProcessPool::setMemoryCacheDisabled(bool disabled)
     sendToAllProcesses(Messages::WebProcess::SetMemoryCacheDisabled(disabled));
 }
 
-void WebProcessPool::setFontWhitelist(API::Array* array)
+void WebProcessPool::setFontAllowList(API::Array* array)
 {
     m_fontWhitelist.clear();
     if (array) {

@@ -35,7 +35,6 @@
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "DebugPageOverlays.h"
 #include "DeprecatedGlobalSettings.h"
@@ -4594,6 +4593,7 @@ void FrameView::enableSizeToContentAutoSizeMode(bool enable, const IntSize& view
 
 void FrameView::enableAutoSizeMode(bool enable, const IntSize& viewSize, AutoSizeMode mode)
 {
+    ASSERT(frame().isMainFrame());
     ASSERT(!enable || !viewSize.isEmpty());
     if (m_shouldAutoSize == enable && m_autoSizeConstraint == viewSize)
         return;

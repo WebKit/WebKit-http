@@ -283,7 +283,8 @@
             ;; <rdar://problem/23857452>
             (allow file-read* file-map-executable
                    (subpath "/AppleInternal")
-                   (subpath "/usr/local/lib")))
+                   (subpath "/usr/local/lib")
+                   (subpath "/usr/appleinternal/lib/sanitizers")))
             (with-elevated-precedence
                 (allow file-read* file-map-executable file-issue-extension
                    (front-user-home-subpath "/XcodeBuiltProducts")))
@@ -402,7 +403,7 @@
                 (deny (with telemetry)
                     iokit-async-external-method
                     iokit-external-trap)
-                (allow (with telemetry)
+                (allow
                     iokit-external-method)
             )
         )
@@ -762,6 +763,7 @@
 (allow file-read*
     (home-literal
         "/Library/Preferences/com.apple.Accessibility.plist"
+        "/Library/Preferences/com.apple.AdLib.plist"
         "/Library/Preferences/com.apple.EmojiPreferences.plist"
         "/Library/Preferences/com.apple.InputModePreferences.plist"
         "/Library/Preferences/com.apple.LaunchServices.plist"
@@ -950,6 +952,7 @@
             "com.apple.mobileassetd.v2"
             "com.apple.nehelper"
             "com.apple.nesessionmanager.content-filter"
+            "com.apple.osanalytics.osanalyticshelper"
             "com.apple.tccd"
             "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI"
             "com.apple.webinspector"
@@ -1310,6 +1313,7 @@
                 task_restartable_ranges_synchronize
                 task_set_exc_guard_behavior
                 task_set_special_port
+                (when (defined? 'task_threads_from_user) task_threads_from_user)
                 thread_get_state_to_user
                 thread_info
                 thread_policy

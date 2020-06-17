@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include "LiteralParser.h"
 #include "ObjectConstructor.h"
 #include "PropertyNameArray.h"
+#include "VMInlines.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace JSC {
@@ -306,10 +307,20 @@ ALWAYS_INLINE JSValue Stringifier::toJSON(JSValue baseValue, const PropertyNameF
     RELEASE_AND_RETURN(scope, call(m_globalObject, asObject(toJSONFunction), callData, baseValue, args));
 }
 
+// We clamp recursion well beyond anything reasonable.
+constexpr unsigned maximumSideStackRecursion = 40000;
 Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& builder, JSValue value, const Holder& holder, const PropertyNameForFunctionCall& propertyName)
 {
     VM& vm = m_globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
+
+    // Recursion is avoided by !holderStackWasEmpty check and do/while loop at the end of this method.
+    // We're having this recursion check here as a fail safe in case the code
+    // below get modified such that recursion is no longer avoided.
+    if (UNLIKELY(!vm.isSafeToRecurseSoft())) {
+        throwStackOverflowError(m_globalObject, scope);
+        return StringifyFailed;
+    }
 
     // Call the toJSON function.
     if (value.isObject() || value.isBigInt()) {
@@ -394,6 +405,11 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
             throwTypeError(m_globalObject, scope, "JSON.stringify cannot serialize cyclic structures."_s);
             return StringifyFailed;
         }
+    }
+
+    if (UNLIKELY(m_holderStack.size() >= maximumSideStackRecursion)) {
+        throwStackOverflowError(m_globalObject, scope);
+        return StringifyFailed;
     }
 
     bool holderStackWasEmpty = m_holderStack.isEmpty();
@@ -612,8 +628,6 @@ private:
     CallData m_callData;
 };
 
-// We clamp recursion well beyond anything reasonable.
-static constexpr unsigned maximumFilterRecursion = 40000;
 enum WalkerState { StateUnknown, ArrayStartState, ArrayStartVisitMember, ArrayEndVisitMember, 
                                  ObjectStartState, ObjectStartVisitMember, ObjectEndVisitMember };
 NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
@@ -639,7 +653,7 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                 ASSERT(isArray(m_globalObject, inValue));
                 EXCEPTION_ASSERT(!scope.exception());
 
-                if (markedStack.size() > maximumFilterRecursion)
+                if (UNLIKELY(markedStack.size() >= maximumSideStackRecursion))
                     return throwStackOverflowError(m_globalObject, scope);
 
                 JSObject* array = asObject(inValue);
@@ -697,7 +711,7 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
             case ObjectStartState: {
                 ASSERT(inValue.isObject());
                 ASSERT(!isJSArray(inValue));
-                if (markedStack.size() > maximumFilterRecursion)
+                if (UNLIKELY(markedStack.size() >= maximumSideStackRecursion))
                     return throwStackOverflowError(m_globalObject, scope);
 
                 JSObject* object = asObject(inValue);

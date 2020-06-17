@@ -32,6 +32,7 @@
     InterfaceName=XRSession
 ] interface WebXRSession : EventTarget {
     // Attributes
+    readonly attribute XRInteractionMode interactionMode;
     readonly attribute XREnvironmentBlendMode environmentBlendMode;
     readonly attribute XRVisibilityState visibilityState;
     [SameObject] readonly attribute WebXRRenderState renderState;
@@ -42,7 +43,7 @@
     [NewObject] Promise<WebXRReferenceSpace> requestReferenceSpace(XRReferenceSpaceType type);
 
     unsigned long requestAnimationFrame(XRFrameRequestCallback callback);
-    void cancelAnimationFrame(long handle);
+    void cancelAnimationFrame(unsigned long handle);
 
     Promise<void> end();
 

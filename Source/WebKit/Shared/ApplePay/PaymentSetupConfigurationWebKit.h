@@ -25,9 +25,8 @@
 
 #pragma once
 
-#if HAVE(PASSKIT_PAYMENT_SETUP)
+#if ENABLE(APPLE_PAY)
 
-#include <WebCore/ApplePaySetupWebCore.h>
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 
@@ -38,12 +37,16 @@ class Decoder;
 class Encoder;
 }
 
+namespace WebCore {
+struct ApplePaySetupConfiguration;
+}
+
 namespace WebKit {
 
 class PaymentSetupConfiguration {
 public:
     PaymentSetupConfiguration() = default;
-    PaymentSetupConfiguration(const WebCore::ApplePaySetup::Configuration&, const URL&);
+    PaymentSetupConfiguration(const WebCore::ApplePaySetupConfiguration&, const URL&);
 
     void encode(IPC::Encoder&) const;
     static Optional<PaymentSetupConfiguration> decode(IPC::Decoder&);
@@ -58,5 +61,5 @@ private:
 
 } // namespace WebKit
 
-#endif // HAVE(PASSKIT_PAYMENT_SETUP)
+#endif // ENABLE(APPLE_PAY)
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -235,8 +235,8 @@ inline void Heap::deprecatedReportExtraMemory(size_t size)
 
 inline void Heap::acquireAccess()
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     if (m_worldState.compareExchangeWeak(0, hasAccessBit))
         return;
@@ -262,8 +262,8 @@ inline bool Heap::mayNeedToStop()
 
 inline void Heap::stopIfNecessary()
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        verifyCanGC();
 
     if (mayNeedToStop())
         stopIfNecessarySlow();

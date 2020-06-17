@@ -1474,7 +1474,7 @@ sub ShouldGenerateToJSDeclaration
     return 0 if $interface->extendedAttributes->{CustomProxyToJSObject};
     return 1 if (!$hasParent or $interface->extendedAttributes->{JSGenerateToJSObject} or $interface->extendedAttributes->{CustomToJSObject});
     return 1 if $interface->parentType && $interface->parentType->name eq "EventTarget";
-    return 1 if $interface->extendedAttributes->{Constructor} or $interface->extendedAttributes->{NamedConstructor};
+    return 1 if @{$interface->constructors} > 0 && !HasCustomConstructor($interface);
     return 0;
 }
 
@@ -1610,7 +1610,7 @@ sub GetFullyQualifiedImplementationCallName
         return "WebCore::${implementedBy}::${implementationName}";
     }
     
-    if ($property->isStatic || $property->extendedAttributes->{Constructor} || $property->extendedAttributes->{NamedConstructor}) {
+    if ($property->isStatic || $property->isConstructor) {
         return $interface->type->name . "::${implementationName}";
     }
     
@@ -2685,7 +2685,7 @@ sub GenerateHeader
     
     if (InstanceOverridesGetOwnPropertyNames($interface)) {
         push(@headerContent, "    static void getOwnPropertyNames(JSC::JSObject*, JSC::JSGlobalObject*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
-        $structureFlags{"JSC::OverridesGetPropertyNames"} = 1;
+        $structureFlags{"JSC::OverridesAnyFormOfGetPropertyNames"} = 1;
     }
     
     if (InstanceOverridesPut($interface)) {
@@ -2710,6 +2710,7 @@ sub GenerateHeader
     
     if ($interface->extendedAttributes->{CustomGetPrototype}) {
         push(@headerContent, "    static JSC::JSValue getPrototype(JSC::JSObject*, JSC::JSGlobalObject*);\n");
+        $structureFlags{"JSC::OverridesGetPrototype"} = 1;
     }
     
     if ($interface->extendedAttributes->{CustomToStringName}) {
@@ -4334,7 +4335,13 @@ sub GenerateImplementation
                 push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
                 push(@implContent, "    // Adding back attribute, but as readonly, after removing the read-write variant above. \n");
                 push(@implContent, "    if (!${runtimeEnableConditionalString})\n");
-                push(@implContent, "        putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PublicName(), CustomGetterSetter::create(vm, $getter, $setter), attributesForStructure($jscAttributes));\n");
+                if (IsAcceleratedDOMAttribute($interface, $attribute)) {
+                    my $classForThis = "${className}::info()";
+                    push(@implContent, "        putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PublicName(), JSC::DOMAttributeGetterSetter::create(vm, $getter, $setter, JSC::DOMAttributeAnnotation { $classForThis, nullptr }), attributesForStructure($jscAttributes));\n");
+                } else {
+                    assert("CustomGetterSetter is not allowed for DOMAttribute. DOMAttributeGetterSetter must be used.") if IsAcceleratedDOMAttribute($interface, $attribute);
+                    push(@implContent, "        putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PublicName(), CustomGetterSetter::create(vm, $getter, $setter), attributesForStructure($jscAttributes));\n");
+                }
                 push(@implContent, "#endif\n") if $conditionalString;
             }
         }
@@ -4459,6 +4466,7 @@ sub GenerateImplementation
         my $conditionalString = $codeGenerator->GenerateConditionalString($attribute);
         push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
         push(@implContent, "    if (${runtimeEnableConditionalString})\n");
+        assert("CustomGetterSetter is not allowed for DOMAttribute. DOMAttributeGetterSetter must be used.") if IsAcceleratedDOMAttribute($interface, $attribute);
         push(@implContent, "        putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PublicName(), CustomGetterSetter::create(vm, $getter, $setter), attributesForStructure($jscAttributes));\n");
         push(@implContent, "#endif\n") if $conditionalString;
     }
@@ -4474,6 +4482,7 @@ sub GenerateImplementation
         my $getter = GetAttributeGetterName($interface, $className, $attribute);
 
         push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
+        assert("CustomGetterSetter is not allowed for DOMAttribute. DOMAttributeGetterSetter must be used.") if IsAcceleratedDOMAttribute($interface, $attribute);
         push(@implContent, "    putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PrivateName(), CustomGetterSetter::create(vm, $getter, nullptr), attributesForStructure(JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly));\n");
         push(@implContent, "#endif\n") if $conditionalString;
     }
@@ -4502,6 +4511,7 @@ sub GenerateImplementation
         }
         push(@implContent, "#endif\n") if $conditionalString;
     }
+    push(@implContent, "    vm.heap.reportExtraMemoryAllocated(wrapped().memoryCost());\n") if $interface->extendedAttributes->{ReportExtraMemoryCost};
     push(@implContent, "}\n\n");
 
     unless (ShouldUseGlobalObjectPrototype($interface)) {
@@ -4920,9 +4930,6 @@ END
     // that may be passed through this toJS() function you should use the SkipVTableValidation
     // attribute to $interfaceName.
     static_assert(!std::is_polymorphic<${implType}>::value, "${implType} is polymorphic but the IDL claims it is not");
-END
-        push(@implContent, <<END) if $interface->extendedAttributes->{ReportExtraMemoryCost};
-    globalObject->vm().heap.reportExtraMemoryAllocated(impl->memoryCost());
 END
 
         push(@implContent, "    return createWrapper<${implType}>(globalObject, WTFMove(impl));\n");
@@ -5870,21 +5877,25 @@ sub GenerateParametersCheck
     my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
     my $numArguments = @{$operation->arguments};
     my $conditional = $operation->extendedAttributes->{Conditional};
-    my $isConstructor = $operation->extendedAttributes->{Constructor} || $operation->extendedAttributes->{NamedConstructor};
+    my $isConstructor = $operation->isConstructor;
 
     my $functionName = GetFullyQualifiedImplementationCallName($interface, $operation, $functionImplementationName, "impl", $conditional);
     
     my @arguments = ();
     AddAdditionalArgumentsForImplementationCall(\@arguments, $interface, $operation, "impl", "*lexicalGlobalObject", "*callFrame", "*castedThis");
     
+    my $callWith = $operation->extendedAttributes->{CallWith};
     my $quotedFunctionName;
     if (!$isConstructor) {
         my $name = $operation->name;
         $quotedFunctionName = "\"$name\"";
-        push(@arguments, GenerateCallWithUsingPointers($operation->extendedAttributes->{CallWith}, \@$outputArray, "JSValue::encode(jsUndefined())", "*castedThis"));
+        push(@arguments, GenerateCallWithUsingPointers($callWith, \@$outputArray, "JSValue::encode(jsUndefined())", "*castedThis"));
     } else {
         $quotedFunctionName = "nullptr";
-        push(@arguments, GenerateConstructorCallWithUsingPointers($operation->extendedAttributes->{ConstructorCallWith}, \@$outputArray, $visibleInterfaceName, "*castedThis"));
+        unless ($callWith) {
+            $callWith = $operation->extendedAttributes->{ConstructorCallWith};
+        }
+        push(@arguments, GenerateConstructorCallWithUsingPointers($callWith, \@$outputArray, $visibleInterfaceName, "*castedThis"));
     }
 
     my $argumentIndex = 0;
@@ -7364,9 +7375,9 @@ sub GeneratePrototypeDeclaration
 sub GetConstructorTemplateClassName
 {
     my $interface = shift;
+    return "JSDOMBuiltinConstructor" if HasJSBuiltinConstructor($interface);
     return "JSDOMConstructorNotConstructable" if $interface->extendedAttributes->{NamedConstructor};
     return "JSDOMConstructorNotConstructable" unless IsConstructable($interface);
-    return "JSDOMBuiltinConstructor" if IsJSBuiltinConstructor($interface);
     return "JSDOMConstructor";
 }
 
@@ -7422,13 +7433,13 @@ sub GenerateConstructorDefinition
 {
     my ($outputArray, $className, $protoClassName, $visibleInterfaceName, $interface, $generatingNamedConstructor, $operation) = @_;
 
-    return if IsJSBuiltinConstructor($interface);
+    return if HasJSBuiltinConstructor($interface);
 
     my $interfaceName = $interface->type->name;
     my $constructorClassName = $generatingNamedConstructor ? "${className}NamedConstructor" : "${className}Constructor";
 
     if (IsConstructable($interface)) {
-        if ($interface->extendedAttributes->{CustomConstructor}) {
+        if (HasCustomConstructor($interface)) {
             push(@$outputArray, "template<> JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::JSGlobalObject* lexicalGlobalObject, JSC::CallFrame* callFrame)\n");
             push(@$outputArray, "{\n");
             push(@$outputArray, "    ASSERT(callFrame);\n");
@@ -7448,7 +7459,7 @@ sub GenerateConstructorDefinition
             push(@$outputArray, "    auto* castedThis = jsCast<${constructorClassName}*>(callFrame->jsCallee());\n");
             push(@$outputArray, "    ASSERT(castedThis);\n");
 
-             if ($interface->extendedAttributes->{ConstructorEnabledBySetting}) {
+             if ($operation->extendedAttributes->{EnabledBySetting}) {
                  my $runtimeEnableConditionalString = GenerateRuntimeEnableConditionalString($interface, $operation, "lexicalGlobalObject");
                  push(@$outputArray, "    if (!${runtimeEnableConditionalString}) {\n");
                  push(@$outputArray, "        throwTypeError(lexicalGlobalObject, throwScope, \"Illegal constructor\"_s);\n");
@@ -7462,7 +7473,13 @@ sub GenerateConstructorDefinition
             my $functionString = GenerateParametersCheck($outputArray, $operation, $interface, $functionImplementationName, "    ");
 
             push(@$outputArray, "    auto object = ${functionString};\n");
-            push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());\n") if $codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{ConstructorCallWith}, "ExecState");
+            push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());\n") if $codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{CallWith}, "ExecState");
+            if ($interface->extendedAttributes->{ConstructorMayThrowException} || $operation->extendedAttributes->{MayThrowException}) {
+                push(@$outputArray, "    static_assert(IsExceptionOr<decltype(object)>::value);\n");
+                push(@$outputArray, "    static_assert(decltype(object)::ReturnType::isRef);\n");
+            } else {
+                push(@$outputArray, "    static_assert(decltype(object)::isRef);\n");
+            }
 
             my $IDLType = GetIDLType($interface, $interface->type);
             my $implType = GetImplClassName($interface);
@@ -7472,17 +7489,14 @@ sub GenerateConstructorDefinition
             my @constructionConversionArguments = ();
             push(@constructionConversionArguments, "*lexicalGlobalObject");
             push(@constructionConversionArguments, "*castedThis->globalObject()");
-            push(@constructionConversionArguments, "throwScope") if $interface->extendedAttributes->{ConstructorMayThrowException};
+            push(@constructionConversionArguments, "throwScope") if $interface->extendedAttributes->{ConstructorMayThrowException} || $operation->extendedAttributes->{MayThrowException};
             push(@constructionConversionArguments, "WTFMove(object)");
 
             # FIXME: toJSNewlyCreated should return JSObject* instead of JSValue.
-            # But certain constructor can return jsNull() e.g. AudioContext.
             push(@$outputArray, "    auto jsValue = toJSNewlyCreated<${IDLType}>(" . join(", ", @constructionConversionArguments) . ");\n");
-            push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, { });\n") if $interface->extendedAttributes->{ConstructorMayThrowException};
-            push(@$outputArray, "    if (auto* object = jsDynamicCast<JSObject*>(vm, jsValue)) {\n");
-            push(@$outputArray, "        setSubclassStructureIfNeeded<${implType}>(lexicalGlobalObject, callFrame, object);\n");
-            push(@$outputArray, "        RETURN_IF_EXCEPTION(throwScope, { });\n");
-            push(@$outputArray, "    }\n");
+            push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, { });\n") if $interface->extendedAttributes->{ConstructorMayThrowException} || $operation->extendedAttributes->{MayThrowException};
+            push(@$outputArray, "    setSubclassStructureIfNeeded<${implType}>(lexicalGlobalObject, callFrame, asObject(jsValue));\n");
+            push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, { });\n");
             push(@$outputArray, "    return JSValue::encode(jsValue);\n");
             push(@$outputArray, "}\n\n");
         }
@@ -7555,11 +7569,9 @@ sub GenerateConstructorHelperMethods
 
     my $constructorClassName = $generatingNamedConstructor ? "${className}NamedConstructor" : "${className}Constructor";
     my $leastConstructorLength = 0;
-    if ($interface->extendedAttributes->{Constructor} || $interface->extendedAttributes->{CustomConstructor}) {
-        my @constructors = @{$interface->constructors};
-        my @customConstructors = @{$interface->customConstructors};
+    if (@{$interface->constructors} > 0) {
         $leastConstructorLength = 255;
-        foreach my $constructor (@constructors, @customConstructors) {
+        foreach my $constructor (@{$interface->constructors}) {
             my $constructorLength = GetFunctionLength($constructor);
             $leastConstructorLength = $constructorLength if ($constructorLength < $leastConstructorLength);
         }
@@ -7636,7 +7648,7 @@ sub GenerateConstructorHelperMethods
 
     push(@$outputArray, "}\n\n");
 
-    if (IsJSBuiltinConstructor($interface)) {
+    if (HasJSBuiltinConstructor($interface)) {
         push(@$outputArray, "template<> FunctionExecutable* ${constructorClassName}::initializeExecutable(VM& vm)\n");
         push(@$outputArray, "{\n");
         push(@$outputArray, "    return " . GetJSBuiltinFunctionNameFromString($interface->type->name, "initialize" . $interface->type->name) . "(vm);\n");
@@ -7648,8 +7660,22 @@ sub GenerateConstructorHelperMethods
 
 sub HasCustomConstructor
 {
-    my $interface = shift;
-    return $interface->extendedAttributes->{CustomConstructor};
+    my ($interface) = @_;
+
+    my $hasCustomConstuctor = 0;
+    my $hasNonCustomConstuctor = 0;
+    
+    foreach my $constructor (@{$interface->constructors}) {
+        if ($constructor->extendedAttributes->{Custom}) {
+            $hasCustomConstuctor = 1;
+        } else {
+            $hasNonCustomConstuctor = 1;
+        }
+    }
+
+    assert("Using both Custom and non-Custom constructors on the same interface is not supported at this time") if $hasCustomConstuctor && $hasNonCustomConstuctor;
+
+    return $hasCustomConstuctor;
 }
 
 sub HasCustomGetter
@@ -7680,10 +7706,7 @@ sub NeedsConstructorProperty
 sub IsConstructable
 {
     my $interface = shift;
-    return HasCustomConstructor($interface)
-        || $interface->extendedAttributes->{Constructor}
-        || $interface->extendedAttributes->{NamedConstructor}
-        || $interface->extendedAttributes->{JSBuiltinConstructor};
+    return @{$interface->constructors} > 0;
 }
 
 sub InstanceOverridesGetCallData
@@ -7739,14 +7762,26 @@ sub IsJSBuiltin
     return 0;
 }
 
-sub IsJSBuiltinConstructor
+sub HasJSBuiltinConstructor
 {
     my ($interface) = @_;
 
-    return 0 if $interface->extendedAttributes->{CustomConstructor};
     return 1 if $interface->extendedAttributes->{JSBuiltin};
-    return 1 if $interface->extendedAttributes->{JSBuiltinConstructor};
-    return 0;
+
+    my $hasJSBuiltinConstuctor = 0;
+    my $hasNonJSBuiltinConstuctor = 0;
+    
+    foreach my $constructor (@{$interface->constructors}) {
+        if ($constructor->extendedAttributes->{JSBuiltin}) {
+            $hasJSBuiltinConstuctor = 1;
+        } else {
+            $hasNonJSBuiltinConstuctor = 1;
+        }
+    }
+
+    assert("Using both JSBuiltin and non-JSBuiltin constructors on the same interface is not supported at this time") if $hasJSBuiltinConstuctor && $hasNonJSBuiltinConstuctor;
+
+    return $hasJSBuiltinConstuctor;
 }
 
 sub GetJSBuiltinFunctionName
@@ -7775,7 +7810,7 @@ sub AddJSBuiltinIncludesIfNeeded()
 {
     my $interface = shift;
 
-    if ($interface->extendedAttributes->{JSBuiltin} || $interface->extendedAttributes->{JSBuiltinConstructor}) {
+    if ($interface->extendedAttributes->{JSBuiltin} || HasJSBuiltinConstructor($interface)) {
         AddToImplIncludes($interface->type->name . "Builtins.h");
         return;
     }

@@ -36,6 +36,7 @@
 #include "SharedBuffer.h"
 #include <wtf/Condition.h>
 #include <wtf/VectorHash.h>
+#include <wtf/WeakHashSet.h>
 
 namespace WebCore {
 
@@ -155,23 +156,45 @@ private:
     KeyStore m_keyStore;
 };
 
+class CDMProxyFactory {
+public:
+    virtual ~CDMProxyFactory()
+    {
+        unregisterFactory(*this);
+    };
+
+    WEBCORE_EXPORT static void registerFactory(CDMProxyFactory&);
+    WEBCORE_EXPORT static void unregisterFactory(CDMProxyFactory&);
+    WEBCORE_EXPORT static WARN_UNUSED_RETURN RefPtr<CDMProxy> createCDMProxyForKeySystem(const String&);
+
+protected:
+    virtual RefPtr<CDMProxy> createCDMProxy(const String&) = 0;
+    virtual bool supportsKeySystem(const String&) = 0;
+
+private:
+    // Platform-specific function that's called when the list of
+    // registered CDMProxyFactory objects is queried for the first time.
+    static Vector<CDMProxyFactory*> platformRegisterFactories();
+    WEBCORE_EXPORT static Vector<CDMProxyFactory*>& registeredFactories();
+};
+
+class CDMInstanceSessionProxy : public CDMInstanceSession, public CanMakeWeakPtr<CDMInstanceSessionProxy, WeakPtrFactoryInitialization::Eager> {
+};
+
 // Base class for common session management code and for communicating messages
 // from "real CDM" state changes to JS.
 class CDMInstanceProxy : public CDMInstance {
 public:
-    CDMInstanceProxy() = default;
+    explicit CDMInstanceProxy(const String& keySystem)
+    {
+        ASSERT(isMainThread());
+        m_cdmProxy = CDMProxyFactory::createCDMProxyForKeySystem(keySystem);
+        if (m_cdmProxy)
+            m_cdmProxy->setInstance(this);
+    }
     virtual ~CDMInstanceProxy() = default;
 
     // Main-thread only.
-    void setProxy(Ref<CDMProxy>&& proxy)
-    {
-        m_cdmProxy = WTFMove(proxy);
-        m_cdmProxy->setInstance(this);
-        // The CDM instance may be attached after an update(). Not
-        // recommended, but apps and the W3C test-suite do this.
-        if (m_keyStore.hasKeys())
-            m_cdmProxy->updateKeyStore(m_keyStore);
-    }
     void mergeKeysFrom(const KeyStore&);
     void removeAllKeysFrom(const KeyStore&);
 
@@ -185,7 +208,7 @@ public:
     void stoppedWaitingForKey();
 
 protected:
-    void trackSession(const RefPtr<CDMInstanceSession> session) { m_sessions.append(session); }
+    void trackSession(const CDMInstanceSessionProxy&);
 
 private:
     RefPtr<CDMProxy> m_cdmProxy;
@@ -195,7 +218,7 @@ private:
     MediaPlayer* m_player { nullptr }; // FIXME: MainThread<T>?
 
     std::atomic<int> m_numDecryptorsWaitingForKey { 0 };
-    Vector<RefPtr<CDMInstanceSession>> m_sessions;
+    WeakHashSet<CDMInstanceSessionProxy> m_sessions;
 
     KeyStore m_keyStore;
 };

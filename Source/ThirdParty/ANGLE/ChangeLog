@@ -1,3 +1,63 @@
+2020-06-10  Dean Jackson  <dino@apple.com>
+
+        Add a dynamic library target for ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=207591
+
+        Reviewed by Tim Horton.
+
+        In preparation for moving to a dynamic library, start
+        by compiling and linking it. It isn't used anywhere
+        but getting it into the build will help Apple's
+        build system remain happy as we migrate, as well
+        as have the system know it exists for building
+        the shared system cache.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE-dynamic.xcconfig: Added.
+        * Configurations/ANGLE-static.xcconfig: Added.
+        * Configurations/ANGLE.xcconfig: Removed.
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2020-06-07  James Darpinian  <jdarpinian@chromium.org>
+
+        [ANGLE - iOS] fast/canvas/webgl/uninitialized-test.html is still failing
+        https://bugs.webkit.org/show_bug.cgi?id=212249
+
+        Reviewed by Dean Jackson.
+
+        copyTexImage2D is broken in some way on iOS. Work around it by reimplementing
+        it with ANGLE's BlitGL class.
+
+        * include/platform/FeaturesGL.h:
+        * src/libANGLE/renderer/gl/BlitGL.cpp:
+        (rx::BlitGL::blitColorBufferWithShader):
+        * src/libANGLE/renderer/gl/BlitGL.h:
+        * src/libANGLE/renderer/gl/TextureGL.cpp:
+        (rx::TextureGL::copyImage):
+        (rx::TextureGL::copySubImage):
+        * src/libANGLE/renderer/gl/renderergl_utils.cpp:
+        (rx::nativegl_gl::InitializeFeatures):
+        * src/tests/gl_tests/CopyTexImageTest.cpp:
+        * src/tests/gl_tests/TextureTest.cpp:
+        * src/tests/test_utils/angle_test_configs.cpp:
+        (angle::operator<<):
+        * src/tests/test_utils/angle_test_configs.h:
+        (angle::WithEmulateCopyTexImage2DFromRenderbuffers):
+        * util/EGLPlatformParameters.h:
+        (EGLPlatformParameters::tie const):
+        * util/EGLWindow.cpp:
+        (EGLWindow::initializeDisplay):
+
+2020-06-04  Tim Horton  <timothy_horton@apple.com>
+
+        Work around broken system version macro
+        https://bugs.webkit.org/show_bug.cgi?id=212726
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
 2020-06-02  Keith Rollin  <krollin@apple.com>
 
         Change ANGLE's header postprocessing script to not rely on timestamps

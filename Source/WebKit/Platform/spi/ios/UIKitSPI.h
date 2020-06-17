@@ -254,6 +254,8 @@ typedef enum {
 
 @interface UIFont ()
 + (UIFont *)fontWithFamilyName:(NSString *)familyName traits:(UIFontTrait)traits size:(CGFloat)fontSize;
++ (UIFont *)systemFontOfSize:(CGFloat)size weight:(CGFloat)weight design:(NSString *)design;
+
 - (UIFontTrait)traits;
 @end
 
@@ -267,6 +269,7 @@ typedef enum {
 
 @interface UIImage ()
 - (id)initWithCGImage:(CGImageRef)CGImage imageOrientation:(UIImageOrientation)imageOrientation;
+- (UIImage *)_flatImageWithColor:(UIColor *)color;
 @end
 
 @interface UIKeyCommand ()
@@ -400,6 +403,8 @@ typedef enum {
 - (double)_verticalVelocity;
 - (void)_flashScrollIndicatorsForAxes:(UIAxis)axes persistingPreviousFlashes:(BOOL)persisting;
 @property (nonatomic, getter=isZoomEnabled) BOOL zoomEnabled;
+@property (nonatomic, readonly, getter=_isVerticalBouncing) BOOL isVerticalBouncing;
+@property (nonatomic, readonly, getter=_isHorizontalBouncing) BOOL isHorizontalBouncing;
 @property (nonatomic, readonly, getter=_isAnimatingZoom) BOOL isAnimatingZoom;
 @property (nonatomic, readonly, getter=_isAnimatingScroll) BOOL isAnimatingScroll;
 @property (nonatomic) CGFloat horizontalScrollDecelerationFactor;
@@ -505,6 +510,7 @@ typedef enum {
 @interface UITextSuggestion : NSObject
 + (instancetype)textSuggestionWithInputText:(NSString *)inputText;
 @property (nonatomic, copy, readonly) NSString *inputText;
+@property (nonatomic, copy, readonly) NSString *displayText;
 @end
 
 @protocol UITextInputSuggestionDelegate <UITextInputDelegate>
@@ -691,9 +697,12 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 @class UIWKDocumentContext;
 
 @protocol UIWKInteractionViewProtocol
+#if HAVE(UI_WK_DOCUMENT_CONTEXT)
 - (void)adjustSelectionWithDelta:(NSRange)deltaRange completionHandler:(void (^)(void))completionHandler;
 - (void)requestDocumentContext:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
 - (void)selectPositionAtPoint:(CGPoint)point withContextRequest:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
+#endif
+
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state;
 - (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart withFlags:(UIWKSelectionFlags)flags;
 - (void)changeSelectionWithTouchesFrom:(CGPoint)from to:(CGPoint)to withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState;
@@ -1025,12 +1034,6 @@ CGFloat UIRoundToScreenScale(CGFloat value, UIScreen *);
 
 WTF_EXTERN_C_END
 
-typedef NS_OPTIONS(NSUInteger, UIDragOperation)
-{
-    UIDragOperationNone = 0,
-    UIDragOperationEvery = NSUIntegerMax,
-};
-
 @interface UIDragInteraction ()
 @property (nonatomic, assign, getter=_liftDelay, setter=_setLiftDelay:) NSTimeInterval liftDelay;
 - (void)_setAllowsPointerDragBeforeLiftDelay:(BOOL)allowsPointerDragBeforeLiftDelay;
@@ -1212,6 +1215,11 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 @interface _UICursorStyle : NSObject
 + (instancetype)styleWithCursor:(_UICursor *)cursor constrainedAxes:(UIAxis)axes;
 @end
+
+#if PLATFORM(WATCHOS)
+@interface UIStatusBar : UIView
+@end
+#endif
 
 #endif // USE(APPLE_INTERNAL_SDK)
 
@@ -1423,5 +1431,11 @@ extern NSString * const NSTextSizeMultiplierDocumentOption;
 
 extern NSNotificationName const _UISceneWillBeginSystemSnapshotSequence;
 extern NSNotificationName const _UISceneDidCompleteSystemSnapshotSequence;
+
+extern CGRect UIRectInsetEdges(CGRect, UIRectEdge edges, CGFloat v);
+extern CGRect UIRectInset(CGRect, CGFloat top, CGFloat right, CGFloat bottom, CGFloat left);
+
+extern CGRect UIRectInsetEdges(CGRect, UIRectEdge edges, CGFloat v);
+extern CGRect UIRectInset(CGRect, CGFloat top, CGFloat right, CGFloat bottom, CGFloat left);
 
 WTF_EXTERN_C_END

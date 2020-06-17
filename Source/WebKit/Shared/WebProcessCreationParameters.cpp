@@ -72,14 +72,14 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << urlSchemesRegisteredAsAlwaysRevalidated;
     encoder << urlSchemesRegisteredAsCachePartitioned;
     encoder << urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
-    encoder.encodeEnum(cacheModel);
+    encoder << cacheModel;
     encoder << shouldAlwaysUseComplexTextCodePath;
     encoder << shouldEnableMemoryPressureReliefLogging;
     encoder << shouldSuppressMemoryPressureHandler;
     encoder << shouldUseFontSmoothing;
     encoder << fontWhitelist;
     encoder << terminationTimeout;
-    encoder << languages;
+    encoder << overrideLanguages;
 #if USE(GSTREAMER)
     encoder << gstreamerOptions;
 #endif
@@ -162,8 +162,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    encoder << diagnosticsExtensionHandle;
-    encoder << runningboardExtensionHandle;
+    encoder << diagnosticsExtensionHandles;
     encoder << dynamicMachExtensionHandles;
     encoder << dynamicIOKitExtensionHandles;
 #endif
@@ -271,7 +270,7 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest))
         return false;
-    if (!decoder.decodeEnum(parameters.cacheModel))
+    if (!decoder.decode(parameters.cacheModel))
         return false;
     if (!decoder.decode(parameters.shouldAlwaysUseComplexTextCodePath))
         return false;
@@ -285,7 +284,7 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.terminationTimeout))
         return false;
-    if (!decoder.decode(parameters.languages))
+    if (!decoder.decode(parameters.overrideLanguages))
         return false;
 #if USE(GSTREAMER)
     if (!decoder.decode(parameters.gstreamerOptions))
@@ -437,17 +436,11 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    Optional<Optional<SandboxExtension::Handle>> diagnosticsExtensionHandle;
-    decoder >> diagnosticsExtensionHandle;
-    if (!diagnosticsExtensionHandle)
+    Optional<SandboxExtension::HandleArray> diagnosticsExtensionHandles;
+    decoder >> diagnosticsExtensionHandles;
+    if (!diagnosticsExtensionHandles)
         return false;
-    parameters.diagnosticsExtensionHandle = WTFMove(*diagnosticsExtensionHandle);
-
-    Optional<Optional<SandboxExtension::Handle>> runningboardExtensionHandle;
-    decoder >> runningboardExtensionHandle;
-    if (!runningboardExtensionHandle)
-        return false;
-    parameters.runningboardExtensionHandle = WTFMove(*runningboardExtensionHandle);
+    parameters.diagnosticsExtensionHandles = WTFMove(*diagnosticsExtensionHandles);
 
     Optional<SandboxExtension::HandleArray> dynamicMachExtensionHandles;
     decoder >> dynamicMachExtensionHandles;

@@ -147,7 +147,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePaySession.idl \
     $(WebCore)/Modules/applepay/ApplePaySessionError.idl \
     $(WebCore)/Modules/applepay/ApplePaySetup.idl \
+    $(WebCore)/Modules/applepay/ApplePaySetupConfiguration.idl \
     $(WebCore)/Modules/applepay/ApplePaySetupFeature.idl \
+    $(WebCore)/Modules/applepay/ApplePaySetupFeatureState.idl \
     $(WebCore)/Modules/applepay/ApplePaySetupFeatureType.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingContactUpdate.idl \
@@ -514,6 +516,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webxr/XRHandedness.idl \
     $(WebCore)/Modules/webxr/XRInputSourceEvent.idl \
     $(WebCore)/Modules/webxr/XRInputSourcesChangeEvent.idl \
+    $(WebCore)/Modules/webxr/XRInteractionMode.idl \
     $(WebCore)/Modules/webxr/XRReferenceSpaceEvent.idl \
     $(WebCore)/Modules/webxr/XRReferenceSpaceType.idl \
     $(WebCore)/Modules/webxr/XRRenderStateInit.idl \
@@ -727,10 +730,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/XMLDocument.idl \
     $(WebCore)/fileapi/Blob.idl \
     $(WebCore)/fileapi/BlobCallback.idl \
-    $(WebCore)/fileapi/BlobLineEndings.idl \
     $(WebCore)/fileapi/BlobPropertyBag.idl \
+    $(WebCore)/fileapi/EndingType.idl \
     $(WebCore)/fileapi/File.idl \
-    $(WebCore)/fileapi/FileError.idl \
     $(WebCore)/fileapi/FileList.idl \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
@@ -950,6 +952,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/NavigatorIsLoggedIn.idl \
     $(WebCore)/page/NavigatorLanguage.idl \
     $(WebCore)/page/NavigatorOnLine.idl \
+    $(WebCore)/page/NavigatorPlugins.idl \
     $(WebCore)/page/NavigatorServiceWorker.idl \
     $(WebCore)/page/NavigatorShare.idl \
     $(WebCore)/page/Performance.idl \

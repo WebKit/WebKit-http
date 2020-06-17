@@ -20,7 +20,7 @@
 #include "config.h"
 #include "ImageDecoderGStreamer.h"
 
-#if USE(GSTREAMER)
+#if USE(GSTREAMER) && ENABLE(VIDEO)
 
 #include "FloatSize.h"
 #include "GStreamerCommon.h"
@@ -238,7 +238,7 @@ void ImageDecoderGStreamer::InnerDecoder::connectDecoderPad(GstPad* pad)
         },
         { nullptr }
     };
-    gst_app_sink_set_callbacks(GST_APP_SINK(sink), &callbacks, m_decoder.get(), nullptr);
+    gst_app_sink_set_callbacks(GST_APP_SINK(sink), &callbacks, &m_decoder, nullptr);
 
     GRefPtr<GstCaps> caps = adoptGRef(gst_caps_from_string("video/x-raw, format=(string)RGBA"));
     g_object_set(sink, "sync", false, "caps", caps.get(), nullptr);

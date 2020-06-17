@@ -32,33 +32,33 @@
 
 namespace WebCore {
 
-bool UserContentURLPattern::matchesPatterns(const URL& url, const Vector<String>& whitelist, const Vector<String>& blacklist)
+bool UserContentURLPattern::matchesPatterns(const URL& url, const Vector<String>& allowlist, const Vector<String>& blocklist)
 {
-    // In order for a URL to be a match it has to be present in the whitelist and not present in the blacklist.
-    // If there is no whitelist at all, then all URLs are assumed to be in the whitelist.
-    bool matchesWhitelist = whitelist.isEmpty();
-    if (!matchesWhitelist) {
-        for (auto& entry : whitelist) {
+    // In order for a URL to be a match it has to be present in the allowlist and not present in the blocklist.
+    // If there is no allowlist at all, then all URLs are assumed to be in the allowlist.
+    bool matchesAllowlist = allowlist.isEmpty();
+    if (!matchesAllowlist) {
+        for (auto& entry : allowlist) {
             UserContentURLPattern contentPattern(entry);
             if (contentPattern.matches(url)) {
-                matchesWhitelist = true;
+                matchesAllowlist = true;
                 break;
             }
         }
     }
 
-    bool matchesBlacklist = false;
-    if (!blacklist.isEmpty()) {
-        for (auto& entry : blacklist) {
+    bool matchesBlocklist = false;
+    if (!blocklist.isEmpty()) {
+        for (auto& entry : blocklist) {
             UserContentURLPattern contentPattern(entry);
             if (contentPattern.matches(url)) {
-                matchesBlacklist = true;
+                matchesBlocklist = true;
                 break;
             }
         }
     }
 
-    return matchesWhitelist && !matchesBlacklist;
+    return matchesAllowlist && !matchesBlocklist;
 }
 
 bool UserContentURLPattern::parse(const String& pattern)

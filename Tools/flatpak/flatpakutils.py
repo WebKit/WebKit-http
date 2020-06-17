@@ -34,8 +34,6 @@ import sys
 import tempfile
 import re
 
-from webkitpy.common.system.systemhost import SystemHost
-from webkitpy.port.factory import PortFactory
 from webkitpy.common.system.logutils import configure_logging
 import webkitpy.thirdparty.autoinstalled.toml
 import toml
@@ -197,6 +195,20 @@ class FlatpakObject:
 
         _log.debug("Executing %s" % ' '.join(command))
         return run_sanitized(command, gather_output=gather_output)
+
+    def version(self, ref_id):
+        try:
+            output = self.flatpak("info", ref_id, gather_output=True)
+        except subprocess.CalledProcessError:
+            # ref is likely not installed
+            return ""
+        for line in output.splitlines():
+            tokens = line.split(":")
+            if len(tokens) != 2:
+                continue
+            if tokens[0].strip().lower() == "version":
+                return tokens[1].strip()
+        return ""
 
 class FlatpakPackages(FlatpakObject):
 
@@ -393,12 +405,14 @@ class WebkitFlatpak:
 
         parser = argparse.ArgumentParser(prog="webkit-flatpak", add_help=add_help)
         general = parser.add_argument_group("General")
-        general.add_argument('--verbose', action='store_true',
-                             help='Show debug message')
-        general.add_argument("--debug",
-                             help="Compile with Debug configuration, also installs Sdk debug symbols.",
-                             action="store_true")
-        general.add_argument("--release", help="Compile with Release configuration.", action="store_true")
+        general.add_argument('--verbose', action='store_true', help='Show debug messages')
+        general.add_argument('--version', action='store_true', help='Show SDK version', dest="show_version")
+        type_group = parser.add_mutually_exclusive_group()
+        type_group.add_argument("--debug",
+                                help="Compile with Debug configuration, also installs Sdk debug symbols.",
+                                dest='build_type', action="store_const", const="Debug")
+        type_group.add_argument("--release", help="Compile with Release configuration.",
+                                dest='build_type', action="store_const", const="Release")
         general.add_argument('--gtk', action='store_const', dest='platform', const='gtk',
                              help='Setup build directory for the GTK port')
         general.add_argument('--wpe', action='store_const', dest='platform', const='wpe',
@@ -440,6 +454,9 @@ class WebkitFlatpak:
 
         _, self.args = parser.parse_known_args(args=args, namespace=self)
 
+        if not self.build_type:
+            self.build_type = "Release"
+
         if os.environ.get('CCACHE_PREFIX') == 'icecc':
             self.use_icecream = True
 
@@ -451,6 +468,7 @@ class WebkitFlatpak:
         self.sdk = None
         self.user_repo = None
 
+        self.show_version = False
         self.verbose = False
         self.quiet = False
         self.update = False
@@ -467,7 +485,6 @@ class WebkitFlatpak:
 
         self.sdk_branch = "0.2"
         self.platform = "gtk"
-        self.build_type = "Release"
         self.check_available = False
         self.user_command = []
 
@@ -514,12 +531,6 @@ class WebkitFlatpak:
         configure_logging(logging.DEBUG if self.verbose else logging.INFO)
         _log.debug("Using flatpak user dir: %s" % self.flatpak_build_path)
 
-        if not self.debug and not self.release:
-            factory = PortFactory(SystemHost())
-            port = factory.get(self.platform)
-            self.debug = port.default_configuration() == "Debug"
-
-        self.build_type = "Debug" if self.debug else "Release"
         self.platform = self.platform.upper()
 
         if self.gdb is None and '--gdb' in sys.argv:
@@ -594,13 +605,17 @@ class WebkitFlatpak:
         command = [os.path.join(gst_dir, 'gst-env.py'), '--builddir', gst_builddir, '--srcdir', gst_dir, "--only-environment"]
         gst_env = run_sanitized(command, gather_output=True)
         whitelist = ("LD_LIBRARY_PATH", "PATH", "PKG_CONFIG_PATH")
+        nopathlist = ("GST_DEBUG", "GST_VERSION", "GST_ENV")
         env = []
         for line in [line for line in gst_env.splitlines() if not line.startswith("export")]:
             tokens = line.split("=")
             var_name, contents = tokens[0], "=".join(tokens[1:])
             if not var_name.startswith("GST_") and var_name not in whitelist:
                 continue
-            new_contents = ':'.join([self.host_path_to_sandbox_path(p) for p in contents.split(":")])
+            if var_name not in nopathlist:
+                new_contents = ':'.join([self.host_path_to_sandbox_path(p) for p in contents.split(":")])
+            else:
+                new_contents = contents.replace("'", "")
             env.append("--env=%s=%s" % (var_name, new_contents))
         return env
 
@@ -700,7 +715,6 @@ class WebkitFlatpak:
             "G",
             "CCACHE",
             "GIGACAGE",
-            "GST",
             "GTK",
             "ICECC",
             "JSC",
@@ -745,7 +759,7 @@ class WebkitFlatpak:
         env_vars.update(extra_env_vars)
         for envvar, value in env_vars.items():
             var_tokens = envvar.split("_")
-            if var_tokens[0] in env_var_prefixes_to_keep or envvar in env_vars_to_keep or envvar_in_suffixes_to_keep(envvar):
+            if var_tokens[0] in env_var_prefixes_to_keep or envvar in env_vars_to_keep or envvar_in_suffixes_to_keep(envvar) or (not os.environ.get('GST_BUILD_PATH') and var_tokens[0] == "GST"):
                 sandbox_environment[envvar] = value
 
         share_network_option = "--share=network"
@@ -813,10 +827,15 @@ class WebkitFlatpak:
         if not self.clean_args():
             return 1
 
+        if self.show_version:
+            print(self.sdk_repo.version("org.webkit.Sdk"))
+            return 0
+
         if self.update:
             repo = self.sdk_repo
-            update_output = repo.flatpak("update", gather_output=True, comment="Updating Flatpak %s environment" % self.build_type)
-            regenerate_toolchains = update_output.find("Nothing to do") == -1
+            version_before_update = repo.version("org.webkit.Sdk")
+            repo.flatpak("update", comment="Updating Flatpak %s environment" % self.build_type)
+            regenerate_toolchains = repo.version("org.webkit.Sdk") != version_before_update
 
             for package in self._get_packages():
                 if package.name.startswith("org.webkit") and repo.is_app_installed(package.name) \
@@ -936,8 +955,6 @@ class WebkitFlatpak:
         )
 
         packages.append(FlatpakPackage("org.freedesktop.Platform.GL.default", "19.08",
-                                       self.flathub_repo, arch))
-        packages.append(FlatpakPackage("org.freedesktop.Platform.ffmpeg-full", "19.08",
                                        self.flathub_repo, arch))
         return packages
 

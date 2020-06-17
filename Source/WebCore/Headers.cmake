@@ -40,6 +40,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     Modules/indexeddb/IDBActiveDOMObject.h
     Modules/indexeddb/IDBDatabaseIdentifier.h
+    Modules/indexeddb/IDBDatabaseNameAndVersionRequest.h
     Modules/indexeddb/IDBGetAllResult.h
     Modules/indexeddb/IDBGetResult.h
     Modules/indexeddb/IDBKey.h
@@ -72,6 +73,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/indexeddb/shared/IDBCursorInfo.h
     Modules/indexeddb/shared/IDBCursorRecord.h
     Modules/indexeddb/shared/IDBDatabaseInfo.h
+    Modules/indexeddb/shared/IDBDatabaseNameAndVersion.h
     Modules/indexeddb/shared/IDBError.h
     Modules/indexeddb/shared/IDBGetAllRecordsData.h
     Modules/indexeddb/shared/IDBGetRecordData.h
@@ -531,10 +533,9 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     fileapi/AsyncFileStream.h
     fileapi/Blob.h
-    fileapi/BlobLineEndings.h
     fileapi/BlobPropertyBag.h
+    fileapi/EndingType.h
     fileapi/File.h
-    fileapi/FileError.h
     fileapi/FileList.h
     fileapi/FileReaderLoader.h
     fileapi/FileReaderLoaderClient.h
@@ -1083,6 +1084,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/ColorHash.h
     platform/graphics/ColorMatrix.h
     platform/graphics/ColorSpace.h
+    platform/graphics/ColorTypes.h
     platform/graphics/ColorUtilities.h
     platform/graphics/ComplexTextController.h
     platform/graphics/ConcreteImageBuffer.h
@@ -1255,6 +1257,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/mediastream/VideoPreset.h
     platform/mediastream/WebAudioSourceProvider.h
 
+    platform/mediastream/libwebrtc/LibWebRTCEnumTraits.h
     platform/mediastream/libwebrtc/LibWebRTCMacros.h
     platform/mediastream/libwebrtc/LibWebRTCProvider.h
     platform/mediastream/libwebrtc/LibWebRTCSocketIdentifier.h

@@ -990,7 +990,6 @@ webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/modify-rule-selector.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
-webkit.org/b/210062 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Failure ]
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
@@ -1114,6 +1113,7 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 
 fast/css/appearance-apple-pay-button.html [ Pass ]
 fast/css/appearance-apple-pay-button-border-radius.html [ Pass ]
+fast/css/appearance-apple-pay-button-default-corners.html [ Pass ]
 fast/css/getComputedStyle/computed-style-apple-pay-button.html [ Pass ]
 
 # <rdar://problem/23500327> storage/websql/alter-to-info-table.html
@@ -1260,8 +1260,6 @@ fast/events/context-activated-by-key-event.html [ Skip ]
 webkit.org/b/168136 performance-api/performance-observer-periodic.html [ Pass Failure ]
 
 webkit.org/b/169324 media/track/media-element-enqueue-event-crash.html [ Pass Failure ]
-
-webkit.org/b/169572 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location_hash.html [ Pass Failure ]
 
 webkit.org/b/169637 imported/w3c/web-platform-tests/xhr/timeout-multiple-fetches.html [ Pass Failure ]
 
@@ -1532,7 +1530,6 @@ webkit.org/b/183490 media/modern-media-controls/media-controller/media-controlle
 webkit.org/b/183490 media/modern-media-controls/start-support/start-support-fullscreen.html [ Failure ]
 webkit.org/b/183490 media/video-playsinline.html [ Failure ]
 webkit.org/b/183490 media/video-webkit-playsinline.html [ Failure ]
-webkit.org/b/183490 media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Failure ]
 
 webkit.org/b/183764 fast/css/apple-system-control-colors.html [ Pass ]
 
@@ -1562,8 +1559,6 @@ webkit.org/b/196169 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/o
 
 webkit.org/b/197970 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-010.html [ ImageOnlyFailure ]
 webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html [ ImageOnlyFailure ]
-
-webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html [ Pass Failure ]
 
 http/tests/cookies/same-site [ Pass ]
 
@@ -1711,6 +1706,10 @@ webkit.org/b/212172 [ Catalina ] fast/text/font-collection.html [ ImageOnlyFailu
 [ Catalina+ ] fast/text/design-system-ui-15.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-16.html [ Pass ]
 
+[ Catalina+ ] http/wpt/mediarecorder [ Pass Failure ] 
+[ Catalina+ ] imported/w3c/web-platform-tests/mediacapture-record [ Pass Failure ]
+[ Catalina+ ] fast/history/page-cache-media-recorder.html [ Pass Failure ]
+
 webkit.org/b/200128 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html [ Timeout Pass ]
 
 # rdar://55405851 ([ macOS ] Layout tests webgpu/*-triangle-strip.html are flaky failures. (201827))
@@ -1747,22 +1746,6 @@ webkit.org/b/205525 webgpu/whlsl/buffer-fragment.html [ Pass ImageOnlyFailure ]
 
 # The test runner is failing in an unrelated, unexplained, invisible to the human eye, 2 pixels difference.
 webkit.org/b/201401 imported/w3c/web-platform-tests/media-source/mediasource-video-is-visible.html [ Skip ]
-
-# Two canvas tests fail with small antialiasing diffs
-imported/w3c/web-platform-tests/2dcontext/building-paths/canvas_complexshapes_arcto_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/2dcontext/building-paths/canvas_complexshapes_beziercurveto_001.htm [ ImageOnlyFailure ]
-
-webkit.org/b/202455 imported/w3c/web-platform-tests/2dcontext/drawing-images-to-the-canvas/2d.drawImage.broken.html [ Failure ]
-
-webkit.org/b/202458 imported/w3c/web-platform-tests/2dcontext/imagebitmap/canvas-createImageBitmap-resize.html [ Failure ]
-
-webkit.org/b/202460 imported/w3c/web-platform-tests/2dcontext/image-smoothing/imagesmoothing.html [ Failure ]
-
-webkit.org/b/202516 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.path.rect.winding.html [ Failure ]
-
-webkit.org/b/202523 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.path.stroke.scale2.html [ Failure ]
-
-webkit.org/b/202598 imported/w3c/web-platform-tests/2dcontext/line-styles/2d.line.cap.round.html [ Failure ]
 
 webkit.org/b/198867 webgl/many-contexts.html [ Skip ]
 
@@ -1817,8 +1800,6 @@ webkit.org/b/203222 svg/wicd/rightsizing-grid.xhtml [ Pass Failure ]
 
 webkit.org/b/206711 http/wpt/resource-timing/rt-resource-errors.html [ Pass Failure ]
 
-webkit.org/b/206752 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable.html [ Pass Failure ]
-
 webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height-viewbox.html [ Skip ]
 webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height.html [ Skip ]
 webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height-viewbox.html [ Skip ]
@@ -1834,8 +1815,6 @@ webkit.org/b/205729 webrtc/captureCanvas-webrtc.html [ Pass Failure ]
 webkit.org/b/207010 fast/history/page-cache-webdatabase-pending-transaction.html [ Timeout ]
 
 webkit.org/b/201481 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Pass Failure ]
-
-webkit.org/b/207053 inspector/page/setBootstrapScript-sub-frame.html [ Pass Failure ]
 
 webkit.org/b/206604 animations/animation-welcome-safari.html [ Pass Failure ]
 
@@ -1856,8 +1835,6 @@ webkit.org/b/207226 http/tests/misc/image-blocked-src-change.html [ Pass Failure
 webkit.org/b/206908 imported/w3c/web-platform-tests/hr-time/basic.any.html [ Pass Failure ]
 
 webkit.org/b/207306 inspector/animation/lifecycle-css-animation.html [ Pass Failure ]
-
-webkit.org/b/207333 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer.html [ Pass Failure ]
 
 webkit.org/b/112939 fast/performance/performance-now-timestamps.html [ Pass Failure ]
 
@@ -1897,8 +1874,6 @@ webkit.org/b/208450 webanimations/accelerated-animation-renderer-change.html [ P
 webkit.org/b/208467 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html [ Pass Failure ]
 
 webkit.org/b/208519 [ Catalina ] webanimations/accelerated-animation-slot-invalidation.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/208574 mathml/scripts-removeChild.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/208722 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/seeking/seek-to-max-value.htm [ Pass Failure ]
 
@@ -1964,9 +1939,6 @@ webkit.org/b/212218 webrtc/datachannel/gather-candidates-networkprocess-crash.ht
 webkit.org/b/212226 imported/w3c/web-platform-tests/css/css-grid/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-008.html [ ImageOnlyFailure ]
 
 webkit.org/b/212488 [ Catalina ] media/video-play-audio-require-user-gesture.html [ Pass Timeout ]
-
-webkit.org/b/212594 webgl/2.0.0/conformance/canvas/buffer-offscreen-test.html [ Failure ]
-webkit.org/b/212594 webgl/1.0.3/conformance/canvas/buffer-offscreen-test.html [ Failure ]
 
 # This test requires an update to system decoders
 webkit.org/b/212565 [ Catalina Mojave ] imported/w3c/web-platform-tests/encoding/single-byte-decoder.html [ Failure ]

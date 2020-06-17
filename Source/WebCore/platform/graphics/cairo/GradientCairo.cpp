@@ -43,7 +43,7 @@ void Gradient::platformDestroy()
 
 static void addColorStopRGBA(cairo_pattern_t *gradient, Gradient::ColorStop stop, float globalAlpha)
 {
-    auto [r, g, b, a] = stop.color.toSRGBAComponentsLossy();
+    auto [r, g, b, a] = stop.color.toSRGBALossy();
     cairo_pattern_add_color_stop_rgba(gradient, stop.offset, r, g, b, a * globalAlpha);
 }
 
@@ -55,7 +55,7 @@ typedef struct point_t {
 
 static void setCornerColorRGBA(cairo_pattern_t* gradient, int id, Gradient::ColorStop stop, float globalAlpha)
 {
-    auto [r, g, b, a] = stop.color.toSRGBAComponentsLossy();
+    auto [r, g, b, a] = stop.color.toSRGBALossy();
     cairo_mesh_pattern_set_corner_color_rgba(gradient, id, r, g, b, a * globalAlpha);
 }
 
@@ -135,8 +135,8 @@ static void addConicSector(cairo_pattern_t *gradient, float cx, float cy, float 
 
 static Gradient::ColorStop interpolateColorStop(Gradient::ColorStop from, Gradient::ColorStop to)
 {
-    auto [r1, g1, b1, a1] = from.color.toSRGBAComponentsLossy();
-    auto [r2, g2, b2, a2] = to.color.toSRGBAComponentsLossy();
+    auto [r1, g1, b1, a1] = from.color.toSRGBALossy();
+    auto [r2, g2, b2, a2] = to.color.toSRGBALossy();
 
     float offset = from.offset + (to.offset - from.offset) * 0.5f;
     float r = r1 + (r2 - r1) * 0.5f;
@@ -217,13 +217,13 @@ cairo_pattern_t* Gradient::createPlatformGradient(float globalAlpha)
     }
 
     switch (m_spreadMethod) {
-    case SpreadMethodPad:
+    case GradientSpreadMethod::Pad:
         cairo_pattern_set_extend(gradient, CAIRO_EXTEND_PAD);
         break;
-    case SpreadMethodReflect:
+    case GradientSpreadMethod::Reflect:
         cairo_pattern_set_extend(gradient, CAIRO_EXTEND_REFLECT);
         break;
-    case SpreadMethodRepeat:
+    case GradientSpreadMethod::Repeat:
         cairo_pattern_set_extend(gradient, CAIRO_EXTEND_REPEAT);
         break;
     }

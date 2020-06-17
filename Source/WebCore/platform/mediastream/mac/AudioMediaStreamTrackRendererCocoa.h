@@ -25,10 +25,11 @@
 
 #pragma once
 
-#if ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
+#if ENABLE(MEDIA_STREAM)
 
 #include "AudioMediaStreamTrackRenderer.h"
 #include "Logging.h"
+#include <wtf/WeakPtr.h>
 
 #include <AudioToolbox/AudioToolbox.h>
 #include <CoreAudio/CoreAudioTypes.h>
@@ -39,7 +40,7 @@ class AudioSampleDataSource;
 class AudioSampleBufferList;
 class CAAudioStreamDescription;
 
-class AudioMediaStreamTrackRendererCocoa : public AudioMediaStreamTrackRenderer {
+class AudioMediaStreamTrackRendererCocoa : public AudioMediaStreamTrackRenderer, public CanMakeWeakPtr<AudioMediaStreamTrackRendererCocoa, WeakPtrFactoryInitialization::Eager> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     AudioMediaStreamTrackRendererCocoa();
@@ -51,21 +52,12 @@ private:
     void start() final;
     void stop() final;
     void clear() final;
+    void setVolume(float) final;
 
-    static OSStatus inputProc(void*, AudioUnitRenderActionFlags*, const AudioTimeStamp*, UInt32 inBusNumber, UInt32 numberOfFrames, AudioBufferList*);
-    OSStatus render(UInt32 sampleCount, AudioBufferList&, UInt32 inBusNumber, const AudioTimeStamp&, AudioUnitRenderActionFlags&);
-
-    AudioComponentInstance createAudioUnit(CAAudioStreamDescription&);
-
-    AudioComponentInstance m_remoteIOUnit { nullptr };
     std::unique_ptr<CAAudioStreamDescription> m_outputDescription;
-
-    // Audio threads member
     RefPtr<AudioSampleDataSource> m_dataSource;
-    RefPtr<AudioSampleDataSource> m_rendererDataSource;
-    bool m_shouldUpdateRendererDataSource { false };
 };
 
 }
 
-#endif // ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
+#endif // ENABLE(MEDIA_STREAM)

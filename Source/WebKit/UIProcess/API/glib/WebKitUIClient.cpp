@@ -31,6 +31,7 @@
 #include "WebKitURIRequestPrivate.h"
 #include "WebKitUserMediaPermissionRequestPrivate.h"
 #include "WebKitWebViewPrivate.h"
+#include "WebKitWebsiteDataAccessPermissionRequestPrivate.h"
 #include "WebKitWindowPropertiesPrivate.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
@@ -200,8 +201,13 @@ private:
             if (!needsMove && !needsResize)
                 return;
 
-            // There is no GtkWidget::configure-event in GTK4, move is not supported.
-#if !USE(GTK4)
+#if USE(GTK4)
+            auto* surface = gtk_native_get_surface(GTK_NATIVE(window));
+            auto signalID = g_signal_connect(surface, "size-changed", G_CALLBACK(+[](GdkSurface*, int width, int height, GdkRectangle* targetGeometry) {
+                if (width == targetGeometry->width && height == targetGeometry->height)
+                    RunLoop::current().stop();
+            }), &geometry);
+#else
             auto signalID = g_signal_connect(window, "configure-event", G_CALLBACK(windowConfigureEventCallback), &geometry);
             if (needsMove)
                 gtk_window_move(GTK_WINDOW(window), geometry.x, geometry.y);
@@ -216,7 +222,9 @@ private:
             timer->startOneShot(200_ms);
             RunLoop::run();
             timer = nullptr;
-#if !USE(GTK4)
+#if USE(GTK4)
+            g_signal_handler_disconnect(surface, signalID);
+#else
             g_signal_handler_disconnect(window, signalID);
 #endif
         } else
@@ -291,6 +299,12 @@ private:
     {
         GRefPtr<WebKitNotificationPermissionRequest> notificationPermissionRequest = adoptGRef(webkitNotificationPermissionRequestCreate(NotificationPermissionRequest::create(WTFMove(completionHandler)).ptr()));
         webkitWebViewMakePermissionRequest(m_webView, WEBKIT_PERMISSION_REQUEST(notificationPermissionRequest.get()));
+    }
+
+    void requestStorageAccessConfirm(WebPageProxy&, WebFrameProxy*, const WebCore::RegistrableDomain& requestingDomain, const WebCore::RegistrableDomain& currentDomain, CompletionHandler<void(bool)>&& completionHandler) final
+    {
+        GRefPtr<WebKitWebsiteDataAccessPermissionRequest> websiteDataAccessPermissionRequest = adoptGRef(webkitWebsiteDataAccessPermissionRequestCreate(requestingDomain, currentDomain, WTFMove(completionHandler)));
+        webkitWebViewMakePermissionRequest(m_webView, WEBKIT_PERMISSION_REQUEST(websiteDataAccessPermissionRequest.get()));
     }
 
 #if PLATFORM(GTK)

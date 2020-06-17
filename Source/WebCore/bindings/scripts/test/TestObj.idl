@@ -46,11 +46,11 @@ enum ObjSize { "small", "much-much-larger" };
 enum TestConfidence { "high", "kinda-low" };
 
 [
-    ConstructorCallWith=Document,
-    Constructor(TestCallbackInterface testCallback, TestCallbackFunction testCallbackFunction),
     InterfaceName=TestObject,
     Exposed=(Window,Worker)
 ] interface TestObj {
+    [CallWith=Document] constructor(TestCallbackInterface testCallback, TestCallbackFunction testCallbackFunction);
+
     // Attributes
     readonly attribute long            readOnlyLongAttr;
     readonly attribute DOMString       readOnlyStringAttr;
@@ -450,6 +450,9 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=CONDITION2, ConditionallyReadWrite=CONDITION] attribute Node conditionalAndConditionallyReadWriteAttribute;
 
     [RuntimeConditionallyReadWrite=TestFeature] attribute Node runtimeConditionallyReadWriteAttribute;
+    [RuntimeConditionallyReadWrite=TestFeature, Unforgeable] attribute Node runtimeConditionallyReadWriteAttributeUnforgeable;
+    [RuntimeConditionallyReadWrite=TestFeature, PrivateIdentifier, Unforgeable] attribute Node runtimeConditionallyReadWriteAttributeUnforgeablePrivate;
+    [RuntimeConditionallyReadWrite=TestFeature] attribute Promise<double> runtimeConditionallyReadWriteAttributePromise;
 
     [Exposed=Window] attribute long conditionallyExposedToWindowAttribute;
     [Exposed=Worker] attribute long conditionallyExposedToWorkerAttribute;

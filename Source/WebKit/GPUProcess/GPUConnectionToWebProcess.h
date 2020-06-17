@@ -33,6 +33,7 @@
 #include "RemoteAudioSessionIdentifier.h"
 #include "RemoteRenderingBackendProxy.h"
 #include "RenderingBackendIdentifier.h"
+#include <WebCore/LibWebRTCEnumTraits.h>
 #include <WebCore/NowPlayingManager.h>
 #include <WebCore/ProcessIdentifier.h>
 #include <pal/SessionID.h>
@@ -116,11 +117,11 @@ private:
 #endif
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     UserMediaCaptureManagerProxy& userMediaCaptureManagerProxy();
+#if HAVE(AVASSETWRITERDELEGATE)
     RemoteMediaRecorderManager& mediaRecorderManager();
-#if ENABLE(VIDEO_TRACK)
+#endif
     RemoteAudioMediaStreamTrackRendererManager& audioTrackRendererManager();
     RemoteSampleBufferDisplayLayerManager& sampleBufferDisplayLayerManager();
-#endif
 #endif
 
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
@@ -168,11 +169,11 @@ private:
     PAL::SessionID m_sessionID;
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
+#if HAVE(AVASSETWRITERDELEGATE)
     std::unique_ptr<RemoteMediaRecorderManager> m_remoteMediaRecorderManager;
-#if ENABLE(VIDEO_TRACK)
+#endif
     std::unique_ptr<RemoteAudioMediaStreamTrackRendererManager> m_audioTrackRendererManager;
     std::unique_ptr<RemoteSampleBufferDisplayLayerManager> m_sampleBufferDisplayLayerManager;
-#endif
 #endif
 #if ENABLE(MEDIA_STREAM)
     bool m_allowsAudioCapture { false };

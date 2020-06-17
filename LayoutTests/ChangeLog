@@ -1,3 +1,2972 @@
+2020-06-16  Antoine Quint  <graouts@webkit.org>
+
+        quikr.com: unable to select item from dropdown
+        https://bugs.webkit.org/show_bug.cgi?id=213260
+        <rdar://problem/58106011>
+
+        Reviewed by Zalan Bujtas.
+
+        Add two new tests that check that we correctly do not consider content within a clipping container that
+        has 0-width or 0-height and box-shadow, with or without empty margins.
+
+        * fast/box-shadow/hit-test-box-shadow-and-margin-on-zero-height-clipping-container-expected.txt: Added.
+        * fast/box-shadow/hit-test-box-shadow-and-margin-on-zero-height-clipping-container.html: Added.
+        * fast/box-shadow/hit-test-box-shadow-and-margin-on-zero-width-clipping-container-expected.txt: Added.
+        * fast/box-shadow/hit-test-box-shadow-and-margin-on-zero-width-clipping-container.html: Added.
+        * fast/box-shadow/hit-test-box-shadow-on-zero-height-clipping-container-expected.txt: Added.
+        * fast/box-shadow/hit-test-box-shadow-on-zero-height-clipping-container.html: Added.
+        * fast/box-shadow/hit-test-box-shadow-on-zero-width-clipping-container-expected.txt: Added.
+        * fast/box-shadow/hit-test-box-shadow-on-zero-width-clipping-container.html: Added.
+
+2020-06-17  Kate Cheney  <katherine_cheney@apple.com>
+
+        http/tests/in-app-browser-privacy/non-app-bound-domain-does-not-get-app-bound-session.html is a constant failure
+        https://bugs.webkit.org/show_bug.cgi?id=213272
+        <rdar://problem/64427778>
+
+        Reviewed by David Kilzer.
+
+        Before a navigation occurs, an app-bound network session is created
+        by default. If any non-app bound navigations occur, a new session is
+        created. Since this test only checks for the existance of an app-bound
+        session, it should clear the app-bound session after the initial load
+        to properly test functionality.
+
+        * http/tests/in-app-browser-privacy/non-app-bound-domain-does-not-get-app-bound-session.html:
+
+2020-06-17  Rob Buis  <rbuis@igalia.com>
+
+        Image `referrerpolicy` mutations should be considered "relevant mutations"
+        https://bugs.webkit.org/show_bug.cgi?id=209970
+
+        Reviewed by Youenn Fablet.
+
+        Unskip relevant-mutations.html.
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2020-06-17  Keith Miller  <keith_miller@apple.com>
+
+        WebKitTestRunner should not crash on alert with invalid utf16 strings
+        https://bugs.webkit.org/show_bug.cgi?id=213269
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/Window/alert-with-unmatched-utf16-surrogate-should-not-crash-expected.txt: Added.
+        * fast/dom/Window/alert-with-unmatched-utf16-surrogate-should-not-crash.html: Added.
+
+2020-06-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r263098): [Win10] http/tests/security/cross-origin-clean-css-resource-timing.html and http/tests/security/cross-origin-css-resource-timing.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=213303
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations: Mark tests as failing.
+
+2020-06-17  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-06-17  Sam Weinig  <weinig@apple.com>
+
+        [WPT] infrastructure/assumptions/html-elements.html fails due to changes in style when all: initial is used
+        https://bugs.webkit.org/show_bug.cgi?id=213171
+
+        Reviewed by Antti Koivisto.
+
+        * platform/ios/imported/w3c/web-platform-tests/css/css-cascade/all-prop-initial-xml-expected.txt:
+        Update test results.
+
+2020-06-17  Antoine Quint  <graouts@webkit.org>
+
+        [Modern Media Controls] CSS "cursor" property shoud be respected in media controls shadow root
+        https://bugs.webkit.org/show_bug.cgi?id=213295
+        <rdar://problem/61911638>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a test that checks that setting the "cursor" property on a <video> element also applies to the
+        media controls in the element's shadow root.
+
+        * media/modern-media-controls/css/cursor-expected.txt: Added.
+        * media/modern-media-controls/css/cursor.html: Added.
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Enable layout tests on more platforms
+        https://bugs.webkit.org/show_bug.cgi?id=212955
+        <rdar://problem/64174156>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/ssl/applepay/ApplePayInstallmentItems.https.html: Changed to fail instead of
+        time out when API version 9 isn't supported.
+
+        * http/tests/ssl/applepay/ApplePayError.html:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+        * http/tests/ssl/applepay/ApplePaySessionV3.html:
+        * http/tests/ssl/applepay/ApplePaySessionV4.html:
+        * http/tests/ssl/applepay/ApplePaySessionV5.html: Removed a custom element-clicking function
+        and used UIHelper.activateElement instead.
+
+        * platform/ios-wk2/TestExpectations: Un-skipped http/tests/ssl/applepay.
+        Marked PaymentRequest.https.html as Slow. Marked ApplePayInstallmentItems.https.html as
+        Failure.
+        * platform/mac-wk2/TestExpectations: Removed a trailing '/'. Skipped
+        ApplePayInstallmentItems.https.html on Mojave and marked it as Failure on Catalina.
+
+2020-06-17  Truitt Savell  <tsavell@apple.com>
+
+        [ Catalina WK2 Release ] http/tests/IndexedDB/storage-limit-1.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=213292
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-17  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Unreviewed test gardening. Update baselines and test expectations after r263143.
+
+        * platform/glib/svg/custom/svg-fonts-in-text-controls-expected.txt:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/form-control-value-settable-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/fast/css/line-height-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/searchfield-heights-expected.txt:
+        * platform/gtk/http/tests/plugins/plugin-javascript-access-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-color/animation/opacity-interpolation-expected.txt:
+        * platform/gtk/plugins/mouse-click-plugin-clears-selection-expected.txt:
+
+2020-06-16  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r255037): Broken position while comparing watch bands on www.apple.com/shop/studio/apple-watch
+        https://bugs.webkit.org/show_bug.cgi?id=213282
+        <rdar://problem/63862940>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/scrolling/ios/user-then-programmatic-scroll-expected.html: Added.
+        * fast/scrolling/ios/user-then-programmatic-scroll.html: Added.
+
+2020-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [Subpixel] Replaced content bleeds over content box when border radius is set
+        https://bugs.webkit.org/show_bug.cgi?id=213275
+        <rdar://problem/64320995>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/hidpi-image-position-on-device-pixels-with-border-radius-expected.html: Added.
+        * fast/images/hidpi-image-position-on-device-pixels-with-border-radius.html: Added.
+
+2020-06-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make fast/ruby/ruby-expansion tests more robust
+        <rdar://problem/59688895>
+
+        Unreviewed test gardening.
+
+        Update the tests to no longer be sensitive to arbitrary fallback font metrics.
+
+        * fast/ruby/ruby-expansion-cjk-2.html:
+        * fast/ruby/ruby-expansion-cjk-3.html:
+        * fast/ruby/ruby-expansion-cjk-4.html:
+        * fast/ruby/ruby-expansion-cjk.html:
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-16  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r262643): DumpRenderTree at com.apple.WebCore: WebCore::Document::prepareCanvasesForDisplayIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=213221
+        rdar://64260400
+
+        Reviewed by Simon Fraser.
+
+        Test that triggers a rendering on a canvas, then rips it out of
+        the document before drawing.
+
+        * webgl/preparation-removed-from-document-expected.txt: Added.
+        * webgl/preparation-removed-from-document.html: Added.
+
+2020-06-16  Peng Liu  <peng.liu6@apple.com>
+
+        REGRESSION: [iOS wk2] media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen.html is failing consistently
+        https://bugs.webkit.org/show_bug.cgi?id=213267
+
+        Reviewed by Eric Carlson.
+
+        Enable the mock video presentation mode for layout tests and use shouldBecomeEqual() to check
+        the value of media.webkitDisplayingFullscreen.
+
+        * media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen-expected.txt:
+        * media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen.html:
+
+2020-06-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update fast/text/international/system-language/navigator-language tests
+        <rdar://problem/64047392>
+
+        Unreviewed.
+
+        Update to new behavior of +[NSLocale minimizedLanguagesFromLanguages:].
+
+        * fast/text/international/system-language/navigator-language/navigator-language-en-US-expected.txt:
+        * fast/text/international/system-language/navigator-language/navigator-language-en-US.html:
+        * fast/text/international/system-language/navigator-language/navigator-language-es-ES-expected.txt:
+        * fast/text/international/system-language/navigator-language/navigator-language-es-ES.html:
+        * fast/text/international/system-language/navigator-language/navigator-language-es-MX-expected.txt:
+        * fast/text/international/system-language/navigator-language/navigator-language-es-MX.html:
+        * fast/text/international/system-language/navigator-language/navigator-language-pt-BR-expected.txt:
+        * fast/text/international/system-language/navigator-language/navigator-language-pt-BR.html:
+        * fast/text/international/system-language/navigator-language/navigator-language-zh-Hant-expected.txt:
+        * fast/text/international/system-language/navigator-language/navigator-language-zh-Hant.html:
+
+2020-06-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't claim to support fullscreen mode unless fullScreenEnabled setting is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=213142
+        <rdar://63753327>
+
+        Reviewed by Jer Noble.
+
+        * media/video-supports-fullscreen-expected.txt: Added.
+        * media/video-supports-fullscreen.html: Added.
+        * media/video-fullscreen-only-playback.html: Don't set fullScreenEnabled to false.
+
+        * TestExpectations: Skip the test, it is WK2-only.
+        * platform/wk2/TestExpectations: Expect the test to pass.
+
+2020-06-16  Andres Gonzalez  <andresg_22@apple.com>
+
+        Fix for accessibility/textarea-selected-text-range.html in isolated tree mode.
+        https://bugs.webkit.org/show_bug.cgi?id=213257
+
+        Reviewed by Chris Fleizach.
+
+        - Re-write this test so that it can pass in both isolated tree mode on
+        and off.
+        - Replaced shouldBecomeEqual with setTimeout follow by debug because
+        shouldBecomeEqual causes a thread lock on isolated tree mode.
+
+        * accessibility/textarea-selected-text-range-expected.txt:
+        * accessibility/textarea-selected-text-range.html:
+
+2020-06-16  Clark Wang  <clark_wang@apple.com>
+
+        Added missing position attributes to PannerNode
+        https://bugs.webkit.org/show_bug.cgi?id=213151
+
+        Reviewed by Chris Dumez.
+
+        Added change to unprefix PannerNode in web-platform-tests.
+
+        * resources/testharnessreport.js:
+
+2020-06-16  Sam Weinig  <weinig@apple.com>
+
+        [WPT] form.action does not return document.url when unset (part of https://wpt.live/html/dom/reflection-forms.html)
+        https://bugs.webkit.org/show_bug.cgi?id=213205
+
+        Reviewed by David Kilzer.
+
+        * platform/gtk/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        Update test results.
+
+2020-06-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Unreviewed test gardening after r263073
+
+        * platform/wincairo/editing/inserting/before-after-input-element-expected.txt:
+        * platform/wincairo/editing/selection/3690703-2-expected.txt:
+        * platform/wincairo/editing/selection/3690703-expected.txt:
+        * platform/wincairo/editing/selection/3690719-expected.txt:
+        * platform/wincairo/editing/selection/4895428-3-expected.txt:
+        * platform/wincairo/editing/selection/4975120-expected.txt:
+        * platform/wincairo/editing/selection/drag-select-1-expected.txt:
+        * platform/wincairo/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/wincairo/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/wincairo/fast/css/input-search-padding-expected.txt:
+        * platform/wincairo/fast/css/line-height-expected.txt:
+        * platform/wincairo/fast/css/text-overflow-input-expected.txt:
+        * platform/wincairo/fast/events/context-no-deselect-expected.txt:
+        * platform/wincairo/fast/html/details-no-summary4-expected.txt:
+        * platform/wincairo/fast/html/details-open-javascript-expected.txt:
+        * platform/wincairo/fast/html/details-open2-expected.txt:
+        * platform/wincairo/fast/html/details-open4-expected.txt:
+        * platform/wincairo/fast/text/textIteratorNilRenderer-expected.txt:
+
+2020-06-16  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Unreviewed test gardening. Update baselines after r263073.
+
+        * platform/gtk/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/gtk/editing/inserting/before-after-input-element-expected.txt:
+        * platform/gtk/editing/pasteboard/4806874-expected.txt:
+        * platform/gtk/editing/pasteboard/input-field-1-expected.txt:
+        * platform/gtk/editing/selection/3690703-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-expected.txt:
+        * platform/gtk/editing/selection/3690719-expected.txt:
+        * platform/gtk/editing/selection/4895428-3-expected.txt:
+        * platform/gtk/editing/selection/4975120-expected.txt:
+        * platform/gtk/editing/selection/drag-select-1-expected.txt:
+        * platform/gtk/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/gtk/fast/css/input-search-padding-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/events/context-no-deselect-expected.txt:
+        * platform/gtk/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt:
+        * platform/gtk/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        * platform/gtk/fast/forms/basic-inputs-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/datalist/datalist-searchinput-appearance-expected.txt:
+        * platform/gtk/fast/forms/datalist/datalist-textinput-appearance-expected.txt:
+        * platform/gtk/fast/forms/encoding-test-expected.txt:
+        * platform/gtk/fast/forms/fieldset-align-expected.txt:
+        * platform/gtk/fast/forms/fieldset/fieldset-elements-htmlcollection-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/input-align-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-bkcolor-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-default-bkcolor-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-focus-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-selection-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-visibility-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-width-expected.txt:
+        * platform/gtk/fast/forms/input-baseline-expected.txt:
+        * platform/gtk/fast/forms/input-disabled-color-expected.txt:
+        * platform/gtk/fast/forms/input-double-click-selection-gap-bug-expected.txt:
+        * platform/gtk/fast/forms/input-placeholder-visibility-1-expected.txt:
+        * platform/gtk/fast/forms/input-placeholder-visibility-3-expected.txt:
+        * platform/gtk/fast/forms/input-spaces-expected.txt:
+        * platform/gtk/fast/forms/input-table-expected.txt:
+        * platform/gtk/fast/forms/input-text-click-inside-expected.txt:
+        * platform/gtk/fast/forms/input-text-click-outside-expected.txt:
+        * platform/gtk/fast/forms/input-text-double-click-expected.txt:
+        * platform/gtk/fast/forms/input-text-drag-down-expected.txt:
+        * platform/gtk/fast/forms/input-text-option-delete-expected.txt:
+        * platform/gtk/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/gtk/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/gtk/fast/forms/input-type-text-min-width-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/forms/input-width-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/gtk/fast/forms/search-input-rtl-expected.txt:
+        * platform/gtk/fast/forms/search-styled-expected.txt:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/gtk/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/gtk/fast/forms/text-control-intrinsic-widths-expected.txt:
+        * platform/gtk/fast/forms/textfield-focus-ring-expected.txt:
+        * platform/gtk/fast/forms/textfield-outline-expected.txt:
+        * platform/gtk/fast/forms/textfield-overflow-expected.txt:
+        * platform/gtk/fast/forms/visual-hebrew-text-field-expected.txt:
+        * platform/gtk/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/gtk/fast/html/details-no-summary4-expected.txt:
+        * platform/gtk/fast/html/details-open-javascript-expected.txt:
+        * platform/gtk/fast/html/details-open2-expected.txt:
+        * platform/gtk/fast/html/details-open4-expected.txt:
+        * platform/gtk/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/gtk/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.txt:
+        * platform/gtk/fast/repaint/subtree-root-skipped-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/gtk/fast/table/colspanMinWidth-expected.txt:
+        * platform/gtk/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/gtk/fast/table/text-field-baseline-expected.txt:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/gtk/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/gtk/plugins/mouse-click-plugin-clears-selection-expected.txt:
+        * platform/gtk/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/gtk/svg/hixie/mixed/003-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/gtk/tables/mozilla/other/move_row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/gtk/transforms/3d/general/perspective-non-layer-expected.txt:
+
+2020-06-16  Youenn Fablet  <youenn@apple.com>
+
+        Loads triggered by an opaque stylesheet should not be visible to service workers
+        https://bugs.webkit.org/show_bug.cgi?id=213246
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/service-workers/no-cors-css-with-subresources.https-expected.txt: Added.
+        * http/wpt/service-workers/no-cors-css-with-subresources.https.html: Added.
+        * http/wpt/service-workers/no-cors-css-worker.js: Added.
+        (async doTest):
+        (async doFetch):
+        * http/wpt/service-workers/resources/loading-subresources.css: Added.
+        * http/wpt/service-workers/resources/subresource.css: Added.
+        (div#resource_link_css):
+
+2020-06-16  Youenn Fablet  <youenn@apple.com>
+
+        Increase pixel check tolerance for http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable.html
+        https://bugs.webkit.org/show_bug.cgi?id=213237
+
+        Reviewed by Eric Carlson.
+
+        * http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable.html:
+        Increase pixel tolerance as we encode/decode video which might create some artefacts.
+
+2020-06-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: <address> element should no longer map to ARIA `contentinfo` role
+        https://bugs.webkit.org/show_bug.cgi?id=212617
+        <rdar://problem/63848604>
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/mac/landmark-not-ignored-expected.txt:
+        * accessibility/mac/landmark-not-ignored.html:
+        * platform/mac-wk2/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+        * platform/win/accessibility/roles-exposed-expected.txt:
+
+2020-06-16  Jason Lawrence  <lawrence.j@apple.com>
+
+        [iOS wk2] http/tests/security/cookies/third-party-cookie-blocking-main-frame.html is flaky timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=206946
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-16  Truitt Savell  <tsavell@apple.com>
+
+        Rebase tables/mozilla_expected_failures/bugs/bug2479-5.html after the changes in https://trac.webkit.org/changeset/263073/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=212856
+
+        Unreviewed test gardening.
+
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+
+2020-06-16  youenn fablet  <youenn@apple.com>
+
+        Make sure MediaRecorder.requestData returns data with the new writer backend
+        https://bugs.webkit.org/show_bug.cgi?id=206929
+
+        Reviewed by Darin Adler.
+
+        * http/wpt/mediarecorder/MediaRecorder-requestData-expected.txt: Added.
+        * http/wpt/mediarecorder/MediaRecorder-requestData.html: Added.
+
+2020-06-16  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION: [ Mac ] inspector/page/setBootstrapScript-sub-frame.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213087
+        <rdar://problem/64262900>
+
+        Reviewed by Maciej Stachowiak.
+
+        * inspector/page/setBootstrapScript-sub-frame.html:
+        * inspector/page/resources/bootstrap-iframe.html:
+
+        * platform/mac/TestExpectations:
+
+2020-06-16  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location_hash.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=169572
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+        Remove no longer needed expectation.
+
+2020-06-16  Devin Rousso  <drousso@apple.com>
+
+        [ Mac wk2 ] http/tests/inspector/network/har/har-page.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=207954
+        <rdar://problem/59599895>
+
+        Reviewed by Maciej Stachowiak.
+
+        * http/tests/inspector/network/har/har-page.html:
+        * http/tests/inspector/network/har/har-page-aggressive-gc.html:
+        * http/tests/inspector/network/har/har-page-aggressive-gc-expected.txt:
+        Explicitly disable resource caching as the test reloads the page and expects resource load
+        metrics to be populated/valid.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-16  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Update baselines after r263073.
+
+        * platform/wpe/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/wpe/fast/css/line-height-expected.txt:
+        * platform/wpe/fast/css/text-overflow-input-expected.txt:
+        * platform/wpe/fast/events/context-no-deselect-expected.txt:
+        * platform/wpe/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/wpe/fast/html/details-no-summary4-expected.txt:
+        * platform/wpe/fast/html/details-open-javascript-expected.txt:
+        * platform/wpe/fast/html/details-open2-expected.txt:
+        * platform/wpe/fast/html/details-open4-expected.txt:
+        * platform/wpe/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/wpe/fast/replaced/replaced-breaking-expected.txt:
+        * platform/wpe/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/wpe/fast/table/colspanMinWidth-expected.txt:
+        * platform/wpe/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/wpe/fast/table/text-field-baseline-expected.txt:
+        * platform/wpe/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/wpe/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/wpe/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/wpe/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/wpe/svg/hixie/mixed/003-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/wpe/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/wpe/tables/mozilla/other/move_row-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/wpe/transforms/3d/general/perspective-non-layer-expected.txt:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Garden flaky failures after r263069.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https-expected.txt: Removed.
+
+2020-06-15  Megan Gardner  <megan_gardner@apple.com>
+
+        Text form controls can scroll by 1px when value is the same length as size. No scrolling should happen.
+        https://bugs.webkit.org/show_bug.cgi?id=212856
+        <rdar://problem/63541707>
+
+        Reviewed by Zalan Bujtas.
+
+        * editing/editable-region/overflow-scroll-text-field-and-contenteditable-expected.txt:
+        * editing/editable-region/search-field-basic-expected.txt:
+        * editing/editable-region/text-field-basic-expected.txt:
+        * fast/forms/auto-fill-button/hide-auto-fill-button-when-input-becomes-readonly-expected.html:
+        * fast/forms/auto-fill-button/hide-auto-fill-button-when-input-becomes-readonly.html:
+        * fast/forms/auto-fill-button/input-credit-card-auto-fill-button-expected.txt:
+        * fast/forms/fieldset/fieldset-elements-htmlcollection-expected.txt:
+        * fast/forms/fieldset/fieldset-elements-htmlcollection.html:
+        * fast/forms/search/search-cancel-button-visible-when-input-becomes-disabled-expected.html:
+        * fast/forms/search/search-cancel-button-visible-when-input-becomes-disabled.html:
+        * fast/forms/search/search-cancel-button-visible-when-input-becomes-readonly-expected.html:
+        * fast/forms/search/search-cancel-button-visible-when-input-becomes-readonly.html:
+        * platform/ios-simulator/fast/forms/auto-fill-button/hide-auto-fill-strong-password-viewable-treatment-when-form-is-reset-expected.txt:
+        * platform/ios-simulator/fast/forms/auto-fill-button/input-credit-card-auto-fill-button-expected.txt:
+        * platform/ios-simulator/fast/forms/auto-fill-button/input-strong-password-viewable-expected.txt:
+        * platform/ios-simulator/fast/forms/datalist/datalist-searchinput-appearance-expected.txt:
+        * platform/ios-simulator/fast/forms/datalist/datalist-textinput-appearance-expected.txt:
+        * platform/ios-wk2/editing/input/caret-at-the-edge-of-contenteditable-expected.txt:
+        * platform/ios-wk2/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/ios-wk2/editing/inserting/before-after-input-element-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/input-field-1-expected.txt:
+        * platform/ios-wk2/editing/selection/4895428-3-expected.txt:
+        * platform/ios-wk2/editing/selection/drag-select-1-expected.txt:
+        * platform/ios-wk2/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/ios-wk2/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-click-inside-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-click-outside-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-double-click-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-drag-down-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-option-delete-expected.txt:
+        * platform/ios-wk2/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/ios-wk2/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/ios-wk2/fast/forms/textfield-outline-expected.txt:
+        * platform/ios-wk2/fast/overflow/overflow-focus-ring-expected.txt:
+        * platform/ios-wk2/fast/repaint/placeholder-after-caps-lock-hidden-expected.txt:
+        * platform/ios-wk2/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/ios/editing/pasteboard/4806874-expected.txt:
+        * platform/ios/editing/selection/3690703-2-expected.txt:
+        * platform/ios/editing/selection/3690703-expected.txt:
+        * platform/ios/editing/selection/3690719-expected.txt:
+        * platform/ios/editing/selection/4975120-expected.txt:
+        * platform/ios/fast/clip/outline-overflowClip-expected.txt:
+        * platform/ios/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/ios/fast/css/input-search-padding-expected.txt:
+        * platform/ios/fast/css/line-height-expected.txt:
+        * platform/ios/fast/css/text-overflow-input-expected.txt:
+        * platform/ios/fast/events/context-no-deselect-expected.txt:
+        * platform/ios/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        * platform/ios/fast/forms/basic-inputs-expected.txt:
+        * platform/ios/fast/forms/box-shadow-override-expected.txt:
+        * platform/ios/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/ios/fast/forms/encoding-test-expected.txt:
+        * platform/ios/fast/forms/fieldset-align-expected.txt:
+        * platform/ios/fast/forms/form-element-geometry-expected.txt:
+        * platform/ios/fast/forms/input-align-expected.txt:
+        * platform/ios/fast/forms/input-appearance-bkcolor-expected.txt:
+        * platform/ios/fast/forms/input-appearance-default-bkcolor-expected.txt:
+        * platform/ios/fast/forms/input-appearance-focus-expected.txt:
+        * platform/ios/fast/forms/input-appearance-height-expected.txt:
+        * platform/ios/fast/forms/input-appearance-selection-expected.txt:
+        * platform/ios/fast/forms/input-appearance-visibility-expected.txt:
+        * platform/ios/fast/forms/input-appearance-width-expected.txt:
+        * platform/ios/fast/forms/input-disabled-color-expected.txt:
+        * platform/ios/fast/forms/input-double-click-selection-gap-bug-expected.txt:
+        * platform/ios/fast/forms/input-placeholder-visibility-1-expected.txt:
+        * platform/ios/fast/forms/input-placeholder-visibility-3-expected.txt:
+        * platform/ios/fast/forms/input-spaces-expected.txt:
+        * platform/ios/fast/forms/input-table-expected.txt:
+        * platform/ios/fast/forms/input-text-click-inside-expected.txt:
+        * platform/ios/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/ios/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/ios/fast/forms/input-type-text-min-width-expected.txt:
+        * platform/ios/fast/forms/input-value-expected.txt:
+        * platform/ios/fast/forms/input-width-expected.txt:
+        * platform/ios/fast/forms/minWidthPercent-expected.txt:
+        * platform/ios/fast/forms/number/number-appearance-rtl-expected.txt:
+        * platform/ios/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt:
+        * platform/ios/fast/forms/number/number-appearance-spinbutton-layer-expected.txt:
+        * platform/ios/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/ios/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/ios/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/ios/fast/forms/search-input-rtl-expected.txt:
+        * platform/ios/fast/forms/search-styled-expected.txt:
+        * platform/ios/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/ios/fast/forms/text-control-intrinsic-widths-expected.txt:
+        * platform/ios/fast/forms/textfield-focus-ring-expected.txt:
+        * platform/ios/fast/forms/textfield-overflow-expected.txt:
+        * platform/ios/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/ios/fast/html/details-no-summary4-expected.txt:
+        * platform/ios/fast/html/details-open-javascript-expected.txt:
+        * platform/ios/fast/html/details-open2-expected.txt:
+        * platform/ios/fast/html/details-open4-expected.txt:
+        * platform/ios/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/ios/fast/replaced/replaced-breaking-expected.txt:
+        * platform/ios/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/ios/fast/table/colspanMinWidth-expected.txt:
+        * platform/ios/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/ios/fast/table/text-field-baseline-expected.txt:
+        * platform/ios/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/ios/svg/hixie/mixed/003-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/ios/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/ios/tables/mozilla/other/move_row-expected.txt:
+        * platform/ios/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/ios/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/ios/transforms/3d/general/perspective-non-layer-expected.txt:
+        * platform/mac-mojave/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/mac/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/mac/editing/inserting/before-after-input-element-expected.txt:
+        * platform/mac/editing/pasteboard/4806874-expected.txt:
+        * platform/mac/editing/pasteboard/drop-text-without-selection-expected.txt:
+        * platform/mac/editing/pasteboard/input-field-1-expected.txt:
+        * platform/mac/editing/selection/3690703-2-expected.txt:
+        * platform/mac/editing/selection/3690703-expected.txt:
+        * platform/mac/editing/selection/3690719-expected.txt:
+        * platform/mac/editing/selection/4895428-3-expected.txt:
+        * platform/mac/editing/selection/4975120-expected.txt:
+        * platform/mac/editing/selection/drag-select-1-expected.txt:
+        * platform/mac/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/mac/fast/css/line-height-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/events/context-no-deselect-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/hide-auto-fill-strong-password-viewable-treatment-when-form-is-reset-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-password-viewable-expected.txt:
+        * platform/mac/fast/forms/basic-inputs-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/datalist/datalist-searchinput-appearance-expected.txt:
+        * platform/mac/fast/forms/datalist/datalist-textinput-appearance-expected.txt:
+        * platform/mac/fast/forms/encoding-test-expected.txt:
+        * platform/mac/fast/forms/fieldset-align-expected.txt:
+        * platform/mac/fast/forms/form-element-geometry-expected.txt:
+        * platform/mac/fast/forms/input-align-expected.txt:
+        * platform/mac/fast/forms/input-appearance-bkcolor-expected.txt:
+        * platform/mac/fast/forms/input-appearance-default-bkcolor-expected.txt:
+        * platform/mac/fast/forms/input-appearance-focus-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/mac/fast/forms/input-appearance-selection-expected.txt:
+        * platform/mac/fast/forms/input-appearance-spinbutton-expected.txt:
+        * platform/mac/fast/forms/input-appearance-spinbutton-up-expected.txt:
+        * platform/mac/fast/forms/input-appearance-visibility-expected.txt:
+        * platform/mac/fast/forms/input-appearance-width-expected.txt:
+        * platform/mac/fast/forms/input-baseline-expected.txt:
+        * platform/mac/fast/forms/input-disabled-color-expected.txt:
+        * platform/mac/fast/forms/input-double-click-selection-gap-bug-expected.txt:
+        * platform/mac/fast/forms/input-placeholder-visibility-1-expected.txt:
+        * platform/mac/fast/forms/input-placeholder-visibility-3-expected.txt:
+        * platform/mac/fast/forms/input-spaces-expected.txt:
+        * platform/mac/fast/forms/input-table-expected.txt:
+        * platform/mac/fast/forms/input-text-click-inside-expected.txt:
+        * platform/mac/fast/forms/input-text-click-outside-expected.txt:
+        * platform/mac/fast/forms/input-text-double-click-expected.txt:
+        * platform/mac/fast/forms/input-text-drag-down-expected.txt:
+        * platform/mac/fast/forms/input-text-option-delete-expected.txt:
+        * platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/mac/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/mac/fast/forms/input-text-word-wrap-expected.txt:
+        * platform/mac/fast/forms/input-type-text-min-width-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/forms/input-width-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-rtl-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-layer-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/mac/fast/forms/search-input-rtl-expected.txt:
+        * platform/mac/fast/forms/search-styled-expected.txt:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/mac/fast/forms/text-control-intrinsic-widths-expected.txt:
+        * platform/mac/fast/forms/textfield-focus-ring-expected.txt:
+        * platform/mac/fast/forms/textfield-outline-expected.txt:
+        * platform/mac/fast/forms/textfield-overflow-expected.txt:
+        * platform/mac/fast/forms/visual-hebrew-text-field-expected.txt:
+        * platform/mac/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/mac/fast/html/details-no-summary4-expected.txt:
+        * platform/mac/fast/html/details-open-javascript-expected.txt:
+        * platform/mac/fast/html/details-open2-expected.txt:
+        * platform/mac/fast/html/details-open4-expected.txt:
+        * platform/mac/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/mac/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt:
+        * platform/mac/fast/repaint/search-field-cancel-expected.txt:
+        * platform/mac/fast/repaint/subtree-root-skipped-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/mac/fast/table/colspanMinWidth-expected.txt:
+        * platform/mac/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/mac/fast/table/text-field-baseline-expected.txt:
+        * platform/mac/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/mac/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/mac/plugins/mouse-click-plugin-clears-selection-expected.txt:
+        * platform/mac/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/mac/svg/hixie/mixed/003-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/mac/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/mac/tables/mozilla/other/move_row-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/mac/transforms/3d/general/perspective-non-layer-expected.txt:
+        * platform/win/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/win/editing/inserting/before-after-input-element-expected.txt:
+        * platform/win/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/win/fast/events/context-no-deselect-expected.txt:
+        * platform/win/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt:
+        * platform/win/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        * platform/win/fast/forms/auto-fill-button/input-credit-card-auto-fill-button-expected.txt:
+        * platform/win/fast/forms/basic-inputs-expected.txt:
+        * platform/win/fast/forms/box-shadow-override-expected.txt:
+        * platform/win/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/win/fast/forms/encoding-test-expected.txt:
+        * platform/win/fast/forms/fieldset-align-expected.txt:
+        * platform/win/fast/forms/form-element-geometry-expected.txt:
+        * platform/win/fast/forms/input-align-expected.txt:
+        * platform/win/fast/forms/input-appearance-bkcolor-expected.txt:
+        * platform/win/fast/forms/input-appearance-default-bkcolor-expected.txt:
+        * platform/win/fast/forms/input-appearance-disabled-expected.txt:
+        * platform/win/fast/forms/input-appearance-focus-expected.txt:
+        * platform/win/fast/forms/input-appearance-height-expected.txt:
+        * platform/win/fast/forms/input-appearance-readonly-expected.txt:
+        * platform/win/fast/forms/input-appearance-selection-expected.txt:
+        * platform/win/fast/forms/input-appearance-visibility-expected.txt:
+        * platform/win/fast/forms/input-appearance-width-expected.txt:
+        * platform/win/fast/forms/input-baseline-expected.txt:
+        * platform/win/fast/forms/input-disabled-color-expected.txt:
+        * platform/win/fast/forms/input-double-click-selection-gap-bug-expected.txt:
+        * platform/win/fast/forms/input-placeholder-visibility-1-expected.txt:
+        * platform/win/fast/forms/input-placeholder-visibility-3-expected.txt:
+        * platform/win/fast/forms/input-readonly-autoscroll-expected.txt:
+        * platform/win/fast/forms/input-readonly-dimmed-expected.txt:
+        * platform/win/fast/forms/input-readonly-empty-expected.txt:
+        * platform/win/fast/forms/input-spaces-expected.txt:
+        * platform/win/fast/forms/input-table-expected.txt:
+        * platform/win/fast/forms/input-text-click-inside-expected.txt:
+        * platform/win/fast/forms/input-text-click-outside-expected.txt:
+        * platform/win/fast/forms/input-text-double-click-expected.txt:
+        * platform/win/fast/forms/input-text-drag-down-expected.txt:
+        * platform/win/fast/forms/input-text-option-delete-expected.txt:
+        * platform/win/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/win/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/win/fast/forms/input-text-word-wrap-expected.txt:
+        * platform/win/fast/forms/input-type-text-min-width-expected.txt:
+        * platform/win/fast/forms/input-value-expected.txt:
+        * platform/win/fast/forms/input-width-expected.txt:
+        * platform/win/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/win/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/win/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/win/fast/forms/search-styled-expected.txt:
+        * platform/win/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/win/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/win/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/win/fast/forms/text-control-intrinsic-widths-expected.txt:
+        * platform/win/fast/forms/textfield-focus-ring-expected.txt:
+        * platform/win/fast/forms/textfield-outline-expected.txt:
+        * platform/win/fast/forms/textfield-overflow-expected.txt:
+        * platform/win/fast/forms/visual-hebrew-text-field-expected.txt:
+        * platform/win/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/win/fast/html/details-no-summary4-expected.txt:
+        * platform/win/fast/html/details-open-javascript-expected.txt:
+        * platform/win/fast/html/details-open2-expected.txt:
+        * platform/win/fast/html/details-open4-expected.txt:
+        * platform/win/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/win/fast/replaced/replaced-breaking-expected.txt:
+        * platform/win/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/win/fast/table/colspanMinWidth-expected.txt:
+        * platform/win/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/win/fast/table/text-field-baseline-expected.txt:
+        * platform/win/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/win/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/win/svg/hixie/mixed/003-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/win/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/win/tables/mozilla/other/move_row-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+
+2020-06-15  Pavel Feldman <pavel.feldman@gmail.com>
+
+        Web Inspector: introduce request interception
+        https://bugs.webkit.org/show_bug.cgi?id=207446
+
+        Reviewed by Devin Rousso.
+
+        This change introduces network request interception to the Network
+        protocol domain. It adds Network.interceptWithRequest notification that
+        can be continued, modified or fulfilled. NetworkStage enum can now have
+        'request' and 'response' values.
+
+        * http/tests/inspector/network/intercept-aborted-request-expected.txt: Added.
+        * http/tests/inspector/network/intercept-aborted-request.html: Added.
+        * http/tests/inspector/network/intercept-request-continue-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-continue.html: Added.
+        * http/tests/inspector/network/intercept-request-fragment-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-fragment.html: Added.
+        * http/tests/inspector/network/intercept-request-main-resource-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-main-resource-with-response-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-main-resource-with-response.html: Added.
+        * http/tests/inspector/network/intercept-request-main-resource.html: Added.
+        * http/tests/inspector/network/intercept-request-properties-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-properties.html: Added.
+        * http/tests/inspector/network/intercept-request-subresource-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-subresource-with-error-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-subresource-with-error.html: Added.
+        * http/tests/inspector/network/intercept-request-subresource-with-response-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-subresource-with-response.html: Added.
+        * http/tests/inspector/network/intercept-request-subresource.html: Added.
+        * http/tests/inspector/network/intercept-request-with-response-expected.txt: Added.
+        * http/tests/inspector/network/intercept-request-with-response.html: Added.
+        * http/tests/inspector/network/resources/intercept-echo.php: Added.
+        * http/tests/inspector/network/resources/intercept-request-overriden-page.html: Added.
+        * http/tests/inspector/network/resources/intercept-request-overriden-script.js: Added.
+        * http/tests/inspector/resources/protocol-test.js:
+        * inspector/network/local-resource-override-continue-response.html:
+        * inspector/network/resources/data-intercepted.json: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION: [ iOS wk2 Debug ] fast/forms/call-text-did-change-in-text-field-when-typing.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213218
+
+        Reviewed by Tim Horton.
+
+        `UIHelper.typeCharacter` is guaranteed to wait until the application in the UI process has dequeued the
+        synthesized key events, but is not necessarily guaranteed to wait until the web process is done handling the
+        key events. As a result, it's possible for this test to check the value of the text field in step (1) before the
+        event has been received, which causes the test to fail with a diff.
+
+        To fix this, wait for the key event to be handled (like we do for the synthetic click event below).
+
+        * fast/forms/call-text-did-change-in-text-field-when-typing-expected.txt:
+        * fast/forms/call-text-did-change-in-text-field-when-typing.html:
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-15  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: [ iOS wk2 Debug ] fast/forms/call-text-did-change-in-text-field-when-typing.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213218
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-15  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Update WPT tests for FileAPI
+        https://bugs.webkit.org/show_bug.cgi?id=213198
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/FileAPI/url/multi-global-origin-serialization.sub-expected.txt: Added.
+        * tests-options.json:
+
+2020-06-15  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mojave wk2 Release ] webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb16f-rgb-half_float.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213212
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add console logging to try and diagnose editing/deleting/ios/backspace-last-character.html
+        https://bugs.webkit.org/show_bug.cgi?id=213201
+        <rdar://problem/64165890>
+
+        Reviewed by Tim Horton.
+
+        Break the test down into more steps (namely, separate waiting for events from synthesizing key events), and add
+        a console log statement at each step.
+
+        * editing/deleting/ios/backspace-last-character-expected.txt:
+        * editing/deleting/ios/backspace-last-character.html:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Update expected results of flaky image failures.
+
+        The results of these flaky image failures have been actually ImageOnlyFailure for the last 4000 revisions.
+
+        * platform/wpe/TestExpectations:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Remove more stale flaky failures from test expectations.
+
+        * platform/wpe/TestExpectations:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Update baselines of flaky tests which were consistently failing for the last 4000 revisions.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/fast/css/resize-corner-tracking-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/content-security-policy/reporting/report-only-in-meta.sub-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location_hash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/animate-elem-10-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/animate-elem-33-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/animate-elem-34-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest-expected.txt:
+        * platform/wpe/security/block-test-expected.txt:
+        * platform/wpe/svg/custom/non-scaling-stroke-expected.txt: Removed.
+
+2020-06-15  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r262904): [ Mac wk1 Debug ] media/remoteplayback-target-availability.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213146
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-15  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 and Mac wk2 ] imported/w3c/web-platform-tests/fetch/stale-while-revalidate/frame-removal.html is flaky failing. 
+        https://bugs.webkit.org/show_bug.cgi?id=209281
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-15  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: [ Mac wk2 ] inspector/canvas/create-context-webgpu.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213123
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Remove stale flaky text and image failures from test expectations.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https-expected.txt: Added.
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Remove stale flaky timeout failures from test expectations.
+
+        * platform/wpe/TestExpectations:
+
+2020-06-15  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed test gardening. Update test expectations after 263019.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest-expected.txt:
+
+2020-06-14  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed, reverting r262124.
+
+        Twitter videos go blank after exiting fullscreen
+
+        Reverted changeset:
+
+        "[css-flex] Allow indefinite size flex items to be definite
+        wrt resolving percentages inside them"
+        https://bugs.webkit.org/show_bug.cgi?id=212264
+        https://trac.webkit.org/changeset/262124
+
+2020-06-14  Sam Weinig  <weinig@apple.com>
+
+        [WPT] html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray.html fails due to lack of caching of Plugin objects
+        https://bugs.webkit.org/show_bug.cgi?id=213185
+
+        Reviewed by Darin Adler.
+
+        * http/tests/plugins/plugin-javascript-access-allow-all-plugins-expected.txt: Added.
+        * http/tests/plugins/plugin-javascript-access-allow-all-plugins.html: Added.
+        * http/tests/plugins/plugin-javascript-access-expected.txt:
+        * http/tests/plugins/plugin-javascript-access.html:
+        Split out internals.setShowAllPlugins(true) part of plugin-javascript-access.html to
+        allow the test to continue working now that navigator.plugins is immutable after 
+        accessing it.
+        
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray-expected.txt: Removed.
+        Remove imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray.html
+        from TestExpectations now that it passes all the time.
+
+2020-06-14  Pinki Gyanchandani  <pgyanchandani@apple.com>
+
+        Release Assert @ WebCore::RenderTreeBuilder::RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=212714
+
+        Reviewed by Geoffrey Garen.
+
+        Added a regression test.
+
+        * fast/rendering/widget-removal-in-render-tree-builder-crash-expected.txt: Added.
+        * fast/rendering/widget-removal-in-render-tree-builder-crash.html: Added.
+
+2020-06-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [AppleWin] Unreviewed test gardening
+
+        * platform/win/TestExpectations: Marked fast/text/combining-character-sequence-vertical.html with ImageOnlyFailure.
+
+2020-06-14  Sam Weinig  <weinig@apple.com>
+
+        [WPT] websockets/Close-reason-unpaired-surrogates.any.html fails due to failure to convert unpaired surrogates to replacement character for close reason
+        https://bugs.webkit.org/show_bug.cgi?id=213182
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: 
+        Unskips the following tests which now pass all the time:
+            imported/w3c/web-platform-tests/websockets/Close-reason-unpaired-surrogates.any.worker.html
+            imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.html
+            imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.worker.html
+        
+
+2020-06-13  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floats] Floating positioned box is always a float avoider.
+        https://bugs.webkit.org/show_bug.cgi?id=213162
+
+        Reviewed by Darin Adler.
+
+        * fast/layoutformattingcontext/inline-float-simple-expected.html: Added.
+        * fast/layoutformattingcontext/inline-float-simple.html: Added.
+
+2020-06-13  Sam Weinig  <weinig@apple.com>
+
+        [WPT] dom/nodes/Document-createCDATASection-xhtml.xhtml fails due to missing exception in Document.createCDATASection()
+        https://bugs.webkit.org/show_bug.cgi?id=213167
+
+        Reviewed by Yusuke Suzuki.
+
+        * dom/xhtml/level3/core/documentnormalizedocument07-expected.txt:
+        * dom/xhtml/level3/core/documentnormalizedocument08-expected.txt:
+        * dom/xhtml/level3/core/handleerror01-expected.txt:
+        * dom/xhtml/level3/core/splitcdatasections01-expected.txt:
+        Update expected results with new error now being thrown.
+
+2020-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION(r261985): Unable to respond to large comments on Bugzilla with always-on scrollbars
+        https://bugs.webkit.org/show_bug.cgi?id=213135
+        <rdar://problem/64302086>
+
+        Reviewed by Tim Horton.
+
+        Test that does a fake user scroll then a programmatic scroll from a timer (i.e. outside
+        the rendering update), then dumps tile caches to check that coverage rects match the
+        right scroll position.
+
+        * scrollingcoordinator/mac/reveal-selection-tile-coverage-expected.txt: Added.
+        * scrollingcoordinator/mac/reveal-selection-tile-coverage.html: Added.
+
+2020-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPadOS] Focusing selects and color inputs should not bring up the software keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=213149
+        <rdar://problem/64312450>
+
+        Reviewed by Darin Adler.
+
+        Add a new layout test.
+
+        * fast/forms/ios/ipad/select-should-not-bring-up-software-keyboard-expected.txt: Added.
+        * fast/forms/ios/ipad/select-should-not-bring-up-software-keyboard.html: Added.
+
+2020-06-12  Andres Gonzalez  <andresg_22@apple.com>
+
+        Re-write accessibility/form-control-value-settable.html so that it can pass in both isolated tree mode on and off.
+        https://bugs.webkit.org/show_bug.cgi?id=213150
+
+        Reviewed by Chris Fleizach.
+
+        In isolated tree mode, it is necessary to setTimeout after setting the
+        focus so that the isolated tree can be updated.
+
+        * accessibility/form-control-value-settable.html:
+        * platform/gtk/accessibility/form-control-value-settable-expected.txt:
+        * platform/mac/accessibility/form-control-value-settable-expected.txt:
+
+2020-06-12  Chris Dumez  <cdumez@apple.com>
+
+        Stop allowing pages served over HTTPS with "Cache-Control: no-store" into the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=213147
+        <rdar://problem/64249683>
+
+        Reviewed by Geoffrey Garen.
+
+        Update layout test coverage.
+
+        * http/tests/navigation/https-in-page-cache-expected.txt:
+        * http/tests/navigation/resources/https-in-page-cache-1.php:
+
+2020-06-12  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: [ Mac wk1 Debug ] media/remoteplayback-target-availability.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213146
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-12  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Implement functions to use ResourceLoadStatistics.
+        https://bugs.webkit.org/show_bug.cgi?id=207692
+
+        Reviewed by Don Olmstead.
+
+        Implement functions which are required to implement ResourceLoadStatistics for Curl port.
+
+        Tests: http/tests/resourceLoadStatistics/
+
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2020-06-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [ Mojave wk2 Release ] js/dom/unhandled-promise-rejection-console-no-report.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=212851
+
+        Reviewed by Darin Adler.
+
+        This test is wrong since both onunhandledrejection and setTimeout are driven by macro-tasks.
+        There is no ordering between them so they have race condition, and this race condition makes this
+        the test flaky. We should fix the test. This patch removes the dependency to setTimeout.
+
+        * js/dom/unhandled-promise-rejection-console-no-report-expected.txt:
+        * js/dom/unhandled-promise-rejection-console-no-report.html:
+
+2020-06-12  Antoine Quint  <graouts@webkit.org>
+
+        Double tap to zoom out doesn't work after upgrading to iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=205158
+        <rdar://problem/205158>
+
+        Unreviewed. Make the test that was previously added into a test that can be run on iPad instead
+        of having to be skipped.
+
+        * fast/events/ios/fast-click-double-tap-to-zoom-in-on-text-and-then-again-to-zoom-out.html:
+        * platform/ipad/TestExpectations:
+
+2020-06-12  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r262618): Very slow typing in a github issue
+        https://bugs.webkit.org/show_bug.cgi?id=213137
+        <rdar://problem/64214117>
+
+        Reviewed by Darin Adler.
+
+        * fast/media/media-query-keyframes-resolution-count-expected.txt: Added.
+        * fast/media/media-query-keyframes-resolution-count.html: Added.
+
+2020-06-12  Antoine Quint  <graouts@webkit.org>
+
+        Double tap to zoom out doesn't work after upgrading to iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=205158
+        <rdar://problem/205158>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test that double taps to zoom in and then double taps to zoom out. This test would fail to zoom
+        out prior to this source change. This test is skipped on iPad since desktop-class browsing mode has
+        heuristics that would prevent the second double-tap to zoom out.
+
+        * fast/events/ios/fast-click-double-tap-to-zoom-in-on-text-and-then-again-to-zoom-out-expected.txt: Added.
+        * fast/events/ios/fast-click-double-tap-to-zoom-in-on-text-and-then-again-to-zoom-out.html: Added.
+        * platform/ipad/TestExpectations:
+
+2020-06-12  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r262397): [ Mac wk2 ] inspector/canvas/create-context-webgpu.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213123
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-12  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Remove some duplicated entries and add missing bug info
+
+        Unreviewed test gardening
+
+        Unified the unsuported tests entries for GTK and WPE and added some
+        entries for the skipped top level tests.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-12  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Change FileReader.error to DOMException from obsoleted FileError
+        https://bugs.webkit.org/show_bug.cgi?id=213117
+
+        Reviewed by Chris Dumez.
+
+        By the [lastest spec](https://w3c.github.io/FileAPI/),
+        `FileReader.error` should return `DOMException`
+        and this change remove `FileError` from exposed interfaces.
+
+        * fast/files/file-reader-abort-expected.txt:
+        * fast/files/file-reader-abort-using-open-panel-expected.txt:
+        * fast/files/read-blob-async-expected.txt:
+        * fast/files/read-file-async-expected.txt:
+        * fast/files/workers/worker-read-blob-async-expected.txt:
+        * fast/files/workers/worker-read-file-async-expected.txt:
+          Update to `DOMException` error code from `FileError` error code.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/FileAPI/historical.https-expected.txt:
+          FileError should not be exposed.
+
+2020-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][TFC] Add support for min/max-width
+        https://bugs.webkit.org/show_bug.cgi?id=213111
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/table-min-max-width-simple-expected.html: Added.
+        * fast/layoutformattingcontext/table-min-max-width-simple.html: Added.
+
+2020-06-12  Antti Koivisto  <antti@apple.com>
+
+        Relative font size values (em) within CSS animations compound
+        https://bugs.webkit.org/show_bug.cgi?id=194749
+        <rdar://problem/48171898>
+
+        Reviewed by Antoine Quint.
+
+        * animations/keyframe-em-unit-expected.html: Added.
+        * animations/keyframe-em-unit.html: Added.
+
+2020-06-11  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations after r262932
+        https://bugs.webkit.org/show_bug.cgi?id=213115
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+
+2020-06-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262909.
+
+        This test causes macOS WK1 tests to intermittently exit early
+
+        Reverted changeset:
+
+        "Release Assert @
+        WebCore::RenderTreeBuilder::RenderTreeBuilder"
+        https://bugs.webkit.org/show_bug.cgi?id=212714
+        https://trac.webkit.org/changeset/262909
+
+2020-06-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] nullptr deref in FileInputType::iconLoaded when the input's type attribute is modified by a change event listener
+        https://bugs.webkit.org/show_bug.cgi?id=208244
+        <rdar://problem/41855350>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/forms/file/file-input-type-detached-on-change-expected.txt: Added.
+        * fast/forms/file/file-input-type-detached-on-change.html: Added.
+        * fast/forms/file/file-input-webkitdirectory-icon-expected.html: Added.
+        * fast/forms/file/file-input-webkitdirectory-icon.html: Added.
+        * fast/forms/file/file-reset-in-change-using-open-panel-with-icon.html:
+        * fast/forms/file/open-file-panel-crash.html:
+        * fast/forms/file/resources/file-icon-bytes.js: Added.
+
+2020-06-11  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: [ Mac ] inspector/page/setBootstrapScript-sub-frame.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=213087
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-06-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] editing/selection/ios/update-selection-after-overflow-scroll.html times out
+        https://bugs.webkit.org/show_bug.cgi?id=213082
+        <rdar://problem/64228007>
+
+        Reviewed by Megan Gardner.
+
+        This test makes a programmatic selection, and then scrolls an overflow area with accelerated scrolling by using
+        `UIHelper.immediateScrollElementAtContentPointToOffset()`. This helper method hit-tests for a subscrollable
+        region, and then uses platform API to change the content offset. However, after timing changes in the system,
+        this hit-testing now fails because it ends up finding the callout menu that shows up after making the text
+        selection, and so scrolling fails.
+
+        Fix this by using (40, 40) instead of (150, 100) when hit-testing the child scroll view when scrolling.
+
+        * editing/selection/ios/update-selection-after-overflow-scroll.html:
+
+2020-06-11  Pinki Gyanchandani  <pgyanchandani@apple.com>
+
+        Release Assert @ WebCore::RenderTreeBuilder::RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=212714
+
+        Reviewed by Geoffrey Garen.
+
+        Added a regression test.
+
+        * fast/rendering/widget-removal-in-render-tree-builder-crash-expected.txt: Added.
+        * fast/rendering/widget-removal-in-render-tree-builder-crash.html: Added.
+
+2020-06-11  Youenn Fablet  <youenn@apple.com>
+
+        End a remote MediaStreamTrack if its source is ended
+        https://bugs.webkit.org/show_bug.cgi?id=213074
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/receiver-track-should-stay-live-even-if-receiver-is-inactive-expected.txt: Added.
+        * webrtc/receiver-track-should-stay-live-even-if-receiver-is-inactive.html: Added.
+
+2020-06-11  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Reimport WPT tests removed in r262809
+        https://bugs.webkit.org/show_bug.cgi?id=213028
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Add failure expectations of the new tests.
+
+        * TestExpectations:
+
+2020-06-10  Frank Yang  <guowei_yang@apple.com>
+
+        Multiple SVG Filters Unexpectedly lightens image using linearRGB
+        https://bugs.webkit.org/show_bug.cgi?id=212649
+
+        Reviewed by Myles C. Maxfield, Simon Fraser, Darin Adler
+
+        Added new tests that checks SVG render results for 
+        feComponentTransfer, feComposite, feConvolveMatrix
+        feGaussianBlur, feMorphology and lighting
+
+        * svg/filters/feComponentTransfer-clipped-expected.svg: Added.
+        * svg/filters/feComponentTransfer-clipped.svg: Added.
+        * svg/filters/feComposite-clipped-expected.svg: Added.
+        * svg/filters/feComposite-clipped.svg: Added.
+        * svg/filters/feConvolveMatrix-clipped-expected.svg: Added.
+        * svg/filters/feConvolveMatrix-clipped.svg: Added.
+        * svg/filters/feGaussianBlur-clipped-expected.svg: Added.
+        * svg/filters/feGaussianBlur-clipped.svg: Added.
+        * svg/filters/feLighting-clipped-expected.svg: Added.
+        * svg/filters/feLighting-clipped.svg: Added.
+        * svg/filters/feMorphology-clipped-expected.svg: Added.
+        * svg/filters/feMorphology-clipped.svg: Added.
+
+2020-06-10  Zalan Bujtas  <zalan@apple.com>
+
+        [Line clamp] Do not apply the special anchor handling when the anchor content is visible after clamping
+        https://bugs.webkit.org/show_bug.cgi?id=213052
+        <rdar://problem/59739131>
+
+        Reviewed by Simon Fraser.
+
+        * fast/flexbox/line-clamp-with-anchor-content-only-expected.html: Added.
+        * fast/flexbox/line-clamp-with-anchor-content-only.html: Added.
+
+2020-06-10  Hiro (mzp) Mizuno  <mzp@apple.com>
+
+        [iOS] Option + Forward Delete should delete next word
+        https://bugs.webkit.org/show_bug.cgi?id=213062
+        rdar://64225458
+
+        Reviewed by Daniel Bates.
+
+        Add tests to ensure that Option + Forward Delete delete to the next word.
+        Skip the tests for now until we have the UIKit fix <rdar://problem/63253983>.
+
+        * fast/events/ios/key-command-delete-next-word-expected.txt: Added.
+        * fast/events/ios/key-command-delete-next-word.html: Added.
+        * platform/ios/TestExpectations: Skip tests for now
+
+2020-06-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Unreviewed test gardening
+
+        * platform/wincairo/TestExpectations:
+        * platform/wincairo/fast/text/justify-ideograph-leading-expansion-expected.txt:
+
+2020-06-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSCallbackObject::deleteProperty should redirect to Parent::deletePropertyByIndex if propertyName is index
+        https://bugs.webkit.org/show_bug.cgi?id=213041
+        <rdar://problem/64204300>
+
+        Reviewed by Darin Adler.
+
+        * js/dom/callbackobject-delete-should-not-infinite-recursion-expected.txt: Added.
+        * js/dom/callbackobject-delete-should-not-infinite-recursion.html: Added.
+
+2020-06-10  Zalan Bujtas  <zalan@apple.com>
+
+        [ Mac ] mathml/scripts-removeChild.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208574
+        <rdar://problem/60041327>
+
+        Unreviewed test gardening.
+
+        Can't reproduce flakiness anymore.
+
+        * platform/mac/TestExpectations:
+
+2020-06-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve CSP compliance under PSON
+        https://bugs.webkit.org/show_bug.cgi?id=212995
+        <rdar://problem/62996186>
+
+        Reviewed by Chris Dumez.
+
+        Add a new test to confirm that CSP rules are honored for form-action operations during process swap.
+        This also rebaselines an existing test, since CSP is now checked before any navigations performed by
+        a form action.
+
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-get-blocked-expected.txt: Rebaselined.
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-self-blocked-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/form-action-src-get-blocked-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-self-blocked.html: Added.
+
+2020-06-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: XHR request with same URL as main resource will hide the main resource request
+        https://bugs.webkit.org/show_bug.cgi?id=212850
+        <rdar://problem/33072149>
+
+        Reviewed by Brian Burg.
+
+        * inspector/network/request-main-url.html: Added.
+        * inspector/network/request-main-url-expected.txt: Added.
+
+2020-06-10  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION(r262798): fast/mediastream/media-stream-track-interrupted.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=213011
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/track-ended-while-muted-expected.txt: Added.
+        * fast/mediastream/track-ended-while-muted.html: Added.
+
+2020-06-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Layout tests outside of the WPT import should not use resources from it
+        https://bugs.webkit.org/show_bug.cgi?id=212661
+
+        Reviewed by Youenn Fablet.
+
+        Some layout tests were using resource files from the imported WPT tests.
+        This is an issue because updating the WPT tests may break this tests in the future.
+
+        To fix this the used resource files are copied inside the main folder of each test
+        and the tests modified to use them.
+
+        On top of that, some tests are de-duplicates (in favor of the WPT versions, which are the same).
+        This is the list of tests de-duplicated:
+        canvas/philip/tests/2d.drawImage.incomplete.emptysrc.html -> imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/2d.drawImage.incomplete.emptysrc.html
+        canvas/philip/tests/2d.drawImage.incomplete.nosrc.html -> imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/2d.drawImage.incomplete.nosrc.html
+        canvas/philip/tests/2d.drawImage.incomplete.removedsrc.html -> imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/2d.drawImage.incomplete.removedsrc.html
+        canvas/philip/tests/2d.pattern.image.incomplete.emptysrc.html -> imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.pattern.image.incomplete.emptysrc.html
+        canvas/philip/tests/2d.pattern.image.incomplete.removedsrc.html -> imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.pattern.image.incomplete.removedsrc.html
+        fast/shadow-dom/capturing-and-bubbling-event-listeners-across-shadow-trees.html -> imported/w3c/web-platform-tests/shadow-dom/capturing-and-bubbling-event-listeners-across-shadow-trees.html
+
+        * canvas/philip/tests/2d.drawImage.incomplete.emptysrc-expected.txt: Removed.
+        * canvas/philip/tests/2d.drawImage.incomplete.emptysrc.html: Removed.
+        * canvas/philip/tests/2d.drawImage.incomplete.nosrc-expected.txt: Removed.
+        * canvas/philip/tests/2d.drawImage.incomplete.nosrc.html: Removed.
+        * canvas/philip/tests/2d.drawImage.incomplete.removedsrc-expected.txt: Removed.
+        * canvas/philip/tests/2d.drawImage.incomplete.removedsrc.html: Removed.
+        * canvas/philip/tests/2d.pattern.image.incomplete.emptysrc-expected.txt: Removed.
+        * canvas/philip/tests/2d.pattern.image.incomplete.emptysrc.html: Removed.
+        * canvas/philip/tests/2d.pattern.image.incomplete.removedsrc-expected.txt: Removed.
+        * canvas/philip/tests/2d.pattern.image.incomplete.removedsrc.html: Removed.
+        * fast/css/resources/shadow-helper.js: Added.
+        (getElementByShadowIds):
+        (ceClass.):
+        (installCustomElement):
+        * fast/css/shadow-parts/exportparts-syntax.html:
+        * fast/css/shadow-parts/invalidation-class-before-after.html:
+        * fast/css/shadow-parts/invalidation-class-descendant-combinator-export.html:
+        * fast/css/shadow-parts/invalidation-class-descendant-combinator.html:
+        * fast/css/shadow-parts/invalidation-class-sibling-combinator-export.html:
+        * fast/css/shadow-parts/invalidation-class-sibling-combinator.html:
+        * fast/custom-elements/DOMImplementation-createDocument.html:
+        * fast/custom-elements/adopting-from-frameless-document.html:
+        * fast/custom-elements/disconnected-callback-in-detached-iframe.html:
+        * fast/custom-elements/document-createElementNS.html:
+        * fast/custom-elements/enqueue-custom-element-callback-reactions-inside-another-callback.html:
+        * fast/custom-elements/perform-microtask-checkpoint-before-construction.html:
+        * fast/custom-elements/reactions-for-webkit-extensions.html:
+        * fast/custom-elements/resources/custom-elements-helpers.js: Added.
+        (create_window_in_test):
+        (test_with_window):
+        (prototype.attributeChangedCallback):
+        (prototype.connectedCallback):
+        (prototype.disconnectedCallback):
+        (prototype.adoptedCallback):
+        (return.takeLog):
+        (create_constructor_log):
+        (assert_constructor_log_entry):
+        (create_connected_callback_log):
+        (assert_connected_log_entry):
+        (create_disconnected_callback_log):
+        (assert_disconnected_log_entry):
+        (assert_adopted_log_entry):
+        (create_adopted_callback_log):
+        (create_attribute_changed_callback_log):
+        (assert_attribute_log_entry):
+        (define_new_custom_element.CustomElement):
+        (define_new_custom_element.CustomElement.prototype.attributeChangedCallback):
+        (define_new_custom_element.CustomElement.prototype.connectedCallback):
+        (define_new_custom_element.CustomElement.prototype.disconnectedCallback):
+        (define_new_custom_element.CustomElement.prototype.adoptedCallback):
+        (define_new_custom_element.return.takeLog):
+        (CustomElement):
+        (CustomElement.prototype.attributeChangedCallback):
+        (CustomElement.prototype.connectedCallback):
+        (CustomElement.prototype.disconnectedCallback):
+        (CustomElement.prototype.adoptedCallback):
+        * fast/custom-elements/resources/reactions.js: Added.
+        (testNodeConnector):
+        (testNodeDisconnector):
+        (testInsertingMarkup):
+        (testParsingMarkup):
+        (prototype.test):
+        (testReflectBooleanAttribute):
+        (testAttributeAdder):
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html:
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html:
+        * fast/images/resources/green-256x256.png: Added.
+        * fast/images/sizes-dynamic-001-expected.html:
+        * fast/images/sizes-dynamic-001.html:
+        * fast/images/sizes-dynamic-002-expected.html:
+        * fast/images/sizes-dynamic-002.html:
+        * fast/shadow-dom/capturing-and-bubbling-event-listeners-across-shadow-trees-expected.txt: Removed.
+        * fast/shadow-dom/capturing-and-bubbling-event-listeners-across-shadow-trees.html: Removed.
+        * mathml/non-core/frac-linethickness-001-expected.html:
+        * mathml/non-core/frac-linethickness-001.html:
+        * mathml/non-core/frac-linethickness-002-expected.html:
+        * mathml/non-core/frac-linethickness-002.html:
+        * mathml/non-core/lengths-1.html:
+        * mathml/non-core/lengths-2.html:
+        * mathml/non-core/lengths-3.html:
+        * mathml/presentation/radical-bar-visibility.html:
+        * mathml/resources/fraction-rulethickness10000.woff: Added.
+        * mathml/resources/radical-degreebottomraisepercent25-rulethickness1000.woff: Added.
+        * mathml/resources/xheight500.woff: Added.
+
+2020-06-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPadOS] editing/selection/ios/toggle-callout-bar-after-tap-in-selected-non-editable-text.html times out
+        https://bugs.webkit.org/show_bug.cgi?id=213010
+        <rdar://problem/64182061>
+
+        Reviewed by Tim Horton.
+
+        This test times out because the second tap (which is intended to toggle callout bar visibility by tapping on the
+        text selection) misses completely, due to the fact that the midpoint of the selected paragraph element is
+        somewhere in the middle of the page.
+
+        Fix this by simply making the selection target `inline-block`, such that the element width doesn't expand to
+        the width of the page.
+
+        * editing/selection/ios/toggle-callout-bar-after-tap-in-selected-non-editable-text.html:
+
+2020-06-10  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK][WPE] Gardening, update expectations after r262834
+        https://bugs.webkit.org/show_bug.cgi?id=213014
+
+        Unreviewed gardening.
+
+        Garden latest failures from bots and adjust the actual result of
+        several flaky failures.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, reverting r262791.
+
+        WinCairo WebKit1 is crashing.
+
+        Reverted changeset:
+
+        "[Curl] Implement functions to use ResourceLoadStatistics."
+        https://bugs.webkit.org/show_bug.cgi?id=207692
+        https://trac.webkit.org/changeset/262791
+
+2020-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor overflow layers cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=213002
+
+        Reviewed by Zalan Bujtas.
+
+        New results now now that the scrollbar layers aren't reparented.
+
+        * compositing/overflow/overflow-scrollbar-layer-positions-expected.txt:
+
+2020-06-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=212997
+
+        Unreviewed test gardening
+
+        * platform/gtk/TestExpectations:
+
+2020-06-09  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update results of flaky timeout failures
+        https://bugs.webkit.org/show_bug.cgi?id=212993
+
+        Unreviewed gardening.
+
+        For those flaky timeout failures, update expected results to the actual results obtained in the
+        last 4000 revisions for each test.
+
+        * platform/gtk/TestExpectations:
+
+2020-06-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow multiple resources for a given URL
+        https://bugs.webkit.org/show_bug.cgi?id=212852
+
+        Reviewed by Brian Burg.
+
+        * inspector/unit-tests/set-utilities.html:
+        * inspector/unit-tests/set-utilities-expected.txt:
+        Add test for `Set.prototype.find`.
+
+        * http/tests/websocket/tests/hybi/inspector/resolveWebSocket.html:
+        Update usage of `resourceForURL` to `resourcesForURL` with `Set.prototype.firstValue`.
+
+2020-06-09  Youenn Fablet  <youenn@apple.com>
+
+        BaseAudioSharedUnit should unmute its clients in case of suspension even if not having any audio unit
+        https://bugs.webkit.org/show_bug.cgi?id=212970
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/media-stream-track-interrupted-expected.txt:
+        * fast/mediastream/media-stream-track-interrupted.html:
+
+2020-06-09  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, remove flaky timeout failures after r262789
+        https://bugs.webkit.org/show_bug.cgi?id=212979
+
+        Unreviewed gardening.
+
+        Removed flaky timeout failures that have been constantly passing in the last 4000 revisions.
+
+        * platform/gtk/TestExpectations:
+
+2020-06-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        lang=zh needs to defer to system preferences to know whether it should be simplified or traditional
+        https://bugs.webkit.org/show_bug.cgi?id=212626
+        <rdar://problem/60227623>
+
+        Reviewed by Darin Adler.
+
+        Make sure the new locale isn't exposed.
+
+        * fast/text/locale-getComputedStyle-expected.txt: Added.
+        * fast/text/locale-getComputedStyle.html: Added.
+
+2020-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][TFC] Add support for empty table
+        https://bugs.webkit.org/show_bug.cgi?id=212971
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/empty-table-box-expected.html: Added.
+        * fast/layoutformattingcontext/empty-table-box.html: Added.
+
+2020-06-09  Youenn Fablet  <youenn@apple.com>
+
+        Fix two MediaStream tests
+        https://bugs.webkit.org/show_bug.cgi?id=208926
+        <rdar://problem/60329008>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStreamTrack-getSettings-expected.txt:
+        * fast/mediastream/MediaStreamTrack-getSettings.html:
+        * platform/mac-wk2/TestExpectations:
+        Unskip tests.
+
+2020-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Table][Floats] Multi-pass table layout needs clean floating state
+        https://bugs.webkit.org/show_bug.cgi?id=212889
+
+        Reviewed by Antti Koivisto
+
+        * fast/layoutformattingcontext/float-inside-table-cell-simple-expected.html: Added.
+        * fast/layoutformattingcontext/float-inside-table-cell-simple.html: Added.
+
+2020-06-09  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Implement functions to use ResourceLoadStatistics.
+        https://bugs.webkit.org/show_bug.cgi?id=207692
+
+        Reviewed by Don Olmstead.
+
+        Implement functions which are required to implement ResourceLoadStatistics for Curl port.
+
+        Tests: http/tests/resourceLoadStatistics/
+
+        * platform/wincairo/TestExpectations:
+
+2020-06-09  Antti Koivisto  <antti@apple.com>
+
+        scrollingcoordinator/ios/scroll-position-after-reattach.html is a flaky image failure
+        https://bugs.webkit.org/show_bug.cgi?id=212967
+        <rdar://problem/52961406>
+
+        Reviewed by Antoine Quint.
+
+        * platform/ios-wk2/TestExpectations:
+        * scrollingcoordinator/ios/scroll-position-after-reattach.html:
+
+        Ensure the element is re-added before test finishes.
+
+2020-06-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Import some grid tests from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=212920
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        The imported tests fail only for WebKitGtk+ platform.
+
+        * platform/gtk/TestExpectations: Added Failure entries,
+
+2020-06-09  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GLIB] Gardening, clean up failures filed under bug 186638
+        https://bugs.webkit.org/show_bug.cgi?id=212968
+
+        Unreviewed gardening.
+
+        Most of the the failures were flaky but many tests have been
+        consistently passing, so they were removed from expectations. Adjust
+        other failure entries to their corresponding state inferred from the
+        latest test bot results.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-09  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update test expectations after r262775
+        https://bugs.webkit.org/show_bug.cgi?id=212966
+
+        Unreviewed gardening.
+
+        Gardened several WPT flaky failures that were already gardening in
+        GTK. Moved common failures to GLIB.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-09  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK][WPE] Gardening, update baselines for mediaElementAudioSourceToScriptProcessorTest.html
+        https://bugs.webkit.org/show_bug.cgi?id=184777
+
+        Unreviewed gardening.
+
+        The expected result for GTK and WPE is the same as the general baseline, it only changes an expected value.
+        ios-wk2 also has its own baseline for the same reason.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest-expected.txt:
+
+2020-06-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME] CDMProxyInstance should not keep CDMInstanceSessions hard referenced
+        https://bugs.webkit.org/show_bug.cgi?id=212689
+
+        Reviewed by Youenn Fablet.
+
+        * media/encrypted-media/clearKey/clearKey-session-life-cycle-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-session-life-cycle.html: Added.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update test expectations after r262763
+        https://bugs.webkit.org/show_bug.cgi?id=212961
+
+        Unreviewed gardening.
+
+        * platform/glib/TestExpectations: Moved several bugs that were also hapenning in WPE from GTK to GLIB.
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations: Removed test passing and filed a few new bugs.
+
+2020-06-08  Rob Buis  <rbuis@igalia.com>
+
+        XMLHTTPRequest.send should not send Content-Type headers when Blob has no type
+        https://bugs.webkit.org/show_bug.cgi?id=211999
+
+        Reviewed by Alex Christensen.
+
+        Remove unneeded expectations.
+
+        * platform/ios/imported/w3c/web-platform-tests/xhr/send-blob-with-no-mime-type-expected.txt: Removed.
+        * platform/mac/imported/w3c/web-platform-tests/xhr/send-blob-with-no-mime-type-expected.txt: Removed.
+
+2020-06-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Horizontally scrolling elements are broken when revealed by toggling visibility
+        https://bugs.webkit.org/show_bug.cgi?id=212439
+        <rdar://problem/63739559>
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/scrolling/async-overflow-scrolling/toggle-visibility-on-scroller-expected.txt: Added.
+        * compositing/scrolling/async-overflow-scrolling/toggle-visibility-on-scroller.html: Added.
+        * platform/ios-wk2/compositing/scrolling/async-overflow-scrolling/toggle-visibility-on-scroller-expected.txt: Added.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations after r262763
+        https://bugs.webkit.org/show_bug.cgi?id=212957
+
+        Unreviewed gardening.
+
+        * platform/glib/TestExpectations: Mark one test as flaky.
+        * platform/gtk/TestExpectations: Remove two tests passing after r262740.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        Gardening, remove tests passing after r262716
+        https://bugs.webkit.org/show_bug.cgi?id=212923
+
+        Unreviewed gardening.
+
+        Several css-grid tests marked as failure are passing in all platforms after r262716.
+
+        * TestExpectations:
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update expectations after 262724
+        https://bugs.webkit.org/show_bug.cgi?id=212926
+
+        Unreviewed gardening.
+
+        Add failure to test expectationd and remove failing test that is
+        passing since r262466.
+
+        * platform/gtk/TestExpectations:
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK][WPE] Remove test failures passing after r262707
+        https://bugs.webkit.org/show_bug.cgi?id=212924
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-08  Sam Weinig  <weinig@apple.com>
+
+        Extended Color: Unify rounding / clamping conversions between 0-1 float components and 0-255 byte components
+        https://bugs.webkit.org/show_bug.cgi?id=212871
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/ios/system-color-for-css-value-expected.txt:
+        * fast/css/ios/system-color-for-css-value.html:
+        Update test to account for slightly differnt rounding (alpha goes from 0.298 to 0.3).
+
+2020-06-08  Youenn Fablet  <youenn@apple.com>
+
+        Missing WebRTC Metrics in iOS Safari
+        https://bugs.webkit.org/show_bug.cgi?id=212668
+        <rdar://problem/63902458>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-stats-expected.txt:
+        * webrtc/video-stats.html:
+
+2020-06-08  Youenn Fablet  <youenn@apple.com>
+
+        Add missed WebRTC media-source and remote-inbound-rtp stats
+        https://bugs.webkit.org/show_bug.cgi?id=206645
+        <rdar://problem/58833958>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-stats.html:
+        qpSum is no longer guaranteed to be there.
+        Also, we loop over stats to ensure we get all of them.
+
+2020-06-08  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for min/max-width/height
+        https://bugs.webkit.org/show_bug.cgi?id=212904
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/inline-max-width-height-simple-expected.html: Added.
+        * fast/layoutformattingcontext/inline-max-width-height-simple.html: Added.
+
+2020-06-05  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] Add missing interfaces from the AR module
+        https://bugs.webkit.org/show_bug.cgi?id=212826
+
+        Reviewed by Youenn Fablet.
+
+        * platform/wpe/TestExpectations: Unskipped 3 tests which are passing now.
+
+2020-06-03  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-flexbox] align-content should apply even when there's just a single line
+        https://bugs.webkit.org/show_bug.cgi?id=209871
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * TestExpectations:
+        * css3/flexbox/alignContent-applies-with-flexWrap-wrap-with-single-line-expected.txt: Removed.
+        * css3/flexbox/alignContent-applies-with-flexWrap-wrap-with-single-line.html: Replaced by
+        WPT's align-content-wrap-001.html.
+        * css3/flexbox/flexbox-wordwrap-expected.txt: Removed.
+        * css3/flexbox/flexbox-wordwrap.html: Replaced by WPT's align-content-wrap-002.html.
+        * css3/flexbox/multiline-align-content-expected.txt: Removed.
+        * css3/flexbox/multiline-align-content.html: Replaced by WPT's align-content-wrap-003.html.
+        * platform/ios/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+        Updated expectations.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update test expectations after r262708
+        https://bugs.webkit.org/show_bug.cgi?id=212901
+
+        Unreviewed gardening.
+
+        - Moved common baseline to glib.
+        - Removed redudant WPE baseline.
+        - Added flaky failure to test expectations.
+
+        * platform/glib/imported/w3c/web-platform-tests/encoding/single-byte-decoder-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/encoding/single-byte-decoder-expected.txt.
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange-expected.txt: Removed.
+
+2020-06-08  Jason Lawrence  <lawrence.j@apple.com>
+
+        (r261056) [ Mac WK2 ] fast/scrolling/mac/scrollbars/overlay-scrollbar-reveal.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=212042
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-08  Antti Koivisto  <antti@apple.com>
+
+        Pseudo-elements (::after) in shadow roots don't animate
+        https://bugs.webkit.org/show_bug.cgi?id=173027
+        <rdar://problem/42842994>
+
+        Reviewed by Antoine Quint.
+
+        * animations/keyframe-pseudo-shadow-expected.html: Added.
+        * animations/keyframe-pseudo-shadow.html: Added.
+
+2020-06-08  Youenn Fablet  <youenn@apple.com>
+
+        Use one audio unit for all MediaStreamTracks of a given process
+        https://bugs.webkit.org/show_bug.cgi?id=212406
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/multi-audio-expected.txt: Added.
+        * webrtc/multi-audio.html: Added.
+
+2020-06-08  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        Disable tests on all platforms except the ones supporting AVAssetWriterDelegate.
+
+        * TestExpectations:
+        * http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable-gpuprocess.html:
+        Remove web audio generation since there seems to be some unstability in web audio -> stream -> media recorder.
+        which should be fixed as follow-up specific patches.
+        * platform/mac/TestExpectations:
+        Enable running tests.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, remove redundant baselines
+        https://bugs.webkit.org/show_bug.cgi?id=212896
+
+        Unreviewed gardening.
+
+        * platform/glib/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https-expected.txt: Removed.
+
+2020-06-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations after r262703
+        https://bugs.webkit.org/show_bug.cgi?id=212895
+
+        Unreviewed gardening.
+
+        Garden several flaky failures.
+
+        * platform/gtk/TestExpectations:
+
+2020-06-07  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] HAVE(PAYMENT_METHOD_BILLING_ADDRESS) should be true on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=212877
+        <rdar://problem/64080998>
+
+        Reviewed by Sam Weinig.
+
+        * platform/ios-wk2/TestExpectations: Unskipped
+        http/tests/ssl/applepay/ApplePayBillingAddress.html on iOS.
+
+2020-06-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Height percentage] Skip anonymous wrappers when searching for fixed height
+        https://bugs.webkit.org/show_bug.cgi?id=212881
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/height-precentage-with-anonymous-wrapper-expected.html: Added.
+        * fast/layoutformattingcontext/height-precentage-with-anonymous-wrapper.html: Added.
+
+2020-06-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Intrinsic width computation should take min/max-width into account.
+        https://bugs.webkit.org/show_bug.cgi?id=212876
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/min-max-content-width-simple2-expected.html: Added.
+        * fast/layoutformattingcontext/min-max-content-width-simple2.html: Added.
+
+2020-06-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Crash when running web-apis data collection
+        https://bugs.webkit.org/show_bug.cgi?id=212458
+
+        Reviewed by Mark Lam.
+
+        * js/dom/dom-attribute-getter-setter-expected.txt: Added.
+        * js/dom/dom-attribute-getter-setter.html: Added.
+
+2020-06-06  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add support for width: min/max-content
+        https://bugs.webkit.org/show_bug.cgi?id=212869
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/min-max-content-width-simple-expected.html: Added.
+        * fast/layoutformattingcontext/min-max-content-width-simple.html: Added.
+
+2020-06-06  Charlie Turner  <cturner@igalia.com>
+
+        [GTK][WPE][EME] Update WPT and rebaseline
+        https://bugs.webkit.org/show_bug.cgi?id=212574
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update the WPT tests and adjust GTK and WPE test expectations.  I
+        have noticed some crashes locally on occasion, but they are rare
+        here and I have not at the opportunity to dissect one of them to
+        figure it out.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-update-disallowed-input.https-expected.txt:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-check-status-for-hdcp.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-events.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-requestmediakeysystemaccess.https-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-reset-src-after-setmediakeys.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key.https-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-check-status-for-hdcp.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-requestmediakeysystemaccess.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-update-disallowed-input.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/encrypted-media-default-feature-policy.https.sub-expected.txt: Removed.
+        * tests-options.json:
+
+2020-06-06  Devin Rousso  <drousso@apple.com>
+
+        [ macOS wk2 ] inspector/page/setBootstrapScript-sub-frame.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=207053
+        <rdar://problem/59064908>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/page/setBootstrapScript-sub-frame.html:
+
+        * platform/mac/TestExpectations:
+
+2020-06-06  Simon Fraser  <simon.fraser@apple.com>
+
+        fast/scrolling/latching/iframe-latch-small-deltas.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=210348
+        <rdar://problem/61594742>
+
+        Reviewed by Anders Carlsson.
+
+        This test needs to use ' eventSender.monitorWheelEvents({ resetLatching: false });' so that it
+        waits for the events from the last non-momentum scroll without resetting latching.
+
+        * fast/scrolling/latching/iframe-latch-small-deltas-expected.txt:
+        * fast/scrolling/latching/iframe-latch-small-deltas.html:
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-06  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add testing and logging for ApplePaySetup
+        https://bugs.webkit.org/show_bug.cgi?id=211972
+        <rdar://problem/63291965>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/ssl/applepay/ApplePaySetup.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePaySetup.https.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-06  Andres Gonzalez  <andresg_22@apple.com>
+
+        [Win EWS] REGRESSION (r262500): accessibility/svg-text.html always fails
+        https://bugs.webkit.org/show_bug.cgi?id=212845
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-06-06  Devin Rousso  <drousso@apple.com>
+
+        (r261103) [ Mac WK2 ] inspector/page/overrideSetting-ITPDebugModeEnabled.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=211791
+        <rdar://problem/63147694>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/page/overrideSetting-ITPDebugModeEnabled.html:
+        * inspector/page/overrideSetting-ITPDebugModeEnabled-expected.txt:
+        Wait for three console messages instead of one, as we know there should be at least three.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-06  Devin Rousso  <drousso@apple.com>
+
+        [ macOS ] inspector/debugger/break-in-constructor-before-super.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=210062
+        <rdar://problem/61351481>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/break-in-constructor-before-super.html:
+        * inspector/debugger/debugger-statement.html:
+        * platform/mac/TestExpectations:
+
+2020-06-05  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r256648): Apple Pay <button> elements no longer use the default corner radius on iOS (affects Stripe.js)
+        https://bugs.webkit.org/show_bug.cgi?id=212860
+        <rdar://problem/64054728>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestExpectations: Skipped fast/css/appearance-apple-pay-button-default-corners.html.
+        * fast/css/appearance-apple-pay-button-default-corners-expected-mismatch.html: Renamed from
+        LayoutTests/http/tests/ssl/applepay/ApplePayButtonCornerRadius-expected-mismatch.html.
+        * fast/css/appearance-apple-pay-button-default-corners.html: Renamed from
+        LayoutTests/http/tests/ssl/applepay/ApplePayButtonCornerRadius.html.
+        * platform/ios/TestExpectations: Un-skipped tests that pass in platform/mac/.
+        * platform/mac/TestExpectations: Un-skipped
+        fast/css/appearance-apple-pay-button-default-corners.html.
+
+2020-06-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262619, r262625, and r262641.
+
+        Caused mediarecorder layout test crashes.
+
+        Reverted changesets:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262619
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262625
+
+        "Unreviewed, silence deprecation warning to fix build with
+        latest SDK."
+        https://trac.webkit.org/changeset/262641
+
+2020-06-05  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mojave wk2 Release ] js/dom/unhandled-promise-rejection-console-no-report.html is flaky failing. 
+        https://bugs.webkit.org/show_bug.cgi?id=212851
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-05  Sam Weinig  <weinig@apple.com>
+
+        Some tests in css/css-color/parsing/system-color-valid.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=212703
+
+        Reviewed by Darin Adler.
+
+        * fast/css/css2-system-color.html:
+        * platform/mac/fast/css/css2-system-color-expected.txt:
+        Update system color test for new system colors added more recently.
+
+2020-06-05  Jason Lawrence  <lawrence.j@apple.com>
+
+        Unreviewed, reverting r262524.
+
+        Reverting because this commit may have caused issues with
+        other tests.
+
+        Reverted changeset:
+
+        "Release Assert @
+        WebCore::RenderTreeBuilder::RenderTreeBuilder"
+        https://bugs.webkit.org/show_bug.cgi?id=212714
+        https://trac.webkit.org/changeset/262524
+
+2020-06-05  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r262366): [ Mac wk1 ] webgl/webgl-backing-store-size-update.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=212647
+        <rdar://problem/63882960>
+
+        Reviewed by Eric Carlson.
+
+        Make this test wait a frame before calling notifyDone. This is required at the
+        moment because calling notifyDone in WebKit1 sidesteps the normal painting logic and
+        forces compositing to happen, and thus will produce incorrect results for WebGL if
+        we're already in the middle of the rendering loop (e.g. inside a requestAnimationFrame
+        that has touched pixels).
+
+        * webgl/webgl-backing-store-size-update.html:
+
+2020-06-05  Peng Liu  <peng.liu6@apple.com>
+
+        REGRESSION (r262456?): [macOS] media/picture-in-picture/picture-in-picture-api tests are flaky timeouts
+        https://bugs.webkit.org/show_bug.cgi?id=212762
+
+        Reviewed by Eric Carlson.
+
+        Skip the tests regarding Picture-in-Picture for mac-wk1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-06-05  Tyler Wilcock  <twilco.o@protonmail.com>
+
+        CSS Variables: Color on specific `border` properties does not work.
+        https://bugs.webkit.org/show_bug.cgi?id=211672
+
+        Reviewed by Antti Koivisto.
+
+        Add test verifying CSS variables work as values in the `border-block-start`, `border-block-end`, `border-inline-start`, and `border-inline-end` properties.
+
+        * fast/borders/logical-border-props-with-variables.html: Added.
+        * fast/borders/logical-border-props-with-variables-expected.html: Added.
+
+2020-06-05  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS wk1 ] http/tests/media/reload-after-dialog.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212828
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-05  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS debug ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-disconnect-audioparam.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212824
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-05  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        Disable tests on all platforms except the ones supporting AVAssetWriterDelegate.
+
+        * TestExpectations:
+        * http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable-gpuprocess.html:
+        Remove web audio generation since there seems to be some unstability in web audio -> stream -> media recorder.
+        which should be fixed as follow-up specific patches.
+        * platform/mac/TestExpectations:
+        Enable running tests.
+
+2020-06-05  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r253875?): Element styles incorrect after media query evaluation changes
+        https://bugs.webkit.org/show_bug.cgi?id=211505
+        <rdar://problem/62983242>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/media/media-query-dynamic-with-keyframes-expected.html: Added.
+        * fast/media/media-query-dynamic-with-keyframes.html: Added.
+
+2020-06-05  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r261845): [ Mac wk2 ] inspector/heap/getRemoteObject.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=212776
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update WAV baseline for webaudio test
+        https://bugs.webkit.org/show_bug.cgi?id=212212
+
+        Unreviewed gardening.
+
+        * platform/wpe/webaudio/codec-tests/aac/vbr-128kbps-44khz-expected.wav:
+
+2020-06-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for offscreen-canvas (and rename to html/canvas/offscreen)
+        https://bugs.webkit.org/show_bug.cgi?id=212613
+
+        Reviewed by Žan Doberšek.
+
+        Upstream WPT the tests from /offscreen-canvas were moved to /html/canvas/offscreen
+        Remove the old tests and re-import the new ones.
+        Rename paths in TestExpectation files and update baselines.
+
+        * TestExpectations:
+        * gpu-process/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * tests-options.json:
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations after r262612
+        https://bugs.webkit.org/show_bug.cgi?id=212822
+
+        Unreviewed gardening.
+
+        Remove unnecessary baseline and gardened several flaky tests.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/forms/select/popup-closes-on-blur-expected.txt: Added after r262607.
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations after r262609
+        https://bugs.webkit.org/show_bug.cgi?id=212813
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/w3c-svg-name-calculation-expected.txt: Update after r262500.
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=212810
+
+        Unreviewed gardening.
+
+        webrtc/datachannel/gather-candidates-networkprocess-crash.html is a
+        timeout flaky failure.
+
+        * platform/gtk/TestExpectations:
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GLIB] Gardening, update test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=212808
+
+        Unreviewed gardening.
+
+        * platform/glib/TestExpectations:
+
+2020-06-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GLIB] Gardening, remove unneeded baseline after r262527
+        https://bugs.webkit.org/show_bug.cgi?id=212804
+
+        Unreviewed gardening.
+
+        * platform/glib/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-canvas-element/security.pattern.fillStyle.sub-expected.txt: Removed.
+
+2020-06-05  Youenn Fablet  <youenn@apple.com>
+
+        Add support for media-source stats
+        https://bugs.webkit.org/show_bug.cgi?id=212702
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-stats.html:
+
+2020-06-05  Youenn Fablet  <youenn@apple.com>
+
+        Mark some service worker tests as slow in iOS
+        https://bugs.webkit.org/show_bug.cgi?id=212743
+
+        Unreviewed.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-04  Jack Lee  <shihchieh_lee@apple.com>
+
+        Nullptr crash in DeleteSelectionCommand::doApply() when ending position is disconnected.
+        https://bugs.webkit.org/show_bug.cgi?id=212723
+        <rdar://problem/63866653>
+
+        Reviewed by Geoffrey Garen.
+
+        Added a regression test for the crash.
+
+        * editing/deleting/delete-txt-in-dl-crash-expected.txt: Added.
+        * editing/deleting/delete-txt-in-dl-crash.html: Added.
+
+2020-06-04  Simon Fraser  <simon.fraser@apple.com>
+
+        [ Mojave wk2 Debug ] fast/scrolling/mac/scrollbars/select-overlay-scrollbar-hovered.html is flaky failing and flaky timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=212667
+        <rdar://problem/63896649>
+
+        Unreviewed test gardening.
+
+        fast/scrolling/mac/scrollbars/select-overlay-scrollbar-hovered.html suffers from AppKit behavior differences on Mojave, so
+        skip the test on that platform.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-04  Antoine Quint  <graouts@apple.com>
+
+        media/modern-media-controls/time-label/time-label-white-space-nowrap.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=212772
+        <rdar://problem/63554695>
+
+        Reviewed by Eric Carlson.
+
+        Remove some leftover debugging code that forces a failure if the test is slow.
+
+        * media/modern-media-controls/time-label/time-label-white-space-nowrap.html:
+
+2020-06-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Gardening after r262539
+        https://bugs.webkit.org/show_bug.cgi?id=212770
+
+        Unreviewed gardening.
+
+        Add baselines for GTK/WPE and comment out enabling offscreen canvas
+        tests that are now broken. Fixing them in bug 212613.
+
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/compositing/2d.composite.globalAlpha.canvascopy-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/drawimage_canvas-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.cone.bottom-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.cone.cylinder-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.cone.front-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.cone.shape1-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.cone.top-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.inside1-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.inside2-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.inside3-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.outside1-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.outside2-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.outside3-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/fill-and-stroke-styles/2d.gradient.radial.touch2-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/image-smoothing/imagesmoothing-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/canvas-createImageBitmap-resize-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-drawImage-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-flipY-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-invalid-args-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-serializable-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-transfer-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/path-objects/2d.path.isPointInStroke.scaleddashes-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/path-objects/2d.path.rect.winding-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/path-objects/2d.path.stroke.scale2-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/shadows/shadowBlur_gaussian_tolerance.1-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/html/canvas/element/text-styles/2d.text.draw.baseline.ideographic-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-04  Antoine Quint  <graouts@webkit.org>
+
+        [ iOS wk2 ] animations/play-state-paused.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=212641
+        <rdar://problem/63879230>
+
+        Reviewed by Dean Jackson.
+
+        Rewrite this test to use the AnimationTest helper that will non-flakily check animated values while an animation is running.
+
+        * animations/play-state-paused-expected.txt:
+        * animations/play-state-paused.html:
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-02  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/2dcontext from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=212639
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * canvas/philip/tests/2d.drawImage.incomplete.emptysrc.html:
+        * canvas/philip/tests/2d.drawImage.incomplete.nosrc.html:
+        * canvas/philip/tests/2d.drawImage.incomplete.removedsrc.html:
+        * canvas/philip/tests/2d.pattern.image.incomplete.emptysrc.html:
+        * canvas/philip/tests/2d.pattern.image.incomplete.removedsrc.html:
+        * gpu-process/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-flipY-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer-expected.txt: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable-expected.txt: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ios/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/2dcontext/line-styles/2d.line.cap.round-expected.txt: Removed.
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable-expected.txt: Removed.
+
+2020-06-04  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GLIB][GTK] Gardening, update test expectations and baselines after r262525
+        https://bugs.webkit.org/show_bug.cgi?id=212751
+
+        Unreviewed gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/frame-ancestors-nested-cross-in-same-none-block-expected.txt: Added after r262312.
+        * platform/glib/imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/frame-ancestors-nested-cross-in-same-self-block-expected.txt: Added after r262312.
+        * platform/glib/imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/frame-ancestors-nested-same-in-same-self-allow-expected.txt: Added after r262312.
+        * platform/glib/imported/w3c/web-platform-tests/websockets/unload-a-document/002-expected.txt: Removed after r262312.
+        * platform/glib/imported/w3c/web-platform-tests/websockets/unload-a-document/004-expected.txt: Removed after r262312.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/encoding/single-byte-decoder-expected.txt: Added after r262235.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/resize-during-playback-expected.txt: Removed after r262254.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt: Updated after r262235.
+
+2020-06-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r262527 and r262531.
+
+        The commit 262527 caused over 100 web platform tests to fail
+        and 262531 edited the file after
+
+        Reverted changesets:
+
+        "Resync web-platform-tests/2dcontext from upstream"
+        https://bugs.webkit.org/show_bug.cgi?id=212639
+        https://trac.webkit.org/changeset/262527
+
+        "[GTK][WPE] Gardening, temporarily disable offscreen-canvas
+        tests"
+        https://bugs.webkit.org/show_bug.cgi?id=212738
+        https://trac.webkit.org/changeset/262531
+
+2020-06-04  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK][WPE] Gardening, temporarily disable offscreen-canvas tests
+        https://bugs.webkit.org/show_bug.cgi?id=212738
+
+        Unreviewed gardening.
+
+        The test started failing after r262527. Disable the tests temporarily
+        to let the test bots pass.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-06-03  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add new values for -apple-pay-button-type
+        https://bugs.webkit.org/show_bug.cgi?id=212684
+        <rdar://problem/63908535>
+
+        Reviewed by Anders Carlsson.
+
+        * http/tests/ssl/applepay/ApplePayButton-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePayButton.html:
+        * http/tests/ssl/applepay/ApplePayButtonV4.html: Removed.
+        * platform/mac/http/tests/ssl/applepay/ApplePayButton-expected.png: Removed.
+        * platform/mac/http/tests/ssl/applepay/ApplePayButton-expected.txt: Removed.
+        * platform/mac/http/tests/ssl/applepay/ApplePayButtonV4-expected.png: Removed.
+        * platform/mac/http/tests/ssl/applepay/ApplePayButtonV4-expected.txt: Removed.
+
+2020-06-02  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/2dcontext from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=212639
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * canvas/philip/tests/2d.drawImage.incomplete.emptysrc.html:
+        * canvas/philip/tests/2d.drawImage.incomplete.nosrc.html:
+        * canvas/philip/tests/2d.drawImage.incomplete.removedsrc.html:
+        * canvas/philip/tests/2d.pattern.image.incomplete.emptysrc.html:
+        * canvas/philip/tests/2d.pattern.image.incomplete.removedsrc.html:
+        * gpu-process/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-flipY-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub-expected.txt: Removed.
+        * platform/glib/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer-expected.txt: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable-expected.txt: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ios/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/2dcontext/line-styles/2d.line.cap.round-expected.txt: Removed.
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable-expected.txt: Removed.
+
+2020-06-03  Daniel Bates  <dabates@apple.com>
+
+        Inserted text placeholder should vertically align to top and behave like block-level element when it has 0 width
+        https://bugs.webkit.org/show_bug.cgi?id=212716
+        <rdar://problem/62672479>
+
+        Reviewed by Darin Adler.
+
+        Add tests.
+
+        * editing/text-placeholder/insert-into-content-editable-non-zero-width-and-height-expected.html: Added.
+        * editing/text-placeholder/insert-into-content-editable-non-zero-width-and-height.html: Added.
+        * editing/text-placeholder/insert-into-content-editable-zero-width-expected.html: Added.
+        * editing/text-placeholder/insert-into-content-editable-zero-width.html: Added.
+
+2020-06-03  Pinki Gyanchandani  <pgyanchandani@apple.com>
+
+        Release Assert @ WebCore::RenderTreeBuilder::RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=212714
+
+        Reviewed by Geoffrey Garen.
+
+        Added a regression test.
+
+        * fast/rendering/widget-removal-in-render-tree-builder-crash-expected.txt: Added.
+        * fast/rendering/widget-removal-in-render-tree-builder-crash.html: Added.
+
+2020-06-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS wk1 debug ] svg/custom/textPath-change-id.svg is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212721
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-03  Megan Gardner  <megan_gardner@apple.com>
+
+        Refactor long press test to reflect current behaviour.
+        https://bugs.webkit.org/show_bug.cgi?id=212709
+        <rdar://problem/59572126>
+
+        Reviewed by Wenson Hsieh.
+
+        Previously, if you long pressed on editable content, the selection assistant would be triggered
+        in the wrong mode and you could not modify or interact with the selection. With changes and
+        refactors that have happened in UIKit and WebKit, the selection can be interacted with
+        correctly inside of an editable area. We should now allow and test for this behavior.
+
+        * fast/events/touch/ios/long-press-on-editable-expected.txt:
+        * fast/events/touch/ios/long-press-on-editable.html:
+
+2020-06-03  Peng Liu  <peng.liu6@apple.com>
+
+        REGRESSION: (r262456): [ Mac ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=212694
+
+        Reviewed by Jer Noble.
+
+        Enable the mock video presentation mode of the WebKitTestRunner in the test,
+        and only request a video element to change its video presentation mode after
+        the previous change is completed.
+
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html:
+        * platform/mac/TestExpectations:
+
+2020-06-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        REGRESSION: [macOS WK2] Layout Test fast/mediastream/device-cha nge-event-2.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=188924
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-06-03  Rob Buis  <rbuis@igalia.com>
+
+        Disallow responses when a response contains invalid header values
+        https://bugs.webkit.org/show_bug.cgi?id=184493
+
+        Reviewed by Darin Adler.
+
+        Update improved test results.
+
+        * platform/glib/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt:
+        * platform/glib/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt:
+        * platform/ios-12/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt:
+        * platform/ios-12/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt:
+        * platform/mac-mojave/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt:
+        * platform/mac-mojave/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt:
+
+2020-06-03  Andres Gonzalez  <andresg_22@apple.com>
+
+        AX: SVG text node with content is described as "empty group" even if it's not empty
+        https://bugs.webkit.org/show_bug.cgi?id=210315
+
+        Reviewed by Darin Adler.
+
+        * accessibility/svg-text-expected.txt: Added.
+        * accessibility/svg-text.html: Added.
+        * accessibility/w3c-svg-name-calculation.html: Expected name for an SVG
+        text element should be "". Its text content is exposed as a child static text accessibility object.
+        * platform/mac/accessibility/w3c-svg-name-calculation-expected.txt:
+
+2020-06-03  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Add setting for per-page storage access scope
+        https://bugs.webkit.org/show_bug.cgi?id=212682
+        <rdar://problem/63904824>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/storageAccess/request-and-grant-access-with-per-page-scope-access-from-another-frame-expected.txt: Added.
+        * http/tests/storageAccess/request-and-grant-access-with-per-page-scope-access-from-another-frame.html: Added.
+
+2020-06-03  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, lint WPE test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=212705
+
+        Unreviewed gardening.
+
+        * platform/wpe/TestExpectations:
+
+2020-06-03  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r262432): [ iOS wk2 ] imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=212696
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-06-03  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r262456): [ Mac ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=212694
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
 2020-06-03  Javier Fernandez  <jfernandez@igalia.com>
 
         [css-grid] Dynamically setting "position: absolute" in a grid item doesn't trigger a relayout of that element

@@ -45,6 +45,8 @@ view_routes = ViewRoutes(
 
 @app.route('/__health', methods=('GET',))
 def health():
+    if not model.healthy(writable=True):
+        abort(503, description='Health check failed, invalid database connections')
     return 'ok'
 
 

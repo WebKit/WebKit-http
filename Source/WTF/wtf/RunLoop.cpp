@@ -33,6 +33,9 @@
 namespace WTF {
 
 static RunLoop* s_mainRunLoop;
+#if USE(WEB_THREAD)
+static RunLoop* s_webRunLoop;
+#endif
 
 // Helper class for ThreadSpecificData.
 class RunLoop::Holder {
@@ -49,7 +52,7 @@ private:
     Ref<RunLoop> m_runLoop;
 };
 
-void RunLoop::initializeMainRunLoop()
+void RunLoop::initializeMain()
 {
     if (s_mainRunLoop)
         return;
@@ -68,6 +71,24 @@ RunLoop& RunLoop::main()
     ASSERT(s_mainRunLoop);
     return *s_mainRunLoop;
 }
+
+#if USE(WEB_THREAD)
+void RunLoop::initializeWeb()
+{
+    s_webRunLoop = &RunLoop::current();
+}
+
+RunLoop& RunLoop::web()
+{
+    ASSERT(s_webRunLoop);
+    return *s_webRunLoop;
+}
+
+RunLoop* RunLoop::webIfExists()
+{
+    return s_webRunLoop;
+}
+#endif
 
 bool RunLoop::isMain()
 {

@@ -173,6 +173,8 @@ private:
         ASSERT(!vm.structureStructure);
     }
 
+    void validateFlags();
+
 public:
     StructureID id() const { return m_blob.structureID(); }
     int32_t objectInitializationBlob() const { return m_blob.blobExcludingStructureID(); }
@@ -557,7 +559,12 @@ public:
     {
         return OBJECT_OFFSETOF(Structure, m_classInfo);
     }
-        
+
+    static ptrdiff_t outOfLineTypeFlagsOffset()
+    {
+        return OBJECT_OFFSETOF(Structure, m_outOfLineTypeFlags);
+    }
+
     static ptrdiff_t indexingModeIncludingHistoryOffset()
     {
         return OBJECT_OFFSETOF(Structure, m_blob) + StructureIDBlob::indexingModeIncludingHistoryOffset();

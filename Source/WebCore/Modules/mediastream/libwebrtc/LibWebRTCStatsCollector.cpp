@@ -60,49 +60,32 @@ static inline void fillRTCStats(RTCStatsReport::Stats& stats, const webrtc::RTCS
     stats.id = fromStdString(rtcStats.id());
 }
 
-static inline void fillRTCRTPStreamStats(RTCStatsReport::RTCRTPStreamStats& stats, const webrtc::RTCRTPStreamStats& rtcStats)
+static inline void fillRtpStreamStats(RTCStatsReport::RtpStreamStats& stats, const webrtc::RTCRTPStreamStats& rtcStats)
 {
     fillRTCStats(stats, rtcStats);
 
     if (rtcStats.ssrc.is_defined())
         stats.ssrc = *rtcStats.ssrc;
-    if (rtcStats.is_remote.is_defined())
-        stats.isRemote = *rtcStats.is_remote;
-    if (rtcStats.media_type.is_defined())
-        stats.mediaType = fromStdString(*rtcStats.media_type);
-    if (rtcStats.track_id.is_defined())
-        stats.trackId = fromStdString(*rtcStats.track_id);
     if (rtcStats.transport_id.is_defined())
         stats.transportId = fromStdString(*rtcStats.transport_id);
     if (rtcStats.codec_id.is_defined())
         stats.codecId = fromStdString(*rtcStats.codec_id);
-    if (rtcStats.fir_count.is_defined())
-        stats.firCount = *rtcStats.fir_count;
-    if (rtcStats.pli_count.is_defined())
-        stats.pliCount = *rtcStats.pli_count;
-    if (rtcStats.nack_count.is_defined())
-        stats.nackCount = *rtcStats.nack_count;
-    if (rtcStats.sli_count.is_defined())
-        stats.sliCount = *rtcStats.sli_count;
-    if (rtcStats.qp_sum.is_defined())
-        stats.qpSum = *rtcStats.qp_sum;
-    stats.qpSum = 0;
+    if (rtcStats.media_type.is_defined()) {
+        stats.mediaType = fromStdString(*rtcStats.media_type);
+        stats.kind = stats.mediaType;
+    }
 }
 
-static inline void fillInboundRTPStreamStats(RTCStatsReport::InboundRTPStreamStats& stats, const webrtc::RTCInboundRTPStreamStats& rtcStats)
+static inline void fillReceivedRtpStreamStats(RTCStatsReport::ReceivedRtpStreamStats& stats, const webrtc::RTCInboundRTPStreamStats& rtcStats)
 {
-    fillRTCRTPStreamStats(stats, rtcStats);
+    fillRtpStreamStats(stats, rtcStats);
 
-    // FIXME: Add support for decoder_implementation
     if (rtcStats.packets_received.is_defined())
         stats.packetsReceived = *rtcStats.packets_received;
-    if (rtcStats.bytes_received.is_defined())
-        stats.bytesReceived = *rtcStats.bytes_received;
     if (rtcStats.packets_lost.is_defined())
         stats.packetsLost = *rtcStats.packets_lost;
     if (rtcStats.jitter.is_defined())
         stats.jitter = *rtcStats.jitter;
-    // FIXME: Add support back for fractionLost.
     if (rtcStats.packets_discarded.is_defined())
         stats.packetsDiscarded = *rtcStats.packets_discarded;
     if (rtcStats.packets_repaired.is_defined())
@@ -123,23 +106,130 @@ static inline void fillInboundRTPStreamStats(RTCStatsReport::InboundRTPStreamSta
         stats.gapLossRate = *rtcStats.gap_loss_rate;
     if (rtcStats.gap_discard_rate.is_defined())
         stats.gapDiscardRate = *rtcStats.gap_discard_rate;
-    if (rtcStats.frames_decoded.is_defined())
-        stats.framesDecoded = *rtcStats.frames_decoded;
+    // Add frames_dropped and full_frames_lost.
 }
 
-static inline void fillOutboundRTPStreamStats(RTCStatsReport::OutboundRTPStreamStats& stats, const webrtc::RTCOutboundRTPStreamStats& rtcStats)
+static inline void fillInboundRtpStreamStats(RTCStatsReport::InboundRtpStreamStats& stats, const webrtc::RTCInboundRTPStreamStats& rtcStats)
 {
-    fillRTCRTPStreamStats(stats, rtcStats);
+    fillReceivedRtpStreamStats(stats, rtcStats);
 
-    // FIXME: Add support for encoder_implementation
+    // receiverId
+    // remoteId
+    if (rtcStats.frames_decoded.is_defined())
+        stats.framesDecoded = *rtcStats.frames_decoded;
+    if (rtcStats.key_frames_decoded.is_defined())
+        stats.keyFramesDecoded = *rtcStats.key_frames_decoded;
+    // frameWidth, frameHeight, frameBitDepth, framesPerSecond
+    if (rtcStats.qp_sum.is_defined())
+        stats.qpSum = *rtcStats.qp_sum;
+    if (rtcStats.total_decode_time.is_defined())
+        stats.totalDecodeTime = *rtcStats.total_decode_time;
+    if (rtcStats.total_inter_frame_delay.is_defined())
+        stats.totalInterFrameDelay = *rtcStats.total_inter_frame_delay;
+    if (rtcStats.total_squared_inter_frame_delay.is_defined())
+        stats.totalSquaredInterFrameDelay = *rtcStats.total_squared_inter_frame_delay;
+    // voiceActivityFlag, lastPacketReceivedTimestamp, averageRtcpInterval
+    if (rtcStats.header_bytes_received.is_defined())
+        stats.headerBytesReceived = *rtcStats.header_bytes_received;
+    if (rtcStats.fec_packets_received.is_defined())
+        stats.fecPacketsReceived = *rtcStats.fec_packets_received;
+    if (rtcStats.fec_packets_discarded.is_defined())
+        stats.fecPacketsDiscarded = *rtcStats.fec_packets_discarded;
+    if (rtcStats.bytes_received.is_defined())
+        stats.bytesReceived = *rtcStats.bytes_received;
+    // packetsFailedDecryption, packetsDuplicated
+    if (rtcStats.fir_count.is_defined())
+        stats.firCount = *rtcStats.fir_count;
+    if (rtcStats.pli_count.is_defined())
+        stats.pliCount = *rtcStats.pli_count;
+    if (rtcStats.nack_count.is_defined())
+        stats.nackCount = *rtcStats.nack_count;
+    if (rtcStats.sli_count.is_defined())
+        stats.sliCount = *rtcStats.sli_count;
+    // estimatedPlayoutTimestamp, jitterBufferDelay, jitterBufferEmittedCount, totalSamplesReceived, samplesDecodedWithSilk, samplesDecodedWithCelt
+    // concealedSamples, silentConcealedSamples, concealmentEvents, insertedSamplesForDeceleration, removedSamplesForAcceleration
+    // audioLevel, totalAudioEnergy, totalSamplesDuration, framesReceived
+
+    if (rtcStats.track_id.is_defined())
+        stats.trackId = fromStdString(*rtcStats.track_id);
+}
+
+static inline void fillRemoteInboundRtpStreamStats(RTCStatsReport::RemoteInboundRtpStreamStats& stats, const webrtc::RTCRemoteInboundRtpStreamStats& rtcStats)
+{
+    fillRTCStats(stats, rtcStats);
+
+    // FIXME: this should be filled in fillRtpStreamStats.
+    if (rtcStats.ssrc.is_defined())
+        stats.ssrc = *rtcStats.ssrc;
+    if (rtcStats.transport_id.is_defined())
+        stats.transportId = fromStdString(*rtcStats.transport_id);
+    if (rtcStats.codec_id.is_defined())
+        stats.codecId = fromStdString(*rtcStats.codec_id);
+    if (rtcStats.kind.is_defined())
+        stats.kind = stats.kind;
+
+    if (rtcStats.local_id.is_defined())
+        stats.localId = fromStdString(*rtcStats.local_id);
+    if (rtcStats.round_trip_time.is_defined())
+        stats.roundTripTime = *rtcStats.round_trip_time;
+
+    // totalRoundTripTime, fractionLost, reportsReceived, roundTripTimeMeasurements
+}
+
+static inline void fillSentRtpStreamStats(RTCStatsReport::SentRtpStreamStats& stats, const webrtc::RTCOutboundRTPStreamStats& rtcStats)
+{
+    fillRtpStreamStats(stats, rtcStats);
+
     if (rtcStats.packets_sent.is_defined())
         stats.packetsSent = *rtcStats.packets_sent;
     if (rtcStats.bytes_sent.is_defined())
         stats.bytesSent = *rtcStats.bytes_sent;
+}
+
+static inline void fillOutboundRtpStreamStats(RTCStatsReport::OutboundRtpStreamStats& stats, const webrtc::RTCOutboundRTPStreamStats& rtcStats)
+{
+    fillSentRtpStreamStats(stats, rtcStats);
+
+    // rtxSsrc
+    if (rtcStats.media_source_id.is_defined())
+        stats.mediaSourceId = fromStdString(*rtcStats.media_source_id);
+    // senderId
+    if (rtcStats.remote_id.is_defined())
+        stats.remoteId = fromStdString(*rtcStats.remote_id);
+    // rid, packetsDiscardedOnSend
+    if (rtcStats.header_bytes_sent.is_defined())
+        stats.headerBytesSent = *rtcStats.header_bytes_sent;
+    // packetsDiscardedOnSend, bytesDiscardedOnSend, fecPacketsSent;
+    if (rtcStats.retransmitted_packets_sent.is_defined())
+        stats.retransmittedPacketsSent = *rtcStats.retransmitted_packets_sent;
+    if (rtcStats.retransmitted_bytes_sent.is_defined())
+        stats.retransmittedBytesSent = *rtcStats.retransmitted_bytes_sent;
     if (rtcStats.target_bitrate.is_defined())
         stats.targetBitrate = *rtcStats.target_bitrate;
+    // totalEncodedBytesTarget, frameWidth, frameHeight, frameBitDepth, framesPerSecond, framesSent, hugeFramesSent
     if (rtcStats.frames_encoded.is_defined())
         stats.framesEncoded = *rtcStats.frames_encoded;
+    if (rtcStats.key_frames_encoded.is_defined())
+        stats.keyFramesEncoded = *rtcStats.key_frames_encoded;
+    // framesDiscardedOnSend;
+    if (rtcStats.qp_sum.is_defined())
+        stats.qpSum = *rtcStats.qp_sum;
+    // totalEncodedBytesTarget, frameWidth, frameHeight, frameBitDepth, framesPerSecond, framesSent, hugeFramesSent
+    // totalSamplesSent, samplesEncodedWithSilk, samplesEncodedWithCelt, voiceActivityFlag, totalEncodeTime
+    if (rtcStats.total_packet_send_delay.is_defined())
+        stats.totalPacketSendDelay = *rtcStats.total_packet_send_delay;
+    // averageRtcpInterval, qualityLimitationResolutionChanges
+    if (rtcStats.nack_count.is_defined())
+        stats.nackCount = *rtcStats.nack_count;
+    if (rtcStats.fir_count.is_defined())
+        stats.firCount = *rtcStats.fir_count;
+    if (rtcStats.pli_count.is_defined())
+        stats.pliCount = *rtcStats.pli_count;
+    if (rtcStats.sli_count.is_defined())
+        stats.sliCount = *rtcStats.sli_count;
+
+    if (rtcStats.track_id.is_defined())
+        stats.trackId = fromStdString(*rtcStats.track_id);
 }
 
 static inline void fillRTCMediaStreamTrackStats(RTCStatsReport::MediaStreamTrackStats& stats, const webrtc::RTCMediaStreamTrackStats& rtcStats)
@@ -367,6 +457,15 @@ static inline void fillRTCTransportStats(RTCStatsReport::TransportStats& stats, 
         stats.localCertificateId = fromStdString(*rtcStats.local_certificate_id);
     if (rtcStats.remote_certificate_id.is_defined())
         stats.remoteCertificateId = fromStdString(*rtcStats.remote_certificate_id);
+
+    if (rtcStats.dtls_state.is_defined())
+        stats.dtlsState = fromStdString(*rtcStats.dtls_state);
+    if (rtcStats.tls_version.is_defined())
+        stats.tlsVersion = fromStdString(*rtcStats.tls_version);
+    if (rtcStats.dtls_cipher.is_defined())
+        stats.dtlsCipher = fromStdString(*rtcStats.dtls_cipher);
+    if (rtcStats.srtp_cipher.is_defined())
+        stats.srtpCipher = fromStdString(*rtcStats.srtp_cipher);
 }
 
 static inline void fillRTCPeerConnectionStats(RTCStatsReport::PeerConnectionStats& stats, const webrtc::RTCPeerConnectionStats& rtcStats)
@@ -379,17 +478,51 @@ static inline void fillRTCPeerConnectionStats(RTCStatsReport::PeerConnectionStat
         stats.dataChannelsClosed = *rtcStats.data_channels_closed;
 }
 
+static inline void fillRTCMediaSourceStats(RTCStatsReport::MediaSourceStats& stats, const webrtc::RTCMediaSourceStats& rtcStats)
+{
+    fillRTCStats(stats, rtcStats);
+    if (rtcStats.track_identifier.is_defined())
+        stats.trackIdentifier = fromStdString(*rtcStats.track_identifier);
+    if (rtcStats.kind.is_defined())
+        stats.kind = fromStdString(*rtcStats.kind);
+}
+
+static inline void fillRTCAudioSourceStats(RTCStatsReport::AudioSourceStats& stats, const webrtc::RTCAudioSourceStats& rtcStats)
+{
+    fillRTCMediaSourceStats(stats, rtcStats);
+    if (rtcStats.audio_level.is_defined())
+        stats.audioLevel = *rtcStats.audio_level;
+    if (rtcStats.total_audio_energy.is_defined())
+        stats.totalAudioEnergy = *rtcStats.total_audio_energy;
+    if (rtcStats.total_samples_duration.is_defined())
+        stats.totalSamplesDuration = *rtcStats.total_samples_duration;
+}
+
+static inline void fillRTCVideoSourceStats(RTCStatsReport::VideoSourceStats& stats, const webrtc::RTCVideoSourceStats& rtcStats)
+{
+    fillRTCMediaSourceStats(stats, rtcStats);
+
+    if (rtcStats.width.is_defined())
+        stats.width = *rtcStats.width;
+    if (rtcStats.height.is_defined())
+        stats.height = *rtcStats.height;
+    if (rtcStats.frames.is_defined())
+        stats.frames = *rtcStats.frames;
+    if (rtcStats.frames_per_second.is_defined())
+        stats.framesPerSecond = *rtcStats.frames_per_second;
+}
+
 static inline void initializeRTCStatsReportBackingMap(DOMMapAdapter& report, const webrtc::RTCStatsReport& rtcReport)
 {
     for (const auto& rtcStats : rtcReport) {
         if (rtcStats.type() == webrtc::RTCInboundRTPStreamStats::kType) {
-            RTCStatsReport::InboundRTPStreamStats stats;
-            fillInboundRTPStreamStats(stats, static_cast<const webrtc::RTCInboundRTPStreamStats&>(rtcStats));
-            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::InboundRTPStreamStats>>(stats.id, WTFMove(stats));
+            RTCStatsReport::InboundRtpStreamStats stats;
+            fillInboundRtpStreamStats(stats, static_cast<const webrtc::RTCInboundRTPStreamStats&>(rtcStats));
+            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::InboundRtpStreamStats>>(stats.id, WTFMove(stats));
         } else if (rtcStats.type() == webrtc::RTCOutboundRTPStreamStats::kType) {
-            RTCStatsReport::OutboundRTPStreamStats stats;
-            fillOutboundRTPStreamStats(stats, static_cast<const webrtc::RTCOutboundRTPStreamStats&>(rtcStats));
-            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::OutboundRTPStreamStats>>(stats.id, WTFMove(stats));
+            RTCStatsReport::OutboundRtpStreamStats stats;
+            fillOutboundRtpStreamStats(stats, static_cast<const webrtc::RTCOutboundRTPStreamStats&>(rtcStats));
+            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::OutboundRtpStreamStats>>(stats.id, WTFMove(stats));
         } else if (rtcStats.type() == webrtc::RTCMediaStreamTrackStats::kType) {
             RTCStatsReport::MediaStreamTrackStats stats;
             fillRTCMediaStreamTrackStats(stats, static_cast<const webrtc::RTCMediaStreamTrackStats&>(rtcStats));
@@ -422,6 +555,18 @@ static inline void initializeRTCStatsReportBackingMap(DOMMapAdapter& report, con
             RTCStatsReport::PeerConnectionStats stats;
             fillRTCPeerConnectionStats(stats, static_cast<const webrtc::RTCPeerConnectionStats&>(rtcStats));
             report.set<IDLDOMString, IDLDictionary<RTCStatsReport::PeerConnectionStats>>(stats.id, WTFMove(stats));
+        } else if (rtcStats.type() == webrtc::RTCAudioSourceStats::kType) {
+            RTCStatsReport::AudioSourceStats stats;
+            fillRTCAudioSourceStats(stats, static_cast<const webrtc::RTCAudioSourceStats&>(rtcStats));
+            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::AudioSourceStats>>(stats.id, WTFMove(stats));
+        } else if (rtcStats.type() == webrtc::RTCVideoSourceStats::kType) {
+            RTCStatsReport::VideoSourceStats stats;
+            fillRTCVideoSourceStats(stats, static_cast<const webrtc::RTCVideoSourceStats&>(rtcStats));
+            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::VideoSourceStats>>(stats.id, WTFMove(stats));
+        } else if (rtcStats.type() == webrtc::RTCRemoteInboundRtpStreamStats::kType) {
+            RTCStatsReport::RemoteInboundRtpStreamStats stats;
+            fillRemoteInboundRtpStreamStats(stats, static_cast<const webrtc::RTCRemoteInboundRtpStreamStats&>(rtcStats));
+            report.set<IDLDOMString, IDLDictionary<RTCStatsReport::RemoteInboundRtpStreamStats>>(stats.id, WTFMove(stats));
         }
     }
 }

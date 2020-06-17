@@ -143,10 +143,10 @@ void JIT_OPERATION operationCompileOSRExit(CallFrame* callFrame)
     VM& vm = callFrame->deprecatedVM();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (validateDFGDoesGC) {
+    if constexpr (validateDFGDoesGC) {
         // We're about to exit optimized code. So, there's no longer any optimized
         // code running that expects no GC.
-        vm.heap.setExpectDoesGC(true);
+        vm.heap.setDoesGCExpectation(true, DoesGCCheck::Special::DFGOSRExit);
     }
 
     if (vm.callFrameForCatch)
@@ -550,18 +550,22 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
         }
     }
 
-    if (validateDFGDoesGC) {
-        // We're about to exit optimized code. So, there's no longer any optimized
-        // code running that expects no GC. We need to set this before arguments
-        // materialization below (see emitRestoreArguments()).
+#if USE(JSVALUE64)
+    if constexpr (validateDFGDoesGC) {
+        if (Options::validateDoesGC()) {
+            // We're about to exit optimized code. So, there's no longer any optimized
+            // code running that expects no GC. We need to set this before arguments
+            // materialization below (see emitRestoreArguments()).
 
-        // Even though we set Heap::m_expectDoesGC in compileOSRExit(), we also need
-        // to set it here because compileOSRExit() is only called on the first time
-        // we exit from this site, but all subsequent exits will take this compiled
-        // ramp without calling compileOSRExit() first.
-        jit.store8(CCallHelpers::TrustedImm32(true), vm.heap.addressOfExpectDoesGC());
+            // Even though we set Heap::m_doesGC in compileOSRExit(), we also need
+            // to set it here because compileOSRExit() is only called on the first time
+            // we exit from this site, but all subsequent exits will take this compiled
+            // ramp without calling compileOSRExit() first.
+            jit.store32(CCallHelpers::TrustedImm32(DoesGCCheck::encode(true, DoesGCCheck::Special::DFGOSRExit)), vm.heap.addressOfDoesGC());
+        }
     }
-
+#endif
+    
     // Need to ensure that the stack pointer accounts for the worst-case stack usage at exit. This
     // could toast some stack that the DFG used. We need to do it before storing to stack offsets
     // used by baseline.

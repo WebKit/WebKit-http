@@ -310,7 +310,7 @@ messages -> WebPageProxy {
 
     # Drag and drop messages
 #if ENABLE(DRAG_SUPPORT)
-    DidPerformDragControllerAction(uint64_t dragOperation, enum:uint8_t WebCore::DragHandlingMethod dragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, WebCore::IntRect insertionRect, WebCore::IntRect editableElementRect)
+    DidPerformDragControllerAction(Optional<WebCore::DragOperation> dragOperation, enum:uint8_t WebCore::DragHandlingMethod dragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, WebCore::IntRect insertionRect, WebCore::IntRect editableElementRect)
     DidEndDragging();
 #endif
 #if PLATFORM(COCOA) && ENABLE(DRAG_SUPPORT)
@@ -318,7 +318,7 @@ messages -> WebPageProxy {
     SetPromisedDataForImage(String pasteboardName, WebKit::SharedMemory::Handle imageHandle, uint64_t imageSize, String filename, String extension, String title, String url, String visibleURL, WebKit::SharedMemory::Handle archiveHandle, uint64_t archiveSize)
 #endif
 #if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
-    StartDrag(WebCore::SelectionData selectionData, uint64_t dragOperation, WebKit::ShareableBitmap::Handle dragImage)
+    StartDrag(WebCore::SelectionData selectionData, OptionSet<WebCore::DragOperation> dragOperationMask, WebKit::ShareableBitmap::Handle dragImage)
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -440,8 +440,8 @@ messages -> WebPageProxy {
     SavePDFToFileInDownloadsFolder(String suggestedFilename, URL originatingURL, IPC::DataReference data)
 
 #if PLATFORM(COCOA)
-    SavePDFToTemporaryFolderAndOpenWithNativeApplication(String suggestedFilename, String originatingURLString, IPC::DataReference data, String pdfUUID)
-    OpenPDFFromTemporaryFolderWithNativeApplication(String pdfUUID)
+    SavePDFToTemporaryFolderAndOpenWithNativeApplication(String suggestedFilename, struct WebKit::FrameInfoData sourceFrameInfo, IPC::DataReference data, String pdfUUID)
+    OpenPDFFromTemporaryFolderWithNativeApplication(struct WebKit::FrameInfoData sourceFrameInfo, String pdfUUID)
 #endif
 
 #if ENABLE(PDFKIT_PLUGIN)
@@ -449,7 +449,7 @@ messages -> WebPageProxy {
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    FindPlugin(String mimeType, uint32_t processType, String urlString, String frameURLString, String pageURLString, bool allowOnlyApplicationPlugins) -> (uint64_t pluginProcessToken, String newMIMEType, uint32_t pluginLoadPolicy, String unavailabilityDescription, bool isUnsupported) Synchronous
+    FindPlugin(String mimeType, WebKit::PluginProcessType processType, String urlString, String frameURLString, String pageURLString, bool allowOnlyApplicationPlugins) -> (uint64_t pluginProcessToken, String newMIMEType, uint32_t pluginLoadPolicy, String unavailabilityDescription, bool isUnsupported) Synchronous
 #endif
 
     DidUpdateActivityState()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@ namespace JSC { namespace DFG {
 
 bool isSupported()
 {
-    return VM::canUseJIT() && Options::useDFGJIT() && MacroAssembler::supportsFloatingPoint();
+    return Options::useDFGJIT() && MacroAssembler::supportsFloatingPoint();
 }
 
 bool isSupportedForInlining(CodeBlock* codeBlock)
@@ -174,6 +174,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_get_by_id_with_this:
     case op_get_by_id_direct:
     case op_get_by_val_with_this:
+    case op_get_prototype_of:
     case op_put_by_id:
     case op_put_by_id_with_this:
     case op_put_by_val_with_this:
@@ -290,6 +291,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_unreachable:
     case op_super_sampler_begin:
     case op_super_sampler_end:
+    case op_get_private_name:
         return CanCompileAndInline;
 
     case op_switch_string: // Don't inline because we don't want to copy string tables in the concurrent JIT.

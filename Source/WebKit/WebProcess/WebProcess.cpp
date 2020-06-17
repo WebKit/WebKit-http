@@ -83,6 +83,7 @@
 #include "WebsiteDataType.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
+#include <JavaScriptCore/WasmFaultSignalHandler.h>
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AuthenticationChallenge.h>
@@ -144,6 +145,10 @@
 #if PLATFORM(COCOA)
 #include "ObjCObjectGraph.h"
 #include "UserMediaCaptureManager.h"
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include "WebSQLiteDatabaseTracker.h"
 #endif
 
 #if ENABLE(SEC_ITEM_SHIM)
@@ -223,6 +228,9 @@ WebProcess::WebProcess()
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
+#if PLATFORM(IOS_FAMILY)
+    , m_webSQLiteDatabaseTracker([this](bool isHoldingLockedFiles) { parentProcessConnection()->send(Messages::WebProcessProxy::SetIsHoldingLockedFiles(isHoldingLockedFiles), 0); })
+#endif
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -383,8 +391,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     setCacheModel(parameters.cacheModel);
 
-    if (!parameters.languages.isEmpty())
-        overrideUserPreferredLanguages(parameters.languages);
+    if (!parameters.overrideLanguages.isEmpty())
+        overrideUserPreferredLanguages(parameters.overrideLanguages);
 
     m_textCheckerState = parameters.textCheckerState;
 
@@ -464,6 +472,10 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
 #if ENABLE(SERVICE_WORKER)
     ServiceWorkerProvider::setSharedProvider(WebServiceWorkerProvider::singleton());
+#endif
+
+#if ENABLE(WEBASSEMBLY)
+    JSC::Wasm::enableFastMemory();
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
@@ -633,9 +645,9 @@ void WebProcess::setShouldUseFontSmoothing(bool useFontSmoothing)
     WebCore::FontCascade::setShouldUseSmoothing(useFontSmoothing);
 }
 
-void WebProcess::userPreferredLanguagesChanged(const Vector<String>& languages) const
+void WebProcess::userPreferredLanguagesChanged() const
 {
-    overrideUserPreferredLanguages(languages);
+    WTF::languageDidChange();
 }
 
 void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
@@ -966,14 +978,14 @@ void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const
     parentProcessConnection()->send(Messages::WebProcessProxy::PlugInDidReceiveUserInteraction(plugInOriginHash), 0);
 }
 
-void WebProcess::setPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString)
+void WebProcess::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
-    WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(policy), host, bundleIdentifier, versionString);
+    WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(policy, host, bundleIdentifier, versionString);
 #endif
 }
 
-void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMap<WTF::String, HashMap<WTF::String, uint8_t>>>& pluginLoadClientPolicies)
+void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMap<WTF::String, HashMap<WTF::String, WebCore::PluginLoadClientPolicy>>>& pluginLoadClientPolicies)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
     clearPluginClientPolicies();
@@ -981,7 +993,7 @@ void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMa
     for (auto& hostPair : pluginLoadClientPolicies) {
         for (auto& bundleIdentifierPair : hostPair.value) {
             for (auto& versionPair : bundleIdentifierPair.value)
-                WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(versionPair.value), hostPair.key, bundleIdentifierPair.key, versionPair.key);
+                WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(versionPair.value, hostPair.key, bundleIdentifierPair.key, versionPair.key);
         }
     }
 #endif
@@ -989,7 +1001,7 @@ void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMa
 
 void WebProcess::isJITEnabled(CompletionHandler<void(bool)>&& completionHandler)
 {
-    completionHandler(JSC::VM::canUseJIT());
+    completionHandler(JSC::Options::useJIT());
 }
 
 void WebProcess::clearPluginClientPolicies()
@@ -1424,6 +1436,7 @@ void WebProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<v
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+    m_webSQLiteDatabaseTracker.setIsSuspended(true);
     SQLiteDatabase::setIsDatabaseOpeningForbidden(true);
     if (DatabaseTracker::isInitialized())
         DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
@@ -1487,6 +1500,7 @@ void WebProcess::processDidResume()
     unfreezeAllLayerTrees();
     
 #if PLATFORM(IOS_FAMILY)
+    m_webSQLiteDatabaseTracker.setIsSuspended(false);
     SQLiteDatabase::setIsDatabaseOpeningForbidden(false);
     accessibilityProcessSuspendedNotification(false);
 #endif

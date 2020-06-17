@@ -73,10 +73,10 @@ enum class BlendMode : uint8_t {
     PlusLighter
 };
 
-enum GradientSpreadMethod {
-    SpreadMethodPad,
-    SpreadMethodReflect,
-    SpreadMethodRepeat
+enum class GradientSpreadMethod : uint8_t {
+    Pad,
+    Reflect,
+    Repeat
 };
 
 enum class InterpolationQuality : uint8_t {
@@ -181,6 +181,26 @@ template<> struct EnumTraits<WebCore::BlendMode> {
     >;
 };
 
+template<> struct EnumTraits<WebCore::GradientSpreadMethod> {
+    using values = EnumValues<
+    WebCore::GradientSpreadMethod,
+    WebCore::GradientSpreadMethod::Pad,
+    WebCore::GradientSpreadMethod::Reflect,
+    WebCore::GradientSpreadMethod::Repeat
+    >;
+};
+
+template<> struct EnumTraits<WebCore::InterpolationQuality> {
+    using values = EnumValues<
+    WebCore::InterpolationQuality,
+    WebCore::InterpolationQuality::Default,
+    WebCore::InterpolationQuality::DoNotInterpolate,
+    WebCore::InterpolationQuality::Low,
+    WebCore::InterpolationQuality::Medium,
+    WebCore::InterpolationQuality::High
+    >;
+};
+
 template<> struct EnumTraits<WebCore::LineCap> {
     using values = EnumValues<
     WebCore::LineCap,
@@ -196,17 +216,6 @@ template<> struct EnumTraits<WebCore::LineJoin> {
     WebCore::LineJoin::MiterJoin,
     WebCore::LineJoin::RoundJoin,
     WebCore::LineJoin::BevelJoin
-    >;
-};
-
-template<> struct EnumTraits<WebCore::InterpolationQuality> {
-    using values = EnumValues<
-    WebCore::InterpolationQuality,
-    WebCore::InterpolationQuality::Default,
-    WebCore::InterpolationQuality::DoNotInterpolate,
-    WebCore::InterpolationQuality::Low,
-    WebCore::InterpolationQuality::Medium,
-    WebCore::InterpolationQuality::High
     >;
 };
 

@@ -589,6 +589,120 @@ static OptionSet<WebCore::DragDestinationAction> coreDragDestinationActionMask(W
         result.add(WebCore::DragDestinationAction::Load);
     return result;
 }
+
+#if !USE(APPKIT)
+// See <UIKit/UIDragging_Private.h>.
+typedef NS_OPTIONS(NSUInteger, _UIDragOperation) {
+    _UIDragOperationNone = 0,
+    _UIDragOperationCopy = 1,
+    _UIDragOperationMove = 16,
+};
+#endif
+
+OptionSet<WebCore::DragOperation> coreDragOperationMask(CocoaDragOperation operation)
+{
+    OptionSet<WebCore::DragOperation> result;
+
+#if USE(APPKIT)
+    if (operation & NSDragOperationCopy)
+        result.add(WebCore::DragOperation::Copy);
+    if (operation & NSDragOperationLink)
+        result.add(WebCore::DragOperation::Link);
+    if (operation & NSDragOperationGeneric)
+        result.add(WebCore::DragOperation::Generic);
+    if (operation & NSDragOperationPrivate)
+        result.add(WebCore::DragOperation::Private);
+    if (operation & NSDragOperationMove)
+        result.add(WebCore::DragOperation::Move);
+    if (operation & NSDragOperationDelete)
+        result.add(WebCore::DragOperation::Delete);
+#else
+    if (operation & _UIDragOperationCopy)
+        result.add(WebCore::DragOperation::Copy);
+    if (operation & _UIDragOperationMove)
+        result.add(WebCore::DragOperation::Move);
+#endif // USE(APPKIT)
+
+    return result;
+}
+
+#if USE(APPKIT)
+static NSDragOperation kit(Optional<WebCore::DragOperation> dragOperation)
+{
+    if (!dragOperation)
+        return NSDragOperationNone;
+
+    switch (*dragOperation) {
+    case WebCore::DragOperation::Copy:
+        return NSDragOperationCopy;
+    case WebCore::DragOperation::Link:
+        return NSDragOperationLink;
+    case WebCore::DragOperation::Generic:
+        return NSDragOperationGeneric;
+    case WebCore::DragOperation::Private:
+        return NSDragOperationPrivate;
+    case WebCore::DragOperation::Move:
+        return NSDragOperationMove;
+    case WebCore::DragOperation::Delete:
+        return NSDragOperationDelete;
+    }
+
+    ASSERT_NOT_REACHED();
+    return NSDragOperationNone;
+}
+#else
+static _UIDragOperation kit(Optional<WebCore::DragOperation> dragOperation)
+{
+    if (!dragOperation)
+        return _UIDragOperationNone;
+
+    switch (*dragOperation) {
+    case WebCore::DragOperation::Copy:
+        return _UIDragOperationCopy;
+    case WebCore::DragOperation::Link:
+        return _UIDragOperationNone;
+    case WebCore::DragOperation::Generic:
+        return _UIDragOperationMove;
+    case WebCore::DragOperation::Private:
+        return _UIDragOperationNone;
+    case WebCore::DragOperation::Move:
+        return _UIDragOperationMove;
+    case WebCore::DragOperation::Delete:
+        return _UIDragOperationNone;
+    }
+
+    ASSERT_NOT_REACHED();
+    return _UIDragOperationNone;
+}
+#endif // USE(APPKIT)
+
+WebDragSourceAction kit(Optional<WebCore::DragSourceAction> action)
+{
+    if (!action)
+        return WebDragSourceActionNone;
+
+    switch (*action) {
+    case WebCore::DragSourceAction::DHTML:
+        return WebDragSourceActionDHTML;
+    case WebCore::DragSourceAction::Image:
+        return WebDragSourceActionImage;
+    case WebCore::DragSourceAction::Link:
+        return WebDragSourceActionLink;
+    case WebCore::DragSourceAction::Selection:
+        return WebDragSourceActionSelection;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case WebCore::DragSourceAction::Attachment:
+        break;
+#endif
+#if ENABLE(INPUT_TYPE_COLOR)
+    case WebCore::DragSourceAction::Color:
+        break;
+#endif
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebDragSourceActionNone;
+}
 #endif // ENABLE(DRAG_SUPPORT)
 
 WebCore::FindOptions coreOptions(WebFindOptions options)
@@ -1874,7 +1988,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->draggedLinkURL = dragItem.url.isEmpty() ? nil : (NSURL *)dragItem.url;
     _private->draggedLinkTitle = dragItem.title.isEmpty() ? nil : (NSString *)dragItem.title;
     _private->dragPreviewFrameInRootViewCoordinates = dragItem.dragPreviewFrameInRootViewCoordinates;
-    _private->dragSourceAction = static_cast<WebDragSourceAction>(dragItem.sourceAction);
+    _private->dragSourceAction = kit(dragItem.sourceAction);
 }
 
 - (CGRect)_dataInteractionCaretRect
@@ -1923,7 +2037,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 - (WebCore::DragData)dragDataForSession:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
-    auto dragOperationMask = static_cast<WebCore::DragOperation>(operation);
+    auto dragOperationMask = coreDragOperationMask(operation);
     auto dragDestinationActionMask = coreDragDestinationActionMask([self dragDestinationActionMaskForSession:session]);
     return { session, WebCore::roundedIntPoint(clientPosition), WebCore::roundedIntPoint(globalPosition), dragOperationMask, WebCore::DragApplicationNone, dragDestinationActionMask };
 }
@@ -1932,14 +2046,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     WebThreadLock();
     auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
-    return _private->page->dragController().dragEntered(dragData);
+    return kit(_private->page->dragController().dragEntered(dragData));
 }
 
 - (uint64_t)_updatedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
     WebThreadLock();
     auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
-    return _private->page->dragController().dragUpdated(dragData);
+    return kit(_private->page->dragController().dragUpdated(dragData));
 }
 
 - (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
@@ -3128,7 +3242,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setServiceControlsEnabled([preferences serviceControlsEnabled]);
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     settings.setShouldDisplaySubtitles([preferences shouldDisplaySubtitles]);
     settings.setShouldDisplayCaptions([preferences shouldDisplayCaptions]);
     settings.setShouldDisplayTextDescriptions([preferences shouldDisplayTextDescriptions]);
@@ -3259,7 +3373,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPictureInPictureAPIEnabled(preferences.pictureInPictureAPIEnabled);
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
     settings.setGenericCueAPIEnabled(preferences.genericCueAPIEnabled);
 #endif
 
@@ -4609,19 +4723,19 @@ IGNORE_WARNINGS_END
 }
 #endif
 
-+ (void)_addOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
++ (void)_addOriginAccessAllowListEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    WebCore::SecurityPolicy::addOriginAccessWhitelistEntry(WebCore::SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    WebCore::SecurityPolicy::addOriginAccessAllowlistEntry(WebCore::SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
-+ (void)_removeOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
++ (void)_removeOriginAccessAllowListEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    WebCore::SecurityPolicy::removeOriginAccessWhitelistEntry(WebCore::SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    WebCore::SecurityPolicy::removeOriginAccessAllowlistEntry(WebCore::SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
-+ (void)_resetOriginAccessWhitelists
++ (void)_resetOriginAccessAllowLists
 {
-    WebCore::SecurityPolicy::resetOriginAccessWhitelists();
+    WebCore::SecurityPolicy::resetOriginAccessAllowlists();
 }
 
 - (BOOL)_isViewVisible
@@ -4672,6 +4786,11 @@ IGNORE_WARNINGS_END
                 injectionTime:(WebUserScriptInjectionTime)injectionTime
                injectedFrames:(WebUserContentInjectedFrames)injectedFrames
 {
+    [WebView _addUserScriptToGroup:groupName world:world source:source url:url includeMatchPatternStrings:whitelist excludeMatchPatternStrings:blacklist injectionTime:injectionTime injectedFrames:injectedFrames];
+}
+
++ (void)_addUserScriptToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url includeMatchPatternStrings:(NSArray *)includeMatchPatternStrings excludeMatchPatternStrings:(NSArray *)excludeMatchPatternStrings injectionTime:(WebUserScriptInjectionTime)injectionTime injectedFrames:(WebUserContentInjectedFrames)injectedFrames
+{
     String group(groupName);
     if (group.isEmpty())
         return;
@@ -4681,7 +4800,7 @@ IGNORE_WARNINGS_END
     if (!world)
         return;
 
-    auto userScript = makeUnique<WebCore::UserScript>(source, url, makeVector<String>(whitelist), makeVector<String>(blacklist), injectionTime == WebInjectAtDocumentStart ? WebCore::UserScriptInjectionTime::DocumentStart : WebCore::UserScriptInjectionTime::DocumentEnd, injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::WaitForNotificationBeforeInjecting::No);
+    auto userScript = makeUnique<WebCore::UserScript>(source, url, makeVector<String>(includeMatchPatternStrings), makeVector<String>(excludeMatchPatternStrings), injectionTime == WebInjectAtDocumentStart ? WebCore::UserScriptInjectionTime::DocumentStart : WebCore::UserScriptInjectionTime::DocumentEnd, injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::WaitForNotificationBeforeInjecting::No);
     viewGroup->userContentController().addUserScript(*core(world), WTFMove(userScript));
 }
 
@@ -4695,6 +4814,11 @@ IGNORE_WARNINGS_END
                         whitelist:(NSArray *)whitelist blacklist:(NSArray *)blacklist
                    injectedFrames:(WebUserContentInjectedFrames)injectedFrames
 {
+    [WebView _addUserStyleSheetToGroup:groupName world:world source:source url:url includeMatchPatternStrings:whitelist excludeMatchPatternStrings:blacklist injectedFrames:injectedFrames];
+}
+
++ (void)_addUserStyleSheetToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url includeMatchPatternStrings:(NSArray *)includeMatchPatternStrings excludeMatchPatternStrings:(NSArray *)excludeMatchPatternStrings injectedFrames:(WebUserContentInjectedFrames)injectedFrames
+{
     String group(groupName);
     if (group.isEmpty())
         return;
@@ -4704,7 +4828,7 @@ IGNORE_WARNINGS_END
     if (!world)
         return;
 
-    auto styleSheet = makeUnique<WebCore::UserStyleSheet>(source, url, makeVector<String>(whitelist), makeVector<String>(blacklist), injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::UserStyleUserLevel);
+    auto styleSheet = makeUnique<WebCore::UserStyleSheet>(source, url, makeVector<String>(includeMatchPatternStrings), makeVector<String>(excludeMatchPatternStrings), injectedFrames == WebInjectInAllFrames ? WebCore::UserContentInjectedFrames::InjectInAllFrames : WebCore::UserContentInjectedFrames::InjectInTopFrameOnly, WebCore::UserStyleUserLevel);
     viewGroup->userContentController().addUserStyleSheet(*core(world), WTFMove(styleSheet), WebCore::InjectInExistingDocuments);
 }
 
@@ -5434,7 +5558,7 @@ IGNORE_WARNINGS_END
 
 #if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
-    RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMain();
 #endif
 
     WTF::RefCountedBase::enableThreadingChecksGlobally();
@@ -6748,8 +6872,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     WebCore::IntPoint client([draggingInfo draggingLocation]);
     WebCore::IntPoint global(WebCore::globalPoint([draggingInfo draggingLocation], [self window]));
 
-    WebCore::DragData dragData(draggingInfo, client, global, static_cast<WebCore::DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
-    return core(self)->dragController().dragEntered(dragData);
+    WebCore::DragData dragData(draggingInfo, client, global, coreDragOperationMask([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
+    return kit(core(self)->dragController().dragEntered(dragData));
 }
 
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)draggingInfo
@@ -6761,8 +6885,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     WebCore::IntPoint client([draggingInfo draggingLocation]);
     WebCore::IntPoint global(WebCore::globalPoint([draggingInfo draggingLocation], [self window]));
 
-    WebCore::DragData dragData(draggingInfo, client, global, static_cast<WebCore::DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
-    return page->dragController().dragUpdated(dragData);
+    WebCore::DragData dragData(draggingInfo, client, global, coreDragOperationMask([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
+    return kit(page->dragController().dragUpdated(dragData));
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)draggingInfo
@@ -6773,7 +6897,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
     WebCore::IntPoint client([draggingInfo draggingLocation]);
     WebCore::IntPoint global(WebCore::globalPoint([draggingInfo draggingLocation], [self window]));
-    WebCore::DragData dragData(draggingInfo, client, global, static_cast<WebCore::DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+    WebCore::DragData dragData(draggingInfo, client, global, coreDragOperationMask([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
     page->dragController().dragExited(dragData);
 }
 
@@ -6786,7 +6910,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 {
     WebCore::IntPoint client([draggingInfo draggingLocation]);
     WebCore::IntPoint global(WebCore::globalPoint([draggingInfo draggingLocation], [self window]));
-    auto* dragData = new WebCore::DragData(draggingInfo, client, global, static_cast<WebCore::DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+    auto* dragData = new WebCore::DragData(draggingInfo, client, global, coreDragOperationMask([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
 
     NSArray* types = draggingInfo.draggingPasteboard.types;
     if (![types containsObject:WebArchivePboardType] && [types containsObject:WebCore::legacyFilesPromisePasteboardType()]) {
@@ -10133,12 +10257,12 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const WebCore::RenderStyle
 
 @implementation WebView (WebViewFontSelection)
 
-+ (void)_setFontWhitelist:(NSArray *)whitelist
++ (void)_setFontAllowList:(NSArray *)allowList
 {
 #if !PLATFORM(MAC)
-    UNUSED_PARAM(whitelist);
+    UNUSED_PARAM(allowList);
 #else
-    WebCore::FontCache::setFontWhitelist(makeVector<String>(whitelist));
+    WebCore::FontCache::setFontAllowlist(makeVector<String>(allowList));
 #endif
 }
 

@@ -248,15 +248,24 @@ void RealtimeMediaSource::stop()
 
 void RealtimeMediaSource::requestToEnd(Observer& callingObserver)
 {
-    if (!m_isProducingData)
-        return;
-
     bool hasObserverPreventingStopping = false;
     forEachObserver([&](auto& observer) {
         if (observer.preventSourceFromStopping())
             hasObserverPreventingStopping = true;
     });
     if (hasObserverPreventingStopping)
+        return;
+
+    end(&callingObserver);
+}
+
+void RealtimeMediaSource::end(Observer* callingObserver)
+{
+    ALWAYS_LOG_IF(m_logger, LOGIDENTIFIER);
+
+    ASSERT(isMainThread());
+
+    if (m_isEnded)
         return;
 
     auto protectedThis = makeRef(*this);
@@ -266,7 +275,7 @@ void RealtimeMediaSource::requestToEnd(Observer& callingObserver)
     hasEnded();
 
     forEachObserver([&callingObserver](auto& observer) {
-        if (&observer != &callingObserver)
+        if (&observer != callingObserver)
             observer.sourceStopped();
     });
 }

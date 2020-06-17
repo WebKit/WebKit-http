@@ -63,7 +63,7 @@ bool textColorIsLegibleAgainstBackgroundColor(const Color& textColor, const Colo
 {
     // Uses the WCAG 2.0 definition of legibility: a contrast ratio of 4.5:1 or greater.
     // https://www.w3.org/TR/WCAG20/#visual-audio-contrast-contrast
-    return contrastRatio(textColor.toSRGBAComponentsLossy(), backgroundColor.toSRGBAComponentsLossy()) > 4.5;
+    return contrastRatio(textColor.toSRGBALossy(), backgroundColor.toSRGBALossy()) > 4.5;
 }
 
 static Color adjustColorForVisibilityOnBackground(const Color& textColor, const Color& backgroundColor)
@@ -71,12 +71,9 @@ static Color adjustColorForVisibilityOnBackground(const Color& textColor, const 
     if (textColorIsLegibleAgainstBackgroundColor(textColor, backgroundColor))
         return textColor;
 
-    int distanceFromWhite = differenceSquared(textColor, Color::white);
-    int distanceFromBlack = differenceSquared(textColor, Color::black);
-    if (distanceFromWhite < distanceFromBlack)
-        return textColor.dark();
-
-    return textColor.light();
+    if (textColor.luminance() > 0.5)
+        return textColor.darkened();
+    return textColor.lightened();
 }
 
 TextPaintStyle computeTextPaintStyle(const Frame& frame, const RenderStyle& lineStyle, const PaintInfo& paintInfo)

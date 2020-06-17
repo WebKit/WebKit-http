@@ -1,3 +1,106 @@
+2020-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for DragSourceAction
+        <https://webkit.org/b/212885>
+        <rdar://problem/64094134>
+
+        Reviewed by Darin Adler.
+
+        Summary:
+        - Add and use conversion functions between
+          OptionSet<WebCore::DragSourceAction> and WebDragSourceAction.
+        - Update method signatures.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (coreDragSourceActionMask): Add.
+        (kit): Add.
+        - Convert from WebCore::DragSourceAction to WebDragSourceAction.
+        (WebDragClient::dragSourceActionMaskForPoint):
+        (WebDragClient::willPerformDragSourceAction):
+        (WebDragClient::startDrag):
+        * WebCoreSupport/WebDragClient.h:
+        (WebDragClient::dragSourceActionMaskForPoint):
+
+2020-06-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Some style improvements to main thread code
+        https://bugs.webkit.org/show_bug.cgi?id=213051
+
+        Reviewed by Darin Adler.
+
+        Updated for rename.
+
+        * WebView.cpp:
+        (WebView::WebView):
+
+2020-06-08  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for DragOperation
+        <https://webkit.org/b/212870>
+        <rdar://problem/64069940>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (draggingSourceOperationMaskToDragCursors):
+        (WebDragClient::startDrag):
+        * WebView.cpp:
+        (dragOperationToDragCursor):
+        (WebView::keyStateToDragOperation const):
+
+2020-06-07  Philippe Normand  <pnormand@igalia.com>
+
+        Remove ENABLE_VIDEO_TRACK ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=212568
+
+        Reviewed by Youenn Fablet.
+
+        * WebPreferences.cpp:
+        (WebPreferences::shouldDisplaySubtitles):
+        (WebPreferences::setShouldDisplaySubtitles):
+        (WebPreferences::shouldDisplayCaptions):
+        (WebPreferences::setShouldDisplayCaptions):
+        (WebPreferences::shouldDisplayTextDescriptions):
+        (WebPreferences::setShouldDisplayTextDescriptions):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-06-06  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: Use OptionSet<DragOperation> for mask values
+        <https://webkit.org/b/212605>
+        <rdar://problem/64069091>
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (draggingSourceOperationMaskToDragCursors):
+        - Don't compare to anyDragOperation().  It's redundant since the
+          code following it will do the same thing.
+
+2020-06-06  David Kilzer  <ddkilzer@apple.com>
+
+        Use OptionSet<DragOperation> for mask values
+        <https://webkit.org/b/212605>
+
+        Reviewed by Darin Adler.
+
+        In broad strokes:
+        - Replace use of DragOperation with OptionSet<DragOperation> or
+          Optional<DragOperation>.
+        - Rename function parameters and local variables to denote use
+          of mask values.
+        - Remove DragOperationNone enum value.
+        - Replace DragOperationEvery enum value with anyDragOperation().
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (draggingSourceOperationMaskToDragCursors):
+        (WebDragClient::startDrag):
+        * WebView.cpp:
+        (dragOperationToDragCursor):
+        (WebView::keyStateToDragOperation const):
+        (WebView::DragLeave):
+        * WebView.h:
+        (WebView::keyStateToDragOperation const):
+
 2020-06-01  David Kilzer  <ddkilzer@apple.com>
 
         Don't use casts to convert between WebCore::DragDestinationAction and {Web,WK}DragDestinationAction types

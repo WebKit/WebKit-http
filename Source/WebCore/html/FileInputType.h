@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,15 +35,16 @@
 #include "FileChooser.h"
 #include "FileIconLoader.h"
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
+class DirectoryFileListCreator;
 class DragData;
 class FileList;
-class FileListCreator;
 class Icon;
 
-class FileInputType final : public BaseClickableWithKeyInputType, private FileChooserClient, private FileIconLoaderClient {
+class FileInputType final : public BaseClickableWithKeyInputType, private FileChooserClient, private FileIconLoaderClient, public CanMakeWeakPtr<FileInputType> {
 public:
     explicit FileInputType(HTMLInputElement&);
     virtual ~FileInputType();
@@ -85,9 +86,9 @@ private:
     // FileIconLoaderClient implementation.
     void iconLoaded(RefPtr<Icon>&&) final;
 
-    void requestIcon(const Vector<String>&);
-
     void applyFileChooserSettings(const FileChooserSettings&);
+    void didCreateFileList(Ref<FileList>&&, RefPtr<Icon>&&);
+    void requestIcon(const Vector<String>&);
 
     bool allowsDirectories() const;
 
@@ -95,7 +96,7 @@ private:
     std::unique_ptr<FileIconLoader> m_fileIconLoader;
 
     Ref<FileList> m_fileList;
-    RefPtr<FileListCreator> m_fileListCreator;
+    RefPtr<DirectoryFileListCreator> m_directoryFileListCreator;
     RefPtr<Icon> m_icon;
     String m_displayString;
 };

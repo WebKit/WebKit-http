@@ -35,7 +35,6 @@ namespace WebCore {
 namespace Layout {
 
 class FloatAvoider;
-class FloatBox;
 class FormattingContext;
 class Box;
 class LayoutState;
@@ -49,8 +48,8 @@ public:
 
     FloatingState& floatingState() const { return m_floatingState; }
 
-    Point positionForFloat(const Box&, const HorizontalConstraints&) const;
-    Optional<Point> positionForFormattingContextRoot(const Box&) const;
+    LayoutPoint positionForFloat(const Box&, const HorizontalConstraints&) const;
+    LayoutPoint positionForNonFloatingFloatAvoider(const Box&) const;
 
     struct ClearancePosition {
         Optional<Position> position;
@@ -72,13 +71,11 @@ private:
     const FormattingContext& formattingContext() const { return m_formattingContext; }
     const ContainerBox& root() const { return *m_root; }
 
-    void findPositionForFloatBox(FloatBox&) const;
     void findPositionForFormattingContextRoot(FloatAvoider&) const;
 
     struct AbsoluteCoordinateValuesForFloatAvoider;
     AbsoluteCoordinateValuesForFloatAvoider absoluteDisplayBoxCoordinates(const Box&) const;
-    Display::Box mapToFloatingStateRoot(const Box&) const;
-    LayoutUnit mapTopToFloatingStateRoot(const Box&) const;
+    LayoutPoint mapTopLeftToFloatingStateRoot(const Box&) const;
     Point mapPointFromFormattingContextRootToFloatingStateRoot(Point) const;
 
     WeakPtr<const ContainerBox> m_root;

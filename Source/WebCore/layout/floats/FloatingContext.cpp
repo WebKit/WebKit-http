@@ -30,7 +30,6 @@
 
 #include "DisplayBox.h"
 #include "FloatAvoider.h"
-#include "FloatBox.h"
 #include "FormattingContext.h"
 #include "LayoutBox.h"
 #include "LayoutContainerBox.h"
@@ -74,9 +73,14 @@ public:
     bool isEmpty() const { return m_floatPair.isEmpty(); }
     const FloatingState::FloatItem* left() const;
     const FloatingState::FloatItem* right() const;
-    bool intersects(const Display::Rect&) const;
+    bool intersects(const FloatAvoider&) const;
     PositionInContextRoot verticalConstraint() const { return m_verticalPosition; }
-    FloatAvoider::HorizontalConstraints horizontalConstraints() const;
+
+    struct HorizontalConstraints {
+        Optional<PositionInContextRoot> left;
+        Optional<PositionInContextRoot> right;
+    };
+    HorizontalConstraints horizontalConstraints() const;
     PositionInContextRoot bottom() const;
     LeftRightIndex operator*() const { return m_floatPair; };
     bool operator==(const FloatPair&) const;
@@ -149,8 +153,50 @@ static bool areFloatsHorizontallySorted(const FloatingState& floatingState)
 }
 #endif
 
+static FloatPair::LeftRightIndex findAvailablePosition(FloatAvoider& floatAvoider, const FloatingState::FloatList& floats)
+{
+    Optional<PositionInContextRoot> bottomMost;
+    Optional<FloatPair::LeftRightIndex> innerMostLeftAndRight;
+    auto end = Layout::end(floats);
+    for (auto iterator = begin(floats, { floatAvoider.top() }); iterator != end; ++iterator) {
+        ASSERT(!(*iterator).isEmpty());
+        auto leftRightFloatPair = *iterator;
+        innerMostLeftAndRight = innerMostLeftAndRight.valueOr(*leftRightFloatPair);
+
+        // Move the box horizontally so that it either
+        // 1. aligns with the current floating pair
+        // 2. or with the containing block's content box if there's no float to align with at this vertical position.
+        auto leftRightEdge = leftRightFloatPair.horizontalConstraints();
+        if (auto horizontalConstraint = floatAvoider.isLeftAligned() ? leftRightEdge.left : leftRightEdge.right)  
+            floatAvoider.setHorizontalPosition(*horizontalConstraint);
+        else
+            floatAvoider.resetHorizontalPosition();
+        floatAvoider.setVerticalPosition(leftRightFloatPair.verticalConstraint());
+
+        // Ensure that the float avoider
+        // 1. does not "overflow" its containing block with the current horiztonal constraints. It simply means that the float avoider's
+        // containing block could push the candidate position beyond the current float horizontally (too far to the left/right)
+        // 2. avoids floats on both sides.
+        if (!floatAvoider.overflowsContainingBlock() && !leftRightFloatPair.intersects(floatAvoider))
+            return *innerMostLeftAndRight;
+
+        bottomMost = leftRightFloatPair.bottom();
+        // Move to the next floating pair.
+    }
+
+    // The candidate box is already below of all the floats.
+    if (!bottomMost)
+        return { };
+
+    // Passed all the floats and still does not fit? Push it below the last float.
+    floatAvoider.setVerticalPosition(*bottomMost);
+    floatAvoider.resetHorizontalPosition();
+    ASSERT(innerMostLeftAndRight);
+    return *innerMostLeftAndRight;
+}
+
 struct FloatingContext::AbsoluteCoordinateValuesForFloatAvoider {
-    Display::Box displayBox;
+    LayoutPoint topLeft;
     LayoutPoint containingBlockTopLeft;
     HorizontalEdges containingBlockContentBox;
 };
@@ -162,7 +208,7 @@ FloatingContext::FloatingContext(const ContainerBox& floatingContextRoot, const 
 {
 }
 
-Point FloatingContext::positionForFloat(const Box& layoutBox, const HorizontalConstraints& horizontalConstraints) const
+LayoutPoint FloatingContext::positionForFloat(const Box& layoutBox, const HorizontalConstraints& horizontalConstraints) const
 {
     ASSERT(layoutBox.isFloatingPositioned());
     ASSERT(areFloatsHorizontallySorted(m_floatingState));
@@ -183,15 +229,24 @@ Point FloatingContext::positionForFloat(const Box& layoutBox, const HorizontalCo
     }
 
     // Find the top most position where the float box fits.
-    auto absoluteDisplayBoxCoordinates = this->absoluteDisplayBoxCoordinates(layoutBox);
     ASSERT(!isEmpty());
     auto previousFloatAbsoluteTop = floatingState().floats().last().rectWithMargin().top();
-    auto floatBox = FloatBox { layoutBox, absoluteDisplayBoxCoordinates.displayBox, absoluteDisplayBoxCoordinates.containingBlockTopLeft, absoluteDisplayBoxCoordinates.containingBlockContentBox, previousFloatAbsoluteTop };
-    findPositionForFloatBox(floatBox);
-    return floatBox.rectInContainingBlock().topLeft();
+    auto absoluteDisplayBoxCoordinates = this->absoluteDisplayBoxCoordinates(layoutBox);
+    auto absoluteTopLeft = absoluteDisplayBoxCoordinates.topLeft;
+    // Incoming float cannot be placed higher than existing floats (margin box of the last float).
+    // Take the static position (where the box would go if it wasn't floating) and adjust it with the last float.
+    auto& displayBox = formattingContext().geometryForBox(layoutBox);
+    if (absoluteTopLeft.y() - displayBox.marginBefore() < previousFloatAbsoluteTop)
+        absoluteTopLeft.setY(previousFloatAbsoluteTop + displayBox.marginBefore());
+    auto margins = Edges { { displayBox.computedMarginStart().valueOr(0), displayBox.computedMarginEnd().valueOr(0) }, { displayBox.marginBefore(), displayBox.marginAfter() } };
+    auto floatBox = FloatAvoider { layoutBox, absoluteTopLeft, displayBox.width(), margins, absoluteDisplayBoxCoordinates.containingBlockContentBox };
+    findAvailablePosition(floatBox, m_floatingState.floats());
+    // From formatting root coordinate system back to containing block's.
+    auto containingBlockTopLeft = absoluteDisplayBoxCoordinates.containingBlockTopLeft;
+    return { floatBox.left() + margins.horizontal.left - containingBlockTopLeft.x(), floatBox.top() + margins.vertical.top - containingBlockTopLeft.y() };
 }
 
-Optional<Point> FloatingContext::positionForFormattingContextRoot(const Box& layoutBox) const
+LayoutPoint FloatingContext::positionForNonFloatingFloatAvoider(const Box& layoutBox) const
 {
     ASSERT(layoutBox.establishesBlockFormattingContext());
     ASSERT(!layoutBox.isFloatingPositioned());
@@ -199,12 +254,15 @@ Optional<Point> FloatingContext::positionForFormattingContextRoot(const Box& lay
     ASSERT(areFloatsHorizontallySorted(m_floatingState));
 
     if (isEmpty())
-        return { };
+        return formattingContext().geometryForBox(layoutBox).topLeft();
 
     auto absoluteDisplayBoxCoordinates = this->absoluteDisplayBoxCoordinates(layoutBox);
-    auto floatAvoider = FloatAvoider { layoutBox, absoluteDisplayBoxCoordinates.displayBox, absoluteDisplayBoxCoordinates.containingBlockTopLeft, absoluteDisplayBoxCoordinates.containingBlockContentBox };
+    auto& displayBox = formattingContext().geometryForBox(layoutBox);
+    auto margins = Edges { { displayBox.computedMarginStart().valueOr(0), displayBox.computedMarginEnd().valueOr(0) }, { displayBox.marginBefore(), displayBox.marginAfter() } };
+    auto floatAvoider = FloatAvoider { layoutBox, absoluteDisplayBoxCoordinates.topLeft, displayBox.width(), margins, absoluteDisplayBoxCoordinates.containingBlockContentBox };
     findPositionForFormattingContextRoot(floatAvoider);
-    return { floatAvoider.rectInContainingBlock().topLeft() };
+    auto containingBlockTopLeft = absoluteDisplayBoxCoordinates.containingBlockTopLeft;
+    return { floatAvoider.left() - containingBlockTopLeft.x(), floatAvoider.top() - containingBlockTopLeft.y() };
 }
 
 FloatingContext::ClearancePosition FloatingContext::verticalPositionWithClearance(const Box& layoutBox) const
@@ -226,7 +284,7 @@ FloatingContext::ClearancePosition FloatingContext::verticalPositionWithClearanc
         //
         // 1. The amount necessary to place the border edge of the block even with the bottom outer edge of the lowest float that is to be cleared.
         // 2. The amount necessary to place the top border edge of the block at its hypothetical position.
-        auto rootRelativeTop = mapTopToFloatingStateRoot(layoutBox);
+        auto rootRelativeTop = mapTopLeftToFloatingStateRoot(layoutBox).y();
         auto clearance = *floatBottom - rootRelativeTop;
         if (clearance <= 0)
             return { };
@@ -254,7 +312,7 @@ FloatingContext::ClearancePosition FloatingContext::verticalPositionWithClearanc
         if (&layoutBox.containingBlock() == &m_floatingState.root())
             return { Position { rootRelativeTop }, clearance };
 
-        auto containingBlockRootRelativeTop = mapTopToFloatingStateRoot(layoutBox.containingBlock());
+        auto containingBlockRootRelativeTop = mapTopLeftToFloatingStateRoot(layoutBox.containingBlock()).y();
         return { Position { rootRelativeTop - containingBlockRootRelativeTop }, clearance };
     };
 
@@ -331,50 +389,9 @@ FloatingContext::Constraints FloatingContext::constraints(LayoutUnit candidateTo
 
 void FloatingContext::append(const Box& floatBox)
 {
-    floatingState().append(FloatingState::FloatItem { floatBox, mapToFloatingStateRoot(floatBox) });
-}
-
-static FloatPair::LeftRightIndex findAvailablePosition(FloatAvoider& floatAvoider, const FloatingState::FloatList& floats)
-{
-    Optional<PositionInContextRoot> bottomMost;
-    Optional<FloatPair::LeftRightIndex> innerMostLeftAndRight;
-    auto end = Layout::end(floats);
-    for (auto iterator = begin(floats, { floatAvoider.rect().top() }); iterator != end; ++iterator) {
-        ASSERT(!(*iterator).isEmpty());
-        auto leftRightFloatPair = *iterator;
-        innerMostLeftAndRight = innerMostLeftAndRight.valueOr(*leftRightFloatPair);
-
-        // Move the box horizontally so that it either
-        // 1. aligns with the current floating pair
-        // 2. or with the containing block's content box if there's no float to align with at this vertical position.
-        floatAvoider.setHorizontalConstraints(leftRightFloatPair.horizontalConstraints());
-        floatAvoider.setVerticalConstraint(leftRightFloatPair.verticalConstraint());
-
-        // Ensure that the float avoider
-        // 1. does not "overflow" its containing block with the current horiztonal constraints. It simply means that the float avoider's
-        // containing block could push the candidate position beyond the current float horizontally (too far to the left/right)
-        // 2. avoids floats on both sides.
-        if (!floatAvoider.overflowsContainingBlock() && !leftRightFloatPair.intersects(floatAvoider.rect()))
-            return *innerMostLeftAndRight;
-
-        bottomMost = leftRightFloatPair.bottom();
-        // Move to the next floating pair.
-    }
-
-    // The candidate box is already below of all the floats.
-    if (!bottomMost)
-        return { };
-
-    // Passed all the floats and still does not fit? Push it below the last float.
-    floatAvoider.setVerticalConstraint(*bottomMost);
-    floatAvoider.setHorizontalConstraints({ });
-    ASSERT(innerMostLeftAndRight);
-    return *innerMostLeftAndRight;
-}
-
-void FloatingContext::findPositionForFloatBox(FloatBox& floatBox) const
-{
-    findAvailablePosition(floatBox, m_floatingState.floats());
+    auto absoluteDisplayBox = Display::Box(formattingContext().geometryForBox(floatBox));
+    absoluteDisplayBox.setTopLeft(mapTopLeftToFloatingStateRoot(floatBox));
+    floatingState().append(FloatingState::FloatItem { floatBox, absoluteDisplayBox });
 }
 
 void FloatingContext::findPositionForFormattingContextRoot(FloatAvoider& floatAvoider) const
@@ -399,57 +416,50 @@ void FloatingContext::findPositionForFormattingContextRoot(FloatAvoider& floatAv
         if (innerMostLeftAndRight.isEmpty())
             return;
 
-        auto overlappingFloatBox = [&floats](auto startFloatIndex, auto floatAvoiderRect) -> const FloatingState::FloatItem* {
+        auto overlappingFloatBox = [&floats](auto startFloatIndex, auto& floatAvoider) -> const FloatingState::FloatItem* {
             for (auto i = startFloatIndex; i < floats.size(); ++i) {
                 auto& floatBox = floats[i];
-                if (floatBox.rectWithMargin().intersects(floatAvoiderRect))
+
+                auto intersects = [&] {
+                    auto floatingRect = floatBox.rectWithMargin();
+                    if (floatAvoider.left() >= floatingRect.right() || floatAvoider.right() <= floatingRect.left())
+                        return false;
+                    return floatAvoider.top() >= floatingRect.top() && floatAvoider.top() < floatingRect.bottom();
+                }();
+                if (intersects)
                     return &floatBox;
             }
             return nullptr;
         };
 
         auto startIndex = std::max(innerMostLeftAndRight.left.valueOr(0), innerMostLeftAndRight.right.valueOr(0)) + 1;
-        auto* intersectedFloatBox = overlappingFloatBox(startIndex, floatAvoider.rect());
+        auto* intersectedFloatBox = overlappingFloatBox(startIndex, floatAvoider);
         if (!intersectedFloatBox)
             return;
-        floatAvoider.setVerticalConstraint({ intersectedFloatBox->rectWithMargin().top() });
+        floatAvoider.setVerticalPosition({ intersectedFloatBox->rectWithMargin().top() });
     }
 }
 
 FloatingContext::AbsoluteCoordinateValuesForFloatAvoider FloatingContext::absoluteDisplayBoxCoordinates(const Box& floatAvoider) const
 {
     auto& containingBlock = floatAvoider.containingBlock();
-    auto displayBox = mapToFloatingStateRoot(floatAvoider);
+    auto& containingBlockGeometry = formattingContext().geometryForBox(containingBlock, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates);
+    auto absoluteTopLeft = mapTopLeftToFloatingStateRoot(floatAvoider);
 
-    if (&containingBlock == &floatingState().root()) {
-        auto containingBlockGeometry = formattingContext().geometryForBox(containingBlock, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates);
-        return { displayBox, { }, {  containingBlockGeometry.contentBoxLeft(), containingBlockGeometry.contentBoxRight() } };
-    }
-    auto containingBlockAbsoluteDisplayBox = mapToFloatingStateRoot(containingBlock);
-    auto containingBlockLeft = containingBlockAbsoluteDisplayBox.left();
-    return { displayBox, containingBlockAbsoluteDisplayBox.topLeft(), { containingBlockLeft + containingBlockAbsoluteDisplayBox.contentBoxLeft(), containingBlockLeft + containingBlockAbsoluteDisplayBox.contentBoxRight() } };
+    if (&containingBlock == &floatingState().root())
+        return { absoluteTopLeft, { }, { containingBlockGeometry.contentBoxLeft(), containingBlockGeometry.contentBoxRight() } };
+
+    auto containingBlockAbsoluteTopLeft = mapTopLeftToFloatingStateRoot(containingBlock);
+    return { absoluteTopLeft, containingBlockAbsoluteTopLeft, { containingBlockAbsoluteTopLeft.x() + containingBlockGeometry.contentBoxLeft(), containingBlockAbsoluteTopLeft.x() + containingBlockGeometry.contentBoxRight() } };
 }
 
-Display::Box FloatingContext::mapToFloatingStateRoot(const Box& floatBox) const
+LayoutPoint FloatingContext::mapTopLeftToFloatingStateRoot(const Box& floatBox) const
 {
     auto& floatingStateRoot = floatingState().root();
-    auto& boxGeometry = formattingContext().geometryForBox(floatBox, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates);
-    auto topLeft = boxGeometry.topLeft();
+    auto topLeft = formattingContext().geometryForBox(floatBox, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates).topLeft();
     for (auto* containingBlock = &floatBox.containingBlock(); containingBlock != &floatingStateRoot; containingBlock = &containingBlock->containingBlock())
         topLeft.moveBy(formattingContext().geometryForBox(*containingBlock, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates).topLeft());
-
-    auto mappedDisplayBox = Display::Box(boxGeometry);
-    mappedDisplayBox.setTopLeft(topLeft);
-    return mappedDisplayBox;
-}
-
-LayoutUnit FloatingContext::mapTopToFloatingStateRoot(const Box& floatBox) const
-{
-    auto& floatingStateRoot = floatingState().root();
-    auto top = formattingContext().geometryForBox(floatBox, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates).top();
-    for (auto* containingBlock = &floatBox.containingBlock(); containingBlock != &floatingStateRoot; containingBlock = &containingBlock->containingBlock())
-        top += formattingContext().geometryForBox(*containingBlock, FormattingContext::EscapeReason::FloatBoxNeedsToBeInAbsoluteCoordinates).top();
-    return top;
+    return topLeft;
 }
 
 Point FloatingContext::mapPointFromFormattingContextRootToFloatingStateRoot(Point position) const
@@ -487,10 +497,15 @@ const FloatingState::FloatItem* FloatPair::right() const
     return &m_floats[*m_floatPair.right];
 }
 
-bool FloatPair::intersects(const Display::Rect& floatAvoiderRect) const
+bool FloatPair::intersects(const FloatAvoider& floatAvoider) const
 {
     auto intersects = [&](auto* floating) {
-        return floating && floating->rectWithMargin().intersects(floatAvoiderRect);
+        if (!floating)
+            return false;
+        auto floatingRect = floating->rectWithMargin();
+        if (floatAvoider.left() >= floatingRect.right() || floatAvoider.right() <= floatingRect.left())
+            return false;
+        return floatAvoider.top() >= floatingRect.top() && floatAvoider.top() < floatingRect.bottom();
     };
 
     ASSERT(!m_floatPair.isEmpty());
@@ -502,7 +517,7 @@ bool FloatPair::operator ==(const FloatPair& other) const
     return m_floatPair.left == other.m_floatPair.left && m_floatPair.right == other.m_floatPair.right;
 }
 
-FloatAvoider::HorizontalConstraints FloatPair::horizontalConstraints() const
+FloatPair::HorizontalConstraints FloatPair::horizontalConstraints() const
 {
     Optional<PositionInContextRoot> leftEdge;
     Optional<PositionInContextRoot> rightEdge;

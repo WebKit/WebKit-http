@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -91,13 +91,29 @@ static PKPaymentButtonType toPKPaymentButtonType(ApplePayButtonType type)
         return PKPaymentButtonTypeSetUp;
     case ApplePayButtonType::Donate:
         return PKPaymentButtonTypeDonate;
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case ApplePayButtonType::CheckOut:
         return PKPaymentButtonTypeCheckout;
     case ApplePayButtonType::Book:
         return PKPaymentButtonTypeBook;
     case ApplePayButtonType::Subscribe:
         return PKPaymentButtonTypeSubscribe;
+#if HAVE(PASSKIT_NEW_BUTTON_TYPES)
+    case ApplePayButtonType::Reload:
+        return PKPaymentButtonTypeReload;
+    case ApplePayButtonType::AddMoney:
+        return PKPaymentButtonTypeAddMoney;
+    case ApplePayButtonType::TopUp:
+        return PKPaymentButtonTypeTopUp;
+    case ApplePayButtonType::Order:
+        return PKPaymentButtonTypeOrder;
+    case ApplePayButtonType::Rent:
+        return PKPaymentButtonTypeRent;
+    case ApplePayButtonType::Support:
+        return PKPaymentButtonTypeSupport;
+    case ApplePayButtonType::Contribute:
+        return PKPaymentButtonTypeContribute;
+    case ApplePayButtonType::Tip:
+        return PKPaymentButtonTypeTip;
 #endif
     }
 }
@@ -121,7 +137,7 @@ bool RenderThemeCocoa::paintApplePayButton(const RenderObject& renderer, const P
         floatValueForLength(style.borderBottomRightRadius().width, paintRect.width())
     });
 
-    PKDrawApplePayButtonWithCornerRadius(paintInfo.context().platformContext(), CGRectMake(paintRect.x(), -paintRect.maxY(), paintRect.width(), paintRect.height()), 1.0, largestCornerRadius, toPKPaymentButtonType(style.applePayButtonType()), toPKPaymentButtonStyle(style.applePayButtonStyle()), style.locale());
+    PKDrawApplePayButtonWithCornerRadius(paintInfo.context().platformContext(), CGRectMake(paintRect.x(), -paintRect.maxY(), paintRect.width(), paintRect.height()), 1.0, largestCornerRadius, toPKPaymentButtonType(style.applePayButtonType()), toPKPaymentButtonStyle(style.applePayButtonStyle()), style.computedLocale());
     return false;
 }
 

@@ -598,7 +598,12 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
                 return systemAppearanceColor(cache.systemVisitedLinkColor, @selector(systemPurpleColor));
             return systemAppearanceColor(cache.systemLinkColor, @selector(linkColor));
 
+        case CSSValueLinktext:
+            return systemAppearanceColor(cache.systemLinkColor, @selector(linkColor));
+        case CSSValueVisitedtext:
+            return systemAppearanceColor(cache.systemVisitedLinkColor, @selector(systemPurpleColor));
         case CSSValueWebkitActivelink:
+        case CSSValueActivetext:
             // FIXME: Use a semantic system color for this, instead of systemRedColor. <rdar://problem/39256684>
             return systemAppearanceColor(cache.systemActiveLinkColor, @selector(systemRedColor));
 
@@ -651,8 +656,16 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
                 return @selector(controlShadowColor);
             case CSSValueButtontext:
                 return @selector(controlTextColor);
+            case CSSValueCanvas:
+                return @selector(textBackgroundColor);
+            case CSSValueCanvastext:
+                return @selector(textColor);
             case CSSValueCaptiontext:
                 return @selector(textColor);
+            case CSSValueField:
+                return @selector(controlColor);
+            case CSSValueFieldtext:
+                return @selector(controlTextColor);
             case CSSValueGraytext:
                 return @selector(disabledControlTextColor);
             case CSSValueHighlighttext:
@@ -2785,7 +2798,7 @@ static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsCont
     icon->paint(context, layout.iconRect);
 }
 
-#if HAVE(SYSTEM_ATTACHMENT_PLACEHOLDER_ICON) && USE(APPLE_INTERNAL_SDK)
+#if HAVE(ALTERNATE_ICONS) && USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/RenderThemeMacAdditions.mm>
 #else
 
@@ -2795,6 +2808,11 @@ static std::pair<RefPtr<Image>, float> createAttachmentPlaceholderImage(float de
         return { Image::loadPlatformResource("AttachmentPlaceholder@2x"), 2 };
 
     return { Image::loadPlatformResource("AttachmentPlaceholder"), 1 };
+}
+
+String RenderThemeMac::extraDefaultStyleSheet()
+{
+    return { };
 }
 
 #endif

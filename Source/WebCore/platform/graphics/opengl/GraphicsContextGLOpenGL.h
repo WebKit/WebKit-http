@@ -67,7 +67,7 @@ class BView;
 
 #if USE(NICOSIA)
 namespace Nicosia {
-class GC3DLayer;
+class GCGLLayer;
 }
 #endif
 
@@ -84,7 +84,7 @@ class HostWindow;
 class ImageBuffer;
 class ImageData;
 #if USE(TEXTURE_MAPPER)
-class TextureMapperGC3DPlatformLayer;
+class TextureMapperGCGLPlatformLayer;
 #endif
 
 typedef WTF::HashMap<CString, uint64_t> ShaderNameHash;
@@ -559,7 +559,7 @@ public:
 #endif
 
 #if USE(OPENGL) || USE(ANGLE)
-    void allocateIOSurfaceBackingStore(IntSize);
+    bool allocateIOSurfaceBackingStore(IntSize);
     void updateFramebufferTextureBackingStoreFromLayer();
 #if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     void updateCGLContext();
@@ -885,11 +885,11 @@ private:
     ListHashSet<GCGLenum> m_syntheticErrors;
 
 #if USE(NICOSIA) && USE(TEXTURE_MAPPER)
-    friend class Nicosia::GC3DLayer;
-    std::unique_ptr<Nicosia::GC3DLayer> m_nicosiaLayer;
+    friend class Nicosia::GCGLLayer;
+    std::unique_ptr<Nicosia::GCGLLayer> m_nicosiaLayer;
 #elif USE(TEXTURE_MAPPER)
-    friend class TextureMapperGC3DPlatformLayer;
-    std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;
+    friend class TextureMapperGCGLPlatformLayer;
+    std::unique_ptr<TextureMapperGCGLPlatformLayer> m_texmapLayer;
 #elif !PLATFORM(COCOA)
     friend class GraphicsContextGLOpenGLPrivate;
     std::unique_ptr<GraphicsContextGLOpenGLPrivate> m_private;

@@ -206,16 +206,18 @@ static void compileStub(VM& vm, unsigned exitID, JITCode* jitCode, OSRExit& exit
 
     saveAllRegisters(jit, registerScratch);
     
-    if (validateDFGDoesGC) {
-        // We're about to exit optimized code. So, there's no longer any optimized
-        // code running that expects no GC. We need to set this before object
-        // materialization below.
+    if constexpr (validateDFGDoesGC) {
+        if (Options::validateDoesGC()) {
+            // We're about to exit optimized code. So, there's no longer any optimized
+            // code running that expects no GC. We need to set this before object
+            // materialization below.
 
-        // Even though we set Heap::m_expectDoesGC in compileFTLOSRExit(), we also need
-        // to set it here because compileFTLOSRExit() is only called on the first time
-        // we exit from this site, but all subsequent exits will take this compiled
-        // ramp without calling compileFTLOSRExit() first.
-        jit.store8(CCallHelpers::TrustedImm32(true), vm.heap.addressOfExpectDoesGC());
+            // Even though we set Heap::m_doesGC in compileFTLOSRExit(), we also need
+            // to set it here because compileFTLOSRExit() is only called on the first time
+            // we exit from this site, but all subsequent exits will take this compiled
+            // ramp without calling compileFTLOSRExit() first.
+            jit.store32(CCallHelpers::TrustedImm32(DoesGCCheck::encode(true, DoesGCCheck::Special::FTLOSRExit)), vm.heap.addressOfDoesGC());
+        }
     }
 
     // Bring the stack back into a sane form and assert that it's sane.
@@ -545,10 +547,10 @@ extern "C" JIT_OPERATION void* operationCompileFTLOSRExit(CallFrame* callFrame, 
 
     VM& vm = callFrame->deprecatedVM();
 
-    if (validateDFGDoesGC) {
+    if constexpr (validateDFGDoesGC) {
         // We're about to exit optimized code. So, there's no longer any optimized
         // code running that expects no GC.
-        vm.heap.setExpectDoesGC(true);
+        vm.heap.setDoesGCExpectation(true, DoesGCCheck::Special::FTLOSRExit);
     }
 
     if (vm.callFrameForCatch)

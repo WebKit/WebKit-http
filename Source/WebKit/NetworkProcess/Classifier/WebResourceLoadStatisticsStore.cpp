@@ -353,7 +353,7 @@ void WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated(Vector<Resour
         if (!m_statisticsStore)
             return;
 
-        ASSERT(suspendedState == State::Running);
+        ASSERT(suspendedState != State::Suspended);
         m_statisticsStore->mergeStatistics(WTFMove(statistics));
 
         // We can cancel any pending request to process statistics since we're doing it synchronously below.
@@ -737,6 +737,8 @@ void WebResourceLoadStatisticsStore::performDailyTasks()
             m_statisticsStore->includeTodayAsOperatingDateIfNecessary();
             m_statisticsStore->calculateAndSubmitTelemetry();
         }
+        if (is<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore))
+            downcast<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore).runIncrementalVacuumCommand();
     });
 }
 
@@ -1425,6 +1427,9 @@ void WebResourceLoadStatisticsStore::suspend(CompletionHandler<void()>&& complet
 
     sharedStatisticsQueue()->dispatch([completionHandler = completionHandlerCaller.release()] () mutable {
 
+        for (auto& databaseStore : ResourceLoadStatisticsDatabaseStore::allStores())
+            databaseStore->interrupt();
+        
         Locker<Lock> stateLocker(suspendedStateLock);
         ASSERT(suspendedState != State::Suspended);
 
@@ -1438,7 +1443,7 @@ void WebResourceLoadStatisticsStore::suspend(CompletionHandler<void()>&& complet
 
         while (suspendedState == State::Suspended)
             suspendedStateChangeCondition.wait(suspendedStateLock);
-        ASSERT(suspendedState == State::Running);
+        ASSERT(suspendedState != State::Suspended);
     });
 }
 

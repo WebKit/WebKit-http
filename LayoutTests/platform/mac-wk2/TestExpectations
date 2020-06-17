@@ -34,13 +34,13 @@ fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
 fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
-http/tests/ssl/applepay/ [ Pass ]
+http/tests/ssl/applepay [ Pass ]
 
-# ApplePayInstallmentConfiguration was first available in Catalina.
+# APPLE_PAY_INSTALLMENTS was first available in Catalina.
 [ Mojave ] http/tests/ssl/applepay/ApplePayInstallmentConfiguration.https.html [ Skip ]
+[ Mojave ] http/tests/ssl/applepay/ApplePayInstallmentItems.https.html [ Skip ]
 
-# ApplePayInstallmentItem is not available in Mojave or Catalina.
-[ Mojave Catalina ] http/tests/ssl/applepay/ApplePayInstallmentItems.https.html [ Skip ]
+webkit.org/b/212998 [ Catalina ] http/tests/ssl/applepay/ApplePayInstallmentItems.https.html [ Failure ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
@@ -823,10 +823,6 @@ webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-cli
 
 webkit.org/b/194826 http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
 
-webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
-
-webkit.org/b/196400 fast/mediastream/MediaStreamTrack-getSettings.html [ Pass Failure ]
-
 webkit.org/b/196403 imported/w3c/web-platform-tests/mediacapture-record/MediaRecorder-stop.html [ Pass Failure ]
 
 webkit.org/b/187391 accessibility/mac/async-increment-decrement-action.html [ Skip ]
@@ -887,7 +883,7 @@ webkit.org/b/207117 webgpu/whlsl/nested-loop.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/207127 webgpu/whlsl/buffer-vertex.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/206903 inspector/heap/getRemoteObject.html [ Pass Crash ]
+webkit.org/b/206903 inspector/heap/getRemoteObject.html [ Pass Crash Failure ]
 
 webkit.org/b/207141 [ Release ] inspector/canvas/create-context-bitmaprenderer.html [ Pass Failure ]
 
@@ -963,9 +959,6 @@ webkit.org/b/207864 webgpu/whlsl/do-while-loop-continue.html [ Pass ImageOnlyFai
 
 webkit.org/b/207938 http/wpt/crypto/derive-hmac-key-crash.any.html [ Pass Crash ]
 
-webkit.org/b/207954 http/tests/inspector/network/har/har-page.html [ Pass Failure ]
-webkit.org/b/207954 http/tests/inspector/network/har/har-page-aggressive-gc.html [ Pass Failure ]
-
 webkit.org/b/207962 accessibility/mac/aria-menu-item-selected-notification.html [ Slow ]
 
 webkit.org/b/208005 webgpu/whlsl/zero-initialize-values.html [ Pass ImageOnlyFailure ]
@@ -999,8 +992,7 @@ webkit.org/b/209024 [ Debug ] webgpu/whlsl/vector-compare.html [ Pass Crash ]
 webkit.org/b/209077 svg/custom/object-sizing-explicit-width.xhtml [ Pass Failure ]
 
 webkit.org/b/209052 fast/scrolling/mac/absolute-in-overflow-scroll-dynamic.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/210348 fast/scrolling/latching/iframe-latch-small-deltas.html [ Pass Failure ]
+webkit.org/b/212667 [ Mojave ] fast/scrolling/mac/scrollbars/select-overlay-scrollbar-hovered.html [ Skip ]
 
 webkit.org/b/209148 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html [ Pass Failure ]
 webkit.org/b/209148 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-removetrack.https.html [ Pass Failure ]
@@ -1009,8 +1001,6 @@ webkit.org/b/209148 imported/w3c/web-platform-tests/mediacapture-streams/MediaSt
 webkit.org/b/209183 webrtc/concurrentVideoPlayback.html [ Pass Timeout ]
 
 webkit.org/b/209189 http/tests/IndexedDB/storage-limit.https.html [ Pass Failure ]
-
-webkit.org/b/209281 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/frame-removal.html [ Pass Failure ]
 
 webkit.org/b/209283 tiled-drawing/scrolling/scroll-iframe-latched-selects.html [ Pass Failure ]
 
@@ -1035,6 +1025,15 @@ webkit.org/b/183424 media/video-zoom-controls.html [ Pass Failure ]
 
 webkit.org/b/212413 fast/mediastream/mock-media-source-webaudio.html [ Pass Timeout ]
 
-webkit.org/b/261103 [ Debug ] inspector/page/overrideSetting-ITPDebugModeEnabled.html [ Pass Failure ]
+webkit.org/b/188924 fast/mediastream/device-change-event-2.html [ Pass Timeout ]
 
-webkit.org/b/212667 [ Mojave Debug ] fast/scrolling/mac/scrollbars/select-overlay-scrollbar-hovered.html [ Pass Failure Timeout ]
+webkit.org/b/212721 svg/custom/textPath-change-id.svg [ Pass ImageOnlyFailure ]
+
+webkit.org/b/212824 [ Debug ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-disconnect-audioparam.html [ Pass Failure ]
+
+webkit.org/b/212042 [ Debug ] fast/scrolling/mac/scrollbars/overlay-scrollbar-reveal.html [ Pass Timeout ]
+webkit.org/b/212042 [ Debug ] fast/scrolling/mac/scrollbars/select-overlay-scrollbar-reveal.html [ Pass Timeout ]
+
+webkit.org/b/213212 [ Mojave Release ] webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb16f-rgb-half_float.html [ Pass Failure ]
+
+webkit.org/b/213292 [ Catalina Release ] http/tests/IndexedDB/storage-limit-1.https.html [ Pass Failure ]

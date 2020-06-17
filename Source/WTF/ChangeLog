@@ -1,3 +1,587 @@
+2020-06-17  David Kilzer  <ddkilzer@apple.com>
+
+        Replace OptionSetTraits/OptionSetValues with EnumTraits/EnumValues
+        <https://webkit.org/b/213264>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/OptionSet.h:
+        (WTF::isValidOptionSetEnum):
+        (WTF::maskRawValue):
+        - Replace OptionSetTraits<>/OptionSetValues<> with
+          EnumTraits<>/EnumValues<>.
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Enable layout tests on more platforms
+        https://bugs.webkit.org/show_bug.cgi?id=212955
+        <rdar://problem/64174156>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformEnableCocoa.h: Removed ENABLE_APPLE_PAY_INSTALLMENT_IDENTIFIERS,
+        ENABLE_APPLE_PAY_INSTALLMENT_ITEMS, ENABLE_APPLE_PAY_SESSION_V8,
+        ENABLE_APPLE_PAY_SESSION_V9, and ENABLE_APPLE_PAY_SESSION_V10.
+        * wtf/PlatformHave.h: Removed HAVE_PASSKIT_INSTALLMENT_IDENTIFIERS and corrected iOS version
+        checks for HAVE_PASSKIT_INSTALLMENTS.
+
+2020-06-16  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Fix build with !HAVE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=213223
+        <rdar://problem/64390209>
+
+        Reviewed by Yusuke Suzuki.
+
+        In r263074, I messed up and broke the build with !HAVE(MACHINE_CONTEXT). Even though the
+        sole purpose of that commit was to fix !HAVE(MACHINE_CONTEXT), I must have somehow messed up
+        when testing my change.
+
+        Anyway, we can just create an empty PlatformRegisters object when HAVE(MACHINE_CONTEXT) is
+        false. At first, I was worried that passing an empty PlatformRegisters could be open to
+        misuse, but it's actually hard to misuse it because the only sensible thing you can do with
+        it is pass it to MachineContext, and you can't use MachineContext outside
+        HAVE(MACHINE_CONTEXT), so we should be good.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::jscSignalHandler):
+
+2020-06-16  Chris Dumez  <cdumez@apple.com>
+
+        Stop calling userPreferredLanguages() in the UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=213214
+        <rdar://problem/64317593>
+
+        Reviewed by Per Arne Vollan.
+
+        Export WTF::languageDidChange() so we can call it from WebKit2.
+
+        * wtf/Language.h:
+
+2020-06-16  Mark Lam  <mark.lam@apple.com>
+
+        Add SIGABRT handler for non OS(DARWIN) builds to the jsc shell with the -s option.
+        https://bugs.webkit.org/show_bug.cgi?id=213200
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/threads/Signals.h:
+        (WTF::toSystemSignal):
+        (WTF::fromSystemSignal):
+
+2020-06-15  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        WTF signal machinery is guarded by #if USE(PTHREADS) && HAVE(MACHINE_CONTEXT) but does not use pthreads or machine context
+        https://bugs.webkit.org/show_bug.cgi?id=213223
+
+        Reviewed by Mark Lam.
+
+        Use #if OS(UNIX) instead.
+
+        * wtf/WTFConfig.h:
+        * wtf/threads/Signals.cpp:
+        * wtf/threads/Signals.h:
+
+2020-06-15  Keith Miller  <keith_miller@apple.com>
+
+        REGRESSION (r263045): TestWTF.Signals.SignalsWorkOnExit crashing
+        https://bugs.webkit.org/show_bug.cgi?id=213211
+
+        Reviewed by Mark Lam.
+
+        Don't call toMachMask on Signal::Usr as mach doesn't support user exceptions.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::SignalHandlers::add):
+
+2020-06-15  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Consistently use WTF_ATTRIBUTE_PRINTF in Assertions.[cpp,h]
+        https://bugs.webkit.org/show_bug.cgi?id=213204
+
+        Reviewed by Darin Adler.
+
+        Use WTF_ATTRIBUTE_PRINTF for all functions taking a printf format specifier. The first
+        argument should be the position of the format string itself (starting from 1), and the
+        second argument should be the position of the ... parameter pack, or 0 for functions that
+        take a va_list.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2020-06-15  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, build fix for build without mach exceptions.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::SignalHandlers::add):
+        (WTF::addSignalHandler):
+
+2020-06-15  Keith Miller  <keith_miller@apple.com>
+
+        Signal handlers should have a two phase installation.
+        https://bugs.webkit.org/show_bug.cgi?id=213160
+
+        Reviewed by Mark Lam.
+
+        LLDB does not like it when we single step while there are mach exception
+        handlers installed because LLDB suspends all the non-active threads.
+        With Mach exception handlers installed, the OS will send a mach message
+        to our exception handler port, which is different than the active thread.
+        When this happens, the combination of LLDB and the process JSC is in effectively
+        deadlock.
+
+        Under our new approach, we go back to only telling the OS we care about
+        these exceptions late but lock down the function pointers early. This way
+        processes that benefit from our exception handler code are easier to debug.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::addSignalHandler):
+        (WTF::activateSignalHandlersFor):
+        (WTF::installSignalHandler): Deleted.
+        * wtf/threads/Signals.h:
+
+2020-06-15  Per Arne Vollan  <pvollan@apple.com>
+
+        Pack bytes a little tighter in MemoryPressureHandler
+        https://bugs.webkit.org/show_bug.cgi?id=200392
+
+        Reviewed by Yusuke Suzuki.
+
+        Save a tiny bit of memory by packing member variables tighter in MemoryPressureHandler.
+
+        * wtf/MemoryPressureHandler.h:
+
+2020-06-12  Keith Miller  <keith_miller@apple.com>
+
+        Tests expecting a crash should use a signal handler in the JSC CLI process
+        https://bugs.webkit.org/show_bug.cgi?id=212479
+
+        Reviewed by Yusuke Suzuki.
+
+        Add signals for floating point exceptions and breakpoints. There's a
+        note for breakpoints that explains how using them in the same process
+        as lldb will cause badness. Fortunately, the only place I plan on using
+        the breakpoint handler is to check for tests where crashing is expected.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        * wtf/threads/Signals.h:
+        (WTF::toSystemSignal):
+        (WTF::fromSystemSignal):
+
+2020-06-12  Jason Lawrence  <lawrence.j@apple.com>
+
+        Unreviewed, reverting r262904.
+
+        This commit broke a test on Mac wk1 Debug.
+
+        Reverted changeset:
+
+        "[Cocoa] Build callOnMainThread on WTF::RunLoop rather than on
+        a timer"
+        https://bugs.webkit.org/show_bug.cgi?id=213063
+        https://trac.webkit.org/changeset/262904
+
+2020-06-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Build is broken with EVENT_LOOP_TYPE=GLib
+        https://bugs.webkit.org/show_bug.cgi?id=212987
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/CurrentTime.cpp: Make sure that <time.h> is included to get clock_gettime() and
+        friends defined when USE_GLIB is disabled.
+        * wtf/PlatformJSCOnly.cmake: Use FileSystemGLib instead of FileSystemPOSIX when
+        EVENT_LOOP_TYPE=GLib is set, add missing sources needed when ENABLE_REMOTE_INSPECTOR
+        is set.
+        * wtf/glib/RunLoopSourcePriority.h: Use the same list of priorities for WPE and JSCOnly.
+
+2020-06-11  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable download resume tests
+        https://bugs.webkit.org/show_bug.cgi?id=213098
+        <rdar://problem/63512518>
+
+        Reviewed by Geoffrey Garen.
+
+        Workaround is no longer needed because underlying bug has been fixed.
+
+        * wtf/PlatformHave.h:
+
+2020-06-11  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKit: Make UIGestureRecognizer build for watchOS and tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=213038
+        <rdar://problem/64217654>
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformHave.h: Enable HAVE(UI_GESTURE_RECOGNIZER_MODIFIER_FLAGS) for watchOS and tvOS.
+
+2020-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC] Adopt enum class for DragSourceAction
+        <https://webkit.org/b/212885>
+        <rdar://problem/64094134>
+
+        Reviewed by Darin Adler.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::hasExactlyOneBitSet const): Add.
+        - Move here from WebCore::ExactlyOneBitSet() in
+          Source/WebCore/page/EventHandler.cpp.
+        (WTF::OptionSet::toSingleValue const): Add.
+        - Use hasExactlyOneBitSet() to determine whether exactly one
+          enum bitmask value can be returned.
+
+2020-06-11  Geoffrey Garen  <ggaren@apple.com>
+
+        [Cocoa] Build callOnMainThread on WTF::RunLoop rather than on a timer
+        https://bugs.webkit.org/show_bug.cgi?id=213063
+
+        Reviewed by Anders Carlsson.
+
+        Always use the RunLoop API for main thread tasks.
+
+        Previously, callOnMainThread sometimes scheduled a timer and sometimes
+        used the RunLoop. (Ironically, the timer behavior was added in r55816
+        with the intention to establish a single point of execution. Now, it has
+        the opposite effect.)
+
+        I picked the RunLoop API rather than the timer API because it moves us
+        closer to universally applying the RunLoop speedup in
+        https://bugs.webkit.org/show_bug.cgi?id=202874. Also, it avoids
+        allocating a timer, which can be expensive.
+
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::scheduleDispatchFunctionsOnMainThread): The webIfExists() check
+        is a superset of the isWebThread() check, so we can just remove the
+        isWebThread() check when scheduling tasks to the web thread.
+        (WTF::timerFired): Deleted.
+        (WTF::postTimer): Deleted.
+
+2020-06-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Some style improvements to main thread code
+        https://bugs.webkit.org/show_bug.cgi?id=213051
+
+        Reviewed by Darin Adler.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::initializeMain): Renamed initializeMainRunLoop => initializeMain
+        to match the getter's name.
+        (WTF::RunLoop::initializeWeb): Samesies.
+        (WTF::RunLoop::webIfExists): Added an IfExists accessor for use in
+        scheduleDispatchFunctionsOnMainThread().
+        (WTF::RunLoop::initializeMainRunLoop): Deleted.
+        (WTF::RunLoop::initializeWebRunLoop): Deleted.
+
+        * wtf/RunLoop.h:
+
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::scheduleDispatchFunctionsOnMainThread): Use RunLoop::webIfExists()
+        to check for the web thread run loop, since that's more explicit than
+        checking a pthread variable.
+
+        (WTF::isWebThread): Renamed mainThreadPthread => webThreadPthread because
+        it's the web thread. Changed style on globals to "s_" for consistency.
+        Removed mainThreadNSThread because it was unused.
+        (WTF::initializeApplicationUIThread):
+        (WTF::initializeWebThread):
+        (WTF::canCurrentThreadAccessThreadLocalData):
+
+2020-06-10  Geoffrey Garen  <ggaren@apple.com>
+
+        [Cocoa] Build callOnMainThread on WTF::RunLoop rather than on NSObject methods
+        https://bugs.webkit.org/show_bug.cgi?id=213043
+
+        Reviewed by Simon Fraser.
+
+        Original patch by Sihui Liu.
+
+        From https://bugs.webkit.org/show_bug.cgi?id=202874, this is the subset
+        of Sihui's patch that unifies some of RunLoop and callOnMainThread.
+
+        My goal is to simplify the code, and shrink the diff when testing
+        CFRunLoopSource1 in the future.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::initializeWebRunLoop):
+        (WTF::RunLoop::web):
+        * wtf/RunLoop.h:
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::initializeWebThread):
+        (-[JSWTFMainThreadCaller call]): Deleted.
+
+2020-06-10  Jer Noble  <jer.noble@apple.com>
+
+        Catalyst WebKit apps continue to play audio after quitting
+        https://bugs.webkit.org/show_bug.cgi?id=212981
+        <rdar://problem/57089471>
+
+        Reviewed by Chris Dumez.
+
+        Add the ability to call copyToVector() on a WeakHashSet. This requires two changes:
+        - A template specialization that returns a Vector<WeakPtr<T>> from copyToVector()
+        - A template specialization that calls calculateSize() rather than size() on the object
+          being iterated upon.
+
+        * wtf/WeakHashSet.h:
+        (WTF::copyToVector):
+
+2020-06-09  Tim Horton  <timothy_horton@apple.com>
+
+        Use os_log instead of asl_log
+        https://bugs.webkit.org/show_bug.cgi?id=213001
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Assertions.cpp:
+
+2020-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Use bridge cast in String(NSString *) constructor
+        https://bugs.webkit.org/show_bug.cgi?id=212989
+
+        Reviewed by Darin Adler.
+
+        Use bridge cast in String(NSString *) constructor instead of a reinterpret_cast as this
+        is the preferred way of converting a NS Type to a CF one.
+
+        * wtf/text/cocoa/StringCocoa.mm:
+        (WTF::String::String):
+
+2020-06-09  Per Arne Vollan  <pvollan@apple.com>
+
+        All platforms should enable CFPrefs read only mode in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212910
+
+        Reviewed by Tim Horton.
+
+        In https://bugs.webkit.org/show_bug.cgi?id=212411, CFPrefs read only mode was adopted, but not all platforms were included.
+
+        * wtf/PlatformHave.h:
+
+2020-06-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r260820): [macCatalyst] Web process crashes when uploading a file
+        https://bugs.webkit.org/show_bug.cgi?id=212976
+        <rdar://problem/64033186>
+
+        Reviewed by Tim Horton.
+
+        Add `HAVE(FRONTBOARD_SYSTEM_APP_SERVICES)`.
+
+        * wtf/PlatformHave.h:
+
+2020-06-08  Chris Fleizach  <cfleizach@apple.com>
+
+        HAVE(ACCESSIBILITY_BUNDLES_PATH) is defined in terms of PLATFORM(IOS_FAMILY) but only checks the version of __IPHONE_OS_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=212704
+        <rdar://problem/63931340>
+
+        Reviewed by Darin Adler.
+
+        Ensure that this works for all iOS familes.
+
+        * wtf/PlatformHave.h:
+
+2020-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Adopt read-only mode for preferences in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+
+        Reviewed by Darin Adler.
+
+        Change name of HAVE define to match SPI name.
+
+        * wtf/PlatformHave.h:
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove -respondsToSelector: check before calling -[PKPaymentRequest setBoundInterfaceIdentifier:]
+        https://bugs.webkit.org/show_bug.cgi?id=212884
+        <rdar://problem/64090963>
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/PlatformHave.h: On macOS, HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER should be defined
+        starting in Catalina.
+
+2020-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove ENABLE_APPLE_PAY_SETUP, ENABLE_APPLE_PAY_SESSION_V7, and HAVE_PASSKIT_PAYMENT_SETUP
+        https://bugs.webkit.org/show_bug.cgi?id=212883
+        <rdar://problem/64090763>
+
+        Reviewed by Youenn Fablet.
+
+        These macros evaluate to true whenever ENABLE(APPLE_PAY) is true on platforms supported by
+        trunk WebKit, so we can either remove them or replace them with ENABLE(APPLE_PAY).
+
+        * wtf/PlatformEnableCocoa.h:
+        * wtf/PlatformHave.h:
+
+2020-06-08  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-06-07  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] HAVE(PAYMENT_METHOD_BILLING_ADDRESS) should be true on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=212877
+        <rdar://problem/64080998>
+
+        Reviewed by Sam Weinig.
+
+        * wtf/PlatformHave.h:
+
+2020-06-07  Philippe Normand  <pnormand@igalia.com>
+
+        Remove ENABLE_VIDEO_TRACK ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=212568
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/PlatformEnable.h: Remove ENABLE_VIDEO_TRACK, which is now enabled by
+        default under the ENABLE_VIDEO guard.
+        * wtf/PlatformEnableCocoa.h: Ditto.
+
+2020-06-06  David Kilzer  <ddkilzer@apple.com>
+
+        Use OptionSet<DragOperation> for mask values
+        <https://webkit.org/b/212605>
+
+        Reviewed by Darin Adler.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::OptionSet):
+        - Add constructor for OptionSet(Optional).
+
+2020-06-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, reverting r262619, r262625, and r262641.
+
+        Caused mediarecorder layout test crashes.
+
+        Reverted changesets:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262619
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/262625
+
+        "Unreviewed, silence deprecation warning to fix build with
+        latest SDK."
+        https://trac.webkit.org/changeset/262641
+
+2020-06-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Adopt read-only mode for preferences in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+
+        Reviewed by Darin Adler.
+
+        Create HAVE define indicating support for read-only preference SPI.
+
+        * wtf/PlatformHave.h:
+
+2020-06-05  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-06-04  Jonathan Bedard  <jbedard@apple.com>
+
+        WTF: Exclude MachExceptions.defs from all embedded builds
+        https://bugs.webkit.org/show_bug.cgi?id=212796
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/WTF.xcconfig:
+
+2020-06-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Add a way to override the contact AutoFill button image
+        https://bugs.webkit.org/show_bug.cgi?id=212775
+        <rdar://problem/60381452>
+
+        Reviewed by Tim Horton.
+
+        Rename `SYSTEM_ATTACHMENT_PLACEHOLDER_ICON` to `ALTERNATE_ICONS`.
+
+        * wtf/PlatformHave.h:
+
+2020-06-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r262546.
+
+        This commit caused internal build failures
+
+        Reverted changeset:
+
+        "[Cocoa] Adopt read-only mode for preferences in the
+        WebContent process"
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+        https://trac.webkit.org/changeset/262546
+
+2020-06-04  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Adopt read-only mode for preferences in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=212411
+
+        Reviewed by Darin Adler.
+
+        Create HAVE define indicating support for read-only preference SPI.
+
+        * wtf/PlatformHave.h:
+
+2020-06-04  Tim Horton  <timothy_horton@apple.com>
+
+        Work around broken system version macro
+        https://bugs.webkit.org/show_bug.cgi?id=212726
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2020-06-04  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Re-enable content filtering in the simulator build
+        https://bugs.webkit.org/show_bug.cgi?id=212711
+        <rdar://problem/63938350>
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/PlatformHave.h:
+
+2020-06-03  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add new values for -apple-pay-button-type
+        https://bugs.webkit.org/show_bug.cgi?id=212684
+        <rdar://problem/63908535>
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/PlatformEnableCocoa.h:
+
 2020-06-01  Simon Fraser  <simon.fraser@apple.com>
 
         Add ENABLE(WHEEL_EVENT_REGIONS), enabled on macOS which is the only platform that needs wheel event regions for scrolling thread hit-testing

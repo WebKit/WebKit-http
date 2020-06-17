@@ -388,7 +388,7 @@ public:
 {
 #if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
-    RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMain();
     bool attachmentElementEnabled = MacApplication::isAppleMail();
     bool webSQLEnabled = false;
 #else
@@ -615,7 +615,7 @@ public:
         @NO, WebKitPictureInPictureAPIEnabledKey,
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
         @NO, WebKitGenericCueAPIEnabledKey,
 #endif
 

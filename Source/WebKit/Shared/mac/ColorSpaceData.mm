@@ -29,6 +29,7 @@
 #import "ArgumentCodersCF.h"
 #import "Decoder.h"
 #import "Encoder.h"
+#import <wtf/EnumTraits.h>
 
 namespace WebKit {
 
@@ -43,27 +44,27 @@ void ColorSpaceData::encode(IPC::Encoder& encoder) const
     if (cgColorSpace) {
         // Try to encode the name.
         if (RetainPtr<CFStringRef> name = adoptCF(CGColorSpaceCopyName(cgColorSpace.get()))) {
-            encoder.encodeEnum(Name);
+            encoder << Name;
             IPC::encode(encoder, name.get());
             return;
         }
 
         // Failing that, just encode the ICC data.
         if (RetainPtr<CFDataRef> profileData = adoptCF(CGColorSpaceCopyICCData(cgColorSpace.get()))) {
-            encoder.encodeEnum(Data);
+            encoder << Data;
             IPC::encode(encoder, profileData.get());
             return;
         }
     }
 
     // The color space was null or failed to be encoded.
-    encoder.encodeEnum(Null);
+    encoder << Null;
 }
 
 bool ColorSpaceData::decode(IPC::Decoder& decoder, ColorSpaceData& colorSpaceData)
 {
     EncodedDataType dataType;
-    if (!decoder.decodeEnum(dataType))
+    if (!decoder.decode(dataType))
         return false;
 
     switch (dataType) {
@@ -93,3 +94,16 @@ bool ColorSpaceData::decode(IPC::Decoder& decoder, ColorSpaceData& colorSpaceDat
 }
 
 } // namespace WebKit
+
+namespace WTF {
+
+template<> struct EnumTraits<WebKit::EncodedDataType> {
+    using values = EnumValues<
+        WebKit::EncodedDataType,
+        WebKit::EncodedDataType::Null,
+        WebKit::EncodedDataType::Name,
+        WebKit::EncodedDataType::Data
+    >;
+};
+
+} // namespace WTF

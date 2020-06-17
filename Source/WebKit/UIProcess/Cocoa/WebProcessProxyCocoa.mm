@@ -38,6 +38,7 @@
 #import <sys/sysctl.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/Scope.h>
+#import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/spi/darwin/SandboxSPI.h>
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -246,5 +247,11 @@ void WebProcessProxy::unblockPreferenceServiceIfNeeded()
     m_hasSentMessageToUnblockPreferenceService = true;
 }
 #endif
+
+Vector<String> WebProcessProxy::platformOverrideLanguages() const
+{
+    static const NeverDestroyed<Vector<String>> overrideLanguages = makeVector<String>([[NSUserDefaults standardUserDefaults] valueForKey:@"AppleLanguages"]);
+    return overrideLanguages;
+}
 
 }

@@ -63,7 +63,7 @@ public:
     CMClockRef timebaseClock();
 
 protected:
-    CoreAudioCaptureSource(String&& deviceID, String&& label, String&& hashSalt, uint32_t persistentID);
+    CoreAudioCaptureSource(String&& deviceID, String&& label, String&& hashSalt, uint32_t persistentID, BaseAudioSharedUnit* = nullptr);
     virtual ~CoreAudioCaptureSource();
     BaseAudioSharedUnit& unit();
     const BaseAudioSharedUnit& unit() const;
@@ -78,6 +78,7 @@ private:
     void stopProducingData() final;
 
     void delaySamples(Seconds) final;
+    void setInterruptedForTesting(bool) final;
 
     Optional<Vector<int>> discreteSampleRates() const final { return { { 8000, 16000, 32000, 44100, 48000, 96000 } }; }
 

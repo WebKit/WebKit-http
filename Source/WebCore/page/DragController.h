@@ -59,9 +59,9 @@ public:
 
     static DragOperation platformGenericDragOperation();
 
-    WEBCORE_EXPORT DragOperation dragEntered(const DragData&);
+    WEBCORE_EXPORT Optional<DragOperation> dragEntered(const DragData&);
     WEBCORE_EXPORT void dragExited(const DragData&);
-    WEBCORE_EXPORT DragOperation dragUpdated(const DragData&);
+    WEBCORE_EXPORT Optional<DragOperation> dragUpdated(const DragData&);
     WEBCORE_EXPORT bool performDragOperation(const DragData&);
     WEBCORE_EXPORT void dragCancelled();
 
@@ -72,16 +72,16 @@ public:
     // drag logic is in WebCore.
     void setDidInitiateDrag(bool initiated) { m_didInitiateDrag = initiated; }
     bool didInitiateDrag() const { return m_didInitiateDrag; }
-    DragOperation sourceDragOperation() const { return m_sourceDragOperation; }
+    OptionSet<DragOperation> sourceDragOperationMask() const { return m_sourceDragOperationMask; }
     const URL& draggingImageURL() const { return m_draggingImageURL; }
     void setDragOffset(const IntPoint& offset) { m_dragOffset = offset; }
     const IntPoint& dragOffset() const { return m_dragOffset; }
-    DragSourceAction dragSourceAction() const { return m_dragSourceAction; }
+    OptionSet<DragSourceAction> dragSourceAction() const { return m_dragSourceAction; }
     DragHandlingMethod dragHandlingMethod() const { return m_dragHandlingMethod; }
 
     Document* documentUnderMouse() const { return m_documentUnderMouse.get(); }
     OptionSet<DragDestinationAction> dragDestinationActionMask() const { return m_dragDestinationActionMask; }
-    DragSourceAction delegateDragSourceAction(const IntPoint& rootViewPoint);
+    OptionSet<DragSourceAction> delegateDragSourceAction(const IntPoint& rootViewPoint);
 
     Element* draggableElement(const Frame*, Element* start, const IntPoint&, DragState&) const;
     WEBCORE_EXPORT void dragEnded();
@@ -94,8 +94,8 @@ public:
     WEBCORE_EXPORT void finalizeDroppedImagePlaceholder(HTMLImageElement&);
     WEBCORE_EXPORT void insertDroppedImagePlaceholdersAtCaret(const Vector<IntSize>& imageSizes);
 
-    void prepareForDragStart(Frame& sourceFrame, DragSourceAction, Element& sourceElement, DataTransfer&, const IntPoint& dragOrigin) const;
-    bool startDrag(Frame& src, const DragState&, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin, HasNonDefaultPasteboardData);
+    void prepareForDragStart(Frame& sourceFrame, OptionSet<DragSourceAction>, Element& sourceElement, DataTransfer&, const IntPoint& dragOrigin) const;
+    bool startDrag(Frame& src, const DragState&, OptionSet<DragOperation>, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin, HasNonDefaultPasteboardData);
     static const IntSize& maxDragImageSize();
 
     static const int MaxOriginalImageArea;
@@ -108,11 +108,11 @@ private:
     bool dispatchTextInputEventFor(Frame*, const DragData&);
     bool canProcessDrag(const DragData&);
     bool concludeEditDrag(const DragData&);
-    DragOperation dragEnteredOrUpdated(const DragData&);
-    DragOperation operationForLoad(const DragData&);
-    DragHandlingMethod tryDocumentDrag(const DragData&, OptionSet<DragDestinationAction>, DragOperation&);
-    bool tryDHTMLDrag(const DragData&, DragOperation&);
-    DragOperation dragOperation(const DragData&);
+    Optional<DragOperation> dragEnteredOrUpdated(const DragData&);
+    Optional<DragOperation> operationForLoad(const DragData&);
+    DragHandlingMethod tryDocumentDrag(const DragData&, OptionSet<DragDestinationAction>, Optional<DragOperation>&);
+    bool tryDHTMLDrag(const DragData&, Optional<DragOperation>&);
+    Optional<DragOperation> dragOperation(const DragData&);
     void clearDragCaret();
     bool dragIsMove(FrameSelection&, const DragData&);
     bool isCopyKeyDown(const DragData&);
@@ -154,9 +154,9 @@ private:
     DragHandlingMethod m_dragHandlingMethod { DragHandlingMethod::None };
 
     OptionSet<DragDestinationAction> m_dragDestinationActionMask;
-    DragSourceAction m_dragSourceAction { DragSourceActionNone };
+    OptionSet<DragSourceAction> m_dragSourceAction;
     bool m_didInitiateDrag { false };
-    DragOperation m_sourceDragOperation { DragOperationNone }; // Set in startDrag when a drag starts from a mouse down within WebKit
+    OptionSet<DragOperation> m_sourceDragOperationMask; // Set in startDrag when a drag starts from a mouse down within WebKit.
     IntPoint m_dragOffset;
     URL m_draggingImageURL;
     bool m_isPerformingDrop { false };

@@ -220,7 +220,12 @@ shouldBe(JSON.stringify(Intl.NumberFormat.supportedLocalesOf({ length: 4, 1: 'en
 // Deduplicates tags.
 shouldBe(JSON.stringify(Intl.NumberFormat.supportedLocalesOf([ 'en', 'pt', 'en', 'es' ])), '["en","pt","es"]');
 // Canonicalizes tags.
-shouldBe(JSON.stringify(Intl.NumberFormat.supportedLocalesOf('En-laTn-us-variAnt-fOObar-1abc-U-kn-tRue-A-aa-aaa-x-RESERVED')), '["en-Latn-US-variant-foobar-1abc-a-aa-aaa-u-kn-true-x-reserved"]');
+shouldBe(
+    JSON.stringify(Intl.NumberFormat.supportedLocalesOf('En-laTn-us-variAnt-fOObar-1abc-U-kn-tRue-A-aa-aaa-x-RESERVED')),
+    $vm.icuVersion() >= 67
+        ? '["en-Latn-US-1abc-foobar-variant-a-aa-aaa-u-kn-x-reserved"]'
+        : '["en-Latn-US-variant-foobar-1abc-a-aa-aaa-u-kn-true-x-reserved"]'
+);
 // Replaces outdated tags.
 shouldBe(JSON.stringify(Intl.NumberFormat.supportedLocalesOf('no-bok')), '["nb"]');
 // Doesn't throw, but ignores private tags.
@@ -277,9 +282,9 @@ shouldBe(Object.getPrototypeOf(Intl.NumberFormat.prototype), Object.prototype);
 shouldBe(Intl.NumberFormat.prototype.constructor, Intl.NumberFormat);
 
 // 11.4.2 Intl.NumberFormat.prototype [ @@toStringTag ]
-// The initial value of the @@toStringTag property is the string value Object.
-shouldBe(Intl.NumberFormat.prototype[Symbol.toStringTag], 'Object');
-shouldBe(Object.prototype.toString.call(Intl.NumberFormat.prototype), '[object Object]');
+// The initial value of the @@toStringTag property is the string value "Intl.NumberFormat".
+shouldBe(Intl.NumberFormat.prototype[Symbol.toStringTag], 'Intl.NumberFormat');
+shouldBe(Object.prototype.toString.call(Intl.NumberFormat.prototype), '[object Intl.NumberFormat]');
 // This property has the attributes { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }.
 shouldBe(Object.getOwnPropertyDescriptor(Intl.NumberFormat.prototype, Symbol.toStringTag).writable, false);
 shouldBe(Object.getOwnPropertyDescriptor(Intl.NumberFormat.prototype, Symbol.toStringTag).enumerable, false);

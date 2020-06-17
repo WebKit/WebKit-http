@@ -66,6 +66,7 @@
 #include "TypedArrayInlines.h"
 #include "VMInspector.h"
 #include "WasmCapabilities.h"
+#include "WasmFaultSignalHandler.h"
 #include "WasmMemory.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,6 +84,7 @@
 #include <wtf/URL.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/threads/Signals.h>
 
 #if OS(WINDOWS)
 #include <direct.h>
@@ -103,10 +105,6 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #undef Function
-#endif
-
-#if HAVE(SIGNAL_H)
-#include <signal.h>
 #endif
 
 #if COMPILER(MSVC)
@@ -2890,8 +2888,8 @@ static NO_RETURN void printUsageStatement(bool help = false)
     fprintf(stderr, "  -h|--help  Prints this help message\n");
     fprintf(stderr, "  -i         Enables interactive mode (default if no files are specified)\n");
     fprintf(stderr, "  -m         Execute as a module\n");
-#if HAVE(SIGNAL_H)
-    fprintf(stderr, "  -s         Installs signal handlers that exit on a crash (Unix platforms only)\n");
+#if OS(UNIX)
+    fprintf(stderr, "  -s         Installs signal handlers that exit on a crash (Unix platforms only, lldb will not work with this option) \n");
 #endif
     fprintf(stderr, "  -p <file>  Outputs profiling data to a file\n");
     fprintf(stderr, "  -x         Output exit code before terminating\n");
@@ -2927,6 +2925,7 @@ static bool isMJSFile(char *filename)
 
 void CommandLine::parseArguments(int argc, char** argv)
 {
+    Options::AllowUnfinalizedAccessScope scope;
     Options::initialize();
     
     if (Options::dumpOptions()) {
@@ -2982,11 +2981,28 @@ void CommandLine::parseArguments(int argc, char** argv)
             continue;
         }
         if (!strcmp(arg, "-s")) {
-#if HAVE(SIGNAL_H)
-            signal(SIGILL, _exit);
-            signal(SIGFPE, _exit);
-            signal(SIGBUS, _exit);
-            signal(SIGSEGV, _exit);
+#if OS(UNIX)
+            SignalAction (*exit)(Signal, SigInfo&, PlatformRegisters&) = [] (Signal, SigInfo&, PlatformRegisters&) {
+                dataLogLn("Signal handler hit. Exiting with status 0");
+                _exit(0);
+                return SignalAction::ForceDefault;
+            };
+
+            addSignalHandler(Signal::IllegalInstruction, SignalHandler(exit));
+            addSignalHandler(Signal::AccessFault, SignalHandler(exit));
+            addSignalHandler(Signal::FloatingPoint, SignalHandler(exit));
+            // once we do this lldb won't work anymore because we will exit on any breakpoints it sets.
+            addSignalHandler(Signal::Breakpoint, SignalHandler(exit));
+
+            activateSignalHandlersFor(Signal::IllegalInstruction);
+            activateSignalHandlersFor(Signal::AccessFault);
+            activateSignalHandlersFor(Signal::FloatingPoint);
+            activateSignalHandlersFor(Signal::Breakpoint);
+
+#if !OS(DARWIN)
+            addSignalHandler(Signal::Abort, SignalHandler(exit));
+            activateSignalHandlersFor(Signal::Abort);
+#endif
 #endif
             continue;
         }
@@ -3118,6 +3134,10 @@ int runJSC(const CommandLine& options, bool isWorker, const Func& func)
     Worker worker(Workers::singleton());
     
     VM& vm = VM::create(LargeHeap).leakRef();
+#if ENABLE(WEBASSEMBLY)
+    Wasm::enableFastMemory();
+#endif
+
     int result;
     bool success = true;
     GlobalObject* globalObject = nullptr;
@@ -3222,9 +3242,12 @@ int jscmain(int argc, char** argv)
     // comes first.
     CommandLine options(argc, argv);
 
-    processConfigFile(Options::configFile(), "jsc");
-    if (options.m_dump)
-        JSC::Options::dumpGeneratedBytecodes() = true;
+    {
+        Options::AllowUnfinalizedAccessScope scope;
+        processConfigFile(Options::configFile(), "jsc");
+        if (options.m_dump)
+            Options::dumpGeneratedBytecodes() = true;
+    }
 
     // Initialize JSC before getting VM.
     JSC::initializeThreading();

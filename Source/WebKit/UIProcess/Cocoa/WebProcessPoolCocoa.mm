@@ -217,13 +217,13 @@ static const Vector<String>& mediaRelatedMachServices()
     ASSERT(isMainThread());
     static const auto services = makeNeverDestroyed(Vector<String> {
         "com.apple.audio.AudioComponentPrefs", "com.apple.audio.AudioComponentRegistrar",
-        "com.apple.audio.AudioQueueServer", "com.apple.coremedia.endpoint.xpc",
+        "com.apple.audio.AudioQueueServer", "com.apple.audio.toolbox.reporting.service", "com.apple.coremedia.endpoint.xpc",
         "com.apple.coremedia.routediscoverer.xpc", "com.apple.coremedia.routingcontext.xpc",
         "com.apple.coremedia.volumecontroller.xpc", "com.apple.accessibility.mediaaccessibilityd",
         "com.apple.mediaremoted.xpc",
 #if PLATFORM(IOS_FAMILY)
         "com.apple.audio.AudioSession", "com.apple.MediaPlayer.RemotePlayerService",
-        "com.apple.audio.toolbox.reporting.service", "com.apple.coremedia.admin",
+        "com.apple.coremedia.admin",
         "com.apple.coremedia.asset.xpc", "com.apple.coremedia.assetimagegenerator.xpc",
         "com.apple.coremedia.audiodeviceclock.xpc", "com.apple.coremedia.audioprocessingtap.xpc",
         "com.apple.coremedia.capturesession", "com.apple.coremedia.capturesource",
@@ -262,6 +262,16 @@ static const Vector<String>& nonBrowserServices()
     return services;
 }
 
+static const Vector<String>& diagnosticServices()
+{
+    ASSERT(isMainThread());
+    static const auto services = makeNeverDestroyed(Vector<String> {
+        "com.apple.diagnosticd",
+        "com.apple.osanalytics.osanalyticshelper"
+    });
+    return services;
+}
+
 static const Vector<String>& agxCompilerClasses()
 {
     ASSERT(isMainThread());
@@ -279,6 +289,7 @@ static const Vector<String>& agxCompilerClasses()
     });
     return iokitClasses;
 }
+
 #endif
 
 void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process, WebProcessCreationParameters& parameters)
@@ -389,15 +400,8 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     if (!WebCore::IOSApplication::isMobileSafari())
         parameters.dynamicMachExtensionHandles = SandboxExtension::createHandlesForMachLookup(nonBrowserServices(), WTF::nullopt);
     
-    if (isInternalInstall()) {
-        SandboxExtension::Handle diagnosticsExtensionHandle;
-        SandboxExtension::createHandleForMachLookup("com.apple.diagnosticd", WTF::nullopt, diagnosticsExtensionHandle, SandboxExtension::Flags::NoReport);
-        parameters.diagnosticsExtensionHandle = WTFMove(diagnosticsExtensionHandle);
-    }
-
-    SandboxExtension::Handle runningboardExtensionHandle;
-    if (SandboxExtension::createHandleForMachLookup("com.apple.runningboard", WTF::nullopt, runningboardExtensionHandle, SandboxExtension::Flags::NoReport))
-        parameters.runningboardExtensionHandle = WTFMove(runningboardExtensionHandle);
+    if (isInternalInstall())
+        parameters.diagnosticsExtensionHandles = SandboxExtension::createHandlesForMachLookup(diagnosticServices(), WTF::nullopt, SandboxExtension::Flags::NoReport);
 
     if (WebCore::deviceHasAGXCompilerService())
         parameters.dynamicIOKitExtensionHandles = SandboxExtension::createHandlesForIOKitClassExtensions(agxCompilerClasses(), WTF::nullopt);
@@ -461,6 +465,14 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
     if (!_MGCacheValid())
         [adoptNS([[objc_getClass("MobileGestaltHelperProxy") alloc] init]) proxyRebuildCache];
+#endif
+
+#if PLATFORM(IOS_FAMILY) && ENABLE(CFPREFS_DIRECT_MODE)
+    if ([UIApplication sharedApplication]) {
+        auto state = [[UIApplication sharedApplication] applicationState];
+        if (state == UIApplicationStateActive)
+            startObservingPreferenceChanges();
+    }
 #endif
 }
 

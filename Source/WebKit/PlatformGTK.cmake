@@ -138,8 +138,10 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebView.h
     ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebViewSessionState.h
     ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebsiteData.h
+    ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebsiteDataAccessPermissionRequest.h
     ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebsiteDataManager.h
     ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWindowProperties.h
+    ${WEBKIT_DIR}/UIProcess/API/gtk/WebKitWebsitePolicies.h
     ${WEBKIT_DIR}/UIProcess/API/gtk/webkit2.h
 )
 

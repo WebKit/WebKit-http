@@ -328,6 +328,9 @@ enum CompositingPolicy {
     // Like Element.scrollTo(), but without constaints, for testing rubber-banding.
     [MayThrowException] void unconstrainedScrollTo(Element element, unrestricted double x, unrestricted double y);
 
+    // Scrolls the element by the given delta, approximating the async wheel event handling code path where available.
+    [MayThrowException] void scrollBySimulatingWheelEvent(Element element, unrestricted double deltaX, unrestricted double deltaY);
+
     [MayThrowException] DOMRect layoutViewportRect();
     [MayThrowException] DOMRect visualViewportRect();
 
@@ -631,12 +634,12 @@ enum CompositingPolicy {
 
     DOMString getImageSourceURL(Element element);
 
-    [Conditional=VIDEO_TRACK, MayThrowException] DOMString captionsStyleSheetOverride();
-    [Conditional=VIDEO_TRACK, MayThrowException] void setCaptionsStyleSheetOverride(DOMString override);
-    [Conditional=VIDEO_TRACK, MayThrowException] void setPrimaryAudioTrackLanguageOverride(DOMString language);
-    [Conditional=VIDEO_TRACK, MayThrowException] void setCaptionDisplayMode(DOMString mode);
-    [Conditional=VIDEO_TRACK] TextTrackCueGeneric createGenericCue(double startTime, double endTime, DOMString text);
-    [Conditional=VIDEO_TRACK, MayThrowException] DOMString textTrackBCP47Language(TextTrack track);
+    [Conditional=VIDEO, MayThrowException] DOMString captionsStyleSheetOverride();
+    [Conditional=VIDEO, MayThrowException] void setCaptionsStyleSheetOverride(DOMString override);
+    [Conditional=VIDEO, MayThrowException] void setPrimaryAudioTrackLanguageOverride(DOMString language);
+    [Conditional=VIDEO, MayThrowException] void setCaptionDisplayMode(DOMString mode);
+    [Conditional=VIDEO] TextTrackCueGeneric createGenericCue(double startTime, double endTime, DOMString text);
+    [Conditional=VIDEO, MayThrowException] DOMString textTrackBCP47Language(TextTrack track);
 
     [Conditional=VIDEO] TimeRanges createTimeRanges(Float32Array startTimes, Float32Array
      endTimes);
@@ -784,6 +787,8 @@ enum CompositingPolicy {
     [Conditional=MEDIA_STREAM] void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] void setMediaStreamTrackIdentifier(MediaStreamTrack track, DOMString identifier);
     [Conditional=MEDIA_STREAM] void setMediaStreamSourceInterrupted(MediaStreamTrack track, boolean interrupted);
+    [Conditional=MEDIA_STREAM] boolean isMediaStreamSourceInterrupted(MediaStreamTrack track);
+    [Conditional=MEDIA_STREAM] boolean isMediaStreamSourceEnded(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] boolean isMockRealtimeMediaSourceCenterEnabled();
     [Conditional=MEDIA_STREAM] boolean shouldAudioTrackPlay(AudioTrack track);
 
@@ -913,4 +918,7 @@ enum CompositingPolicy {
     boolean destroySleepDisabler(unsigned long identifier);
 
     [Conditional=WEBXR, MayThrowException] readonly attribute WebXRTest xrTest;
+
+    [Conditional=ENCRYPTED_MEDIA] unsigned long mediaKeysInternalInstanceObjectRefCount(MediaKeys mediaKeys);
+    [Conditional=ENCRYPTED_MEDIA] unsigned long mediaKeySessionInternalInstanceSessionObjectRefCount(MediaKeySession session);
 };

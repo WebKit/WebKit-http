@@ -34,6 +34,7 @@
 #import "CDMInstanceFairPlayStreamingAVFObjC.h"
 #import "CDMSessionAVContentKeySession.h"
 #import "CDMSessionMediaSourceAVFObjC.h"
+#import "FourCC.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import "Logging.h"
 #import "MediaDescription.h"
@@ -416,7 +417,7 @@ private:
             CFStringRef originalFormatKey = PAL::canLoad_CoreMedia_kCMFormatDescriptionExtension_ProtectedContentOriginalFormat() ? PAL::get_CoreMedia_kCMFormatDescriptionExtension_ProtectedContentOriginalFormat() : CFSTR("CommonEncryptionOriginalFormat");
             CFTypeRef originalFormat = CMFormatDescriptionGetExtension(description, originalFormatKey);
             if (originalFormat && CFGetTypeID(originalFormat) == CFNumberGetTypeID())
-                CFNumberGetValue((CFNumberRef)originalFormat, kCFNumberLongType, &codec);
+                CFNumberGetValue((CFNumberRef)originalFormat, kCFNumberSInt32Type, &codec);
             m_codec = AtomString(reinterpret_cast<LChar*>(&codec), 4);
         }
     }
@@ -1127,8 +1128,24 @@ void SourceBufferPrivateAVFObjC::enqueueSample(Ref<MediaSample>&& sample, const 
     auto logSiteIdentifier = LOGIDENTIFIER;
     DEBUG_LOG(logSiteIdentifier, "track ID = ", trackID, ", sample = ", sample.get());
 
+    CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(platformSample.sample.cmSampleBuffer);
+    ASSERT(formatDescription);
+    if (!formatDescription) {
+        ERROR_LOG(logSiteIdentifier, "Received sample with a null formatDescription. Bailing.");
+        return;
+    }
+    auto mediaType = CMFormatDescriptionGetMediaType(formatDescription);
+
     if (trackID == m_enabledVideoTrackID) {
-        CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(platformSample.sample.cmSampleBuffer);
+        // AVSampleBufferDisplayLayer will throw an un-documented exception if passed a sample
+        // whose media type is not kCMMediaType_Video. This condition is exceptional; we should
+        // never enqueue a non-video sample in a AVSampleBufferDisplayLayer.
+        ASSERT(mediaType == kCMMediaType_Video);
+        if (mediaType != kCMMediaType_Video) {
+            ERROR_LOG(logSiteIdentifier, "Expected sample of type '", FourCC(kCMMediaType_Video), "', got '", FourCC(mediaType), "'. Bailing.");
+            return;
+        }
+
         FloatSize formatSize = FloatSize(CMVideoFormatDescriptionGetPresentationDimensions(formatDescription, true, true));
         if (!m_cachedSize || formatSize != m_cachedSize.value()) {
             DEBUG_LOG(logSiteIdentifier, "size changed to ", formatSize);
@@ -1186,6 +1203,15 @@ void SourceBufferPrivateAVFObjC::enqueueSample(Ref<MediaSample>&& sample, const 
             [m_displayLayer enqueueSampleBuffer:platformSample.sample.cmSampleBuffer];
 
     } else {
+        // AVSampleBufferAudioRenderer will throw an un-documented exception if passed a sample
+        // whose media type is not kCMMediaType_Audio. This condition is exceptional; we should
+        // never enqueue a non-video sample in a AVSampleBufferAudioRenderer.
+        ASSERT(mediaType == kCMMediaType_Audio);
+        if (mediaType != kCMMediaType_Audio) {
+            ERROR_LOG(logSiteIdentifier, "Expected sample of type '", FourCC(kCMMediaType_Audio), "', got '", FourCC(mediaType), "'. Bailing.");
+            return;
+        }
+
         auto renderer = m_audioRenderers.get(trackID);
         [renderer enqueueSampleBuffer:platformSample.sample.cmSampleBuffer];
         if (m_mediaSource && !sample->isNonDisplaying())

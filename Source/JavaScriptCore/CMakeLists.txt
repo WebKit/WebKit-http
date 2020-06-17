@@ -540,6 +540,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/Operands.h
     bytecode/PropertyCondition.h
     bytecode/PutByIdFlags.h
+    bytecode/PutByValFlags.h
     bytecode/SpeculatedType.h
     bytecode/StructureSet.h
     bytecode/SuperSampler.h
@@ -562,8 +563,10 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     debugger/DebuggerParseData.h
     debugger/DebuggerPrimitives.h
 
+    dfg/DFGCodeOriginPool.h
     dfg/DFGCommon.h
     dfg/DFGCompilationMode.h
+    dfg/DFGDoesGCCheck.h
     dfg/DFGMinifiedID.h
 
     domjit/DOMJITAbstractHeap.h
@@ -1408,6 +1411,12 @@ endif ()
 
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
 add_dependencies(JavaScriptCore stageSharedScripts ${JavaScriptCore_EXTRA_DEPENDENCIES})
+
+# JavaScriptCore target needs to have a direct or indirect dependency
+# of InspectorBackendCommands for CMake Visual Studio generator to
+# eliminate duplicated custom commands. Otherwise,
+# CombinedDomains.json will be generated in both projects.
+add_dependencies(JavaScriptCore InspectorBackendCommands)
 
 if (USE_VERSION_STAMPER)
     add_custom_command(

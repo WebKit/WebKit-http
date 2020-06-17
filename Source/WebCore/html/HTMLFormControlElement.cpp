@@ -115,7 +115,7 @@ String HTMLFormControlElement::formAction() const
     const AtomString& value = attributeWithoutSynchronization(formactionAttr);
     if (value.isEmpty())
         return document().url().string();
-    return getURLAttribute(formactionAttr).string();
+    return document().completeURL(stripLeadingAndTrailingHTMLSpaces(value)).string();
 }
 
 void HTMLFormControlElement::setFormAction(const AtomString& value)
@@ -633,7 +633,7 @@ bool HTMLFormControlElement::shouldAutocorrect() const
 AutocapitalizeType HTMLFormControlElement::autocapitalizeType() const
 {
     AutocapitalizeType type = HTMLElement::autocapitalizeType();
-    if (type == AutocapitalizeTypeDefault) {
+    if (type == AutocapitalizeType::Default) {
         if (RefPtr<HTMLFormElement> form = this->form())
             return form->autocapitalizeType();
     }

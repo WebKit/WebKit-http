@@ -39,11 +39,13 @@
 #include "WebInspectorInterruptDispatcher.h"
 #include "WebPageProxyIdentifier.h"
 #include "WebProcessCreationParameters.h"
+#include "WebSQLiteDatabaseTracker.h"
 #include "WebSocketChannelManager.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/FrameIdentifier.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PageIdentifier.h>
+#include <WebCore/PluginData.h>
 #include <WebCore/RegistrableDomain.h>
 #include <WebCore/ServiceWorkerTypes.h>
 #include <WebCore/Timer.h>
@@ -175,8 +177,8 @@ public:
     bool shouldPlugInAutoStartFromOrigin(WebPage&, const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
     void plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
     void plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
-    void setPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString);
-    void resetPluginLoadClientPolicies(const HashMap<String, HashMap<String, HashMap<String, uint8_t>>>&);
+    void setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy, const String& host, const String& bundleIdentifier, const String& versionString);
+    void resetPluginLoadClientPolicies(const HashMap<String, HashMap<String, HashMap<String, WebCore::PluginLoadClientPolicy>>>&);
     void clearPluginClientPolicies();
     void refreshPlugins();
 
@@ -375,7 +377,7 @@ private:
     void clearResourceLoadStatistics();
     void flushResourceLoadStatistics();
     void seedResourceLoadStatisticsForTesting(const WebCore::RegistrableDomain& firstPartyDomain, const WebCore::RegistrableDomain& thirdPartyDomain, bool shouldScheduleNotification, CompletionHandler<void()>&&);
-    void userPreferredLanguagesChanged(const Vector<String>&) const;
+    void userPreferredLanguagesChanged() const;
     void fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled);
 
     bool isPlugInAutoStartOriginHash(unsigned plugInOriginHash);
@@ -578,7 +580,7 @@ private:
     RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
 
 #if PLATFORM(IOS_FAMILY)
-    std::unique_ptr<ProcessAssertion> m_uiProcessDependencyProcessAssertion;
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
 #endif
 
     bool m_suppressMemoryPressureHandler { false };

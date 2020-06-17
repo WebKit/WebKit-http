@@ -126,7 +126,7 @@ public:
     bool isOpaque() const { return isExtended() ? asExtended().alpha() == 1.0 : asSimple().isOpaque(); }
     bool isVisible() const { return isExtended() ? asExtended().alpha() > 0.0 : asSimple().isVisible(); }
 
-    int alpha() const { return isExtended() ? asExtended().alpha() * 255 : asSimple().alphaComponent(); }
+    uint8_t alpha() const { return isExtended() ? convertToComponentByte(asExtended().alpha()) : asSimple().alphaComponent(); }
     float alphaAsFloat() const { return isExtended() ? asExtended().alpha() : asSimple().alphaComponentAsFloat(); }
 
     unsigned hash() const;
@@ -137,34 +137,36 @@ public:
     WEBCORE_EXPORT SimpleColor toSRGBASimpleColorLossy() const;
 
     // This will convert non-sRGB colorspace colors into sRGB.
-    WEBCORE_EXPORT ColorComponents<float> toSRGBAComponentsLossy() const;
+    WEBCORE_EXPORT SRGBA<float> toSRGBALossy() const;
 
-    Color light() const;
-    Color dark() const;
+    WEBCORE_EXPORT Color lightened() const;
+    WEBCORE_EXPORT Color darkened() const;
 
-    bool isDark() const;
+    WEBCORE_EXPORT float luminance() const;
+
+    // FIXME: Replace remaining uses with luminance.
+    WEBCORE_EXPORT bool isDark() const;
     WEBCORE_EXPORT float lightness() const;
 
     // This is an implementation of Porter-Duff's "source-over" equation
     Color blend(const Color&) const;
     Color blendWithWhite() const;
 
+    Color invertedColorWithAlpha(Optional<float> alpha) const;
     Color invertedColorWithAlpha(float alpha) const;
 
+    Color colorWithAlphaMultipliedBy(Optional<float>) const;
     Color colorWithAlphaMultipliedBy(float) const;
-    Color colorWithAlpha(float) const;
 
-    // FIXME: Remove the need for AlternativeRounding variants by settling on a rounding behavior.
-    Color colorWithAlphaMultipliedByUsingAlternativeRounding(Optional<float>) const;
-    Color colorWithAlphaMultipliedByUsingAlternativeRounding(float) const;
-    Color colorWithAlphaUsingAlternativeRounding(Optional<float>) const;
-    WEBCORE_EXPORT Color colorWithAlphaUsingAlternativeRounding(float) const;
+    Color colorWithAlpha(Optional<float>) const;
+    WEBCORE_EXPORT Color colorWithAlpha(float) const;
 
     Color opaqueColor() const { return colorWithAlpha(1.0f); }
+
     Color semanticColor() const;
 
     // True if the color originated from a CSS semantic color name.
-    bool isSemantic() const { return !isExtended() && (m_colorData.simpleColorAndFlags & isSemanticSimpleColorBit); }
+    bool isSemantic() const { return isSimple() && (m_colorData.simpleColorAndFlags & isSemanticSimpleColorBit); }
 
 #if PLATFORM(GTK)
     Color(const GdkRGBA&);
@@ -174,7 +176,6 @@ public:
 #if USE(CG)
     WEBCORE_EXPORT Color(CGColorRef);
     WEBCORE_EXPORT Color(CGColorRef, SemanticTag);
-    friend WEBCORE_EXPORT CGColorRef cachedCGColor(const Color&);
 #endif
 
 #if PLATFORM(HAIKU)
@@ -197,11 +198,11 @@ public:
     static constexpr SimpleColor cyan { 0xFF00FFFF };
     static constexpr SimpleColor yellow { 0xFFFFFF00 };
 
-    bool isExtended() const
-    {
-        return !(m_colorData.simpleColorAndFlags & invalidSimpleColor);
-    }
+    bool isExtended() const { return !(m_colorData.simpleColorAndFlags & invalidSimpleColor); }
+    bool isSimple() const { return !isExtended(); }
+
     const ExtendedColor& asExtended() const;
+    const SimpleColor asSimple() const;
 
     WEBCORE_EXPORT Color& operator=(const Color&);
     WEBCORE_EXPORT Color& operator=(Color&&);
@@ -210,7 +211,6 @@ public:
     friend bool operator==(const Color& a, const Color& b);
     friend bool equalIgnoringSemanticColor(const Color& a, const Color& b);
     friend bool extendedColorsEqual(const Color&, const Color&);
-    friend int differenceSquared(const Color&, const Color&);
 
     static bool isBlackColor(const Color&);
     static bool isWhiteColor(const Color&);
@@ -219,8 +219,6 @@ public:
     template<class Decoder> static Optional<Color> decode(Decoder&);
 
 private:
-    const SimpleColor asSimple() const;
-
     void setSimpleColor(SimpleColor);
 
     void tagAsSemantic() { m_colorData.simpleColorAndFlags |= isSemanticSimpleColorBit; }
@@ -252,8 +250,6 @@ bool extendedColorsEqual(const Color&, const Color&);
 
 Color blend(const Color& from, const Color& to, double progress);
 Color blendWithoutPremultiply(const Color& from, const Color& to, double progress);
-
-int differenceSquared(const Color&, const Color&);
 
 #if USE(CG)
 WEBCORE_EXPORT CGColorRef cachedCGColor(const Color&);
@@ -298,14 +294,24 @@ inline unsigned Color::hash() const
     return WTF::intHash(m_colorData.simpleColorAndFlags);
 }
 
-inline Color Color::colorWithAlphaMultipliedByUsingAlternativeRounding(Optional<float> alpha) const
+inline Color Color::invertedColorWithAlpha(Optional<float> alpha) const
 {
-    return alpha ? colorWithAlphaMultipliedByUsingAlternativeRounding(alpha.value()) : *this;
+    return alpha ? invertedColorWithAlpha(alpha.value()) : *this;
 }
 
-inline Color Color::colorWithAlphaUsingAlternativeRounding(Optional<float> alpha) const
+inline Color Color::colorWithAlphaMultipliedBy(float amount) const
 {
-    return alpha ? colorWithAlphaUsingAlternativeRounding(alpha.value()) : *this;
+    return colorWithAlpha(amount * alphaAsFloat());
+}
+
+inline Color Color::colorWithAlphaMultipliedBy(Optional<float> alpha) const
+{
+    return alpha ? colorWithAlphaMultipliedBy(alpha.value()) : *this;
+}
+
+inline Color Color::colorWithAlpha(Optional<float> alpha) const
+{
+    return alpha ? colorWithAlpha(alpha.value()) : *this;
 }
 
 inline const ExtendedColor& Color::asExtended() const
@@ -316,7 +322,7 @@ inline const ExtendedColor& Color::asExtended() const
 
 inline const SimpleColor Color::asSimple() const
 {
-    ASSERT(!isExtended());
+    ASSERT(isSimple());
     return { static_cast<uint32_t>(m_colorData.simpleColorAndFlags >> 32) };
 }
 

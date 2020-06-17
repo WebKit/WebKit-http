@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -119,8 +119,8 @@ void* CompleteSubspace::allocateSlow(VM& vm, size_t size, GCDeferralContext* def
 
 void* CompleteSubspace::tryAllocateSlow(VM& vm, size_t size, GCDeferralContext* deferralContext)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm.heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm.heap.verifyCanGC();
 
     sanitizeStackForVM(vm);
     
@@ -155,8 +155,8 @@ void* CompleteSubspace::tryAllocateSlow(VM& vm, size_t size, GCDeferralContext* 
 
 void* CompleteSubspace::reallocatePreciseAllocationNonVirtual(VM& vm, HeapCell* oldCell, size_t size, GCDeferralContext* deferralContext, AllocationFailureMode failureMode)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm.heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm.heap.verifyCanGC();
 
     // The following conditions are met in Butterfly for example.
     ASSERT(oldCell->isPreciseAllocation());

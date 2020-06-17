@@ -29,6 +29,7 @@
 #pragma once
 
 #include "SecurityOriginData.h"
+#include <wtf/EnumTraits.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -264,7 +265,7 @@ template<class Encoder> inline void SecurityOrigin::encode(Encoder& encoder) con
     encoder << m_universalAccess;
     encoder << m_domainWasSetInDOM;
     encoder << m_canLoadLocalResources;
-    encoder.encodeEnum(m_storageBlockingPolicy);
+    encoder << m_storageBlockingPolicy;
     encoder << m_enforcesFilePathSeparation;
     encoder << m_needsStorageAccessFromFileURLsQuirk;
     encoder << m_isPotentiallyTrustworthy;
@@ -292,7 +293,7 @@ template<class Decoder> inline RefPtr<SecurityOrigin> SecurityOrigin::decode(Dec
         return nullptr;
     if (!decoder.decode(origin->m_canLoadLocalResources))
         return nullptr;
-    if (!decoder.decodeEnum(origin->m_storageBlockingPolicy))
+    if (!decoder.decode(origin->m_storageBlockingPolicy))
         return nullptr;
     if (!decoder.decode(origin->m_enforcesFilePathSeparation))
         return nullptr;
@@ -307,3 +308,17 @@ template<class Decoder> inline RefPtr<SecurityOrigin> SecurityOrigin::decode(Dec
 }
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::SecurityOrigin::StorageBlockingPolicy> {
+    using values = EnumValues<
+        WebCore::SecurityOrigin::StorageBlockingPolicy,
+        WebCore::SecurityOrigin::StorageBlockingPolicy::AllowAllStorage,
+        WebCore::SecurityOrigin::StorageBlockingPolicy::BlockThirdPartyStorage,
+        WebCore::SecurityOrigin::StorageBlockingPolicy::BlockAllStorage
+    >;
+};
+
+
+} // namespace WTF

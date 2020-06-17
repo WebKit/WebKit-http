@@ -1087,12 +1087,12 @@ void WebPageProxy::didPerformDictionaryLookup(const DictionaryPopupInfo& diction
     pageClient().didPerformDictionaryLookup(dictionaryPopupInfo);
 }
 
-void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String&, const String&, const IPC::DataReference&, const String&)
+void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String&, FrameInfoData&&, const IPC::DataReference&, const String&)
 {
     notImplemented();
 }
 
-void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(const String&)
+void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(FrameInfoData&&, const String&)
 {
     notImplemented();
 }
@@ -1257,16 +1257,16 @@ void WebPageProxy::didHandleAdditionalDragItemsRequest(bool added)
     pageClient().didHandleAdditionalDragItemsRequest(added);
 }
 
-void WebPageProxy::requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions)
+void WebPageProxy::requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask)
 {
     if (hasRunningProcess())
-        m_process->send(Messages::WebPage::RequestDragStart(clientPosition, globalPosition, allowedActions), m_webPageID);
+        m_process->send(Messages::WebPage::RequestDragStart(clientPosition, globalPosition, allowedActionsMask), m_webPageID);
 }
 
-void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition, WebCore::DragSourceAction allowedActions)
+void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition, OptionSet<WebCore::DragSourceAction> allowedActionsMask)
 {
     if (hasRunningProcess())
-        m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition, allowedActions), m_webPageID);
+        m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition, allowedActionsMask), m_webPageID);
 }
 
 void WebPageProxy::insertDroppedImagePlaceholders(const Vector<IntSize>& imageSizes, CompletionHandler<void(const Vector<IntRect>&, Optional<WebCore::TextIndicatorData>)>&& completionHandler)
@@ -1598,6 +1598,44 @@ void WebPageProxy::willOpenAppLink()
         if (weakThis)
             weakThis->m_openingAppLinkActivity = nullptr;
     });
+}
+
+void WebPageProxy::processWillBecomeSuspended()
+{
+    if (!hasRunningProcess())
+        return;
+
+    m_hasNetworkRequestsOnSuspended = m_pageLoadState.networkRequestsInProgress();
+    if (m_hasNetworkRequestsOnSuspended)
+        setNetworkRequestsInProgress(false);
+}
+
+void WebPageProxy::processWillBecomeForeground()
+{
+    if (!hasRunningProcess())
+        return;
+
+    if (m_hasNetworkRequestsOnSuspended) {
+        setNetworkRequestsInProgress(true);
+        m_hasNetworkRequestsOnSuspended = false;
+    }
+}
+
+void WebPageProxy::isUserFacingChanged(bool isUserFacing)
+{
+#if PLATFORM(MACCATALYST)
+    if (!isUserFacing)
+        suspendAllMediaPlayback();
+    else
+        resumeAllMediaPlayback();
+#else
+    UNUSED_PARAM(isUserFacing);
+#endif
+}
+
+void WebPageProxy::isVisibleChanged(bool isVisible)
+{
+    UNUSED_PARAM(isVisible);
 }
 
 #if PLATFORM(IOS)

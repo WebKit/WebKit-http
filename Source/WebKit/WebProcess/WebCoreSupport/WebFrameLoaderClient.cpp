@@ -1523,7 +1523,8 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     IntSize sizeToContentAutoSizeMaximumSize = webPage->sizeToContentAutoSizeMaximumSize();
     if (sizeToContentAutoSizeMaximumSize.width() && sizeToContentAutoSizeMaximumSize.height()) {
-        view->enableSizeToContentAutoSizeMode(true, sizeToContentAutoSizeMaximumSize);
+        if (isMainFrame)
+            view->enableSizeToContentAutoSizeMode(true, sizeToContentAutoSizeMaximumSize);
 
         if (webPage->autoSizingShouldExpandToViewHeight())
             view->setAutoSizeFixedMinimumHeight(webPage->size().height());
@@ -1664,11 +1665,8 @@ RefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& plugi
 static bool pluginSupportsExtension(const PluginData& pluginData, const String& extension)
 {
     ASSERT(extension.convertToASCIILowercase() == extension);
-    Vector<MimeClassInfo> mimes;
-    Vector<size_t> mimePluginIndices;
-    pluginData.getWebVisibleMimesAndPluginIndices(mimes, mimePluginIndices);
-    for (auto& mimeClassInfo : mimes) {
-        if (mimeClassInfo.extensions.contains(extension))
+    for (auto& type : pluginData.webVisibleMimeTypes()) {
+        if (type.extensions.contains(extension))
             return true;
     }
     return false;

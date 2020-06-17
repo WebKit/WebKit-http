@@ -1004,9 +1004,9 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     HTMLPlugInImageElement& pluginImageElement = downcast<HTMLPlugInImageElement>(*pluginElement);
     unsigned pluginArea = 0;
-    PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot && !(plugInIsPrimarySize(pluginImageElement, pluginArea) && !plugInIntersectsSearchRect(pluginImageElement)) ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
+    PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot && !(plugInIsPrimarySize(pluginImageElement, pluginArea) && !plugInIntersectsSearchRect(pluginImageElement)) ? PluginProcessType::Snapshot : PluginProcessType::Normal;
 #else
-    PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
+    PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot ? PluginProcessType::Snapshot : PluginProcessType::Normal;
 #endif
 
     bool allowOnlyApplicationPlugins = !frame->coreFrame()->loader().arePluginsEnabled();
@@ -1015,7 +1015,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
     uint32_t pluginLoadPolicy;
     String unavailabilityDescription;
     bool isUnsupported;
-    if (!sendSync(Messages::WebPageProxy::FindPlugin(parameters.mimeType, static_cast<uint32_t>(processType), parameters.url.string(), frameURLString, pageURLString, allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription, isUnsupported)))
+    if (!sendSync(Messages::WebPageProxy::FindPlugin(parameters.mimeType, processType, parameters.url.string(), frameURLString, pageURLString, allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription, isUnsupported)))
         return nullptr;
 
     PluginModuleLoadPolicy loadPolicy = static_cast<PluginModuleLoadPolicy>(pluginLoadPolicy);
@@ -3632,6 +3632,7 @@ void WebPage::preferencesDidChange(const WebPreferencesStore& store)
 void WebPage::updatePreferences(const WebPreferencesStore& store)
 {
     updatePreferencesGenerated(store);
+    updateSettingsGenerated(store);
 
     Settings& settings = m_page->settings();
 
@@ -3944,22 +3945,22 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
 #if ENABLE(DRAG_SUPPORT)
 
 #if PLATFORM(GTK)
-void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t draggingSourceOperationMask, SelectionData&& selectionData, uint32_t flags)
+void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, OptionSet<DragOperation> draggingSourceOperationMask, SelectionData&& selectionData, uint32_t flags)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(WTF::nullopt, DragHandlingMethod::None, false, 0, { }, { }));
         return;
     }
 
-    DragData dragData(&selectionData, clientPosition, globalPosition, static_cast<DragOperation>(draggingSourceOperationMask), static_cast<DragApplicationFlags>(flags));
+    DragData dragData(&selectionData, clientPosition, globalPosition, draggingSourceOperationMask, static_cast<DragApplicationFlags>(flags));
     switch (action) {
     case DragControllerAction::Entered: {
-        DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
+        auto resolvedDragOperation = m_page->dragController().dragEntered(dragData);
         send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }, { }));
         return;
     }
     case DragControllerAction::Updated: {
-        DragOperation resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
+        auto resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
         send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }, { }));
         return;
     }
@@ -3978,24 +3979,24 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Int
 void WebPage::performDragControllerAction(DragControllerAction action, const WebCore::DragData& dragData, SandboxExtension::Handle&& sandboxExtensionHandle, SandboxExtension::HandleArray&& sandboxExtensionsHandleArray)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(WTF::nullopt, DragHandlingMethod::None, false, 0, { }, { }));
         return;
     }
 
     switch (action) {
     case DragControllerAction::Entered: {
-        DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
+        auto resolvedDragOperation = m_page->dragController().dragEntered(dragData);
         send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates(), m_page->dragCaretController().editableElementRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Updated: {
-        DragOperation resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
+        auto resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
         send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates(), m_page->dragCaretController().editableElementRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Exited:
         m_page->dragController().dragExited(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(WTF::nullopt, DragHandlingMethod::None, false, 0, { }, { }));
         return;
         
     case DragControllerAction::PerformDragOperation: {
@@ -4022,7 +4023,7 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Web
 }
 #endif
 
-void WebPage::dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t operation)
+void WebPage::dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, OptionSet<WebCore::DragOperation> dragOperationMask)
 {
     IntPoint adjustedClientPosition(clientPosition.x() + m_page->dragController().dragOffset().x(), clientPosition.y() + m_page->dragController().dragOffset().y());
     IntPoint adjustedGlobalPosition(globalPosition.x() + m_page->dragController().dragOffset().x(), globalPosition.y() + m_page->dragController().dragOffset().y());
@@ -4033,7 +4034,7 @@ void WebPage::dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint glob
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), 0, WebCore::NoTap);
-    m_page->mainFrame().eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
+    m_page->mainFrame().eventHandler().dragSourceEndedAt(event, dragOperationMask);
 
     send(Messages::WebPageProxy::DidEndDragging());
 
@@ -4239,19 +4240,20 @@ void WebPage::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<St
     if (!m_activeOpenPanelResultListener)
         return;
 
+#if HAVE(FRONTBOARD_SYSTEM_APP_SERVICES)
     auto frontboardServicesSandboxExtension = SandboxExtension::create(WTFMove(frontboardServicesSandboxExtensionHandle));
     if (frontboardServicesSandboxExtension) {
         bool consumed = frontboardServicesSandboxExtension->consume();
         ASSERT_UNUSED(consumed, consumed);
     }
+    RELEASE_ASSERT(!sandbox_check(getpid(), "mach-lookup", static_cast<enum sandbox_filter_type>(SANDBOX_FILTER_GLOBAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.frontboard.systemappservices"));
+#endif
 
     auto iconServicesSandboxExtension = SandboxExtension::create(WTFMove(iconServicesSandboxExtensionHandle));
     if (iconServicesSandboxExtension) {
         bool consumed = iconServicesSandboxExtension->consume();
         ASSERT_UNUSED(consumed, consumed);
     }
-
-    RELEASE_ASSERT(!sandbox_check(getpid(), "mach-lookup", static_cast<enum sandbox_filter_type>(SANDBOX_FILTER_GLOBAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.frontboard.systemappservices"));
     RELEASE_ASSERT(!sandbox_check(getpid(), "mach-lookup", static_cast<enum sandbox_filter_type>(SANDBOX_FILTER_GLOBAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.iconservices"));
 
     RefPtr<Icon> icon;
@@ -4265,10 +4267,12 @@ void WebPage::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<St
     m_activeOpenPanelResultListener->didChooseFilesWithDisplayStringAndIcon(files, displayString, icon.get());
     m_activeOpenPanelResultListener = nullptr;
 
+#if HAVE(FRONTBOARD_SYSTEM_APP_SERVICES)
     if (frontboardServicesSandboxExtension) {
         bool revoked = frontboardServicesSandboxExtension->revoke();
         ASSERT_UNUSED(revoked, revoked);
     }
+#endif
 
     if (iconServicesSandboxExtension) {
         bool revoked = iconServicesSandboxExtension->revoke();
@@ -5054,9 +5058,9 @@ void WebPage::savePDFToFileInDownloadsFolder(const String& suggestedFilename, co
 }
 
 #if PLATFORM(COCOA)
-void WebPage::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID)
+void WebPage::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, FrameInfoData&& frameInfo, const uint8_t* data, unsigned long size, const String& pdfUUID)
 {
-    send(Messages::WebPageProxy::SavePDFToTemporaryFolderAndOpenWithNativeApplication(suggestedFilename, originatingURLString, IPC::DataReference(data, size), pdfUUID));
+    send(Messages::WebPageProxy::SavePDFToTemporaryFolderAndOpenWithNativeApplication(suggestedFilename, frameInfo, IPC::DataReference(data, size), pdfUUID));
 }
 #endif
 
@@ -5302,7 +5306,7 @@ bool WebPage::canPluginHandleResponse(const ResourceResponse& response)
     String newMIMEType;
     String unavailabilityDescription;
     bool isUnsupported = false;
-    if (!sendSync(Messages::WebPageProxy::FindPlugin(response.mimeType(), PluginProcessTypeNormal, response.url().string(), response.url().string(), response.url().string(), allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription, isUnsupported)))
+    if (!sendSync(Messages::WebPageProxy::FindPlugin(response.mimeType(), PluginProcessType::Normal, response.url().string(), response.url().string(), response.url().string(), allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription, isUnsupported)))
         return false;
 
     ASSERT(!isUnsupported);

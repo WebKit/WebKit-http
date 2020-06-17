@@ -2588,6 +2588,8 @@ ScrollOffset RenderLayer::clampScrollOffset(const ScrollOffset& scrollOffset) co
 bool RenderLayer::requestScrollPositionUpdate(const ScrollPosition& position, ScrollType scrollType, ScrollClamping clamping)
 {
 #if ENABLE(ASYNC_SCROLLING)
+    LOG_WITH_STREAM(Scrolling, stream << *this << " requestScrollPositionUpdate " << position);
+
     if (ScrollingCoordinator* scrollingCoordinator = page().scrollingCoordinator())
         return scrollingCoordinator->requestScrollPositionUpdate(*this, position, scrollType, clamping);
 #endif
@@ -3741,6 +3743,11 @@ void RenderLayer::computeScrollDimensions()
     int scrollableTopOverflow = roundToInt(overflowTop() - box->borderTop());
     setScrollOrigin(IntPoint(-scrollableLeftOverflow, -scrollableTopOverflow));
     
+    computeHasCompositedScrollableOverflow();
+}
+
+void RenderLayer::computeHasCompositedScrollableOverflow()
+{
     m_hasCompositedScrollableOverflow = canUseCompositedScrolling() && (hasScrollableHorizontalOverflow() || hasScrollableVerticalOverflow());
 }
 
@@ -6673,11 +6680,16 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     // FIXME: RenderLayer already handles visibility changes through our visibility dirty bits. This logic could
     // likely be folded along with the rest.
     if (oldStyle) {
-        if (oldStyle->usedZIndex() != renderer().style().usedZIndex() || oldStyle->visibility() != renderer().style().visibility()) {
+        bool visibilityChanged = oldStyle->visibility() != renderer().style().visibility();
+        if (oldStyle->usedZIndex() != renderer().style().usedZIndex() || visibilityChanged) {
             dirtyStackingContextZOrderLists();
             if (isStackingContext())
                 dirtyZOrderLists();
         }
+
+        // Visibility is input to canUseCompositedScrolling().
+        if (visibilityChanged)
+            computeHasCompositedScrollableOverflow();
     }
 
     if (renderer().isHTMLMarquee() && renderer().style().marqueeBehavior() != MarqueeBehavior::None && renderer().isBox()) {

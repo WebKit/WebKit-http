@@ -89,6 +89,10 @@ public:
     friend class SmallStrings;
 
     typedef JSCell Base;
+    // Do we really need OverridesGetOwnPropertySlot?
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=212956
+    // Do we really need InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero?
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=212958
     static constexpr unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | StructureIsImmortal | OverridesToThis;
 
     static constexpr bool needsDestruction = true;
@@ -732,8 +736,8 @@ inline JSString* jsEmptyString(VM& vm)
 
 ALWAYS_INLINE JSString* jsSingleCharacterString(VM& vm, UChar c)
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm.heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm.heap.verifyCanGC();
     if (c <= maxSingleCharacterString)
         return vm.smallStrings.singleCharacterString(c);
     return JSString::create(vm, StringImpl::create(&c, 1));
@@ -762,8 +766,8 @@ ALWAYS_INLINE Identifier JSString::toIdentifier(JSGlobalObject* globalObject) co
 
 ALWAYS_INLINE AtomString JSString::toAtomString(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isRope())
         return static_cast<const JSRopeString*>(this)->resolveRopeToAtomString(globalObject);
     return AtomString(valueInternal());
@@ -771,8 +775,8 @@ ALWAYS_INLINE AtomString JSString::toAtomString(JSGlobalObject* globalObject) co
 
 ALWAYS_INLINE RefPtr<AtomStringImpl> JSString::toExistingAtomString(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isRope())
         return static_cast<const JSRopeString*>(this)->resolveRopeToExistingAtomString(globalObject);
     if (valueInternal().impl()->isAtom())
@@ -782,8 +786,8 @@ ALWAYS_INLINE RefPtr<AtomStringImpl> JSString::toExistingAtomString(JSGlobalObje
 
 inline const String& JSString::value(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isRope())
         return static_cast<const JSRopeString*>(this)->resolveRope(globalObject);
     return valueInternal();
@@ -792,8 +796,8 @@ inline const String& JSString::value(JSGlobalObject* globalObject) const
 inline const String& JSString::tryGetValue(bool allocationAllowed) const
 {
     if (allocationAllowed) {
-        if (validateDFGDoesGC)
-            RELEASE_ASSERT(vm().heap.expectDoesGC());
+        if constexpr (validateDFGDoesGC)
+            vm().heap.verifyCanGC();
         if (isRope()) {
             // Pass nullptr for the JSGlobalObject so that resolveRope does not throw in the event of an OOM error.
             return static_cast<const JSRopeString*>(this)->resolveRope(nullptr);
@@ -982,8 +986,8 @@ inline bool isJSString(JSValue v)
 
 ALWAYS_INLINE StringView JSRopeString::unsafeView(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isSubstring()) {
         auto& base = substringBase()->valueInternal();
         if (base.is8Bit())
@@ -995,8 +999,8 @@ ALWAYS_INLINE StringView JSRopeString::unsafeView(JSGlobalObject* globalObject) 
 
 ALWAYS_INLINE StringViewWithUnderlyingString JSRopeString::viewWithUnderlyingString(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isSubstring()) {
         auto& base = substringBase()->valueInternal();
         if (base.is8Bit())
@@ -1009,8 +1013,8 @@ ALWAYS_INLINE StringViewWithUnderlyingString JSRopeString::viewWithUnderlyingStr
 
 ALWAYS_INLINE StringView JSString::unsafeView(JSGlobalObject* globalObject) const
 {
-    if (validateDFGDoesGC)
-        RELEASE_ASSERT(vm().heap.expectDoesGC());
+    if constexpr (validateDFGDoesGC)
+        vm().heap.verifyCanGC();
     if (isRope())
         return static_cast<const JSRopeString*>(this)->unsafeView(globalObject);
     return valueInternal();

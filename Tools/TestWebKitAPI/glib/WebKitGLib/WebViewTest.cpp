@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "WebViewTest.h"
+#include "WebKitWebViewInternal.h"
 
 #include <JavaScriptCore/JSRetainPtr.h>
 
@@ -236,6 +237,24 @@ void WebViewTest::setEditable(bool editable)
     webkit_web_view_set_editable(m_webView, editable);
 }
 
+static void directoryChangedCallback(GFileMonitor*, GFile* file, GFile*, GFileMonitorEvent event, WebViewTest* test)
+{
+    if (event == test->m_expectedFileChangeEvent && g_file_equal(file, test->m_monitoredFile.get()))
+        test->quitMainLoop();
+}
+
+void WebViewTest::waitUntilFileChanged(const char* filename, GFileMonitorEvent event)
+{
+    m_monitoredFile = adoptGRef(g_file_new_for_path(filename));
+    m_expectedFileChangeEvent = event;
+    GRefPtr<GFile> directory = adoptGRef(g_file_get_parent(m_monitoredFile.get()));
+    GRefPtr<GFileMonitor> monitor = adoptGRef(g_file_monitor_directory(directory.get(), G_FILE_MONITOR_NONE, nullptr, nullptr));
+    g_assert(monitor.get());
+    g_signal_connect(monitor.get(), "changed", G_CALLBACK(directoryChangedCallback), this);
+    if (!g_file_query_exists(m_monitoredFile.get(), nullptr))
+        g_main_loop_run(m_mainLoop);
+}
+
 static void resourceGetDataCallback(GObject* object, GAsyncResult* result, gpointer userData)
 {
     size_t dataSize;
@@ -312,6 +331,18 @@ WebKitJavascriptResult* WebViewTest::runJavaScriptInWorldAndWaitUntilFinished(co
     m_javascriptResult = 0;
     m_javascriptError = error;
     webkit_web_view_run_javascript_in_world(m_webView, javascript, world, nullptr, reinterpret_cast<GAsyncReadyCallback>(runJavaScriptInWorldReadyCallback), this);
+    g_main_loop_run(m_mainLoop);
+
+    return m_javascriptResult;
+}
+
+WebKitJavascriptResult* WebViewTest::runJavaScriptWithoutForcedUserGesturesAndWaitUntilFinished(const char* javascript, GError** error)
+{
+    if (m_javascriptResult)
+        webkit_javascript_result_unref(m_javascriptResult);
+    m_javascriptResult = 0;
+    m_javascriptError = error;
+    webkitWebViewRunJavascriptWithoutForcedUserGestures(m_webView, javascript, 0, reinterpret_cast<GAsyncReadyCallback>(runJavaScriptReadyCallback), this);
     g_main_loop_run(m_mainLoop);
 
     return m_javascriptResult;

@@ -514,6 +514,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpTryGetById, profile)
         LINK(OpGetByIdDirect, profile)
         LINK(OpGetByValWithThis, profile)
+        LINK(OpGetPrototypeOf, profile)
         LINK(OpGetFromArguments, profile)
         LINK(OpToNumber, profile)
         LINK(OpToNumeric, profile)
@@ -947,7 +948,7 @@ void CodeBlock::setNumParameters(int newValue)
 {
     m_numParameters = newValue;
 
-    m_argumentValueProfiles = RefCountedArray<ValueProfile>(vm().canUseJIT() ? newValue : 0);
+    m_argumentValueProfiles = RefCountedArray<ValueProfile>(Options::useJIT() ? newValue : 0);
 }
 
 CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
@@ -1249,6 +1250,19 @@ void CodeBlock::finalizeLLIntInlineCaches()
             dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
             metadata.m_structureID = 0;
             metadata.m_offset = 0;
+        });
+
+        m_metadata->forEach<OpGetPrivateName>([&] (auto& metadata) {
+            JSCell* property = metadata.m_property.get();
+            StructureID structureID = metadata.m_structureID;
+
+            if ((!property || vm.heap.isMarked(property)) && (!structureID || vm.heap.isMarked(vm.heap.structureIDTable().get(structureID))))
+                return;
+
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt private property access.");
+            metadata.m_structureID = 0;
+            metadata.m_offset = 0;
+            metadata.m_property.clear();
         });
 
         m_metadata->forEach<OpPutById>([&] (auto& metadata) {
@@ -1862,7 +1876,7 @@ DisposableCallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteInd
     RELEASE_ASSERT(canGetCodeOrigin(originalCallSite));
     ASSERT(!!handlerForIndex(originalCallSite.bits()));
     CodeOrigin originalOrigin = codeOrigin(originalCallSite);
-    return m_jitCode->dfgCommon()->addDisposableCallSiteIndex(originalOrigin);
+    return m_jitCode->dfgCommon()->codeOrigins->addDisposableCallSiteIndex(originalOrigin);
 #else
     // We never create new on-the-fly exception handling
     // call sites outside the DFG/FTL inline caches.
@@ -2756,9 +2770,9 @@ ArrayProfile* CodeBlock::getArrayProfile(BytecodeIndex bytecodeIndex)
 }
 
 #if ENABLE(DFG_JIT)
-Vector<CodeOrigin, 0, UnsafeVectorOverflow>& CodeBlock::codeOrigins()
+DFG::CodeOriginPool& CodeBlock::codeOrigins()
 {
-    return m_jitCode->dfgCommon()->codeOrigins;
+    return m_jitCode->dfgCommon()->codeOrigins.get();
 }
 
 size_t CodeBlock::numberOfDFGIdentifiers() const

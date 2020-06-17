@@ -112,7 +112,7 @@ public:
 
     void getLocalStorageDetails(PAL::SessionID, CompletionHandler<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&&);
 
-    void preconnectTo(PAL::SessionID, const URL&, const String&, WebCore::StoredCredentialsPolicy, Optional<NavigatingToAppBoundDomain>);
+    void preconnectTo(PAL::SessionID, WebPageProxyIdentifier, WebCore::PageIdentifier, const URL&, const String&, WebCore::StoredCredentialsPolicy, Optional<NavigatingToAppBoundDomain>);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void clearPrevalentResource(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
@@ -187,6 +187,8 @@ public:
     void setAdClickAttributionDebugMode(bool);
     
     void synthesizeAppIsBackground(bool background);
+
+    void setIsHoldingLockedFiles(bool);
 
     void syncAllCookies();
     void didSyncAllCookies();
@@ -308,6 +310,7 @@ private:
     LegacyCustomProtocolManagerProxy m_customProtocolManagerProxy;
 #endif
     ProcessThrottler m_throttler;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_activityForHoldingLockedFiles;
     std::unique_ptr<ProcessThrottler::BackgroundActivity> m_syncAllCookiesActivity;
     ProcessThrottler::ActivityVariant m_activityFromWebProcesses;
     

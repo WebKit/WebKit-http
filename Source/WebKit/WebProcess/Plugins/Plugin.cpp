@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Plugin.h"
 
+#include "LayerTreeContext.h"
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/IntPoint.h>
 #include <wtf/SetForScope.h>
@@ -46,7 +47,7 @@ void Plugin::Parameters::encode(IPC::Encoder& encoder) const
     encoder << isFullFramePlugin;
     encoder << shouldUseManualLoader;
 #if PLATFORM(COCOA)
-    encoder.encodeEnum(layerHostingMode);
+    encoder << layerHostingMode;
 #endif
 }
 
@@ -68,7 +69,7 @@ bool Plugin::Parameters::decode(IPC::Decoder& decoder, Parameters& parameters)
     if (!decoder.decode(parameters.shouldUseManualLoader))
         return false;
 #if PLATFORM(COCOA)
-    if (!decoder.decodeEnum(parameters.layerHostingMode))
+    if (!decoder.decode(parameters.layerHostingMode))
         return false;
 #endif
     if (parameters.names.size() != parameters.values.size()) {

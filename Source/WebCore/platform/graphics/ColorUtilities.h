@@ -30,42 +30,48 @@
 
 namespace WebCore {
 
-template<typename> struct ColorComponents;
+template<typename> struct DisplayP3;
+template<typename> struct HSLA;
+template<typename> struct LinearDisplayP3;
+template<typename> struct LinearSRGBA;
+template<typename> struct SRGBA;
 
 // 0-1 components, result is clamped.
 float linearToRGBColorComponent(float);
 float rgbToLinearColorComponent(float);
 
-ColorComponents<float> rgbToLinearComponents(const ColorComponents<float>&);
-ColorComponents<float> linearToRGBComponents(const ColorComponents<float>&);
+LinearSRGBA<float> toLinearSRGBA(const SRGBA<float>&);
+SRGBA<float> toSRGBA(const LinearSRGBA<float>&);
 
-ColorComponents<float> p3ToSRGB(const ColorComponents<float>&);
-ColorComponents<float> sRGBToP3(const ColorComponents<float>&);
+LinearDisplayP3<float> toLinearDisplayP3(const DisplayP3<float>&);
+DisplayP3<float> toDisplayP3(const LinearDisplayP3<float>&);
 
-WEBCORE_EXPORT ColorComponents<float> sRGBToHSL(const ColorComponents<float>&);
-WEBCORE_EXPORT ColorComponents<float> hslToSRGB(const ColorComponents<float>&);
+SRGBA<float> toSRGBA(const DisplayP3<float>&);
+DisplayP3<float> toDisplayP3(const SRGBA<float>&);
 
-float lightness(const ColorComponents<float>& sRGBCompontents);
-float luminance(const ColorComponents<float>& sRGBCompontents);
-float contrastRatio(const ColorComponents<float>& sRGBCompontentsA, const ColorComponents<float>& sRGBCompontentsB);
+WEBCORE_EXPORT HSLA<float> toHSLA(const SRGBA<float>&);
+WEBCORE_EXPORT SRGBA<float> toSRGBA(const HSLA<float>&);
 
-ColorComponents<float> premultiplied(const ColorComponents<float>& sRGBCompontents);
+float lightness(const SRGBA<float>&);
+float luminance(const SRGBA<float>&);
 
-bool areEssentiallyEqual(const ColorComponents<float>&, const ColorComponents<float>&);
+float contrastRatio(const SRGBA<float>&, const SRGBA<float>&);
 
-inline uint8_t roundAndClampColorChannel(int value)
+SRGBA<float> premultiplied(const SRGBA<float>&);
+
+inline uint8_t convertPrescaledToComponentByte(float f)
 {
-    return std::clamp(value, 0, 255);
+    return std::clamp(static_cast<int>(std::lroundf(f)), 0, 255);
 }
 
-inline uint8_t roundAndClampColorChannel(float value)
+inline uint8_t convertToComponentByte(float f)
 {
-    return std::clamp(std::round(value), 0.f, 255.f);
+    return std::clamp(static_cast<int>(std::lroundf(f * 255.0f)), 0, 255);
 }
 
-inline uint8_t scaleRoundAndClampColorChannel(float f)
+constexpr float convertToComponentFloat(uint8_t byte)
 {
-    return std::clamp(static_cast<int>(lroundf(255.0f * f)), 0, 255);
+    return byte / 255.0f;
 }
 
 constexpr uint16_t fastMultiplyBy255(uint16_t value)
@@ -81,6 +87,5 @@ constexpr uint16_t fastDivideBy255(uint16_t value)
     uint16_t remainder = value - (approximation * 255) + 1;
     return approximation + (remainder >> 8);
 }
-
 
 } // namespace WebCore

@@ -36,6 +36,11 @@
 
 namespace WebCore {
 
+BaseAudioSharedUnit::BaseAudioSharedUnit()
+    : m_sampleRate(AudioSession::sharedSession().sampleRate())
+{
+}
+
 void BaseAudioSharedUnit::addClient(CoreAudioCaptureSource& client)
 {
     auto locker = holdLock(m_clientsLock);
@@ -171,13 +176,7 @@ OSStatus BaseAudioSharedUnit::resume()
         reconfigure();
     }
 
-    if (!hasAudioUnit())
-        return 0;
-
-    if (m_producingCount) {
-        if (auto error = startUnit())
-            return error;
-    }
+    ASSERT(!m_producingCount);
 
     forEachClient([](auto& client) {
         client.setMuted(false);
@@ -198,6 +197,8 @@ OSStatus BaseAudioSharedUnit::suspend()
     forEachClient([](auto& client) {
         client.setMuted(true);
     });
+
+    ASSERT(!m_producingCount);
 
     return 0;
 }

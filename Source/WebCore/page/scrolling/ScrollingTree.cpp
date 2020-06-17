@@ -350,9 +350,9 @@ void ScrollingTree::removeAllNodes()
 void ScrollingTree::applyLayerPositionsAfterCommit()
 {
     // Scrolling tree needs to make adjustments only if the UI side positions have changed.
-    if (!m_wasScrolledByDelegatedScrollingSincePreviousCommit)
+    if (!m_needsApplyLayerPositionsAfterCommit)
         return;
-    m_wasScrolledByDelegatedScrollingSincePreviousCommit = false;
+    m_needsApplyLayerPositionsAfterCommit = false;
 
     applyLayerPositions();
 }
@@ -539,6 +539,17 @@ bool ScrollingTree::willWheelEventStartSwipeGesture(const PlatformWheelEvent& wh
         return true;
 
     return false;
+}
+
+void ScrollingTree::scrollBySimulatingWheelEventForTesting(ScrollingNodeID nodeID, FloatSize delta)
+{
+    LockHolder locker(m_treeMutex);
+
+    auto* node = nodeForID(nodeID);
+    if (!is<ScrollingTreeScrollingNode>(node))
+        return;
+
+    downcast<ScrollingTreeScrollingNode>(*node).scrollBy(delta);
 }
 
 void ScrollingTree::windowScreenDidChange(PlatformDisplayID displayID, Optional<unsigned> nominalFramesPerSecond)

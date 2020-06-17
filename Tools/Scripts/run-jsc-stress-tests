@@ -630,10 +630,12 @@ end
 
 def slow!
     $runCommandOptions[:isSlow] = true
+    skip() if ($mode == "quick")
 end
 
-def crash!
-    $runCommandOptions[:shouldCrash] = true
+def crashOK!
+    $testSpecificRequiredOptions += ["-s"]
+    $runCommandOptions[:crashOK] = true
 end
 
 def requireOptions(*options)
@@ -754,7 +756,7 @@ def runFTLNoCJITNoPutStackValidate(*optionalTestSpecificOptions)
 end
 
 def runFTLNoCJITNoInlineValidate(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-no-inline-validate", "--validateGraph=true", "--maximumInliningDepth=1", "--airForceBriggsAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-no-inline-validate", "--validateGraph=true", "--maximumInliningDepth=1", "--airForceBriggsAllocator=true", "--useB3HoistLoopInvariantValues=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITOSRValidation(*optionalTestSpecificOptions)
@@ -1136,12 +1138,14 @@ end
 def runWebAssemblyJetStream2
     return if !$jitTests
     return if !$isFTLPlatform
+    return if $memoryLimited
 
     prepareExtraAbsoluteFiles(JETSTREAM2_PATH, ["JetStreamDriver.js"])
     prepareExtraRelativeFilesWithBaseDirectory(Dir[JETSTREAM2_PATH + "wasm" + "*.js"].map { |f| "wasm/" + File.basename(f) }, $collection.dirname, $extraFilesBaseDir.dirname)
     prepareExtraRelativeFilesWithBaseDirectory(Dir[JETSTREAM2_PATH + "wasm" + "*.wasm"].map { |f| "wasm/" + File.basename(f) }, $collection.dirname, $extraFilesBaseDir.dirname)
 
     run("default-wasm", *FTL_OPTIONS)
+
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
         run("wasm-eager", "--useRandomizingExecutableIslandAllocation=true", *(FTL_OPTIONS + EAGER_OPTIONS))
@@ -2091,6 +2095,7 @@ def runTestRunner(remoteIndex=0)
         remoteScript += "export DYLD_FRAMEWORK_PATH=\\\"\\$(cd #{$testingFrameworkPath.dirname}; pwd)\\\" && "
         remoteScript += "export LD_LIBRARY_PATH=#{remoteHost.remoteDirectory}/#{$outputDir.basename}/#{$jscPath.dirname} && "
         remoteScript += "export JSCTEST_timeout=#{Shellwords.shellescape(ENV['JSCTEST_timeout'])} && "
+        remoteScript += "export TZ=#{Shellwords.shellescape(ENV['TZ'])} && "
         $envVars.each { |var| remoteScript += "export " << var << "\n" }
         remoteScript += "#{testRunnerCommand(remoteIndex)}\""
         runAndMonitorTestRunnerCommand("ssh", "-o", "NoHostAuthenticationForLocalhost=yes", "-p", remoteHost.port.to_s, "#{remoteHost.user}@#{remoteHost.host}", remoteScript)
@@ -2221,6 +2226,11 @@ if ENV["JSCTEST_timeout"]
     # Increase the timeout proportionally to the number of processors.
     ENV["JSCTEST_timeout"] = (ENV["JSCTEST_timeout"].to_i.to_f * Math.sqrt($numChildProcesses)).to_i.to_s
 end
+
+# Some tests fail if the time zone is not set to US/Pacific
+# https://webkit.org/b/136363
+# Set as done in run-javascript-tests
+ENV["TZ"] = "US/Pacific"; 
 
 def runBundle
     raise unless $bundle

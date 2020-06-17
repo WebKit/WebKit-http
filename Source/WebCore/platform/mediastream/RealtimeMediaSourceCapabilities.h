@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSourceCapabilities_h
-#define RealtimeMediaSourceCapabilities_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "RealtimeMediaSourceSettings.h"
+#include <wtf/EnumTraits.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -116,7 +116,7 @@ void CapabilityValueOrRange::encode(Encoder& encoder) const
 {
     encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(&m_minOrValue), sizeof(ValueUnion), alignof(ValueUnion));
     encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(&m_max), sizeof(ValueUnion), alignof(ValueUnion));
-    encoder.encodeEnum(m_type);
+    encoder << m_type;
 }
 
 template<class Decoder>
@@ -124,7 +124,7 @@ bool CapabilityValueOrRange::decode(Decoder& decoder, CapabilityValueOrRange& va
 {
     return decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(&valueOrRange.m_minOrValue), sizeof(ValueUnion), alignof(ValueUnion))
         && decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(&valueOrRange.m_max), sizeof(ValueUnion), alignof(ValueUnion))
-        && decoder.decodeEnum(valueOrRange.m_type);
+        && decoder.decode(valueOrRange.m_type);
 }
 
 class RealtimeMediaSourceCapabilities {
@@ -175,7 +175,7 @@ public:
     const CapabilityValueOrRange& sampleSize() const { return m_sampleSize; }
     void setSampleSize(const CapabilityValueOrRange& sampleSize) { m_sampleSize = sampleSize; }
 
-    enum class EchoCancellation {
+    enum class EchoCancellation : bool {
         ReadOnly = 0,
         ReadWrite = 1,
     };
@@ -227,7 +227,7 @@ void RealtimeMediaSourceCapabilities::encode(Encoder& encoder) const
         << m_deviceId
         << m_groupId
         << m_supportedConstraints;
-    encoder.encodeEnum(m_echoCancellation);
+    encoder << m_echoCancellation;
 }
 
 template<class Decoder>
@@ -244,11 +244,24 @@ bool RealtimeMediaSourceCapabilities::decode(Decoder& decoder, RealtimeMediaSour
         && decoder.decode(capabilities.m_deviceId)
         && decoder.decode(capabilities.m_groupId)
         && decoder.decode(capabilities.m_supportedConstraints)
-        && decoder.decodeEnum(capabilities.m_echoCancellation);
+        && decoder.decode(capabilities.m_echoCancellation);
 }
 
 } // namespace WebCore
 
-#endif // RealtimeMediaSourceCapabilities_h
+namespace WTF {
 
-#endif
+template<> struct EnumTraits<WebCore::CapabilityValueOrRange::Type> {
+    using values = EnumValues<
+        WebCore::CapabilityValueOrRange::Type,
+        WebCore::CapabilityValueOrRange::Type::Undefined,
+        WebCore::CapabilityValueOrRange::Type::Double,
+        WebCore::CapabilityValueOrRange::Type::ULong,
+        WebCore::CapabilityValueOrRange::Type::DoubleRange,
+        WebCore::CapabilityValueOrRange::Type::ULongRange
+    >;
+};
+
+} // namespace WTF
+
+#endif // ENABLE(MEDIA_STREAM)

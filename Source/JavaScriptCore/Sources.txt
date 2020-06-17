@@ -268,6 +268,7 @@ bytecode/ProxyableAccessCase.cpp
 bytecode/PutByIdFlags.cpp
 bytecode/PutByIdStatus.cpp
 bytecode/PutByIdVariant.cpp
+bytecode/PutByValFlags.cpp
 bytecode/RecordedStatuses.cpp
 bytecode/ReduceWhitespace.cpp
 bytecode/SpeculatedType.cpp
@@ -331,6 +332,7 @@ dfg/DFGCleanUpPhase.cpp
 dfg/DFGClobberSet.cpp
 dfg/DFGClobberize.cpp
 dfg/DFGClobbersExitState.cpp
+dfg/DFGCodeOriginPool.cpp
 dfg/DFGCombinedLiveness.cpp
 dfg/DFGCommon.cpp
 dfg/DFGCommonData.cpp
@@ -347,6 +349,7 @@ dfg/DFGDesiredWatchpoints.cpp
 dfg/DFGDesiredWeakReferences.cpp
 dfg/DFGDisassembler.cpp
 dfg/DFGDoesGC.cpp
+dfg/DFGDoesGCCheck.cpp
 dfg/DFGDriver.cpp
 dfg/DFGEdge.cpp
 dfg/DFGEpoch.cpp
@@ -1007,8 +1010,8 @@ JSCBuiltins.cpp
 
 tools/CellList.cpp
 tools/CompilerTimingScope.cpp
+tools/FunctionAllowlist.cpp
 tools/FunctionOverrides.cpp
-tools/FunctionWhitelist.cpp
 tools/HeapVerifier.cpp
 tools/Integrity.cpp
 tools/JSDollarVM.cpp

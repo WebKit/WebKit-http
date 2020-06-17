@@ -15,8 +15,9 @@ info: |
   6. Let q be ? ToNumber(timeout).
 
 flags: [async]
-features: [Atomics.waitAsync, SharedArrayBuffer, TypedArray, Atomics]
+features: [Atomics.waitAsync, SharedArrayBuffer, TypedArray, Atomics, computed-property-names, Symbol, Symbol.toPrimitive, arrow-function]
 ---*/
+assert.sameValue(typeof Atomics.waitAsync, 'function');
 const i32a = new Int32Array(
   new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4)
 );

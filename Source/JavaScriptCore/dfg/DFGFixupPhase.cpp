@@ -2542,7 +2542,8 @@ private:
             break;
         }
 
-        case CheckJSCast: {
+        case CheckJSCast:
+        case CheckNotJSCast: {
             fixupCheckJSCast(node);
             break;
         }
@@ -2731,7 +2732,7 @@ private:
         case SuperSamplerBegin:
         case SuperSamplerEnd:
         case ForceOSRExit:
-        case CheckBadCell:
+        case CheckBadValue:
         case CheckNotEmpty:
         case AssertNotEmpty:
         case CheckTraps:
@@ -4040,6 +4041,7 @@ private:
         node->convertToCallDOM(m_graph);
         fixupCheckJSCast(checkSubClass);
         fixupCallDOM(node);
+        RELEASE_ASSERT(node->child1().node() == thisNode);
         return true;
     }
 

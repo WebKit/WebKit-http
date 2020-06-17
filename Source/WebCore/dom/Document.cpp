@@ -53,7 +53,6 @@
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
 #include "CustomEvent.h"
-#include "CustomHeaderFields.h"
 #include "DOMImplementation.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
@@ -311,7 +310,7 @@
 #include "TouchEvent.h"
 #endif
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
 #include "CaptionUserPreferences.h"
 #endif
 
@@ -1028,6 +1027,10 @@ ExceptionOr<Ref<CDATASection>> Document::createCDATASection(const String& data)
 {
     if (isHTMLDocument())
         return Exception { NotSupportedError };
+
+    if (data.contains("]]>"))
+        return Exception { InvalidCharacterError };
+
     return CDATASection::create(*this, data);
 }
 
@@ -5494,7 +5497,7 @@ void Document::privateBrowsingStateDidChange(PAL::SessionID sessionID)
 #endif
 }
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO)
 
 void Document::registerForCaptionPreferencesChangedCallbacks(HTMLMediaElement& element)
 {
@@ -5591,7 +5594,7 @@ String Document::queryCommandValue(const String& commandName)
     return command(this, commandName).value();
 }
 
-void Document::pushCurrentScript(HTMLScriptElement* newCurrentScript)
+void Document::pushCurrentScript(Element* newCurrentScript)
 {
     m_currentScriptStack.append(newCurrentScript);
 }
@@ -8586,11 +8589,23 @@ void Document::prepareCanvasesForDisplayIfNeeded()
 {
     // Some canvas contexts need to do work when rendering has finished but
     // before their content is composited.
-    for (auto* canvas : m_canvasesNeedingDisplayPreparation) {
-        auto refCountedCanvas = makeRefPtr(canvas);
-        refCountedCanvas->prepareForDisplay();
+    for (auto* canvas : copyToVector(m_canvasesNeedingDisplayPreparation)) {
+        // However, if they are not in the document body, then they won't
+        // be composited and thus don't need preparation. Unfortunately they
+        // can't tell at the time they were added to the list, since they
+        // could be inserted or removed from the document body afterwards.
+        if (!canvas->isInTreeScope())
+            continue;
+
+        auto protectedCanvas = makeRef(*canvas);
+        protectedCanvas->prepareForDisplay();
     }
     m_canvasesNeedingDisplayPreparation.clear();
+}
+
+void Document::clearCanvasPreparation(HTMLCanvasElement* canvas)
+{
+    m_canvasesNeedingDisplayPreparation.remove(canvas);
 }
 
 void Document::canvasChanged(CanvasBase& canvasBase, const FloatRect&)

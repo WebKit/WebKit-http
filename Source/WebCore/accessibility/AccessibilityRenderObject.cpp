@@ -1130,13 +1130,29 @@ String AccessibilityRenderObject::applePayButtonDescription() const
         return AXApplePaySetupLabel();
     case ApplePayButtonType::Donate:
         return AXApplePayDonateLabel();
-#if ENABLE(APPLE_PAY_SESSION_V4)
     case ApplePayButtonType::CheckOut:
         return AXApplePayCheckOutLabel();
     case ApplePayButtonType::Book:
         return AXApplePayBookLabel();
     case ApplePayButtonType::Subscribe:
         return AXApplePaySubscribeLabel();
+#if ENABLE(APPLE_PAY_NEW_BUTTON_TYPES)
+    case ApplePayButtonType::Reload:
+        return AXApplePayReloadLabel();
+    case ApplePayButtonType::AddMoney:
+        return AXApplePayAddMoneyLabel();
+    case ApplePayButtonType::TopUp:
+        return AXApplePayTopUpLabel();
+    case ApplePayButtonType::Order:
+        return AXApplePayOrderLabel();
+    case ApplePayButtonType::Rent:
+        return AXApplePayRentLabel();
+    case ApplePayButtonType::Support:
+        return AXApplePaySupportLabel();
+    case ApplePayButtonType::Contribute:
+        return AXApplePayContributeLabel();
+    case ApplePayButtonType::Tip:
+        return AXApplePayTipLabel();
 #endif
     }
 }
@@ -2919,7 +2935,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return hasAttribute(aria_labelAttr) || hasAttribute(aria_labelledbyAttr) ? AccessibilityRole::LandmarkRegion : AccessibilityRole::TextGroup;
 
     if (node && node->hasTagName(addressTag))
-        return AccessibilityRole::LandmarkContentInfo;
+        return AccessibilityRole::Group;
 
     if (node && node->hasTagName(blockquoteTag))
         return AccessibilityRole::Blockquote;

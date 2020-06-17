@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,8 +44,8 @@ public:
     
     ~DeferGC()
     {
-        if (validateDFGDoesGC)
-            RELEASE_ASSERT(m_heap.expectDoesGC());
+        if constexpr (validateDFGDoesGC)
+            m_heap.verifyCanGC();
         m_heap.decrementDeferralDepthAndGCIfNeeded();
     }
 

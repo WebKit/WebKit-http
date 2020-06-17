@@ -44,18 +44,16 @@
 
 using namespace WebCore;
 
-static DWORD draggingSourceOperationMaskToDragCursors(DragOperation op)
+static DWORD draggingSourceOperationMaskToDragCursors(OptionSet<DragOperation> operationMask)
 {
     DWORD result = DROPEFFECT_NONE;
-    if (op == DragOperationEvery)
-        return DROPEFFECT_COPY | DROPEFFECT_LINK | DROPEFFECT_MOVE; 
-    if (op & DragOperationCopy)
+    if (operationMask.contains(DragOperation::Copy))
         result |= DROPEFFECT_COPY; 
-    if (op & DragOperationLink)
+    if (operationMask.contains(DragOperation::Link))
         result |= DROPEFFECT_LINK; 
-    if (op & DragOperationMove)
+    if (operationMask.contains(DragOperation::Move))
         result |= DROPEFFECT_MOVE;
-    if (op & DragOperationGeneric)
+    if (operationMask.contains(DragOperation::Generic))
         result |= DROPEFFECT_MOVE;
     return result;
 }
@@ -74,6 +72,46 @@ static WebDragDestinationAction kit(DragDestinationAction action)
     return WebDragDestinationActionNone;
 }
 
+static OptionSet<DragSourceAction> coreDragSourceActionMask(WebDragSourceAction actionMask)
+{
+    OptionSet<DragSourceAction> result;
+
+    if (actionMask & WebDragSourceActionDHTML)
+        result.add(DragSourceAction::DHTML);
+    if (actionMask & WebDragSourceActionImage)
+        result.add(DragSourceAction::Image);
+    if (actionMask & WebDragSourceActionLink)
+        result.add(DragSourceAction::Link);
+    if (actionMask & WebDragSourceActionSelection)
+        result.add(DragSourceAction::Selection);
+
+    return result;
+}
+
+static WebDragSourceAction kit(DragSourceAction action)
+{
+    switch (action) {
+    case DragSourceAction::DHTML:
+        return WebDragSourceActionDHTML;
+    case DragSourceAction::Image:
+        return WebDragSourceActionImage;
+    case DragSourceAction::Link:
+        return WebDragSourceActionLink;
+    case DragSourceAction::Selection:
+        return WebDragSourceActionSelection;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case DragSourceAction::Attachment:
+        break;
+#endif
+#if ENABLE(INPUT_TYPE_COLOR)
+    case DragSourceAction::Color:
+        break;
+#endif
+    }
+    ASSERT_NOT_REACHED();
+    return WebDragSourceActionNone;
+}
+
 WebDragClient::WebDragClient(WebView* webView)
     : m_webView(webView) 
 {
@@ -89,14 +127,14 @@ void WebDragClient::willPerformDragDestinationAction(DragDestinationAction actio
         delegateRef->willPerformDragDestinationAction(m_webView, kit(action), dragData.platformData());
 }
 
-DragSourceAction WebDragClient::dragSourceActionMaskForPoint(const IntPoint& windowPoint)
+OptionSet<DragSourceAction> WebDragClient::dragSourceActionMaskForPoint(const IntPoint& windowPoint)
 {
     COMPtr<IWebUIDelegate> delegateRef = 0;
-    WebDragSourceAction action = WebDragSourceActionAny;
+    WebDragSourceAction actionMask = WebDragSourceActionAny;
     POINT localpt = core(m_webView)->mainFrame().view()->windowToContents(windowPoint);
     if (SUCCEEDED(m_webView->uiDelegate(&delegateRef)))
-        delegateRef->dragSourceActionMaskForPoint(m_webView, &localpt, &action);
-    return (DragSourceAction)action;
+        delegateRef->dragSourceActionMaskForPoint(m_webView, &localpt, &actionMask);
+    return coreDragSourceActionMask(actionMask);
 }
 
 void WebDragClient::willPerformDragSourceAction(DragSourceAction action, const IntPoint& intPoint, DataTransfer& dataTransfer)
@@ -109,7 +147,7 @@ void WebDragClient::willPerformDragSourceAction(DragSourceAction action, const I
     COMPtr<IDataObject> dataObject = dataTransfer.pasteboard().dataObject();
 
     COMPtr<IDataObject> newDataObject;
-    HRESULT result = uiDelegate->willPerformDragSourceAction(m_webView, static_cast<WebDragSourceAction>(action), &point, dataObject.get(), &newDataObject);
+    HRESULT result = uiDelegate->willPerformDragSourceAction(m_webView, kit(action), &point, dataObject.get(), &newDataObject);
     if (result == S_OK && newDataObject != dataObject)
         const_cast<Pasteboard&>(dataTransfer.pasteboard()).setExternalDataObject(newDataObject.get());
 }
@@ -145,14 +183,14 @@ void WebDragClient::startDrag(DragItem item, DataTransfer& dataTransfer, Frame& 
                 sdi.hbmpDragImage = image.get();
                 sdi.ptOffset.x = dragPoint.x() - imageOrigin.x();
                 sdi.ptOffset.y = dragPoint.y() - imageOrigin.y();
-                if (item.sourceAction == DragSourceActionLink)
+                if (item.sourceAction && *item.sourceAction == DragSourceAction::Link)
                     sdi.ptOffset.y = b.bmHeight - sdi.ptOffset.y;
 
                 helper->InitializeFromBitmap(&sdi, dataObject.get());
             }
         }
 
-        DWORD okEffect = draggingSourceOperationMaskToDragCursors(m_webView->page()->dragController().sourceDragOperation());
+        DWORD okEffect = draggingSourceOperationMaskToDragCursors(m_webView->page()->dragController().sourceDragOperationMask());
         DWORD effect = DROPEFFECT_NONE;
         COMPtr<IWebUIDelegate> ui;
         HRESULT hr = E_NOTIMPL;
@@ -164,14 +202,14 @@ void WebDragClient::startDrag(DragItem item, DataTransfer& dataTransfer, Frame& 
         if (hr == E_NOTIMPL)
             hr = DoDragDrop(dataObject.get(), source.get(), okEffect, &effect);
 
-        DragOperation operation = DragOperationNone;
+        OptionSet<DragOperation> operation;
         if (hr == DRAGDROP_S_DROP) {
             if (effect & DROPEFFECT_COPY)
-                operation = DragOperationCopy;
+                operation = DragOperation::Copy;
             else if (effect & DROPEFFECT_LINK)
-                operation = DragOperationLink;
+                operation = DragOperation::Link;
             else if (effect & DROPEFFECT_MOVE)
-                operation = DragOperationMove;
+                operation = DragOperation::Move;
         }
         frame.eventHandler().dragSourceEndedAt(generateMouseEvent(m_webView, false), operation);
     }
