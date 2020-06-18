@@ -203,6 +203,18 @@ private:
 #if OS(LINUX)
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
+
+    class MemoryUsagePoller {
+        WTF_MAKE_NONCOPYABLE(MemoryUsagePoller); WTF_MAKE_FAST_ALLOCATED;
+    public:
+        MemoryUsagePoller();
+        ~MemoryUsagePoller();
+
+    private:
+        RefPtr<Thread> m_thread;
+    };
+
+    std::unique_ptr<MemoryUsagePoller> m_memoryUsagePoller;
 #endif
 
 #if PLATFORM(COCOA)
