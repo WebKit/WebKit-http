@@ -282,7 +282,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
             WebCore::releaseMemory(critical, synchronous);
         });
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200) || PLATFORM(GTK) || PLATFORM(WPE)
-        memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
+        // memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
         memoryPressureHandler.setMemoryKillCallback([this] () {
             WebCore::logMemoryStatisticsAtTimeOfDeath();
             if (MemoryPressureHandler::singleton().processState() == WebsamProcessState::Active)
