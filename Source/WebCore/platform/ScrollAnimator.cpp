@@ -65,7 +65,12 @@ ScrollAnimator::ScrollAnimator(ScrollableArea& scrollableArea)
 {
 }
 
-ScrollAnimator::~ScrollAnimator() = default;
+ScrollAnimator::~ScrollAnimator()
+{
+#if ENABLE(CSS_SCROLL_SNAP) || ENABLE(RUBBER_BANDING)
+    m_scrollController.stopAllTimers();
+#endif
+}
 
 bool ScrollAnimator::scroll(ScrollbarOrientation orientation, ScrollGranularity, float step, float multiplier)
 {
@@ -95,9 +100,9 @@ void ScrollAnimator::scrollToOffset(const FloatPoint& offset)
 
 void ScrollAnimator::scrollToOffsetWithoutAnimation(const FloatPoint& offset, ScrollClamping)
 {
-    FloatPoint newPositon = ScrollableArea::scrollPositionFromOffset(offset, toFloatSize(m_scrollableArea.scrollOrigin()));
-    FloatSize delta = newPositon - currentPosition();
-    m_currentPosition = newPositon;
+    FloatPoint newPosition = ScrollableArea::scrollPositionFromOffset(offset, toFloatSize(m_scrollableArea.scrollOrigin()));
+    FloatSize delta = newPosition - currentPosition();
+    m_currentPosition = newPosition;
     notifyPositionChanged(delta);
     updateActiveScrollSnapIndexForOffset();
 }

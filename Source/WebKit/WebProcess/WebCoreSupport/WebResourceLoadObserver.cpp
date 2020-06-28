@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019 Apple Inc. All rights reserved.
+* Copyright (C) 2019-2020 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -141,6 +141,11 @@ void WebResourceLoadObserver::clearState()
     m_lastReportedUserInteractionMap.clear();
 }
 
+bool WebResourceLoadObserver::hasHadUserInteraction(const RegistrableDomain& domain) const
+{
+    return m_domainsWithUserInteraction.contains(domain);
+}
+
 void WebResourceLoadObserver::logFontLoad(const Document& document, const String& familyName, bool loadStatus)
 {
     if (isEphemeral())
@@ -158,7 +163,7 @@ void WebResourceLoadObserver::logFontLoad(const Document& document, const String
             shouldCallNotificationCallback = true;
     }
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
-    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
+    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain).isNewEntry)
         shouldCallNotificationCallback = true;
     if (shouldCallNotificationCallback)
         scheduleNotificationIfNeeded();
@@ -179,7 +184,7 @@ void WebResourceLoadObserver::logCanvasRead(const Document& document)
     auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
     statistics.canvasActivityRecord.wasDataRead = true;
-    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
+    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain).isNewEntry)
         scheduleNotificationIfNeeded();
 #else
     UNUSED_PARAM(document);
@@ -198,7 +203,7 @@ void WebResourceLoadObserver::logCanvasWriteOrMeasure(const Document& document, 
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
     if (statistics.canvasActivityRecord.recordWrittenOrMeasuredText(textWritten))
         shouldCallNotificationCallback = true;
-    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
+    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain).isNewEntry)
         shouldCallNotificationCallback = true;
     if (shouldCallNotificationCallback)
         scheduleNotificationIfNeeded();
@@ -222,7 +227,7 @@ void WebResourceLoadObserver::logNavigatorAPIAccessed(const Document& document, 
         shouldCallNotificationCallback = true;
     }
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
-    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
+    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain).isNewEntry)
         shouldCallNotificationCallback = true;
     if (shouldCallNotificationCallback)
         scheduleNotificationIfNeeded();
@@ -246,7 +251,7 @@ void WebResourceLoadObserver::logScreenAPIAccessed(const Document& document, con
         shouldCallNotificationCallback = true;
     }
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
-    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
+    if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain).isNewEntry)
         shouldCallNotificationCallback = true;
     if (shouldCallNotificationCallback)
         scheduleNotificationIfNeeded();

@@ -25,6 +25,7 @@
 #include "SVGParserUtilities.h"
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringConcatenateNumbers.h>
+#include <wtf/text/StringParsingBuffer.h>
 
 namespace WebCore {
 
@@ -80,19 +81,19 @@ String SVGAngleValue::valueAsString() const
     return String();
 }
 
-static inline SVGAngleValue::Type parseAngleType(const UChar* ptr, const UChar* end)
+template<typename CharacterType> static inline SVGAngleValue::Type parseAngleType(StringParsingBuffer<CharacterType> buffer)
 {
-    switch (end - ptr) {
+    switch (buffer.lengthRemaining()) {
     case 0:
         return SVGAngleValue::SVG_ANGLETYPE_UNSPECIFIED;
     case 3:
-        if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'g')
+        if (buffer[0] == 'd' && buffer[1] == 'e' && buffer[2] == 'g')
             return SVGAngleValue::SVG_ANGLETYPE_DEG;
-        if (ptr[0] == 'r' && ptr[1] == 'a' && ptr[2] == 'd')
+        if (buffer[0] == 'r' && buffer[1] == 'a' && buffer[2] == 'd')
             return SVGAngleValue::SVG_ANGLETYPE_RAD;
         break;
     case 4:
-        if (ptr[0] == 'g' && ptr[1] == 'r' && ptr[2] == 'a' && ptr[3] == 'd')
+        if (buffer[0] == 'g' && buffer[1] == 'r' && buffer[2] == 'a' && buffer[3] == 'd')
             return SVGAngleValue::SVG_ANGLETYPE_GRAD;
         break;
     }
@@ -106,21 +107,19 @@ ExceptionOr<void> SVGAngleValue::setValueAsString(const String& value)
         return { };
     }
 
-    auto upconvertedCharacters = StringView(value).upconvertedCharacters();
-    const UChar* ptr = upconvertedCharacters;
-    const UChar* end = ptr + value.length();
+    return readCharactersForParsing(value, [&](auto buffer) -> ExceptionOr<void> {
+        auto valueInSpecifiedUnits = parseNumber(buffer, SuffixSkippingPolicy::DontSkip);
+        if (!valueInSpecifiedUnits)
+            return Exception { SyntaxError };
 
-    float valueInSpecifiedUnits = 0;
-    if (!parseNumber(ptr, end, valueInSpecifiedUnits, false))
-        return Exception { SyntaxError };
+        auto unitType = parseAngleType(buffer);
+        if (unitType == SVGAngleValue::SVG_ANGLETYPE_UNKNOWN)
+            return Exception { SyntaxError };
 
-    auto unitType = parseAngleType(ptr, end);
-    if (unitType == SVG_ANGLETYPE_UNKNOWN)
-        return Exception { SyntaxError };
-
-    m_unitType = unitType;
-    m_valueInSpecifiedUnits = valueInSpecifiedUnits;
-    return { };
+        m_unitType = unitType;
+        m_valueInSpecifiedUnits = *valueInSpecifiedUnits;
+        return { };
+    });
 }
 
 ExceptionOr<void> SVGAngleValue::newValueSpecifiedUnits(unsigned short unitType, float valueInSpecifiedUnits)

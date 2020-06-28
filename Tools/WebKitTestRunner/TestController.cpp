@@ -445,7 +445,7 @@ void TestController::initialize(int argc, const char* argv[])
     AutodrainedPool pool;
 
     JSC::initializeThreading();
-    RunLoop::initializeMain();
+    WTF::initializeMainThread();
     WTF::setProcessPrivileges(allPrivileges());
 
     platformInitialize();
@@ -3185,7 +3185,7 @@ void getAllStorageAccessEntriesCallback(void* userData, WKArrayRef domainList)
     auto* context = static_cast<GetAllStorageAccessEntriesCallbackContext*>(userData);
 
     Vector<String> resultDomains;
-    for (int i = 0; i < WKArrayGetSize(domainList); i++) {
+    for (unsigned i = 0; i < WKArrayGetSize(domainList); i++) {
         auto domain =  reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(domainList, i));
         auto buffer = std::vector<char>(WKStringGetMaximumUTF8CStringSize(domain));
         auto stringLength = WKStringGetUTF8CString(domain, buffer.data(), buffer.size());

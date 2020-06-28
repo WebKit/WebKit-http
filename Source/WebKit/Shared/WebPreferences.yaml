@@ -334,6 +334,22 @@ WebAudioEnabled:
   defaultValue: true
   condition: ENABLE(WEB_AUDIO)
 
+PrefixedWebAudioEnabled:
+  type: bool
+  defaultValue: true
+  condition: ENABLE(WEB_AUDIO)
+  humanReadableName: "Prefixed WebAudio API"
+  humanReadableDescription: "Prefixed WebAudio API"
+  category: internal
+
+ModernUnprefixedWebAudioEnabled:
+  type: bool
+  defaultValue: false
+  condition: ENABLE(WEB_AUDIO)
+  humanReadableName: "Modern WebAudio API"
+  humanReadableDescription: "Modern and unprefixed WebAudio API"
+  category: experimental
+
 AttachmentElementEnabled:
   type: bool
   defaultValue: false
@@ -1861,7 +1877,7 @@ EnterKeyHintEnabled:
 
 ReferrerPolicyAttributeEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Referrer Policy attribute"
   humanReadableDescription: "Enable Referrer Policy attribute"
   category: experimental
@@ -1997,7 +2013,7 @@ DialogElementEnabled:
 
 IsAccessibilityIsolatedTreeEnabled:
     type: bool
-    defaultValue: true
+    defaultValue: false
     humanReadableName: "Isolated Accessibility Tree Mode"
     humanReadableDescription: "Enable an accessibility hierarchy for VoiceOver that can be accessed on a secondary thread for improved performance"
     webcoreBinding: RuntimeEnabledFeatures

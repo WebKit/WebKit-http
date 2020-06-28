@@ -1,3 +1,45 @@
+2020-06-24  Youenn Fablet  <youenn@apple.com>
+
+        Add logging to WebRTC video pipeline to check for frame rate stability
+        https://bugs.webkit.org/show_bug.cgi?id=213369
+
+        Reviewed by Eric Carlson.
+
+        Add logging for encoded frames taking a long time to be received.
+        We log the time take to receive the frame, the time since previous frame, the byte size of the frame.
+        We compute that a frame takes too long by checking whether it is delayed by more than three expected frames.
+
+        * Source/webrtc/video/rtp_video_stream_receiver.cc:
+        * Source/webrtc/video/rtp_video_stream_receiver.h:
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        libwebrtc fails to build on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=213476
+
+        Reviewed by Maciej Stachowiak.
+
+        * Configurations/libvpx.xcconfig:
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/opus.xcconfig:
+        Use architecture conditionals instead of SDK conditionals for code that is
+        architecture-dependent.
+
+        Remove an macOS-version-dependent definition of EXCLUDED_SOURCE_FILE_NAMES
+        which is no longer used after r232665.
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Update macOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=213484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
 2020-06-17  Youenn Fablet  <youenn@apple.com>
 
         Improve SCTP cookie generation

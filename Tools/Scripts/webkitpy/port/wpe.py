@@ -42,6 +42,9 @@ class WPEPort(Port):
         super(WPEPort, self).__init__(*args, **kwargs)
 
         self._display_server = self.get_option("display_server")
+        if self._display_server == 'xvfb':
+            # While not supported by WPE, xvfb is used as the default value in the main scripts
+            self._display_server = 'headless'
         if self._should_use_jhbuild():
             self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--wpe', 'run']
             self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
@@ -90,7 +93,7 @@ class WPEPort(Port):
         return environment
 
     def show_results_html_file(self, results_filename):
-        self._run_script("run-minibrowser", [path.abspath_to_uri(self.host.platform, results_filename)])
+        self.run_minibrowser([path.abspath_to_uri(self.host.platform, results_filename)])
 
     def check_sys_deps(self):
         return super(WPEPort, self).check_sys_deps() and self._driver_class().check_driver(self)
@@ -131,3 +134,13 @@ class WPEPort(Port):
         configuration = super(WPEPort, self).configuration_for_upload(host=host)
         configuration['platform'] = 'WPE'
         return configuration
+
+    def run_minibrowser(self, args):
+        miniBrowser = self._build_path('bin', 'MiniBrowser')
+        if not self._filesystem.isfile(miniBrowser):
+            print("%s not found... Did you run build-webkit?" % miniBrowser)
+            return 1
+        command = [miniBrowser]
+        if self._should_use_jhbuild():
+            command = self._jhbuild_wrapper + command
+        return self._executive.run_command(command + args, cwd=self.webkit_base())

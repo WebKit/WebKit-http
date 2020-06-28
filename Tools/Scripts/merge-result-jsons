@@ -1,6 +1,6 @@
 #!/usr/bin/env python -u
 
-# Copyright (C) 2019 Apple Inc. All rights reserved.
+# Copyright (C) 2019-2020 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,31 +28,11 @@
 
 import argparse
 import json
-
+from webkitpy.benchmark_runner.benchmark_json_merge import mergeJSONs
 
 def readJSONFile(path):
     with open(path, 'r') as contents:
         return json.load(contents)
-
-
-def deepAppend(value1, value2, currentKey=None):
-    if type(value1) != type(value2):
-        raise TypeError("values have different types for key: {}, {} and {}".format(currentKey, type(value1), type(value2)))
-    if isinstance(value1, list):
-        return value1 + value2
-
-    result = {};
-    for key in (value1.keys() + value2.keys()):
-        if key not in result:
-            result[key] = deepAppend(value1[key], value2[key], key)
-    return result
-
-def mergeJSONs(jsons):
-    if len(jsons) == 0:
-        raise TypeError("no jsons to merge")
-
-    last = jsons.pop()
-    return reduce(deepAppend, jsons, last)
 
 def main():
     parser = argparse.ArgumentParser(description="Merge the resulting json files from multiple invocations of the run_benchmark script.")

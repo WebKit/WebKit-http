@@ -272,17 +272,14 @@ webkit.org/b/102257 fast/dom/Window/open-window-min-size.html
 # Fails because MutationObservers are not notified at end-of-task
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
 
-# <rdar://problem/11059777>
-webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
-
 webkit.org/b/81410 scrollbars/scrollbar-middleclick-nopaste.html
 
 # Spelling tests that are flakey.
 webkit.org/b/82555 editing/spelling/spellcheck-async-mutation.html [ Pass Failure ]
 
-webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-shift-jis.html [ Failure ]
-webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-utf-8.html [ Failure ]
-webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Failure ]
+webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-shift-jis.html [ Pass ]
+webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-utf-8.html [ Pass ]
+webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Pass ]
 webkit.org/b/82665 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webkit.org/b/82665 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 
@@ -837,7 +834,6 @@ webkit.org/b/116266 media/video-controls-toggling.html [ Skip ]
 webkit.org/b/163231 media/controls/airplay-picker.html [ Pass Failure ]
 
 # --- End media tests ---
-webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass Timeout ]
 
@@ -1388,9 +1384,6 @@ security/block-test-no-port.html
 
 # <rdar://problem/31177990> REGRESSION: canvas/2d.gradient.* LayoutTests failing
 # These are imported tests, so we'll have to push changes back to W3C.
-imported/w3c/canvas/2d.gradient.linear.transform.1.html [ Failure ]
-imported/w3c/canvas/2d.gradient.linear.transform.2.html [ Failure ]
-imported/w3c/canvas/2d.gradient.linear.transform.3.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.cone.bottom.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.cone.cylinder.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.cone.front.html [ Failure ]
@@ -1403,7 +1396,6 @@ imported/w3c/canvas/2d.gradient.radial.outside1.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.outside2.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.outside3.html [ Failure ]
 imported/w3c/canvas/2d.gradient.radial.touch2.html [ Failure ]
-fast/canvas/canvas-blending-fill-style.html [ Failure ]
 fast/canvas/canvas-currentColor.html [ Failure ]
 fast/canvas/set-colors.html [ Failure ]
 
@@ -1446,14 +1438,6 @@ fast/dom/HTMLMeterElement/meter-appearances-rating-relevancy.html [ Failure ]
 # <rdar://problem/32620024> REGRESSION: LayoutTests canvas/philip/tests/2d.path.stroke.scale2.html and imported/w3c/canvas/2d.path.stroke.scale2.html are failing
 canvas/philip/tests/2d.path.stroke.scale2.html [ Failure ]
 imported/w3c/canvas/2d.path.stroke.scale2.html [ Failure ]
-
-# <rdar://problem/32799624> REGRESSION: LayoutTests css3/font-variant-petite-caps-synthesis-coverage.html and css3/font-variant-small-caps-synthesis-coverage.html are failing
-css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
-css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
-
-# <rdar://problem/32799596> REGRESSION: LayoutTests canvas/philip/tests/2d.gradient.interpolate.solid.html and imported/w3c/canvas/2d.gradient.interpolate.solid.html failing
-canvas/philip/tests/2d.gradient.interpolate.solid.html [ Failure ]
-imported/w3c/canvas/2d.gradient.interpolate.solid.html [ Failure ]
 
 # <rdar://problem/32800095> REGRESSION: LayoutTest imported/blink/fast/gradients/gradient-transparency.html is failing
 imported/blink/fast/gradients/gradient-transparency.html [ ImageOnlyFailure ]
@@ -1580,7 +1564,7 @@ fast/dom/HTMLMeterElement/meter-optimums.html [ Failure ]
 fast/dom/HTMLMeterElement/meter-styles.html [ Failure ]
 
 # <rdar://problem/41103260> REGRESSION (Mojave): Three text tests failing with small antialiasing(?) diffs
-fast/inline/break-between-nobr.html [ ImageOnlyFailure ]
+[ Mojave ] fast/inline/break-between-nobr.html [ ImageOnlyFailure ]
 imported/blink/fast/text/international/text-shaping-arabic.html [ ImageOnlyFailure ]
 imported/blink/fast/text/international/vertical-positioning-with-combining-marks.html [ ImageOnlyFailure ]
 
@@ -1679,7 +1663,6 @@ webkit.org/b/212172 [ Catalina ] fast/text/font-collection.html [ ImageOnlyFailu
 [ Catalina+ ] fast/text/woff2.html [ Pass ImageOnlyFailure ]
 
 # <rdar://problem/45056204>
-[ Catalina+ ] http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
 [ Catalina+ ] http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Failure ]
 [ Catalina+ ] http/wpt/beacon/cors/cors-preflight-cookie.html [ Failure ]
 
@@ -1787,7 +1770,6 @@ webkit.org/b/205867 webgpu/draw-indexed-triangles.html [ Pass ImageOnlyFailure ]
 webkit.org/b/197204 webexposed/css-properties-behind-flags.html [ Pass Failure ]
 
 # The navigator.language tests rely on functionality only available in recent releases of macOS Catalina and onward.
-webkit.org/b/200043 [ Mojave Catalina ] fast/text/international/system-language/navigator-language [ Pass Failure ]
 webkit.org/b/208023 [ Sierra HighSierra Mojave ] fast/text/international/system-language/declarative-language.html [ Failure ]
 
 webkit.org/b/204312 imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-manual.svg [ Failure Pass ]
@@ -1942,3 +1924,5 @@ webkit.org/b/212488 [ Catalina ] media/video-play-audio-require-user-gesture.htm
 
 # This test requires an update to system decoders
 webkit.org/b/212565 [ Catalina Mojave ] imported/w3c/web-platform-tests/encoding/single-byte-decoder.html [ Failure ]
+
+fast/text/text-styles/-apple-system [ Pass ]

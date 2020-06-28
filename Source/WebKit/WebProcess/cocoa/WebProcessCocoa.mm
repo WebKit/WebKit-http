@@ -63,7 +63,6 @@
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSScrollerImpDetails.h>
-#import <WebCore/NetworkExtensionContentFilter.h>
 #import <WebCore/PerformanceLogging.h>
 #import <WebCore/PictureInPictureSupport.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -92,10 +91,6 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 #import <JavaScriptCore/RemoteInspector.h>
-#endif
-
-#if PLATFORM(IOS)
-#import <WebCore/ParentalControlsContentFilter.h>
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -274,27 +269,17 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #if PLATFORM(IOS)
     if (parameters.compilerServiceExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.compilerServiceExtensionHandle);
-
-    if (parameters.contentFilterExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.contentFilterExtensionHandle);
-    ParentalControlsContentFilter::setHasConsumedSandboxExtension(parameters.contentFilterExtensionHandle.hasValue());
-
-    if (parameters.frontboardServiceExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.frontboardServiceExtensionHandle);
 #endif
 
+    if (parameters.containerManagerExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.containerManagerExtensionHandle);
+    
 #if PLATFORM(IOS_FAMILY)
     SandboxExtension::consumePermanently(parameters.diagnosticsExtensionHandles);
     SandboxExtension::consumePermanently(parameters.dynamicMachExtensionHandles);
     SandboxExtension::consumePermanently(parameters.dynamicIOKitExtensionHandles);
 #endif
     
-    if (parameters.neHelperExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.neHelperExtensionHandle);
-    if (parameters.neSessionManagerExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.neSessionManagerExtensionHandle);
-    NetworkExtensionContentFilter::setHasConsumedSandboxExtensions(parameters.neHelperExtensionHandle.hasValue() && parameters.neSessionManagerExtensionHandle.hasValue());
-
     setSystemHasBattery(parameters.systemHasBattery);
 
 #if PLATFORM(IOS_FAMILY)

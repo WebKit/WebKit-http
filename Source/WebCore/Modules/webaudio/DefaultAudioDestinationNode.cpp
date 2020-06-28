@@ -43,7 +43,7 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(DefaultAudioDestinationNode);
     
-DefaultAudioDestinationNode::DefaultAudioDestinationNode(AudioContext& context)
+DefaultAudioDestinationNode::DefaultAudioDestinationNode(BaseAudioContext& context)
     : AudioDestinationNode(context, AudioDestination::hardwareSampleRate())
 {
     // Node-specific default mixing rules.

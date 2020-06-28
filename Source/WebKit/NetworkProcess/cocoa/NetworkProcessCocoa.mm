@@ -185,7 +185,7 @@ void NetworkProcess::clearDiskCache(WallTime modifiedSince, CompletionHandler<vo
         auto aggregator = CallbackAggregator::create(WTFMove(completionHandler));
         forEachNetworkSession([modifiedSince, &aggregator](NetworkSession& session) {
             if (auto* cache = session.cache())
-                cache->clear(modifiedSince, [aggregator = aggregator.copyRef()] () { });
+                cache->clear(modifiedSince, [aggregator] () { });
         });
     }).get());
 }
@@ -216,9 +216,7 @@ static void saveCookies(NSHTTPCookieStorage *cookieStorage, CompletionHandler<vo
     ASSERT(RunLoop::isMain());
     [cookieStorage _saveCookies:makeBlockPtr([completionHandler = WTFMove(completionHandler)]() mutable {
         // CFNetwork may call the completion block on a background queue, so we need to redispatch to the main thread.
-        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() mutable {
-            completionHandler();
-        });
+        RunLoop::main().dispatch(WTFMove(completionHandler));
     }).get()];
 }
 #endif

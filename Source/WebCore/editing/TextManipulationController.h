@@ -116,6 +116,7 @@ public:
     WEBCORE_EXPORT void startObservingParagraphs(ManipulationItemCallback&&, Vector<ExclusionRule>&& = { });
 
     void didCreateRendererForElement(Element&);
+    void removeNode(Node*);
 
     enum class ManipulationFailureType : uint8_t {
         ContentChanged,
@@ -159,6 +160,8 @@ private:
     ManipulationUnit createUnit(const Vector<String>&, Node&);
     void parse(ManipulationUnit&, const String&, Node&);
 
+    bool shouldExcludeNodeBasedOnStyle(const Node&);
+
     void addItem(ManipulationItemData&&);
     void addItemIfPossible(Vector<ManipulationUnit>&&);
     void flushPendingItemsForCallback();
@@ -171,12 +174,14 @@ private:
     };
     using NodeEntry = std::pair<Ref<Node>, Ref<Node>>;
     Vector<Ref<Node>> getPath(Node*, Node*);
-    void updateInsertions(Vector<NodeEntry>&, const Vector<Ref<Node>>&, Node*, HashSet<Ref<Node>>&, Vector<NodeInsertion>&, IsNodeManipulated = IsNodeManipulated::Yes);
+    void updateInsertions(Vector<NodeEntry>&, const Vector<Ref<Node>>&, Node*, HashSet<Ref<Node>>&, Vector<NodeInsertion>&);
     Optional<ManipulationFailureType> replace(const ManipulationItemData&, const Vector<ManipulationToken>&);
 
     WeakPtr<Document> m_document;
     WeakHashSet<Element> m_elementsWithNewRenderer;
-    WeakHashSet<Element> m_manipulatedElements;
+    HashSet<Node*> m_manipulatedNodes;
+
+    HashMap<String, bool> m_cachedFontFamilyExclusionResults;
 
     ManipulationItemCallback m_callback;
     Vector<ManipulationItem> m_pendingItemsForCallback;

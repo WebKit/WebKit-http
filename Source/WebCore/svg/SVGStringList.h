@@ -51,39 +51,8 @@ public:
             m_items.append(emptyString());
     }
 
-    bool parse(const String& data, UChar delimiter)
-    {
-        clearItems();
-
-        auto upconvertedCharacters = StringView(data).upconvertedCharacters();
-        const UChar* ptr = upconvertedCharacters;
-        const UChar* end = ptr + data.length();
-        while (ptr < end) {
-            const UChar* start = ptr;
-            while (ptr < end && *ptr != delimiter && !isSVGSpace(*ptr))
-                ptr++;
-            if (ptr == start)
-                break;
-            m_items.append(String(start, ptr - start));
-            skipOptionalSVGSpacesOrDelimiter(ptr, end, delimiter);
-        }
-
-        return ptr == end;
-    }
-
-    String valueAsString() const override
-    {
-        StringBuilder builder;
-
-        for (const auto& string : m_items) {
-            if (builder.length())
-                builder.append(' ');
-
-            builder.append(string);
-        }
-
-        return builder.toString();
-    }
+    bool parse(StringView, UChar delimiter);
+    String valueAsString() const override;
 };
 
 } // namespace WebCore

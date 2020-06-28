@@ -120,10 +120,6 @@ static BOOL themeWindowHasKeyAppearance;
 
 namespace WebCore {
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/ThemeMacAdditions.mm>
-#endif
-
 enum {
     topMargin,
     rightMargin,
@@ -419,7 +415,7 @@ static bool drawCellFocusRing(NSCell *cell, NSRect cellFrame, NSView *controlVie
     return false;
 }
 
-static void paintToggleButton(ControlPart buttonType, ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor, float pageScaleFactor)
+static void paintToggleButton(ControlPart buttonType, ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
 
@@ -464,7 +460,6 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
     NSView *view = ThemeMac::ensuredView(scrollView, controlStates, true /* useUnparentedView */);
 
     bool needsRepaint = false;
-    bool useImageBuffer = pageScaleFactor != 1.0f || zoomFactor != 1.0f;
     bool isCellFocused = controlStates.states() & ControlStates::FocusState;
 
     if ([toggleButtonCell _stateAnimationRunning]) {
@@ -474,9 +469,9 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
 
         [toggleButtonCell _renderCurrentAnimationFrameInContext:context.platformContext() atLocation:NSMakePoint(0, 0)];
         if (![toggleButtonCell _stateAnimationRunning] && isCellFocused)
-            needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(toggleButtonCell.get(), context, inflatedRect, view, false, true, useImageBuffer, deviceScaleFactor);
+            needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(toggleButtonCell.get(), context, inflatedRect, view, false, true, deviceScaleFactor);
     } else
-        needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(toggleButtonCell.get(), context, inflatedRect, view, true, isCellFocused, useImageBuffer, deviceScaleFactor);
+        needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(toggleButtonCell.get(), context, inflatedRect, view, true, isCellFocused, deviceScaleFactor);
 
     [toggleButtonCell setControlView:nil];
 
@@ -569,7 +564,7 @@ static NSButtonCell *button(ControlPart part, const ControlStates& controlStates
     return cell;
 }
     
-static void paintButton(ControlPart part, ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor, float pageScaleFactor)
+static void paintButton(ControlPart part, ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     
@@ -608,8 +603,7 @@ static void paintButton(ControlPart part, ControlStates& controlStates, Graphics
     NSWindow *window = [view window];
     NSButtonCell *previousDefaultButtonCell = [window defaultButtonCell];
 
-    bool useImageBuffer = pageScaleFactor != 1.0f || zoomFactor != 1.0f;
-    bool needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(buttonCell, context, inflatedRect, view, true, states & ControlStates::FocusState, useImageBuffer, deviceScaleFactor);
+    bool needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(buttonCell, context, inflatedRect, view, true, states & ControlStates::FocusState, deviceScaleFactor);
     if (states & ControlStates::DefaultState)
         [window setDefaultButtonCell:buttonCell];
     else if ([previousDefaultButtonCell isEqual:buttonCell])
@@ -730,10 +724,14 @@ static inline bool drawCellOrFocusRingIntoRectWithView(NSCell *cell, NSRect rect
     return false;
 }
 
-bool ThemeMac::drawCellOrFocusRingWithViewIntoContext(NSCell *cell, GraphicsContext& context, const FloatRect& rect, NSView *view, bool drawButtonCell, bool drawFocusRing, bool useImageBuffer, float deviceScaleFactor)
+bool ThemeMac::drawCellOrFocusRingWithViewIntoContext(NSCell *cell, GraphicsContext& context, const FloatRect& rect, NSView *view, bool drawButtonCell, bool drawFocusRing, float deviceScaleFactor)
 {
     ASSERT(drawButtonCell || drawFocusRing);
     bool needsRepaint = false;
+    auto platformContext = context.platformContext();
+    auto userCTM = AffineTransform(CGAffineTransformConcat(CGContextGetCTM(platformContext), CGAffineTransformInvert(CGContextGetBaseCTM(platformContext))));
+    bool useImageBuffer = userCTM.xScale() != 1.0 || userCTM.yScale() != 1.0;
+
     if (useImageBuffer) {
         NSRect imageBufferDrawRect = NSRect(FloatRect(buttonFocusRectOutlineWidth, buttonFocusRectOutlineWidth, rect.width(), rect.height()));
         auto imageBuffer = ImageBuffer::createCompatibleBuffer(rect.size() + 2 * FloatSize(buttonFocusRectOutlineWidth, buttonFocusRectOutlineWidth), deviceScaleFactor, ColorSpace::SRGB, context);
@@ -755,7 +753,7 @@ bool ThemeMac::drawCellOrFocusRingWithViewIntoContext(NSCell *cell, GraphicsCont
 // Color Well
 
 #if ENABLE(INPUT_TYPE_COLOR)
-static void paintColorWell(ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor, float pageScaleFactor)
+static void paintColorWell(ControlStates& controlStates, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
 
@@ -776,8 +774,7 @@ static void paintColorWell(ControlStates& controlStates, GraphicsContext& contex
     NSWindow *window = [view window];
     NSButtonCell *previousDefaultButtonCell = [window defaultButtonCell];
 
-    bool useImageBuffer = pageScaleFactor != 1.0f || zoomFactor != 1.0f;
-    bool needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(buttonCell, context, inflatedRect, view, true, states & ControlStates::FocusState, useImageBuffer, deviceScaleFactor);
+    bool needsRepaint = ThemeMac::drawCellOrFocusRingWithViewIntoContext(buttonCell, context, inflatedRect, view, true, states & ControlStates::FocusState, deviceScaleFactor);
     if ([previousDefaultButtonCell isEqual:buttonCell])
         [window setDefaultButtonCell:nil];
 
@@ -801,19 +798,6 @@ int ThemeMac::baselinePositionAdjustment(ControlPart part) const
     return Theme::baselinePositionAdjustment(part);
 }
 
-double ThemeMac::systemFontSizeFor(NSControlSize size)
-{
-#if HAVE(LARGE_CONTROL_SIZE)
-    if (size == NSControlSizeLarge) {
-        // This is a workaround for <rdar://problem/60350699>. Once this is fixed,
-        // we should remove ThemeMac::systemFontSizeFor as well as this hard-coded
-        // value.
-        return 15;
-    }
-#endif
-    return [NSFont systemFontSizeForControlSize:size];
-}
-
 Optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
@@ -821,7 +805,7 @@ Optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const F
         FontCascadeDescription fontDescription;
         fontDescription.setIsAbsoluteSize(true);
 
-        NSFont* nsFont = [NSFont systemFontOfSize:ThemeMac::systemFontSizeFor(controlSizeForFont(font))];
+        NSFont* nsFont = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSizeForFont(font)]];
         fontDescription.setOneFamily(AtomString("-apple-system", AtomString::ConstructFromLiteral));
         fontDescription.setComputedSize([nsFont pointSize] * zoomFactor);
         fontDescription.setSpecifiedSize([nsFont pointSize] * zoomFactor);
@@ -963,25 +947,26 @@ void ThemeMac::inflateControlPaintRect(ControlPart part, const ControlStates& st
 void ThemeMac::paint(ControlPart part, ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor, float pageScaleFactor, bool useSystemAppearance, bool useDarkAppearance)
 {
     UNUSED_PARAM(useSystemAppearance);
+    UNUSED_PARAM(pageScaleFactor);
 
     LocalDefaultSystemAppearance localAppearance(useDarkAppearance);
 
     switch (part) {
         case CheckboxPart:
-            paintToggleButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor, pageScaleFactor);
+            paintToggleButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor);
             break;
         case RadioPart:
-            paintToggleButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor, pageScaleFactor);
+            paintToggleButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor);
             break;
         case PushButtonPart:
         case DefaultButtonPart:
         case ButtonPart:
         case SquareButtonPart:
-            paintButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor, pageScaleFactor);
+            paintButton(part, states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor);
             break;
 #if ENABLE(INPUT_TYPE_COLOR)
         case ColorWellPart:
-            paintColorWell(states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor, pageScaleFactor);
+            paintColorWell(states, context, zoomedRect, zoomFactor, scrollView, deviceScaleFactor);
             break;
 #endif
         case InnerSpinButtonPart:
@@ -996,6 +981,16 @@ bool ThemeMac::userPrefersReducedMotion() const
 {
     return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
 }
+
+#if HAVE(LARGE_CONTROL_SIZE)
+
+bool ThemeMac::supportsLargeFormControls()
+{
+    static bool hasSupport = [[NSAppearance currentAppearance] _usesMetricsAppearance];
+    return hasSupport;
+}
+
+#endif // HAVE(LARGE_CONTROL_SIZE)
 
 }
 

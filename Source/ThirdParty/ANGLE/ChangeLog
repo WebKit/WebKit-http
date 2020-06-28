@@ -1,3 +1,41 @@
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Update macOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=213484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        WebGL cannot create a context if there is no GPU on the PCIe bus
+        https://bugs.webkit.org/show_bug.cgi?id=213479
+
+        Reviewed by Maciej Stachowiak and Dean Jackson.
+
+        * src/gpu_info_util/SystemInfo_macos.mm:
+        (angle::GetSystemInfo):
+        Do not bail from WebGL initialization if there are no GPUs on the PCIe bus.
+        Instead, continue on to context creation, and allow the system frameworks
+        to return an error if there truly is no GPU.
+
+2020-06-19  Jonathan Bedard  <jbedard@apple.com>
+
+        [ANGLE] Correct Catalyst guards
+        https://bugs.webkit.org/show_bug.cgi?id=211410
+        <rdar://problem/62891185>
+
+        Reviewed by Dean Jackson.
+
+        * src/libANGLE/renderer/gl/eagl/DeviceEAGL.cpp: Do not compile on Mac.
+        * src/libANGLE/renderer/gl/eagl/DeviceEAGL.h:  Definitions should not be available on Mac.
+        * src/libANGLE/renderer/gl/eagl/DisplayEAGL.h: Definitions should not be available on Mac.
+        * src/libANGLE/renderer/gl/eagl/DisplayEAGL.mm: Do not compile on Mac.
+
 2020-06-10  Dean Jackson  <dino@apple.com>
 
         Add a dynamic library target for ANGLE

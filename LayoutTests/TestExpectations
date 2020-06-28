@@ -241,7 +241,33 @@ imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html 
 # This test is timing out in all browsers.
 imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-frozen.https.html [ Skip ]
 
-imported/w3c/web-platform-tests/referrer-policy [ Skip ]
+# These tests rely on subdomains and can't work currently with local webserver.
+imported/w3c/web-platform-tests/referrer-policy/origin [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/strict-origin-when-cross-origin [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/no-referrer [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/origin-when-cross-origin [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/unsafe-url [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/css-integration [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/no-referrer-when-downgrade [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/same-origin [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/strict-origin [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/unset-referrer-policy [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/iframe-inheritance.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/multiple-headers-and-values.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/multiple-headers-combined.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/multiple-headers-one-invalid.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/multiple-headers-one-unknown-token.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/multiple-headers.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/sandboxed-iframe-with-opaque-origin.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/area-navigate.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/fetch-messaging.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/iframe-messaging.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/image-decoding.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/link-navigate.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/script-messaging.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/worker-messaging.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/subresource-test/xhr-messaging.html [ Skip ]
+imported/w3c/web-platform-tests/referrer-policy/generic/unsupported-csp-referrer-directive.html [ Skip ]
 
 # Newly imported service worker tests that are timing out.
 imported/w3c/web-platform-tests/service-workers/service-worker/dedicated-worker-service-worker-interception.https.html [ Skip ]
@@ -468,7 +494,7 @@ imported/w3c/web-platform-tests/html/interaction/focus/the-autofocus-attribute/u
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source.html [ Failure Pass ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom.window.html [ Failure Pass ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom-part-2.window.html [ Failure Pass ]
-imported/w3c/web-platform-tests/beacon/beacon-redirect.window.html [ Failure Pass ]
+imported/w3c/web-platform-tests/beacon/beacon-redirect.sub.window.html [ Failure Pass ]
 
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-load-error-events.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-load-error-events.https.html [ DumpJSConsoleLogInStdErr ]
@@ -723,9 +749,7 @@ imported/w3c/web-platform-tests/content-security-policy/script-src-attr-elem/str
 imported/w3c/web-platform-tests/content-security-policy/script-src-attr-elem/strict-dynamic-elem-blocked-src-allowed.sub.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_and_unsafe_eval_eval.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_and_unsafe_eval_new_function.html
-imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_discard_whitelist.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_double_policy_different_nonce.html
-imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_double_policy_honor_whitelist.sub.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_double_policy_report_only.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_eval.html
 imported/w3c/web-platform-tests/content-security-policy/script-src/script-src-strict_dynamic_hashes.html
@@ -754,6 +778,9 @@ imported/w3c/web-platform-tests/content-security-policy/worker-src/shared-worker
 imported/w3c/web-platform-tests/content-security-policy/worker-src/shared-worker-src-default-fallback.sub.html
 imported/w3c/web-platform-tests/content-security-policy/worker-src/shared-worker-src-script-fallback.sub.html
 imported/w3c/web-platform-tests/content-security-policy/worker-src/shared-worker-src-self-fallback.sub.html
+
+# Sometimes logs a line about trying to connect to an external URL.
+imported/w3c/web-platform-tests/content-security-policy/frame-src/frame-src-same-document.sub.html [ Pass Failure ]
 
 # Web platform test infrastructure unable to support insecure connection
 imported/w3c/web-platform-tests/web-share/canShare-insecure.http.html
@@ -1460,7 +1487,6 @@ webkit.org/b/138676 imported/w3c/canvas/2d.drawImage.animated.poster.html [ Fail
 webkit.org/b/138676 imported/w3c/canvas/2d.imageData.put.null.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/security.pattern.image.strokeStyle.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.imageData.get.nonfinite.html [ Failure ]
-webkit.org/b/138676 imported/w3c/canvas/2d.line.cap.round.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.gradient.object.invalidoffset.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/security.pattern.canvas.strokeStyle.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.gradient.radial.nonfinite.html [ Failure ]
@@ -1638,7 +1664,6 @@ webkit.org/b/139119 imported/mozilla/svg/text/multiple-chunks-bidi.svg [ ImageOn
 webkit.org/b/139132 imported/mozilla/svg/dynamic-switch-01.svg [ ImageOnlyFailure ]
 webkit.org/b/139154 imported/mozilla/svg/dynamic-marker-01.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-textPath-01.svg [ ImageOnlyFailure ]
-webkit.org/b/139155 imported/mozilla/svg/dynamic-textPath-02.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-textPath-03.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-pattern-01.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-use-01.svg [ ImageOnlyFailure ]
@@ -2010,9 +2035,6 @@ webkit.org/b/94458 http/tests/security/MessagePort/event-listener-context.html [
 # Times out for unexplored reasons                                                             
 storage/indexeddb/database-quota.html [ Skip ]
 storage/indexeddb/database-quota-private.html [ Skip ]
-
-# Modern IDB page cache interaction not yet sorted out
-fast/history/page-cache-indexed-closed-db.html [ Failure ]
 
 # IDB is currently disabled in private browsing.
 # With Modern IDB and the in-memory backing store, that should change.
@@ -2897,8 +2919,6 @@ webkit.org/b/187773 http/tests/webAPIStatistics [ Skip ]
 
 # This is fallout from turning Web Animations on.
 webkit.org/b/190032 animations/animation-playstate-paused-style-resolution.html [ Failure ]
-webkit.org/b/190032 animations/missing-values-first-keyframe.html [ Failure ]
-webkit.org/b/190032 animations/missing-values-last-keyframe.html [ Failure ]
 webkit.org/b/190032 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/mismatched-transform-transition-overlap.html [ Failure ]
@@ -4315,3 +4335,7 @@ webkit.org/b/212246 imported/w3c/web-platform-tests/css/css-grid/grid-model/grid
 webkit.org/b/212246 imported/w3c/web-platform-tests/css/css-grid/grid-model/grid-overflow-padding-001.html [ ImageOnlyFailure ]
 webkit.org/b/212246 imported/w3c/web-platform-tests/css/css-grid/grid-model/grid-overflow-padding-002.html [ ImageOnlyFailure ]
 webkit.org/b/212267 imported/w3c/web-platform-tests/css/css-grid/alignment/grid-item-self-baseline-001.html [ Skip ]
+
+# Only Cocoa ports support the -apple-system font keywords
+fast/text/text-styles/-apple-system [ ImageOnlyFailure ]
+

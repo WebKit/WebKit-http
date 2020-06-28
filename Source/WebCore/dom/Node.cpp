@@ -73,6 +73,7 @@
 #include "StyleSheetContents.h"
 #include "TemplateContentDocumentFragment.h"
 #include "TextEvent.h"
+#include "TextManipulationController.h"
 #include "TouchEvent.h"
 #include "WheelEvent.h"
 #include "XMLNSNames.h"
@@ -359,6 +360,10 @@ Node::~Node()
 
     if (hasRareData())
         clearRareData();
+
+    auto* textManipulationController = document().textManipulationControllerIfExists();
+    if (UNLIKELY(textManipulationController))
+        textManipulationController->removeNode(this);
 
     if (!isContainerNode())
         willBeDeletedFrom(document());
@@ -2058,6 +2063,9 @@ void Node::moveNodeToNewDocument(Document& oldDocument, Document& newDocument)
     }
 
     oldDocument.moveNodeIteratorsToNewDocument(*this, newDocument);
+
+    if (!parentNode())
+        oldDocument.parentlessNodeMovedToNewDocument(*this);
 
     if (AXObjectCache::accessibilityEnabled()) {
         if (auto* cache = oldDocument.existingAXObjectCache())

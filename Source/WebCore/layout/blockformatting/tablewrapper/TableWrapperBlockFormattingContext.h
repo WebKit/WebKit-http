@@ -42,15 +42,35 @@ public:
 
     void layoutInFlowContent(InvalidationState&, const ConstraintsForInFlowContent&) final;
 
+    void setHorizontalConstraintsIgnoringFloats(const HorizontalConstraints& horizontalConstraints) { m_horizontalConstraintsIgnoringFloats = horizontalConstraints; }
+
 private:
+    class Quirks : public BlockFormattingContext::Quirks {
+    public:
+        Quirks(const TableWrapperBlockFormattingContext&);
+
+        Optional<LayoutUnit> overrideTableHeight(const ContainerBox& tableBox) const;
+    };
+    TableWrapperBlockFormattingContext::Quirks quirks() const { return Quirks(*this); }
+
     void layoutTableBox(const ContainerBox& tableBox, const ConstraintsForInFlowContent&);
 
     void computeBorderAndPaddingForTableBox(const ContainerBox&, const HorizontalConstraints&);
     void computeWidthAndMarginForTableBox(const ContainerBox&, const HorizontalConstraints&);
     void computeHeightAndMarginForTableBox(const ContainerBox&, const ConstraintsForInFlowContent&);
+
+private:
+    HorizontalConstraints m_horizontalConstraintsIgnoringFloats;
 };
+
+inline TableWrapperBlockFormattingContext::Quirks::Quirks(const TableWrapperBlockFormattingContext& formattingContext)
+    : BlockFormattingContext::Quirks(formattingContext)
+{
+}
 
 }
 }
+
+SPECIALIZE_TYPE_TRAITS_LAYOUT_FORMATTING_CONTEXT(TableWrapperBlockFormattingContext, isTableWrapperBlockFormattingContext())
 
 #endif

@@ -37,6 +37,7 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "InputTypeNames.h"
+#include "NodeRenderStyle.h"
 #include "NodeTraversal.h"
 #include "PseudoElement.h"
 #include "Range.h"
@@ -330,10 +331,33 @@ TextManipulationController::ManipulationUnit TextManipulationController::createU
     return unit;
 }
 
+bool TextManipulationController::shouldExcludeNodeBasedOnStyle(const Node& node)
+{
+    auto* style = node.renderStyle();
+    if (!style)
+        return false;
+
+    auto& font = style->fontCascade().primaryFont();
+    auto familyName = font.platformData().familyName();
+    if (familyName.isEmpty())
+        return false;
+
+    auto iter = m_cachedFontFamilyExclusionResults.find(familyName);
+    if (iter != m_cachedFontFamilyExclusionResults.end())
+        return iter->value;
+
+    // FIXME: We should reconsider whether a node should be excluded if the primary font
+    // used to render the node changes, since this "icon font" heuristic may return a
+    // different result.
+    bool result = font.isProbablyOnlyUsedToRenderIcons();
+    m_cachedFontFamilyExclusionResults.set(familyName, result);
+    return result;
+}
+
 void TextManipulationController::parse(ManipulationUnit& unit, const String& text, Node& textNode)
 {
     ExclusionRuleMatcher exclusionRuleMatcher(m_exclusionRules);
-    bool isNodeExcluded = exclusionRuleMatcher.isExcluded(&textNode);
+    bool isNodeExcluded = exclusionRuleMatcher.isExcluded(&textNode) || shouldExcludeNodeBasedOnStyle(textNode);
     size_t positionOfLastNonHTMLSpace = WTF::notFound;
     size_t startPositionOfCurrentToken = 0;
     size_t index = 0;
@@ -421,9 +445,9 @@ void TextManipulationController::observeParagraphs(const Position& start, const 
             enclosingItemBoundaryElements.removeLast();
         }
 
-        if (RefPtr<Element> currentElementAncestor = is<Element>(*contentNode) ? downcast<Element>(contentNode) : contentNode->parentOrShadowHostElement()) {
-            if (m_manipulatedElements.contains(*currentElementAncestor))
-                return;
+        if (m_manipulatedNodes.contains(contentNode)) {
+            addItemIfPossible(std::exchange(unitsInCurrentParagraph, { }));
+            continue;
         }
 
         if (is<Element>(*contentNode)) {
@@ -478,7 +502,7 @@ void TextManipulationController::observeParagraphs(const Position& start, const 
 
 void TextManipulationController::didCreateRendererForElement(Element& element)
 {
-    if (m_manipulatedElements.contains(element))
+    if (m_manipulatedNodes.contains(&element))
         return;
 
     if (m_elementsWithNewRenderer.computesEmpty())
@@ -491,17 +515,6 @@ void TextManipulationController::didCreateRendererForElement(Element& element)
         m_elementsWithNewRenderer.add(element);
 }
 
-using PositionTuple = std::tuple<RefPtr<Node>, unsigned, unsigned>;
-static const PositionTuple makePositionTuple(const Position& position)
-{
-    return { position.anchorNode(), static_cast<unsigned>(position.anchorType()), position.anchorType() == Position::PositionIsOffsetInAnchor ? position.offsetInContainerNode() : 0 };
-}
-
-static const std::pair<PositionTuple, PositionTuple> makeHashablePositionRange(const Position& start, const Position& end)
-{
-    return { makePositionTuple(start), makePositionTuple(end) };
-}
-
 void TextManipulationController::scheduleObservationUpdate()
 {
     if (!m_document)
@@ -512,37 +525,32 @@ void TextManipulationController::scheduleObservationUpdate()
         if (!controller)
             return;
 
-        HashSet<Ref<Element>> mutatedElements;
+        HashSet<Ref<Element>> elementsToObserve;
         for (auto& weakElement : controller->m_elementsWithNewRenderer)
-            mutatedElements.add(weakElement);
+            elementsToObserve.add(weakElement);
         controller->m_elementsWithNewRenderer.clear();
 
-        HashSet<Ref<Element>> filteredElements;
-        for (auto& element : mutatedElements) {
-            auto* parentElement = element->parentElement();
-            if (!parentElement || !mutatedElements.contains(parentElement))
-                filteredElements.add(element.copyRef());
+        if (elementsToObserve.isEmpty())
+            return;
+
+        RefPtr<Node> commonAncestor;
+        for (auto& element : elementsToObserve) {
+            if (!commonAncestor)
+                commonAncestor = makeRefPtr(element.get());
+            else if (!element->isDescendantOf(commonAncestor.get())) {
+                commonAncestor = commonInclusiveAncestor(*commonAncestor, element.get());
+                ASSERT(commonAncestor);
+            }
         }
-        mutatedElements.clear();
+        auto start = firstPositionInOrBeforeNode(commonAncestor.get());
+        auto end = lastPositionInOrAfterNode(commonAncestor.get());
+        controller->observeParagraphs(start, end);
 
-        HashSet<std::pair<PositionTuple, PositionTuple>> paragraphSets;
-        for (auto& element : filteredElements) {
-            auto start = firstPositionInOrBeforeNode(element.ptr());
-            auto end = lastPositionInOrAfterNode(element.ptr());
-
-            if (start.isNull() || end.isNull())
-                continue;
-
-            auto key = makeHashablePositionRange(start, end);
-            if (!paragraphSets.add(key).isNewEntry)
-                continue;
-
-            auto* controller = weakThis.get();
-            if (!controller)
-                return;
-
-            controller->observeParagraphs(start, end);
+        if (controller->m_items.isEmpty()) {
+            controller->m_manipulatedNodes.add(commonAncestor.get());
+            return;
         }
+
         controller->flushPendingItemsForCallback();
     });
 }
@@ -620,7 +628,7 @@ Vector<Ref<Node>> TextManipulationController::getPath(Node* ancestor, Node* node
     return path;
 }
 
-void TextManipulationController::updateInsertions(Vector<NodeEntry>& lastTopDownPath, const Vector<Ref<Node>>& currentTopDownPath, Node* currentNode, HashSet<Ref<Node>>& insertedNodes, Vector<NodeInsertion>& insertions, IsNodeManipulated isNodeManipulated)
+void TextManipulationController::updateInsertions(Vector<NodeEntry>& lastTopDownPath, const Vector<Ref<Node>>& currentTopDownPath, Node* currentNode, HashSet<Ref<Node>>& insertedNodes, Vector<NodeInsertion>& insertions)
 {
     size_t i = 0;
     while (i < lastTopDownPath.size() && i < currentTopDownPath.size() && lastTopDownPath[i].first.ptr() == currentTopDownPath[i].ptr())
@@ -644,7 +652,7 @@ void TextManipulationController::updateInsertions(Vector<NodeEntry>& lastTopDown
     }
 
     if (currentNode)
-        insertions.append(NodeInsertion { lastTopDownPath.size() ? lastTopDownPath.last().second.ptr() : nullptr, *currentNode, isNodeManipulated });
+        insertions.append(NodeInsertion { lastTopDownPath.size() ? lastTopDownPath.last().second.ptr() : nullptr, *currentNode });
 }
 
 auto TextManipulationController::replace(const ManipulationItemData& item, const Vector<ManipulationToken>& replacementTokens) -> Optional<ManipulationFailureType>
@@ -773,7 +781,7 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     RefPtr<Node> endNode = end.firstNode();
     if (node && node != endNode) {
         auto topDownPath = getPath(commonAncestor.get(), node->parentNode());
-        updateInsertions(lastTopDownPath, topDownPath, nullptr, reusedOriginalNodes, insertions, IsNodeManipulated::No);
+        updateInsertions(lastTopDownPath, topDownPath, nullptr, reusedOriginalNodes, insertions);
     }
     while (node != endNode) {
         Ref<Node> parentNode = *node->parentNode();
@@ -792,35 +800,23 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     for (auto& node : nodesToRemove)
         node->remove();
 
-    HashSet<Ref<Node>> parentNodesWithOnlyManipulatedChildren;
     for (auto& insertion : insertions) {
-        RefPtr<Node> parent;
         if (!insertion.parentIfDifferentFromCommonAncestor) {
-            parent = insertionPoint.containerNode();
-            parent->insertBefore(insertion.child, insertionPoint.computeNodeAfterPosition());
+            insertionPoint.containerNode()->insertBefore(insertion.child, insertionPoint.computeNodeAfterPosition());
             insertionPoint = positionInParentAfterNode(insertion.child.ptr());
-        } else {
-            parent = insertion.parentIfDifferentFromCommonAncestor;
-            parent->appendChild(insertion.child);
-        }
+        } else
+            insertion.parentIfDifferentFromCommonAncestor->appendChild(insertion.child);
 
-        if (insertion.isChildManipulated == IsNodeManipulated::No) {
-            parentNodesWithOnlyManipulatedChildren.remove(*parent);
-            continue;
-        }
-
-        if (is<Element>(insertion.child.get()))
-            m_manipulatedElements.add(downcast<Element>(insertion.child.get()));
-        else if (parent->firstChild() == parent->lastChild())
-            parentNodesWithOnlyManipulatedChildren.add(*parent);
-    }
-
-    for (auto& node : parentNodesWithOnlyManipulatedChildren) {
-        if (is<Element>(node.get()))
-            m_manipulatedElements.add(downcast<Element>(node.get()));
+        if (insertion.isChildManipulated == IsNodeManipulated::Yes)
+            m_manipulatedNodes.add(insertion.child.ptr());
     }
 
     return WTF::nullopt;
+}
+
+void TextManipulationController::removeNode(Node* node)
+{
+    m_manipulatedNodes.remove(node);
 }
 
 } // namespace WebCore

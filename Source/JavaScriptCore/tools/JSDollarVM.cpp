@@ -1742,7 +1742,7 @@ static EncodedJSValue JSC_HOST_CALL functionCpuClflush(JSGlobalObject* globalObj
 #if CPU(X86_64) && !OS(WINDOWS)
     VM& vm = globalObject->vm();
 
-    if (!callFrame->argument(1).isInt32())
+    if (!callFrame->argument(1).isUInt32())
         return JSValue::encode(jsBoolean(false));
 
     auto clflush = [] (void* ptr) {
@@ -1783,16 +1783,17 @@ static EncodedJSValue JSC_HOST_CALL functionCpuClflush(JSGlobalObject* globalObj
 class CallerFrameJITTypeFunctor {
 public:
     CallerFrameJITTypeFunctor()
-        : m_currentFrame(0)
-        , m_jitType(JITType::None)
     {
         DollarVMAssertScope assertScope;
     }
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        if (m_currentFrame++ > 1) {
-            m_jitType = visitor->codeBlock()->jitType();
+        unsigned index = m_currentFrame++;
+        // First frame (index 0) is `llintTrue` etc. function itself.
+        if (index == 1) {
+            if (visitor->codeBlock())
+                m_jitType = visitor->codeBlock()->jitType();
             return StackVisitor::Done;
         }
         return StackVisitor::Continue;
@@ -1801,8 +1802,8 @@ public:
     JITType jitType() { return m_jitType; }
 
 private:
-    mutable unsigned m_currentFrame;
-    mutable JITType m_jitType;
+    mutable unsigned m_currentFrame { 0 };
+    mutable JITType m_jitType { JITType::None };
 };
 
 static FunctionExecutable* getExecutableForFunction(JSValue theFunctionValue)
@@ -1836,8 +1837,8 @@ static EncodedJSValue JSC_HOST_CALL functionLLintTrue(JSGlobalObject* globalObje
 }
 
 // Returns true if the current frame is a baseline JIT frame.
-// Usage: isBaselineJIT = $vm.jitTrue()
-static EncodedJSValue JSC_HOST_CALL functionJITTrue(JSGlobalObject* globalObject, CallFrame* callFrame)
+// Usage: isBaselineJIT = $vm.baselineJITTrue()
+static EncodedJSValue JSC_HOST_CALL functionBaselineJITTrue(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     DollarVMAssertScope assertScope;
     VM& vm = globalObject->vm();
@@ -3094,6 +3095,13 @@ static EncodedJSValue JSC_HOST_CALL functionIsMemoryLimited(JSGlobalObject*, Cal
 #endif
 }
 
+static EncodedJSValue JSC_HOST_CALL functionUseJIT(JSGlobalObject*, CallFrame*)
+{
+    return JSValue::encode(jsBoolean(Options::useJIT()));
+}
+
+constexpr unsigned jsDollarVMPropertyAttributes = PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete;
+
 void JSDollarVM::finishCreation(VM& vm)
 {
     DollarVMAssertScope assertScope;
@@ -3114,17 +3122,17 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "crash", functionCrash, 0);
     addFunction(vm, "breakpoint", functionBreakpoint, 0);
 
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "dfgTrue"), 0, functionDFGTrue, DFGTrueIntrinsic, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "ftlTrue"), 0, functionFTLTrue, FTLTrueIntrinsic, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "dfgTrue"), 0, functionDFGTrue, DFGTrueIntrinsic, jsDollarVMPropertyAttributes);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "ftlTrue"), 0, functionFTLTrue, FTLTrueIntrinsic, jsDollarVMPropertyAttributes);
 
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuMfence"), 0, functionCpuMfence, CPUMfenceIntrinsic, 0);
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuRdtsc"), 0, functionCpuRdtsc, CPURdtscIntrinsic, 0);
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuCpuid"), 0, functionCpuCpuid, CPUCpuidIntrinsic, 0);
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuPause"), 0, functionCpuPause, CPUPauseIntrinsic, 0);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuMfence"), 0, functionCpuMfence, CPUMfenceIntrinsic, jsDollarVMPropertyAttributes);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuRdtsc"), 0, functionCpuRdtsc, CPURdtscIntrinsic, jsDollarVMPropertyAttributes);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuCpuid"), 0, functionCpuCpuid, CPUCpuidIntrinsic, jsDollarVMPropertyAttributes);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(vm, "cpuPause"), 0, functionCpuPause, CPUPauseIntrinsic, jsDollarVMPropertyAttributes);
     addFunction(vm, "cpuClflush", functionCpuClflush, 2);
 
     addFunction(vm, "llintTrue", functionLLintTrue, 0);
-    addFunction(vm, "jitTrue", functionJITTrue, 0);
+    addFunction(vm, "baselineJITTrue", functionBaselineJITTrue, 0);
 
     addFunction(vm, "noInline", functionNoInline, 1);
 
@@ -3235,6 +3243,7 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "assertEnabled", functionAssertEnabled, 0);
 
     addFunction(vm, "isMemoryLimited", functionIsMemoryLimited, 0);
+    addFunction(vm, "useJIT", functionUseJIT, 0);
 
     m_objectDoingSideEffectPutWithoutCorrectSlotStatusStructure.set(vm, this, ObjectDoingSideEffectPutWithoutCorrectSlotStatus::createStructure(vm, globalObject, jsNull()));
 }
@@ -3243,14 +3252,14 @@ void JSDollarVM::addFunction(VM& vm, JSGlobalObject* globalObject, const char* n
 {
     DollarVMAssertScope assertScope;
     Identifier identifier = Identifier::fromString(vm, name);
-    putDirect(vm, identifier, JSFunction::create(vm, globalObject, arguments, identifier.string(), function));
+    putDirect(vm, identifier, JSFunction::create(vm, globalObject, arguments, identifier.string(), function), jsDollarVMPropertyAttributes);
 }
 
 void JSDollarVM::addConstructibleFunction(VM& vm, JSGlobalObject* globalObject, const char* name, NativeFunction function, unsigned arguments)
 {
     DollarVMAssertScope assertScope;
     Identifier identifier = Identifier::fromString(vm, name);
-    putDirect(vm, identifier, JSFunction::create(vm, globalObject, arguments, identifier.string(), function, NoIntrinsic, function));
+    putDirect(vm, identifier, JSFunction::create(vm, globalObject, arguments, identifier.string(), function, NoIntrinsic, function), jsDollarVMPropertyAttributes);
 }
 
 void JSDollarVM::visitChildren(JSCell* cell, SlotVisitor& visitor)

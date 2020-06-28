@@ -133,13 +133,6 @@ class DeprecatedPort(object):
     def run_perl_unittests_command(self):
         return self.script_shell_command("test-webkitperl")
 
-    def run_bindings_tests_command(self):
-        return self.script_shell_command("run-bindings-tests")
-
-    def run_api_tests_command(self, build_style=None):
-        command = self.script_shell_command("run-api-tests")
-        return self._append_build_style_flag(command, build_style)
-
     def run_sort_xcode_project_file_command(self):
         return self.script_shell_command("sort-Xcode-project-file")
 
@@ -183,9 +176,6 @@ class MacWK2Port(DeprecatedPort):
 
 class WinPort(DeprecatedPort):
     port_flag_name = "win"
-
-    def run_bindings_tests_command(self):
-        return None
 
     def run_webkit_tests_command(self, build_style=None):
         command = super(WinPort, self).run_webkit_tests_command(build_style)

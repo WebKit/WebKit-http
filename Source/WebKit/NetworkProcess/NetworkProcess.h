@@ -107,8 +107,8 @@ class WebSWServerConnection;
 class WebSWServerToContextConnection;
 enum class ShouldGrandfatherStatistics : bool;
 enum class StorageAccessStatus : uint8_t;
-enum class WebsiteDataFetchOption;
-enum class WebsiteDataType;
+enum class WebsiteDataFetchOption : uint8_t;
+enum class WebsiteDataType : uint32_t;
 struct NetworkProcessCreationParameters;
 struct WebsiteDataStoreParameters;
 
@@ -438,6 +438,7 @@ private:
     void setIgnoreTLSErrors(bool);
     void userPreferredLanguagesChanged(const Vector<String>&);
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
+    void setPersistentCredentialStorageEnabled(PAL::SessionID, bool);
 #endif
 
 #if USE(CURL)

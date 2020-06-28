@@ -201,9 +201,9 @@ struct WebProcessCreationParameters {
     
 #if PLATFORM(IOS)
     Optional<SandboxExtension::Handle> compilerServiceExtensionHandle;
-    Optional<SandboxExtension::Handle> contentFilterExtensionHandle;
-    Optional<SandboxExtension::Handle> frontboardServiceExtensionHandle;
 #endif
+
+    Optional<SandboxExtension::Handle> containerManagerExtensionHandle;
 
 #if PLATFORM(IOS_FAMILY)
     SandboxExtension::HandleArray diagnosticsExtensionHandles;
@@ -212,8 +212,6 @@ struct WebProcessCreationParameters {
 #endif
 
 #if PLATFORM(COCOA)
-    Optional<SandboxExtension::Handle> neHelperExtensionHandle;
-    Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
     Optional<SandboxExtension::Handle> mapDBExtensionHandle;
     bool systemHasBattery { false };
 #endif

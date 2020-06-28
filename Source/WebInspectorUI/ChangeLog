@@ -1,3 +1,131 @@
+2020-06-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add a tooltip to the icon of overridden resources to clarify meaning
+        https://bugs.webkit.org/show_bug.cgi?id=213531
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LocalResourceOverrideWarningView.js:
+        (WI.LocalResourceOverrideWarningView.prototype.initialLayout):
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._responseSourceDisplayString):
+        Rephrase "local resource override" to just "local override" to match the reference page name.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell.createIconElement):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateTransferSizeCell):
+        Add a `title` for the special transfer size cases, such as for `(local override)`.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.prototype._updateIcon):
+        * UserInterface/Views/ResourceSizesContentView.js:
+        (WI.ResourceSizesContentView.prototype.initialLayout):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WI.TimelineDataGridNode.prototype.createCellContent):
+        (WI.TimelineDataGridNode.prototype.generateIconTitle): Added.
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode.prototype.get data):
+        (WI.ResourceTimelineDataGridNode.prototype.generateIconTitle): Added.
+        Add a `title` to the overridden resource icon that clarifies the fact that the resource was
+        overridden by a local override.
+
+        * UserInterface/Views/LayoutTimelineDataGridNode.js:
+        (WI.LayoutTimelineDataGridNode.prototype.get data):
+        Cache the `initiatorCallFrame` in the `source` column as well as the `initiator` column, as
+        it is used by the general timeline overview table.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode.prototype.createCell):
+        (WI.DataGridNode.prototype.generateIconTitle): Added.
+        Provide a way to set a `title` on just the icon.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2020-06-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: adjust height of undocked title area to match macOS Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=213490
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Variables.css:
+        (body.mac-platform.big-sur:not(.docked)):
+        The title bar height is based on the close/minimize/maximize buttons, not the title text.
+
+2020-06-23  Devin Rousso  <drousso@apple.com>
+
+        Keyframe animation doesn't 't show up in the Animations timeline
+        https://bugs.webkit.org/show_bug.cgi?id=213441
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Animation.js:
+        (WI.Animation):
+        (WI.Animation.prototype._updateEffect):
+        An `interationCount` of `Infinity` is not JSON serializable, so represent it as `-1` instead.
+
+        * UserInterface/Models/MediaTimelineRecord.js:
+        (WI.MediaTimelineRecord):
+        * UserInterface/Views/MediaTimelineDataGridNode.js:
+        (WI.MediaTimelineDataGridNode.prototype.createCellContent):
+        (WI.MediaTimelineDataGridNode.prototype.filterableDataForColumn):
+        The DOM node may not be able to be instrumented if the timeline recording starts before the
+        frontend has had a chance to request the main document, so it's possible for the DOM node
+        to not be set.
+
+2020-06-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: adjust height of undocked title area to match macOS Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=213490
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Variables.css:
+        (body.mac-platform:not(.big-sur):not(.docked)): Added.
+        (body.mac-platform.big-sur:not(.docked)): Added.
+        (body.mac-platform:not(.docked)): Deleted.
+
+        * UserInterface/Base/Platform.js:
+        Add logic for detecting macOS Big Sur (and Catalina).
+
+2020-06-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Node: use a `WI.ContextMenu` instead of a `<select>` for listener filtering
+        https://bugs.webkit.org/show_bug.cgi?id=213492
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.initialLayout):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._populateEventListenersFilterContextMenu): Added.
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter > select): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Update macOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=213484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-06-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console: add comments for localized strings in execution context picker
+        https://bugs.webkit.org/show_bug.cgi?id=213280
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype._populateActiveExecutionContextNavigationItemContextMenu):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
 2020-06-16  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Sources: objects in Scope Chain panel flicker when resizing details sidebar

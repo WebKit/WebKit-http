@@ -32,7 +32,7 @@ namespace WebCore {
 class AnalyserNode final : public AudioBasicInspectorNode {
     WTF_MAKE_ISO_ALLOCATED(AnalyserNode);
 public:
-    static Ref<AnalyserNode> create(AudioContext& context, float sampleRate)
+    static Ref<AnalyserNode> create(BaseAudioContext& context, float sampleRate)
     {
         return adoptRef(*new AnalyserNode(context, sampleRate));
     }
@@ -53,12 +53,13 @@ public:
     ExceptionOr<void> setSmoothingTimeConstant(double);
     double smoothingTimeConstant() const { return m_analyser.smoothingTimeConstant(); }
 
-    void getFloatFrequencyData(const RefPtr<JSC::Float32Array>& array) { m_analyser.getFloatFrequencyData(array.get()); }
-    void getByteFrequencyData(const RefPtr<JSC::Uint8Array>& array) { m_analyser.getByteFrequencyData(array.get()); }
-    void getByteTimeDomainData(const RefPtr<JSC::Uint8Array>& array) { m_analyser.getByteTimeDomainData(array.get()); }
+    void getFloatFrequencyData(const Ref<JSC::Float32Array>& array) { m_analyser.getFloatFrequencyData(array.get()); }
+    void getByteFrequencyData(const Ref<JSC::Uint8Array>& array) { m_analyser.getByteFrequencyData(array.get()); }
+    void getFloatTimeDomainData(const Ref<JSC::Float32Array>& array) { m_analyser.getFloatTimeDomainData(array.get()); }
+    void getByteTimeDomainData(const Ref<JSC::Uint8Array>& array) { m_analyser.getByteTimeDomainData(array.get()); }
 
 private:
-    AnalyserNode(AudioContext&, float sampleRate);
+    AnalyserNode(BaseAudioContext&, float sampleRate);
 
     void process(size_t framesToProcess) final;
     void reset() final;

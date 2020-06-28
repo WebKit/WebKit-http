@@ -49,6 +49,8 @@
 
 namespace WebCore {
 
+static const unsigned maxRegistrationCount = 3;
+
 SWServer::Connection::Connection(SWServer& server, Identifier identifier)
     : m_server(server)
     , m_identifier(identifier)
@@ -333,7 +335,7 @@ SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore, bool processTerminati
 void SWServer::validateRegistrationDomain(WebCore::RegistrableDomain domain, CompletionHandler<void(bool)>&& completionHandler)
 {
     if (m_hasServiceWorkerEntitlement || m_hasReceivedAppBoundDomains) {
-        completionHandler(m_appBoundDomains.contains(domain));
+        completionHandler(m_appBoundDomains.contains(domain) && m_scopeToRegistrationMap.keys().size() < maxRegistrationCount);
         return;
     }
     
@@ -342,7 +344,7 @@ void SWServer::validateRegistrationDomain(WebCore::RegistrableDomain domain, Com
             return;
         m_hasReceivedAppBoundDomains = true;
         m_appBoundDomains = WTFMove(appBoundDomains);
-        completionHandler(m_appBoundDomains.contains(domain));
+        completionHandler(m_appBoundDomains.contains(domain) && m_scopeToRegistrationMap.keys().size() < maxRegistrationCount);
     });
 }
 
@@ -579,13 +581,13 @@ void SWServer::forEachClientForOrigin(const ClientOrigin& origin, const WTF::Fun
 
 Optional<ExceptionData> SWServer::claim(SWServerWorker& worker)
 {
-    if (!worker.isActive())
+    auto* registration = worker.registration();
+    if (!registration || &worker != registration->activeWorker())
         return ExceptionData { InvalidStateError, "Service worker is not active"_s };
 
     auto& origin = worker.origin();
     forEachClientForOrigin(origin, [&](auto& clientData) {
-        auto* registration = this->doRegistrationMatching(origin.topOrigin, clientData.url);
-        if (!(registration && registration->key() == worker.registrationKey()))
+        if (doRegistrationMatching(origin.topOrigin, clientData.url) != registration)
             return;
 
         auto result = m_clientToControllingRegistration.add(clientData.identifier, registration->identifier());

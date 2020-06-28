@@ -1199,6 +1199,11 @@ void NetworkProcessProxy::setToSameSiteStrictCookiesForTesting(PAL::SessionID se
 
     sendWithAsyncReply(Messages::NetworkProcess::SetToSameSiteStrictCookiesForTesting(sessionID, domain), WTFMove(completionHandler));
 }
+
+void NetworkProcessProxy::setDomainsWithUserInteraction(HashSet<WebCore::RegistrableDomain>&& domains)
+{
+    processPool().setDomainsWithUserInteraction(WTFMove(domains));
+}
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 void NetworkProcessProxy::setAdClickAttributionDebugMode(bool debugMode)
@@ -1282,8 +1287,15 @@ void NetworkProcessProxy::removeSession(PAL::SessionID sessionID)
 
 WebsiteDataStore* NetworkProcessProxy::websiteDataStoreFromSessionID(PAL::SessionID sessionID)
 {
-    if (sessionID == PAL::SessionID::defaultSessionID())
+    if (sessionID == PAL::SessionID::defaultSessionID()) {
+        if (!WebsiteDataStore::defaultDataStoreExists()) {
+            auto* websiteDataStore = m_processPool.websiteDataStore();
+            if (websiteDataStore && websiteDataStore->sessionID() == sessionID)
+                return websiteDataStore;
+        }
+
         return WebsiteDataStore::defaultDataStore().ptr();
+    }
     return WebsiteDataStore::existingNonDefaultDataStoreForSessionID(sessionID);
 }
 

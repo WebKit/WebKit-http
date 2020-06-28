@@ -1,3 +1,448 @@
+2020-06-27  Sam Weinig  <weinig@apple.com>
+
+        Improve assertions in StringParsingBuffer 
+        https://bugs.webkit.org/show_bug.cgi?id=213633
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringParsingBuffer.h:
+        Address additional feedback and improve the assertions by making them more
+        clear and avoid potential overflows.
+
+2020-06-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Re-land r262863
+        https://bugs.webkit.org/show_bug.cgi?id=213654
+
+        Reviewed by Tadeu Zagallo.
+
+        r263575 should fix the crash we saw.
+
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (-[JSWTFMainThreadCaller call]): Deleted.
+
+2020-06-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Initializing the main thread should initialize the main run loop
+        https://bugs.webkit.org/show_bug.cgi?id=213637
+
+        Reviewed by Anders Carlsson.
+
+        Previously, some code initialized one, some the other, and some both;
+        and some code tried to initialize more than once; and some code tried
+        to initialize in ways that would crash but luckily got pre-empted by
+        other code that had already initialized.
+
+        In addition to general confusion, this setup made it subtly high stakes
+        to call certain functions, like callOnMainThread or
+        RunLoop::main().dispatch(), because they might crash if the right
+        initialization had not been performed.
+
+        Let's fix that.
+
+        * wtf/MainThread.cpp:
+        (WTF::initializeMainThread): Removed defunct comment about
+        initializeMainThreadToProcessMainThread. Shrank scope of initializeKey.
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::initializeMain): Don't call initializeMainThread anymore
+        because it calls us now. No need for a store fence since we run on the
+        main thread and we don't store anything.
+        (WTF::RunLoop::initializeWeb): Upgrade to RELEASE_ASSERT.
+        * wtf/RunLoop.h: Removed incorrect comment. (Fascinating to wonder when
+        it became incorrect.)
+
+2020-06-25  Sam Weinig  <weinig@apple.com>
+
+        Add a new templated string type to help write more idiomatic parsing code
+        https://bugs.webkit.org/show_bug.cgi?id=213588
+
+        Reviewed by Darin Adler.
+        
+        Introduce StringParsingBuffer<CharType>, a new class in the String class family
+        designed to be used by parsing code. It's designed to be used with the helper
+        function, readCharactersForParsing, and for the user to write the parsing code
+        in a way that will work for both latin1 and UTF-16 inputs. Most usage will likely
+        follow something like the following form
+        
+        {
+            ...
+            auto parsedResult = readCharactersForParsing(stringishObjectToParse, [](auto parsingBuffer) {
+                while (parsingBuffer.hasCharactersRemaining()) {
+                    if (*parsingBuffer == foo) {
+                        ...
+                    }
+                }
+
+                ...
+
+                return parsedResult
+            });
+            ...
+        }
+
+        API tests added.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        Add StringParsingBuffer.h
+
+        * wtf/Forward.h:
+        Forward declare StringParsingBuffer.
+
+        * wtf/text/StringParsingBuffer.h: 
+        Added.
+
+2020-06-25  Tadeu Zagallo  <tzagallo@apple.com>
+
+        WTF::callOnMainThread should not require the main runloop to be initialized
+        https://bugs.webkit.org/show_bug.cgi?id=213612
+        <rdar://problem/64446028>
+
+        Reviewed by Yusuke Suzuki.
+
+        When using JavaScriptCore as a framework, the WTF main runloop is never initialized. However,
+        the inspector uses CFString wrappers, which use `callOnMainThread` when deallocating the
+        underlying string. For now, we bring back the old `JSWTFMainThreadCaller` to ensure we have
+        a way of dispatching to the main thread, even when the main runloop hasn't been initialized.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::mainIfExists):
+        * wtf/RunLoop.h:
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (-[JSWTFMainThreadCaller call]):
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+
+2020-06-24  Umar Iqbal  <uiqbal@apple.com>
+
+        We should resurrect the older patch that collects some statistics of web API calls
+        https://bugs.webkit.org/show_bug.cgi?id=213319
+
+        Reviewed by Brent Fulgham.
+
+        + Enabled ENABLE_WEB_API_STATISTICS flag
+        
+        * wtf/PlatformEnableCocoa.h:
+
+2020-06-24  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed the 50ms rescheduling timeout from callOnMainThread
+        https://bugs.webkit.org/show_bug.cgi?id=213560
+
+        Reviewed by Anders Carlsson.
+
+        This is a step toward making the engine less flaky by unifying
+        callOnMainThread with RunLoop::dispatch.
+
+        The timeout was added in r40888 to avoid a hang under heavy postMessage
+        load. A few reasons this isn’t the right approach anymore:
+
+        (1) postMessage has migrated to EventLoop, which does its own
+        scheduling.
+
+        (2) postMessage does not use the application process RunLoop in Modern
+        WebKit.
+
+        (3) Delay is not a sufficient solution to a messaging hang — because
+        you’ll just OOM crash instead. The original author noted this problem
+        in bug 23705 but never resolved it; and we rediscovered it in r233111.
+
+        I verified manually that the r40888 version of
+        fast/workers/worker-timeout.html does not hang.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+
+2020-06-23  Geoffrey Garen  <ggaren@apple.com>
+
+        Remove WTF::setMainThreadCallbacksPaused
+        https://bugs.webkit.org/show_bug.cgi?id=213112
+
+        Reviewed by Tim Horton.
+
+        setMainThreadCallbacksPaused pauses all uses of callOnMainThread. That
+        has too many side-effects. For example, you can scroll, but you can't
+        paint any large images (since they do async image decoding).
+
+        Meanwhile, setMainThreadCallbacksPaused doesn't pause RunLoop::dispatch.
+        So, other things don't get paused.
+
+        Let's just rely on suspending the ScriptExecutionContext and document
+        event queue. That should suspend JavaScript-visible stuff without
+        suspending engine-critical stuff.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::setMainThreadCallbacksPaused): Deleted.
+        * wtf/MainThread.h:
+
+2020-06-23  Chris Dumez  <cdumez@apple.com>
+
+        Remove a lot of unnecessary calls to Ref::copyRef()
+        https://bugs.webkit.org/show_bug.cgi?id=213533
+
+        Reviewed by Darin Adler.
+
+        Remove a lot of unnecessary calls to Ref::copyRef() now that Ref is copyable.
+
+        * wtf/glib/SocketConnection.cpp:
+        (WTF::SocketConnection::waitForSocketWritability):
+
+2020-06-23  Saam Barati  <sbarati@apple.com>
+
+        Remove WKkIsTranslated once our bots are updated to the needed SDK
+        https://bugs.webkit.org/show_bug.cgi?id=213489
+
+        Reviewed by Tim Horton.
+
+        We can use the "sysctl.proc_translated" sysctl instead.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/TranslatedProcess.cpp: Added.
+        (WTF::isX86BinaryRunningOnARM):
+        * wtf/TranslatedProcess.h:
+        (WTF::isX86BinaryRunningOnARM):
+
+2020-06-23  Mark Lam  <mark.lam@apple.com>
+
+        Handle string overflow in DFG graph dump while validating AI.
+        https://bugs.webkit.org/show_bug.cgi?id=213524
+        <rdar://problem/64635620>
+
+        Reviewed by Saam Barati.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::tryToString):
+        * wtf/StringPrintStream.h:
+
+2020-06-22  Saam Barati  <sbarati@apple.com>
+
+        Allow building JavaScriptCore Mac+arm64 in public SDK build
+        https://bugs.webkit.org/show_bug.cgi?id=213472
+
+        Reviewed by Sam Weinig.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+        * wtf/PlatformHave.h:
+
+2020-06-22  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build
+
+        * wtf/TranslatedProcess.h:
+        (WTF::isX86BinaryRunningOnARM):
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Disable the JS JIT when running in a translated process
+        https://bugs.webkit.org/show_bug.cgi?id=213478
+
+        Reviewed by Saam Barati.
+
+        * wtf/PlatformHave.h:
+        * wtf/TranslatedProcess.h: Added.
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        Add a helper function that can be used to determine that the current process
+        is being translated; currently the only case is an x86_64 process running on arm64e.
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Update macOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=213484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2020-06-22  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, re-landing r262904.
+
+        r263223 should fix the test flakiness we saw.
+
+        Re-landed changeset:
+
+        "[Cocoa] Build callOnMainThread on WTF::RunLoop rather than on
+        a timer"
+        https://bugs.webkit.org/show_bug.cgi?id=213063
+        https://trac.webkit.org/changeset/262904
+
+2020-06-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Ensure ASCIILiteral is ASCII characters at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=213449
+
+        Reviewed by Ross Kirsling.
+
+        The purpose of ASCIILiteral is ensure that this is compile-time (do not need to consider about ownership) ASCII characters.
+        By using `isASCII` and `ASSERT_UNDER_CONSTEXPR_CONTEXT`, we can make sure that this C string does not include non ASCII characters.
+        For example,
+
+            auto globalVariable = "ラーメン (Ramen in Japanese)"_s;
+
+        becomes compile error.
+
+        * wtf/ASCIICType.h:
+        (WTF::isASCII):
+        * wtf/text/ASCIILiteral.h:
+        (WTF::StringLiterals::operator _s):
+
+2020-06-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] URL should support dataLog
+        https://bugs.webkit.org/show_bug.cgi?id=213450
+
+        Reviewed by Mark Lam.
+
+        Add URL::dump(PrintStream&) to support `dataLog(url)` which is extremely useful for WTF / JSC developers.
+
+        * wtf/URL.cpp:
+        (WTF::URL::dump const):
+        * wtf/URL.h:
+
+2020-06-19  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Check Gigacage usage before launching VM
+        https://bugs.webkit.org/show_bug.cgi?id=213410
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.h:
+        (Gigacage::footprint):
+        (Gigacage::maxSize):
+        (Gigacage::size):
+
+2020-06-19  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r263223.
+
+        Broke compositing/video/video-border-radius-clipping.html on
+        Mac release wk1
+
+        Reverted changeset:
+
+        "Unreviewed, re-landing r262904."
+        https://bugs.webkit.org/show_bug.cgi?id=213063
+        https://trac.webkit.org/changeset/263223
+
+2020-06-19  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        -Wsign-compare in isValidOptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=213383
+
+        Reviewed by Darin Adler.
+
+        The OptionSet's StorageType is always unsigned, even if the enum's underlying value is not.
+        Match this in isValidOptionSet to avoid -Wsign-compare during validity checking.
+
+        * wtf/OptionSet.h:
+        (WTF::isValidOptionSet):
+
+2020-06-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Unify "font:" CSS shorthand values between macOS and iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=213332
+        <rdar://problem/64479189>
+
+        Reviewed by Tim Horton and Darin Adler.
+
+        All Cocoa platforms support kCTUIFontTextStyleTitle0 and kCTUIFontTextStyleTitle4.
+
+        * wtf/PlatformHave.h:
+
+2020-06-18  Mark Lam  <mark.lam@apple.com>
+
+        Unify Bitmap math loops in MarkedBlock::Handle::specializedSweep().
+        https://bugs.webkit.org/show_bug.cgi?id=213345
+
+        Reviewed by Robin Morisset and Saam Barati.
+
+        1. Removed Bitmap::words.  Use Bitmap::numberOfWords instead.
+        2. Removed Bitmap::wordSize.  Use Bitmap::bitsInWord instead.
+        3. Added a new Bitmap::words() method which returns the address of the underlying
+           bitmap storage as a Bitmap::Word*.  This enables clients to do direct bit
+           manipulation on the Bitmap words if needed.
+
+        * wtf/Bitmap.h:
+        (WTF::WordType>::get const):
+        (WTF::WordType>::set):
+        (WTF::WordType>::testAndSet):
+        (WTF::WordType>::testAndClear):
+        (WTF::WordType>::concurrentTestAndSet):
+        (WTF::WordType>::concurrentTestAndClear):
+        (WTF::WordType>::clear):
+        (WTF::WordType>::invert):
+        (WTF::WordType>::nextPossiblyUnset const):
+        (WTF::WordType>::count const):
+        (WTF::WordType>::isEmpty const):
+        (WTF::WordType>::isFull const):
+        (WTF::WordType>::merge):
+        (WTF::WordType>::filter):
+        (WTF::WordType>::exclude):
+        (WTF::WordType>::concurrentFilter):
+        (WTF::WordType>::subsumes const):
+        (WTF::WordType>::forEachSetBit const):
+        (WTF::WordType>::findBit const):
+        (WTF::WordType>::mergeAndClear):
+        (WTF::WordType>::setAndClear):
+        (WTF::WordType>::setEachNthBit):
+        (WTF::= const):
+        (WTF::=):
+        (WTF::WordType>::hash const):
+
+2020-06-18  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, re-landing r262904.
+
+        r263219 and r263175 should fix the test flakiness we saw.
+
+        Re-landed changeset:
+
+        "[Cocoa] Build callOnMainThread on WTF::RunLoop rather than on
+        a timer"
+        https://bugs.webkit.org/show_bug.cgi?id=213063
+        https://trac.webkit.org/changeset/262904
+
+2020-06-18  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] OptionSet<> values should be validated
+        <https://webkit.org/b/213199>
+        <rdar://problem/64369963>
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/OptionSet.h:
+        (WTF::isValidOptionSet): Add.
+
+2020-06-17  Mark Lam  <mark.lam@apple.com>
+
+        Replace JSC::FreeList linked list with a Bitmap.
+        https://bugs.webkit.org/show_bug.cgi?id=213071
+
+        Reviewed by Filip Pizlo.
+
+        1. Use countOfBits<> template to compute the number of bits.
+        2. Introduce log2() and log2Constexpr() utility functions.
+        3. Make Bitmap<>::forEachSetBit() a little bit more efficient: we don't need to
+           keep iterating if the bitmap word is already empty of bits.
+
+        * wtf/Bitmap.h:
+        (WTF::WordType>::forEachSetBit const):
+        * wtf/MathExtras.h:
+        (WTF::clzConstexpr):
+        (WTF::clz):
+        (WTF::ctzConstexpr):
+        (WTF::ctz):
+        (WTF::getMSBSet):
+        (WTF::getMSBSetConstexpr):
+        (WTF::log2):
+        (WTF::log2Constexpr):
+
 2020-06-17  David Kilzer  <ddkilzer@apple.com>
 
         Replace OptionSetTraits/OptionSetValues with EnumTraits/EnumValues

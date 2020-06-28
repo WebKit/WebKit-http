@@ -164,7 +164,7 @@ void NetworkProcess::clearDiskCache(WallTime modifiedSince, CompletionHandler<vo
     auto aggregator = CallbackAggregator::create(WTFMove(completionHandler));
     forEachNetworkSession([modifiedSince, &aggregator](NetworkSession& session) {
         if (auto* cache = session.cache())
-            cache->clear(modifiedSince, [aggregator = aggregator.copyRef()] () { });
+            cache->clear(modifiedSince, [aggregator] () { });
     });
 }
 
@@ -179,6 +179,12 @@ void NetworkProcess::setNetworkProxySettings(const SoupNetworkProxySettings& set
     forEachNetworkSession([](const auto& session) {
         static_cast<const NetworkSessionSoup&>(session).soupNetworkSession().setupProxy();
     });
+}
+
+void NetworkProcess::setPersistentCredentialStorageEnabled(PAL::SessionID sessionID, bool enabled)
+{
+    if (auto* session = networkSession(sessionID))
+        static_cast<NetworkSessionSoup&>(*session).setPersistentCredentialStorageEnabled(enabled);
 }
 
 void NetworkProcess::platformProcessDidTransitionToForeground()

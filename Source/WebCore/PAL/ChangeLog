@@ -1,3 +1,78 @@
+2020-06-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263295.
+        https://bugs.webkit.org/show_bug.cgi?id=213577
+
+        Introduced logging regression
+
+        Reverted changeset:
+
+        "[macOS] Connections to the preference daemon are established
+        before entering the sandbox"
+        https://bugs.webkit.org/show_bug.cgi?id=213379
+        https://trac.webkit.org/changeset/263295
+
+2020-06-24  Umar Iqbal  <uiqbal@apple.com>
+
+        We should resurrect the older patch that collects some statistics of web API calls
+        https://bugs.webkit.org/show_bug.cgi?id=213319
+
+        Reviewed by Brent Fulgham.
+
+        + Enabled ENABLE_WEB_API_STATISTICS flag
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-22  Tim Horton  <timothy_horton@apple.com>
+
+        Update macOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=213484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-06-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Move progress bar painting code off of Carbon API
+        https://bugs.webkit.org/show_bug.cgi?id=213405
+        <rdar://problem/63958537>
+
+        Reviewed by Tim Horton.
+
+        Add forward declarations for CoreUI SPI on non-internal SDKs.
+
+        * pal/spi/mac/CoreUISPI.h:
+
+2020-06-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Connections to the preference daemon are established before entering the sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=213379
+
+        Reviewed by Darin Adler.
+
+        Use correct parameter types in _CFPrefsSetDirectModeEnabled and _CFPrefsSetReadOnly, and move
+        _CFPrefsSetDirectModeEnabled inside an Objective-C guard, since BOOL only seems to be a builtin
+        type in Objective-C.
+
+        * pal/spi/cf/CFUtilitiesSPI.h:
+
+2020-06-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Unify "font:" CSS shorthand values between macOS and iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=213332
+        <rdar://problem/64479189>
+
+        Reviewed by Tim Horton and Darin Adler.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+        The implementation of RenderThemeMac::contentSizeCategory() needs to use
+        kCTFontContentSizeCategoryL.
+
 2020-06-17  Andy Estes  <aestes@apple.com>
 
         Another unreviewed build fix after r263150

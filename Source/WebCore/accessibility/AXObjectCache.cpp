@@ -195,6 +195,7 @@ bool AXObjectCache::gAccessibilityEnhancedUserInterfaceEnabled = false;
 
 void AXObjectCache::enableAccessibility()
 {
+    ASSERT(isMainThread());
     gAccessibilityEnabled = true;
 }
 
@@ -222,6 +223,7 @@ AXObjectCache::AXObjectCache(Document& document)
     , m_currentModalNode(nullptr)
     , m_performCacheUpdateTimer(*this, &AXObjectCache::performCacheUpdateTimerFired)
 {
+    ASSERT(isMainThread());
 }
 
 AXObjectCache::~AXObjectCache()
@@ -585,12 +587,15 @@ void AXObjectCache::cacheAndInitializeWrapper(AccessibilityObject* newObject, DO
 {
     ASSERT(newObject);
     AXID axID = getAXID(newObject);
+    ASSERT(axID != InvalidAXID);
+
     WTF::switchOn(domObject,
         [&axID, this] (RenderObject* typedValue) { m_renderObjectMapping.set(typedValue, axID); },
         [&axID, this] (Node* typedValue) { m_nodeObjectMapping.set(typedValue, axID); },
         [&axID, this] (Widget* typedValue) { m_widgetObjectMapping.set(typedValue, axID); },
         [] (auto&) { }
     );
+
     m_objects.set(axID, newObject);
     newObject->init();
     attachWrapper(newObject);
@@ -1129,6 +1134,7 @@ void AXObjectCache::postNotification(AXCoreObject* object, Document* document, A
 {
     AXTRACE("AXObjectCache::postNotification");
     AXLOG(std::make_pair(object, notification));
+    ASSERT(isMainThread());
 
     stopCachingComputedObjectAttributes();
 
@@ -3124,7 +3130,7 @@ Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, D
 
     auto* axRoot = axObjectCache->getOrCreate(document.view());
     if (axRoot)
-        tree->generateSubtree(*axRoot, InvalidAXID, true);
+        tree->generateSubtree(*axRoot, nullptr, true);
 
     auto* axFocus = axObjectCache->focusedObject(document);
     if (axFocus)

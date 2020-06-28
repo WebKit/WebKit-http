@@ -186,13 +186,14 @@ void DeleteSelectionCommand::smartDeleteParagraphSpacers()
     bool startAndEndInSameUnsplittableElement = unsplittableElementForPosition(visibleStart.deepEquivalent()) == unsplittableElementForPosition(visibleEnd.deepEquivalent());
     visibleStart = visibleStart.previous(CannotCrossEditingBoundary);
     visibleEnd = visibleEnd.next(CannotCrossEditingBoundary);
+    bool previousPositionIsStartOfContent = startOfEditableContent(visibleStart) == visibleStart;
     bool previousPositionIsBlankParagraph = isBlankParagraph(visibleStart);
-    bool endPositonIsBlankParagraph = isBlankParagraph(visibleEnd);
-    bool hasBlankParagraphAfterEndOrIsEndOfContent = !selectionEndIsEndOfContent && (endPositonIsBlankParagraph || selectionEndsInParagraphSeperator);
+    bool endPositionIsBlankParagraph = isBlankParagraph(visibleEnd);
+    bool hasBlankParagraphAfterEndOrIsEndOfContent = !selectionEndIsEndOfContent && (endPositionIsBlankParagraph || selectionEndsInParagraphSeperator);
     if (startAndEndInSameUnsplittableElement && previousPositionIsBlankParagraph && hasBlankParagraphAfterEndOrIsEndOfContent) {
         m_needPlaceholder = false;
         Position position;
-        if (endPositonIsBlankParagraph)
+        if (endPositionIsBlankParagraph)
             position = startOfNextParagraph(startOfNextParagraph(m_downstreamEnd)).deepEquivalent();
         else
             position = VisiblePosition(m_downstreamEnd).next().deepEquivalent();
@@ -203,8 +204,12 @@ void DeleteSelectionCommand::smartDeleteParagraphSpacers()
     }
     if (startAndEndInSameUnsplittableElement && selectionEndIsEndOfContent && previousPositionIsBlankParagraph && selectionEndsInParagraphSeperator) {
         m_needPlaceholder = false;
-        VisiblePosition endOfParagraphBeforeStart = endOfParagraph(VisiblePosition { m_upstreamStart }.previous().previous());
-        Position position = endOfParagraphBeforeStart.deepEquivalent();
+        VisiblePosition endOfParagraphBeforeStart;
+        if (previousPositionIsStartOfContent)
+            endOfParagraphBeforeStart = endOfParagraph(VisiblePosition { m_upstreamStart }.previous());
+        else
+            endOfParagraphBeforeStart = endOfParagraph(VisiblePosition { m_upstreamStart }.previous().previous());
+        auto position = endOfParagraphBeforeStart.deepEquivalent();
         m_upstreamStart = position.upstream();
         m_downstreamStart = position.downstream();
         m_leadingWhitespace = m_upstreamStart.leadingWhitespacePosition(DOWNSTREAM);

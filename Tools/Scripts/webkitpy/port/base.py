@@ -30,6 +30,7 @@
 """Abstract base class of Port-specific entry points for the layout tests
 test infrastructure (the Port and Driver classes)."""
 
+import argparse
 import difflib
 import json
 import logging
@@ -102,18 +103,10 @@ class Port(object):
         # These are default values that should be overridden in a subclasses.
         self._os_version = None
 
-        # FIXME: This can be removed once default architectures for GTK and EFL EWS bots are set.
-        self.did_override_architecture = False
-
         # FIXME: Ideally we'd have a package-wide way to get a
         # well-formed options object that had all of the necessary
         # options defined on it.
         self._options = options or optparse.Values()
-
-        if self.get_option('architecture'):
-            self.did_override_architecture = True
-        else:
-            self.set_option('architecture', self.DEFAULT_ARCHITECTURE)
 
         if self._name and '-wk2' in self._name:
             self._options.webkit_test_runner = True
@@ -143,15 +136,15 @@ class Port(object):
         self._jhbuild_wrapper = []
         self._layout_tests_dir = hasattr(options, 'layout_tests_dir') and options.layout_tests_dir and self._filesystem.abspath(options.layout_tests_dir)
         self._w3c_resource_files = None
+        self._display_server = None
 
     def target_host(self, worker_number=None):
         return self.host
 
     def architecture(self):
-        return self.get_option('architecture')
+        return self.get_option('architecture') or self.DEFAULT_ARCHITECTURE
 
     def set_architecture(self, arch):
-        self.did_override_architecture = True
         self.set_option('architecture', arch)
 
     def additional_drt_flag(self):
@@ -797,7 +790,12 @@ class Port(object):
         return self.get_option(name) == value
 
     def set_option_default(self, name, default_value):
-        return self._options.ensure_value(name, default_value)
+        if isinstance(self._options, argparse.Namespace):
+            if not hasattr(self._options, name):
+                setattr(self._options, name, default_value)
+                return True
+        else:
+            return self._options.ensure_value(name, default_value)
 
     @memoized
     def path_to_generic_test_expectations_file(self):
@@ -836,9 +834,6 @@ class Port(object):
         return self._build_path()
 
     def bindings_results_directory(self):
-        return self._build_path()
-
-    def api_results_directory(self):
         return self._build_path()
 
     def results_directory(self):
@@ -1372,6 +1367,10 @@ class Port(object):
         """Returns the full path to the default ImageDiff binary, or None if it is not available."""
         return self._build_path('ImageDiff')
 
+    def run_minibrowser(self, args):
+        # FIXME: Migrate to webkitpy based run-minibrowser. https://bugs.webkit.org/show_bug.cgi?id=213464
+        return self._run_script(["old-run-minibrowser", ] + args)
+
     @memoized
     def _path_to_image_diff(self):
         """Returns the full path to the image_diff binary, or None if it is not available.
@@ -1595,6 +1594,7 @@ class Port(object):
             style=style,
             sdk=host.platform.build_version(),
             flavor=self.get_option('result_report_flavor'),
+            model=self.get_option('model'),
         )
 
     @memoized

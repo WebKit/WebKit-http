@@ -79,7 +79,7 @@ localizedStrings["(Tail Call)"] = "(Tail Call)";
 localizedStrings["(anonymous function)"] = "(anonymous function)";
 localizedStrings["(async)"] = "(async)";
 localizedStrings["(disk)"] = "(disk)";
-localizedStrings["(inspector override)"] = "(inspector override)";
+localizedStrings["(local override)"] = "(local override)";
 localizedStrings["(many)"] = "(many)";
 localizedStrings["(memory)"] = "(memory)";
 localizedStrings["(multiple)"] = "(multiple)";
@@ -605,6 +605,8 @@ localizedStrings["Frame %d"] = "Frame %d";
 localizedStrings["Frame URL"] = "Frame URL";
 localizedStrings["Frames"] = "Frames";
 localizedStrings["Frames %d \u2013 %d"] = "Frames %d \u2013 %d";
+/* Title for list of HTML subframe JavaScript execution contexts */
+localizedStrings["Frames @ Execution Context Picker"] = "Frames";
 localizedStrings["Full Garbage Collection"] = "Full Garbage Collection";
 localizedStrings["Full URL"] = "Full URL";
 localizedStrings["Full-Screen"] = "Full-Screen";
@@ -627,8 +629,10 @@ localizedStrings["Graphics Tab Name"] = "Graphics";
 localizedStrings["Group"] = "Group";
 localizedStrings["Group By Resource"] = "Group By Resource";
 localizedStrings["Group Media Requests"] = "Group Media Requests";
-localizedStrings["Group by Event"] = "Group by Event";
-localizedStrings["Group by Target"] = "Group by Target";
+/* Group DOM event listeners by DOM event */
+localizedStrings["Group by Event @ Node Event Listeners"] = "Group by Event";
+/* Group DOM event listeners by DOM node */
+localizedStrings["Group by Target @ Node Event Listeners"] = "Group by Target";
 localizedStrings["Grouping Method"] = "Grouping Method";
 localizedStrings["HAR Export (%s)"] = "HAR Export (%s)";
 localizedStrings["HAR Import"] = "HAR Import";
@@ -697,7 +701,6 @@ localizedStrings["Input: "] = "Input: ";
 /* Checkbox label for the inset of a CSS box shadow. */
 localizedStrings["Inset @ Box Shadow Editor"] = "Inset";
 localizedStrings["Inspector Bootstrap Script"] = "Inspector Bootstrap Script";
-localizedStrings["Inspector Override"] = "Inspector Override";
 localizedStrings["Inspector Style Sheet"] = "Inspector Style Sheet";
 localizedStrings["Instances"] = "Instances";
 localizedStrings["Invalid"] = "Invalid";
@@ -1250,7 +1253,6 @@ localizedStrings["These tests demonstrate how to use %s to get information about
 localizedStrings["These tests demonstrate how to use %s to get information about loaded resources."] = "These tests demonstrate how to use %s to get information about loaded resources.";
 localizedStrings["These tests demonstrate how to use %s to get information about the accessibility tree."] = "These tests demonstrate how to use %s to get information about the accessibility tree.";
 localizedStrings["These tests serve as a demonstration of the functionality and structure of audits."] = "These tests serve as a demonstration of the functionality and structure of audits.";
-localizedStrings["This Resource came from a Local Resource Override"] = "This Resource came from a Local Resource Override";
 localizedStrings["This action causes no visual change"] = "This action causes no visual change";
 localizedStrings["This action moves the path outside the visible area"] = "This action moves the path outside the visible area";
 localizedStrings["This animation has no duration."] = "This animation has no duration.";
@@ -1267,6 +1269,11 @@ localizedStrings["This is what the result of a warning test with no data looks l
 localizedStrings["This is what the result of an unsupported test with no data looks like."] = "This is what the result of an unsupported test with no data looks like.";
 localizedStrings["This object is a root"] = "This object is a root";
 localizedStrings["This object is referenced by internal objects"] = "This object is referenced by internal objects";
+localizedStrings["This resource came from a local override"] = "This resource came from a local override";
+localizedStrings["This resource was loaded from a local override"] = "This resource was loaded from a local override";
+localizedStrings["This resource was loaded from a service worker"] = "This resource was loaded from a service worker";
+localizedStrings["This resource was loaded from the disk cache"] = "This resource was loaded from the disk cache";
+localizedStrings["This resource was loaded from the memory cache"] = "This resource was loaded from the memory cache";
 localizedStrings["This test will pass with a variety of accessibility information about the <body> element."] = "This test will pass with a variety of accessibility information about the <body> element.";
 localizedStrings["This test will pass with all DOM nodes that have a computed role of \u0022link\u0022."] = "This test will pass with all DOM nodes that have a computed role of \u0022link\u0022.";
 localizedStrings["This test will pass with all child nodes that are selected (\u0022%s\u0022) of the <body> element in the accessibility tree."] = "This test will pass with all child nodes that are selected (\u0022%s\u0022) of the <body> element in the accessibility tree.";
@@ -1441,7 +1448,8 @@ localizedStrings["Worker"] = "Worker";
 localizedStrings["Worker Thread"] = "Worker Thread";
 localizedStrings["Worker Threads"] = "Worker Threads";
 localizedStrings["Worker: %s"] = "Worker: %s";
-localizedStrings["Workers"] = "Workers";
+/* Title for list of JavaScript web worker execution contexts */
+localizedStrings["Workers @ Execution Context Picker"] = "Workers";
 localizedStrings["Wrap lines to editor width"] = "Wrap lines to editor width";
 localizedStrings["XBM"] = "XBM";
 localizedStrings["XHR"] = "XHR";

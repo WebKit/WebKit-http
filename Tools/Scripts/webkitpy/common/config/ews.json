@@ -14,8 +14,7 @@
     },
     "iOS EWS": {
         "port": "ios-device",
-        "name": "ios-ews",
-        "architecture": "arm64"
+        "name": "ios-ews"
     },
     "iOS Simulator EWS": {
         "port": "ios-simulator-wk2",
@@ -71,13 +70,6 @@
         "watchers": [
             "guijemont@igalia.com"
         ]
-    },
-    "Bindings EWS": {
-        "port": "mac",
-        "name": "bindings-ews",
-        "group": "bindings",
-        "runTests": true,
-        "shouldBuild": false
     },
     "WinCairo EWS": {
         "port": "wincairo",

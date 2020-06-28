@@ -3064,6 +3064,7 @@ webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line
 
 # unsupported
 fast/dynamic/mail-autosize-viewport-unit.html [ Failure ]
+fast/dynamic/size-to-content-autosize-with-viewport-units.html [ Failure ]
 
 # LFC
 fast/block/basic/inline-content-with-floating-image.html [ Failure ]
@@ -3363,8 +3364,6 @@ webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/properti
 
 webkit.org/b/204757 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https.html [ Pass Failure ]
 
-webkit.org/b/200043 fast/text/international/system-language/navigator-language [ Pass Failure ]
-
 webkit.org/b/203222 svg/wicd/rightsizing-grid.xhtml [ Pass Failure ]
 
 webkit.org/b/206864 http/tests/workers/service/basic-timeout.https.html [ Pass Failure ]
@@ -3407,6 +3406,11 @@ webkit.org/b/207703 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/207705 imported/w3c/web-platform-tests/service-workers/service-worker/websocket.https.html [ Pass Failure ]
 
 webkit.org/b/202003 imported/w3c/web-platform-tests/websockets/bufferedAmount-unchanged-by-sync-xhr.any.worker.html [ Pass Failure ]
+
+webkit.org/b/213516 imported/w3c/web-platform-tests/websockets/Close-reason-unpaired-surrogates.any.html [ Pass Failure ]
+webkit.org/b/213516 imported/w3c/web-platform-tests/websockets/Close-reason-unpaired-surrogates.any.worker.html [ Pass Failure ]
+webkit.org/b/213516 imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.html [ Pass Failure ]
+webkit.org/b/213516 imported/w3c/web-platform-tests/websockets/Secure-Close-Reason-Unpaired-surrogates.any.worker.html [ Pass Failure ]
 
 webkit.org/b/207762 http/wpt/service-workers/check-service-worker-header.https.html [ Pass Failure ]
 
@@ -3492,3 +3496,5 @@ webkit.org/b/212493 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid
 
 # This test requires an update to system decoders
 webkit.org/b/212565 imported/w3c/web-platform-tests/encoding/single-byte-decoder.html [ Failure ]
+
+fast/text/text-styles/-apple-system [ Pass ]

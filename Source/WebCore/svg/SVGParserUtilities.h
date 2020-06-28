@@ -21,11 +21,11 @@
 
 #pragma once
 
+#include "ParsingUtilities.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
-typedef std::pair<unsigned, unsigned> UnicodeRange;
+typedef std::pair<UChar32, UChar32> UnicodeRange;
 typedef Vector<UnicodeRange> UnicodeRanges;
 
 namespace WebCore {
@@ -33,42 +33,55 @@ namespace WebCore {
 class FloatPoint;
 class FloatRect;
 
-template <typename CharacterType>
-bool parseSVGNumber(CharacterType* ptr, size_t length, double& number);
-bool parseNumber(const LChar*& ptr, const LChar* end, float& number, bool skip = true);
-bool parseNumber(const UChar*& ptr, const UChar* end, float& number, bool skip = true);
-bool parseNumberFromString(const String&, float& number, bool skip = true);
-bool parseNumberOptionalNumber(const String& s, float& h, float& v);
-bool parseArcFlag(const LChar*& ptr, const LChar* end, bool& flag);
-bool parseArcFlag(const UChar*& ptr, const UChar* end, bool& flag);
-bool parsePoint(const String&, FloatPoint&);
-bool parseRect(const String&, FloatRect&);
+enum class SuffixSkippingPolicy {
+    DontSkip,
+    Skip
+};
 
-template <typename CharacterType>
-bool parseFloatPoint(const CharacterType*& current, const CharacterType* end, FloatPoint&);
-template <typename CharacterType>
-bool parseFloatPoint2(const CharacterType*& current, const CharacterType* end, FloatPoint&, FloatPoint&);
-template <typename CharacterType>
-bool parseFloatPoint3(const CharacterType*& current, const CharacterType* end, FloatPoint&, FloatPoint&, FloatPoint&);
+Optional<float> parseNumber(StringParsingBuffer<LChar>&, SuffixSkippingPolicy = SuffixSkippingPolicy::Skip);
+Optional<float> parseNumber(StringParsingBuffer<UChar>&, SuffixSkippingPolicy = SuffixSkippingPolicy::Skip);
+Optional<float> parseNumber(const StringView&, SuffixSkippingPolicy = SuffixSkippingPolicy::Skip);
+
+Optional<std::pair<float, float>> parseNumberOptionalNumber(const StringView&);
+
+Optional<bool> parseArcFlag(StringParsingBuffer<LChar>&);
+Optional<bool> parseArcFlag(StringParsingBuffer<UChar>&);
+
+Optional<FloatPoint> parsePoint(const StringView&);
+Optional<FloatRect> parseRect(const StringView&);
+
+Optional<FloatPoint> parseFloatPoint(StringParsingBuffer<LChar>&);
+Optional<FloatPoint> parseFloatPoint(StringParsingBuffer<UChar>&);
+
+Optional<std::pair<UnicodeRanges, HashSet<String>>> parseKerningUnicodeString(const StringView&);
+Optional<HashSet<String>> parseGlyphName(const StringView&);
+
 
 // SVG allows several different whitespace characters:
 // http://www.w3.org/TR/SVG/paths.html#PathDataBNF
-template <typename CharacterType>
-inline bool isSVGSpace(CharacterType c)
+template<typename CharacterType> constexpr bool isSVGSpace(CharacterType c)
 {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-template <typename CharacterType>
-inline bool skipOptionalSVGSpaces(const CharacterType*& ptr, const CharacterType* end)
+template<typename CharacterType> constexpr bool isSVGSpaceOrComma(CharacterType c)
 {
-    while (ptr < end && isSVGSpace(*ptr))
-        ptr++;
+    return isSVGSpace(c) || c == ',';
+}
+
+template<typename CharacterType> constexpr bool skipOptionalSVGSpaces(const CharacterType*& ptr, const CharacterType* end)
+{
+    skipWhile<CharacterType, isSVGSpace>(ptr, end);
     return ptr < end;
 }
 
-template <typename CharacterType>
-inline bool skipOptionalSVGSpacesOrDelimiter(const CharacterType*& ptr, const CharacterType* end, char delimiter = ',')
+template<typename CharacterType> constexpr bool skipOptionalSVGSpaces(StringParsingBuffer<CharacterType>& characters)
+{
+    skipWhile<CharacterType, isSVGSpace>(characters);
+    return characters.hasCharactersRemaining();
+}
+
+template<typename CharacterType> constexpr bool skipOptionalSVGSpacesOrDelimiter(const CharacterType*& ptr, const CharacterType* end, char delimiter = ',')
 {
     if (ptr < end && !isSVGSpace(*ptr) && *ptr != delimiter)
         return false;
@@ -81,31 +94,17 @@ inline bool skipOptionalSVGSpacesOrDelimiter(const CharacterType*& ptr, const Ch
     return ptr < end;
 }
 
-Vector<String> parseDelimitedString(const String& input, const char seperator);
-bool parseKerningUnicodeString(const String& input, UnicodeRanges&, HashSet<String>& stringList);
-bool parseGlyphName(const String& input, HashSet<String>& values);
-
-inline bool skipString(const UChar*& ptr, const UChar* end, const UChar* name, int length)
+template<typename CharacterType> constexpr bool skipOptionalSVGSpacesOrDelimiter(StringParsingBuffer<CharacterType>& characters, char delimiter = ',')
 {
-    if (end - ptr < length)
+    if (characters.hasCharactersRemaining() && !isSVGSpace(*characters) && *characters != delimiter)
         return false;
-    if (memcmp(name, ptr, sizeof(UChar) * length))
-        return false;
-    ptr += length;
-    return true;
-}
-
-inline bool skipString(const UChar*& ptr, const UChar* end, const char* str)
-{
-    int length = strlen(str);
-    if (end - ptr < length)
-        return false;
-    for (int i = 0; i < length; ++i) {
-        if (ptr[i] != str[i])
-            return false;
+    if (skipOptionalSVGSpaces(characters)) {
+        if (characters.hasCharactersRemaining() && *characters == delimiter) {
+            characters++;
+            skipOptionalSVGSpaces(characters);
+        }
     }
-    ptr += length;
-    return true;
+    return characters.hasCharactersRemaining();
 }
 
 } // namespace WebCore

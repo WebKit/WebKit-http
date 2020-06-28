@@ -129,6 +129,7 @@ use constant IOS_DEVELOPMENT_CERTIFICATE_NAME_PREFIX => "iPhone Developer: ";
 our @EXPORT_OK;
 
 my $architecture;
+my $nativeArchitecture;
 my $asanIsEnabled;
 my $forceOptimizationLevel;
 my $coverageIsEnabled;
@@ -351,14 +352,28 @@ sub determineConfiguration
     }
 }
 
+sub determineNativeArchitecture
+{
+    return if defined $nativeArchitecture;
+    $nativeArchitecture = `uname -m`;
+    chomp $nativeArchitecture;
+    $nativeArchitecture = "x86_64" if (not defined $nativeArchitecture);
+
+    # FIXME: Remove this when <rdar://problem/64208532> is resolved
+    if (isAppleCocoaWebKit() && $nativeArchitecture ne "x86_64") {
+        $nativeArchitecture = "arm64";
+    }
+    die "'arm64e' is an invalid native architecture" if $nativeArchitecture eq "arm64e";
+}
+
 sub determineArchitecture
 {
     return if defined $architecture;
-    # make sure $architecture is defined in all cases
-    $architecture = "";
 
     determineBaseProductDir();
     determineXcodeSDK();
+    determineNativeArchitecture();
+    $architecture = $nativeArchitecture;
 
     if (isAppleCocoaWebKit()) {
         if (open ARCHITECTURE, "$baseProductDir/Architecture") {
@@ -368,20 +383,12 @@ sub determineArchitecture
         if ($architecture) {
             chomp $architecture;
         } else {
-            if (not defined $xcodeSDK or $xcodeSDK =~ /^(\/$|macosx)/) {
-                my $supports64Bit = `sysctl -n hw.optional.x86_64`;
-                chomp $supports64Bit;
-                $architecture = 'x86_64' if $supports64Bit;
-            } elsif ($xcodeSDK =~ /^iphonesimulator/) {
-                $architecture = 'x86_64';
-            } elsif ($xcodeSDK =~ /^iphoneos/) {
+            if ($xcodeSDK =~ /^iphoneos/) {
                 $architecture = 'arm64';
             } elsif ($xcodeSDK =~ /^watchsimulator/) {
                 $architecture = 'i386';
             } elsif ($xcodeSDK =~ /^watchos/) {
                 $architecture = 'arm64_32 arm64e armv7k';
-            } elsif ($xcodeSDK =~ /^appletvsimulator/) {
-                $architecture = 'x86_64';
             } elsif ($xcodeSDK =~ /^appletvos/) {
                 $architecture = 'arm64';
             }
@@ -401,14 +408,6 @@ sub determineArchitecture
                 }
             }
             close $cmake_sysinfo;
-        }
-    }
-
-    if (!isAnyWindows()) {
-        if (!$architecture) {
-            # Fall back to output of `uname -m', if it is present.
-            $architecture = `uname -m`;
-            chomp $architecture;
         }
     }
 
@@ -507,7 +506,7 @@ sub jscPath($)
     my $jscName = "jsc";
     $jscName .= "_debug"  if configuration() eq "Debug_All";
     if (isPlayStation()) {
-        $jscName .= ".elf";
+        $jscName .= ".self";
     } elsif (isAnyWindows()) {
         $jscName .= ".exe";
     }
@@ -554,8 +553,7 @@ sub extractNonMacOSHostConfiguration
         my $line = $_;
         my $flag = 0;
         foreach (@extract) {
-            if (length($line) >= length($_) && substr($line, 0, length($_)) eq $_
-                && index($line, 'i386') == -1 && index($line, 'x86_64') == -1) {
+            if (length($line) >= length($_) && substr($line, 0, length($_)) eq $_ && index($line, 'x86_64') == -1) {
                 $flag = 1;
             }
         }
@@ -846,6 +844,18 @@ sub jscProductDir
     return executableProductDir();
 }
 
+sub architecturesForProducts
+{
+    # Most ports don't have emulation, assume that the user gave us an accurate architecture
+    if (!isAppleCocoaWebKit()) {
+        return determineArchitecture();
+    }
+    my $webkitBinary = File::Spec->catdir(executableProductDir(), "JavaScriptCore.framework", "JavaScriptCore");
+    my $architectures = `/usr/bin/lipo -archs $webkitBinary`;
+    chomp($architectures);
+    return $architectures;
+}
+
 sub configuration()
 {
     determineConfiguration();
@@ -1044,6 +1054,12 @@ sub passedArchitecture
 {
     determinePassedArchitecture();
     return $passedArchitecture;
+}
+
+sub nativeArchitecture()
+{
+    determineNativeArchitecture();
+    return $nativeArchitecture;
 }
 
 sub architecture()

@@ -1,17 +1,8 @@
 {
     "imported/selenium/py/test/selenium/webdriver/common/alerts_tests.py": {
         "subtests": {
-            "testShouldAllowUsersToAcceptAnAlertInAFrame": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/181727"}}
-            },
-            "testShouldAllowUsersToAcceptAnAlertInANestedFrame": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/181727"}}
-            },
             "testShouldHandleAlertOnPageBeforeUnload": {
                 "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/188118"}}
-            },
-            "testShouldHandleAlertOnPageLoad": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
             }
         }
     },
@@ -27,22 +18,6 @@
     },
     "imported/selenium/py/test/selenium/webdriver/common/appcache_tests.py": {
         "expected": {"all": {"status": ["SKIP"]}}
-    },
-    "imported/selenium/py/test/selenium/webdriver/common/correct_event_firing_tests.py": {
-        "subtests": {
-            "testShouldFireClickEventWhenClicking": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            },
-            "testShouldFireMouseDownEventWhenClicking": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            },
-            "testShouldFireMouseUpEventWhenClicking": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            },
-            "testShouldIssueClickEvents": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            }
-        }
     },
     "imported/selenium/py/test/selenium/webdriver/common/click_scrolling_tests.py": {
         "subtests": {
@@ -63,16 +38,6 @@
             },
             "testShouldBeAbleToClickElementInATallFrame": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/181731"}}
-            }
-        }
-    },
-    "imported/selenium/py/test/selenium/webdriver/common/executing_async_javascript_tests.py": {
-        "subtests": {
-            "testShouldNotTimeoutIfScriptCallsbackInsideAZeroTimeout": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211496"}}
-            },
-            "testShouldBeAbleToExecuteAsynchronousScripts": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211496"}}
             }
         }
     },
@@ -108,11 +73,17 @@
             "testShouldGetCoordinatesOfAnElementInANestedFrame": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/181735"}}
             },
+            "testShouldGetCoordinatesOfAnElementWithFixedPosition": {
+                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/213139"}}
+            },
             "testShouldGetCoordinatesOfAnElement[hidden]": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/211492"}}
             },
             "testShouldGetCoordinatesOfAnInvisibleElement": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/211492"}}
+            },
+            "testShouldScrollPageAndGetCoordinatesOfAnElementThatIsOutOfViewPort": {
+                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/213139"}}
             }
         }
     },
@@ -164,39 +135,10 @@
             }
         }
     },
-    "imported/selenium/py/test/selenium/webdriver/common/visibility_tests.py": {
-        "subtests": {
-            "testShouldSayElementsWithNegativeTransformAreNotDisplayed": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/182334"}}
-            },
-            "testShouldSayElementsWithParentWithNegativeTransformAreNotDisplayed": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/182334"}}
-            },
-            "testShouldModifyTheVisibilityOfAnElementDynamically" : {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            }
-        }
-    },
-    "imported/selenium/py/test/selenium/webdriver/common/webdriverwait_tests.py": {
-        "subtests": {
-            "testExpectedConditionVisibilityOfElementLocated": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            },
-            "testExpectedConditionVisibilityOf": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            },
-            "testExpectedConditionElementToBeClickable": {
-                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
-            }
-        }
-    },
     "imported/selenium/py/test/selenium/webdriver/common/window_switching_tests.py": {
         "subtests": {
             "testCanCallGetWindowHandlesAfterClosingAWindow": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/184963"}}
-            },
-            "testThatAccessingFindingAnElementAfterWindowIsClosedAndHaventswitchedDoesntCrash": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/211330"}}
             }
         }
     },
@@ -204,6 +146,16 @@
         "subtests": {
             "test_should_fullscreen_the_current_window": {
                 "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/188118"}}
+            }
+        }
+    },
+    "imported/selenium/py/test/selenium/webdriver/support/relative_by_tests.py": {
+        "subtests": {
+            "test_should_be_able_to_find_elements_above_another": {
+                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/213451"}}
+            },
+            "test_should_be_able_to_combine_filters": {
+                "expected": {"gtk": {"status": ["FAIL"], "bug": "webkit.org/b/213451"}}
             }
         }
     },

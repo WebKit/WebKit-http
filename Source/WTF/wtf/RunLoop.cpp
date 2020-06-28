@@ -54,9 +54,7 @@ private:
 
 void RunLoop::initializeMain()
 {
-    if (s_mainRunLoop)
-        return;
-    initializeMainThread();
+    RELEASE_ASSERT(!s_mainRunLoop);
     s_mainRunLoop = &RunLoop::current();
 }
 
@@ -75,6 +73,7 @@ RunLoop& RunLoop::main()
 #if USE(WEB_THREAD)
 void RunLoop::initializeWeb()
 {
+    RELEASE_ASSERT(!s_webRunLoop);
     s_webRunLoop = &RunLoop::current();
 }
 

@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-class SVGNumberList : public SVGValuePropertyList<SVGNumber> {
+class SVGNumberList final : public SVGValuePropertyList<SVGNumber> {
     using Base = SVGValuePropertyList<SVGNumber>;
     using Base::Base;
 
@@ -50,39 +50,8 @@ public:
         return adoptRef(*new SVGNumberList(other, access));
     }
 
-    bool parse(const String& value)
-    {
-        clearItems();
-
-        float number = 0;
-        auto upconvertedCharacters = StringView(value).upconvertedCharacters();
-        const UChar* ptr = upconvertedCharacters;
-        const UChar* end = ptr + value.length();
-
-        // The spec (section 4.1) strangely doesn't allow leading whitespace.
-        // We might choose to violate that intentionally.
-        while (ptr < end) {
-            if (!parseNumber(ptr, end, number))
-                break;
-            append(SVGNumber::create(number));
-        }
-
-        return ptr == end;
-    }
-
-    String valueAsString() const override
-    {
-        StringBuilder builder;
-
-        for (const auto& number : m_items) {
-            if (builder.length())
-                builder.append(' ');
-
-            builder.append(number->value());
-        }
-
-        return builder.toString();
-    }
+    bool parse(StringView);
+    String valueAsString() const override;
 };
 
 } // namespace WebCore

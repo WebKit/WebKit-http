@@ -101,6 +101,7 @@ CTTypesetterRef CTTypesetterCreateWithUniCharProviderAndOptions(CTUniCharProvide
 bool CTFontGetVerticalGlyphsForCharacters(CTFontRef, const UniChar characters[], CGGlyph glyphs[], CFIndex count);
 void CTFontGetUnsummedAdvancesForGlyphsAndStyle(CTFontRef, CTFontOrientation, CGFontRenderingStyle, const CGGlyph[], CGSize advances[], CFIndex count);
 CTFontDescriptorRef CTFontDescriptorCreateForCSSFamily(CFStringRef cssFamily, CFStringRef language);
+bool CTFontGetGlyphsForCharacterRange(CTFontRef, CGGlyph glyphs[], CFRange);
 
 CTFontDescriptorRef CTFontDescriptorCreateForUIType(CTFontUIFontType, CGFloat size, CFStringRef language);
 CTFontDescriptorRef CTFontDescriptorCreateWithTextStyle(CFStringRef style, CFStringRef size, CFStringRef language);
@@ -129,9 +130,7 @@ extern const CFStringRef kCTFrameMaximumNumberOfLinesAttributeName;
 bool CTFontDescriptorIsSystemUIFont(CTFontDescriptorRef);
 CTFontRef CTFontCreateForCSS(CFStringRef name, uint16_t weight, CTFontSymbolicTraits, CGFloat size);
 CTFontRef CTFontCreateForCharactersWithLanguage(CTFontRef currentFont, const UTF16Char *characters, CFIndex length, CFStringRef language, CFIndex *coveredLength);
-#if HAVE(CTFONTCREATEFORCHARACTERSWITHLANGUAGEANDOPTION)
 CTFontRef CTFontCreateForCharactersWithLanguageAndOption(CTFontRef currentFont, const UTF16Char *characters, CFIndex length, CFStringRef language, CTFontFallbackOption option, CFIndex *coveredLength);
-#endif
 CTFontRef CTFontCopyPhysicalFont(CTFontRef);
 
 extern const CFStringRef kCTUIFontTextStyleShortHeadline;
@@ -149,6 +148,8 @@ extern const CFStringRef kCTUIFontTextStyleCaption1;
 extern const CFStringRef kCTUIFontTextStyleCaption2;
 
 extern const CFStringRef kCTFontDescriptorTextStyleEmphasized;
+
+extern const CFStringRef kCTFontContentSizeCategoryL;
 
 extern const CGFloat kCTFontWeightUltraLight;
 extern const CGFloat kCTFontWeightThin;

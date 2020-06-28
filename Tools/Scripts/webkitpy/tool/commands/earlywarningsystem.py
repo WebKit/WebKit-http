@@ -39,7 +39,6 @@ from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.unicode_compatibility import encode_for
 from webkitpy.tool.bot.earlywarningsystemtask import EarlyWarningSystemTask, EarlyWarningSystemTaskDelegate
-from webkitpy.tool.bot.bindingstestresultsreader import BindingsTestResultsReader
 from webkitpy.tool.bot.layouttestresultsreader import LayoutTestResultsReader
 from webkitpy.tool.bot.jsctestresultsreader import JSCTestResultsReader
 from webkitpy.tool.bot.patchanalysistask import UnableToApplyPatch, PatchIsNotValid, PatchIsNotApplicable
@@ -62,8 +61,6 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
 
         if self.group() == "jsc":
             self._test_results_reader = JSCTestResultsReader(self._tool, self._port.jsc_results_directory())
-        elif self.group() == "bindings":
-            self._test_results_reader = BindingsTestResultsReader(self._tool, self._port.jsc_results_directory())
         else:
             self._test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
 
@@ -120,7 +117,7 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         return self.name
 
     def run_command(self, command):
-        self.run_webkit_patch(command + [self._deprecated_port.flag()] + (['--architecture=%s' % self._port.architecture()] if self._port.architecture() and self._port.did_override_architecture else []))
+        self.run_webkit_patch(command + [self._deprecated_port.flag()] + (['--architecture=%s' % self._port.architecture()] if self._port.architecture() != self._port.DEFAULT_ARCHITECTURE else []))
 
     def test_results(self):
         return self._test_results_reader.results()

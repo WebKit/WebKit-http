@@ -242,6 +242,7 @@ Modules/webaudio/AudioParamTimeline.cpp
 Modules/webaudio/AudioProcessingEvent.cpp
 Modules/webaudio/AudioScheduledSourceNode.cpp
 Modules/webaudio/AudioSummingJunction.cpp
+Modules/webaudio/BaseAudioContext.cpp
 Modules/webaudio/BiquadDSPKernel.cpp
 Modules/webaudio/BiquadFilterNode.cpp
 Modules/webaudio/BiquadProcessor.cpp
@@ -269,6 +270,9 @@ Modules/webaudio/ScriptProcessorNode.cpp
 Modules/webaudio/WaveShaperDSPKernel.cpp
 Modules/webaudio/WaveShaperNode.cpp
 Modules/webaudio/WaveShaperProcessor.cpp
+Modules/webaudio/WebKitAudioContext.cpp
+Modules/webaudio/WebKitAudioPannerNode.cpp
+Modules/webaudio/WebKitOfflineAudioContext.cpp
 
 Modules/webauthn/AuthenticatorCoordinator.cpp
 Modules/webauthn/AuthenticatorAssertionResponse.cpp
@@ -420,6 +424,7 @@ Modules/webxr/WebXRBoundedReferenceSpace.cpp @no-unify
 Modules/webxr/WebXRFrame.cpp @no-unify
 Modules/webxr/WebXRInputSourceArray.cpp @no-unify
 Modules/webxr/WebXRInputSource.cpp @no-unify
+Modules/webxr/WebXRLayer.cpp @no-unify
 Modules/webxr/WebXRPose.cpp @no-unify
 Modules/webxr/WebXRReferenceSpace.cpp @no-unify
 Modules/webxr/WebXRRenderState.cpp @no-unify
@@ -1491,6 +1496,7 @@ layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
 layout/blockformatting/PrecomputedBlockMarginCollapse.cpp
 layout/blockformatting/tablewrapper/TableWrapperBlockFormattingContext.cpp
+layout/blockformatting/tablewrapper/TableWrapperBlockFormattingContextQuirks.cpp
 layout/displaytree/DisplayBox.cpp
 layout/displaytree/DisplayInlineContent.cpp
 layout/displaytree/DisplayPainter.cpp
@@ -1794,6 +1800,7 @@ platform/FileChooser.cpp
 platform/FileHandle.cpp
 platform/FileMonitor.cpp
 platform/FileStream.cpp
+platform/FrameRateMonitor.cpp
 platform/GenericTaskQueue.cpp
 platform/LayoutUnit.cpp
 platform/LegacySchemeRegistry.cpp
@@ -2533,6 +2540,7 @@ svg/SVGHKernElement.cpp
 svg/SVGImageElement.cpp
 svg/SVGImageLoader.cpp
 svg/SVGLengthContext.cpp
+svg/SVGLengthList.cpp
 svg/SVGLengthValue.cpp
 svg/SVGLineElement.cpp
 svg/SVGLinearGradientElement.cpp
@@ -2542,6 +2550,7 @@ svg/SVGMarkerElement.cpp
 svg/SVGMaskElement.cpp
 svg/SVGMetadataElement.cpp
 svg/SVGMissingGlyphElement.cpp
+svg/SVGNumberList.cpp
 svg/SVGParserUtilities.cpp
 svg/SVGPathBlender.cpp
 svg/SVGPathBuilder.cpp
@@ -2556,6 +2565,7 @@ svg/SVGPathStringSource.cpp
 svg/SVGPathTraversalStateBuilder.cpp
 svg/SVGPathUtilities.cpp
 svg/SVGPatternElement.cpp
+svg/SVGPointList.cpp
 svg/SVGPolyElement.cpp
 svg/SVGPolygonElement.cpp
 svg/SVGPolylineElement.cpp
@@ -2566,6 +2576,7 @@ svg/SVGSVGElement.cpp
 svg/SVGScriptElement.cpp
 svg/SVGSetElement.cpp
 svg/SVGStopElement.cpp
+svg/SVGStringList.cpp
 svg/SVGStyleElement.cpp
 svg/SVGSwitchElement.cpp
 svg/SVGSymbolElement.cpp
@@ -2579,6 +2590,7 @@ svg/SVGTextPositioningElement.cpp
 svg/SVGTitleElement.cpp
 svg/SVGToOTFFontConversion.cpp
 svg/SVGTransformDistance.cpp
+svg/SVGTransformList.cpp
 svg/SVGTransformable.cpp
 svg/SVGURIReference.cpp
 svg/SVGUnknownElement.cpp
@@ -2744,6 +2756,7 @@ JSAudioBufferCallback.cpp
 JSAudioBufferSourceNode.cpp
 JSAudioConfiguration.cpp
 JSAudioContext.cpp
+JSAudioContextState.cpp
 JSAudioDestinationNode.cpp
 JSAudioListener.cpp
 JSAudioNode.cpp
@@ -2757,6 +2770,7 @@ JSAuthenticatorAttestationResponse.cpp
 JSAuthenticatorResponse.cpp
 JSAuthenticatorTransport.cpp
 JSBarProp.cpp
+JSBaseAudioContext.cpp
 JSBasicCredential.cpp
 JSBeforeLoadEvent.cpp
 JSBeforeUnloadEvent.cpp
@@ -2914,6 +2928,7 @@ JSDeviceMotionEvent.cpp
 JSDeviceOrientationEvent.cpp
 JSDeviceOrientationOrMotionPermissionState.cpp
 JSDeviceOrientationOrMotionEvent.cpp
+JSDistanceModelType.cpp
 JSDocument.cpp
 JSDocumentAndElementEventHandlers.cpp
 JSDocumentFragment.cpp
@@ -3211,6 +3226,7 @@ JSOverflowEvent.cpp
 JSPageTransitionEvent.cpp
 JSPaintRenderingContext2D.cpp
 JSPannerNode.cpp
+JSPanningModelType.cpp
 JSParentNode.cpp
 JSPath2D.cpp
 JSPayerErrorFields.cpp
@@ -3567,7 +3583,10 @@ JSWebGPUSwapChain.cpp
 JSWebGPUTexture.cpp
 JSWebGPUTextureView.cpp
 JSWebKitAnimationEvent.cpp
+JSWebKitAudioContext.cpp
+JSWebKitAudioPannerNode.cpp
 JSWebKitCSSMatrix.cpp
+JSWebKitOfflineAudioContext.cpp
 JSWebKitPlaybackTargetAvailabilityEvent.cpp
 JSWebKitPoint.cpp
 JSWebKitTransitionEvent.cpp
@@ -3628,6 +3647,7 @@ JSWebXRView.cpp
 JSWebXRViewerPose.cpp
 JSWebXRViewport.cpp
 JSXRVisibilityState.cpp
+JSWebXRLayer.cpp
 JSWebXRWebGLLayer.cpp
 JSXRWebGLLayerInit.cpp
 

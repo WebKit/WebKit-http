@@ -81,8 +81,8 @@ class WebProcessPool;
 class WebProcessProxy;
 class WebResourceLoadStatisticsStore;
 enum class CacheModel : uint8_t;
-enum class WebsiteDataFetchOption;
-enum class WebsiteDataType;
+enum class WebsiteDataFetchOption : uint8_t;
+enum class WebsiteDataType : uint32_t;
 struct WebsiteDataRecord;
 struct WebsiteDataStoreParameters;
 
@@ -242,6 +242,11 @@ public:
     const WebCore::CurlProxySettings& networkProxySettings() const { return m_proxySettings; }
 #endif
 
+#if USE(SOUP)
+    void setPersistentCredentialStorageEnabled(bool);
+    bool persistentCredentialStorageEnabled() const { return m_persistentCredentialStorageEnabled && isPersistent(); }
+#endif
+
     static void allowWebsiteDataRecordsForAllOrigins();
 
 #if HAVE(SEC_KEY_PROXY)
@@ -318,7 +323,7 @@ private:
 
     enum class ShouldCreateDirectory { No, Yes };
     static WTF::String tempDirectoryFileSystemRepresentation(const WTF::String& directoryName, ShouldCreateDirectory = ShouldCreateDirectory::Yes);
-    static WTF::String cacheDirectoryFileSystemRepresentation(const WTF::String& directoryName);
+    static WTF::String cacheDirectoryFileSystemRepresentation(const WTF::String& directoryName, ShouldCreateDirectory = ShouldCreateDirectory::Yes);
     static WTF::String websiteDataDirectoryFileSystemRepresentation(const WTF::String& directoryName);
 
     HashSet<RefPtr<WebProcessPool>> processPools(size_t limit = std::numeric_limits<size_t>::max()) const;
@@ -366,6 +371,10 @@ private:
 
 #if USE(CURL)
     WebCore::CurlProxySettings m_proxySettings;
+#endif
+
+#if USE(SOUP)
+    bool m_persistentCredentialStorageEnabled { true };
 #endif
 
     HashSet<WebCore::Cookie> m_pendingCookies;

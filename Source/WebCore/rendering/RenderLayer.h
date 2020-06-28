@@ -669,24 +669,24 @@ public:
 
     int zIndex() const { return renderer().style().usedZIndex(); }
 
-    enum PaintLayerFlag {
-        PaintLayerHaveTransparency                      = 1 << 0,
-        PaintLayerAppliedTransform                      = 1 << 1,
-        PaintLayerTemporaryClipRects                    = 1 << 2,
-        PaintLayerPaintingReflection                    = 1 << 3,
-        PaintLayerPaintingOverlayScrollbars             = 1 << 4,
-        PaintLayerPaintingCompositingBackgroundPhase    = 1 << 5,
-        PaintLayerPaintingCompositingForegroundPhase    = 1 << 6,
-        PaintLayerPaintingCompositingMaskPhase          = 1 << 7,
-        PaintLayerPaintingCompositingClipPathPhase      = 1 << 8,
-        PaintLayerPaintingCompositingScrollingPhase     = 1 << 9,
-        PaintLayerPaintingOverflowContents              = 1 << 10,
-        PaintLayerPaintingRootBackgroundOnly            = 1 << 11,
-        PaintLayerPaintingSkipRootBackground            = 1 << 12,
-        PaintLayerPaintingChildClippingMaskPhase        = 1 << 13,
-        PaintLayerCollectingEventRegion                 = 1 << 14,
+    enum class PaintLayerFlag : uint16_t {
+        HaveTransparency                      = 1 << 0,
+        AppliedTransform                      = 1 << 1,
+        TemporaryClipRects                    = 1 << 2,
+        PaintingReflection                    = 1 << 3,
+        PaintingOverlayScrollbars             = 1 << 4,
+        PaintingCompositingBackgroundPhase    = 1 << 5,
+        PaintingCompositingForegroundPhase    = 1 << 6,
+        PaintingCompositingMaskPhase          = 1 << 7,
+        PaintingCompositingClipPathPhase      = 1 << 8,
+        PaintingCompositingScrollingPhase     = 1 << 9,
+        PaintingOverflowContents              = 1 << 10,
+        PaintingRootBackgroundOnly            = 1 << 11,
+        PaintingSkipRootBackground            = 1 << 12,
+        PaintingChildClippingMaskPhase        = 1 << 13,
+        CollectingEventRegion                 = 1 << 14,
     };
-    static constexpr OptionSet<PaintLayerFlag> paintLayerPaintingCompositingAllPhasesFlags() { return { PaintLayerPaintingCompositingBackgroundPhase, PaintLayerPaintingCompositingForegroundPhase }; }
+    static constexpr OptionSet<PaintLayerFlag> paintLayerPaintingCompositingAllPhasesFlags() { return { PaintLayerFlag::PaintingCompositingBackgroundPhase, PaintLayerFlag::PaintingCompositingForegroundPhase }; }
 
     enum class SecurityOriginPaintPolicy { AnyOrigin, AccessibleOriginOnly };
 
@@ -1001,7 +1001,7 @@ private:
 
     LayoutRect clipRectRelativeToAncestor(RenderLayer* ancestor, LayoutSize offsetFromAncestor, const LayoutRect& constrainingRect) const;
 
-    void clipToRect(GraphicsContext&, const LayerPaintingInfo&, const ClipRect&, BorderRadiusClippingRule = IncludeSelfForBorderRadius);
+    void clipToRect(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintBehavior>, const ClipRect&, BorderRadiusClippingRule = IncludeSelfForBorderRadius);
     void restoreClip(GraphicsContext&, const LayerPaintingInfo&, const ClipRect&);
 
     bool shouldRepaintAfterLayout() const;
@@ -1053,7 +1053,7 @@ private:
 
     RenderLayerFilters* filtersForPainting(GraphicsContext&, OptionSet<PaintLayerFlag>) const;
     GraphicsContext* setupFilters(GraphicsContext& destinationContext, LayerPaintingInfo&, OptionSet<PaintLayerFlag>, const LayoutSize& offsetFromRoot, Optional<LayoutRect>& rootRelativeBounds);
-    void applyFilters(GraphicsContext& originalContext, const LayerPaintingInfo&, const LayerFragments&);
+    void applyFilters(GraphicsContext& originalContext, const LayerPaintingInfo&, OptionSet<PaintBehavior>, const LayerFragments&);
 
     void paintLayer(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
     void paintLayerWithEffects(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
@@ -1431,6 +1431,7 @@ WTF::TextStream& operator<<(WTF::TextStream&, ClipRectsType);
 WTF::TextStream& operator<<(WTF::TextStream&, const RenderLayer&);
 WTF::TextStream& operator<<(WTF::TextStream&, const RenderLayer::ClipRectsContext&);
 WTF::TextStream& operator<<(WTF::TextStream&, IndirectCompositingReason);
+WTF::TextStream& operator<<(WTF::TextStream&, PaintBehavior);
 
 } // namespace WebCore
 

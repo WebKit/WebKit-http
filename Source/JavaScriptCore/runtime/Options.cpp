@@ -43,6 +43,7 @@
 #include <wtf/Optional.h>
 #include <wtf/OSLogPrintStream.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/TranslatedProcess.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/threads/Signals.h>
 
@@ -429,6 +430,12 @@ void Options::recomputeDependentOptions()
     if (!jitEnabledByDefault() && !Options::useJIT())
         Options::useLLInt() = true;
 
+    if (WTF::isX86BinaryRunningOnARM() && Options::useJIT()) {
+        Options::useBaselineJIT() = false;
+        Options::useDFGJIT() = false;
+        Options::useFTLJIT() = false;
+    }
+
     if (!Options::useWebAssembly())
         Options::useFastTLSForWasmContext() = false;
     
@@ -476,14 +483,6 @@ void Options::recomputeDependentOptions()
         Options::maximumEvalCacheableSourceLength() = 150000;
         Options::useConcurrentJIT() = false;
     }
-#if ENABLE(SEPARATED_WX_HEAP)
-    // Override globally for now. Longer term we'll just make the default
-    // be to have this option enabled, and have platforms that don't support
-    // it just silently use a single mapping.
-    Options::useSeparatedWXHeap() = true;
-#else
-    Options::useSeparatedWXHeap() = false;
-#endif
 
     if (Options::alwaysUseShadowChicken())
         Options::maximumInliningDepth() = 1;

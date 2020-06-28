@@ -560,6 +560,9 @@
     "imported/w3c/web-platform-tests/beacon/beacon-navigate.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/content-security-policy/embedded-enforcement/required_csp-header.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/report-blocked-frame.sub.html": [
         "slow"
     ],
@@ -603,6 +606,15 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/content-security-policy/style-src/style-src-multiple-policies-multiple-hashing-algorithms.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/cors/304.htm": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/cors/origin.htm": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/cors/preflight-cache.htm": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/cors/status-async.htm": [

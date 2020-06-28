@@ -72,6 +72,8 @@
 #import <math.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/NSColorSPI.h>
+#import <pal/spi/mac/CoreUISPI.h>
+#import <pal/spi/mac/NSAppearanceSPI.h>
 #import <pal/spi/mac/NSCellSPI.h>
 #import <pal/spi/mac/NSImageSPI.h>
 #import <pal/spi/mac/NSSharingServicePickerSPI.h>
@@ -283,6 +285,11 @@ RenderTheme& RenderTheme::singleton()
     return theme;
 }
 
+CFStringRef RenderThemeMac::contentSizeCategory() const
+{
+    return kCTFontContentSizeCategoryL;
+}
+
 RenderThemeMac::RenderThemeMac()
     : m_notificationObserver(adoptNS([[WebCoreRenderThemeNotificationObserver alloc] init]))
 {
@@ -476,79 +483,6 @@ Color RenderThemeMac::platformTextSearchHighlightColor(OptionSet<StyleColor::Opt
 {
     LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor findHighlightColor]);
-}
-
-static FontSelectionValue toFontWeight(NSInteger appKitFontWeight)
-{
-    ASSERT(appKitFontWeight > 0 && appKitFontWeight < 15);
-    if (appKitFontWeight > 14)
-        appKitFontWeight = 14;
-    else if (appKitFontWeight < 1)
-        appKitFontWeight = 1;
-
-    static const FontSelectionValue fontWeights[] = {
-        FontSelectionValue(100),
-        FontSelectionValue(100),
-        FontSelectionValue(200),
-        FontSelectionValue(300),
-        FontSelectionValue(400),
-        FontSelectionValue(500),
-        FontSelectionValue(600),
-        FontSelectionValue(600),
-        FontSelectionValue(700),
-        FontSelectionValue(800),
-        FontSelectionValue(800),
-        FontSelectionValue(900),
-        FontSelectionValue(900),
-        FontSelectionValue(900)
-    };
-    return fontWeights[appKitFontWeight - 1];
-}
-
-void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, FontCascadeDescription& fontDescription) const
-{
-    NSFont* font;
-    // System-font-ness can't be encapsulated by simply a font name. Instead, we must use a token
-    // which FontCache will look for.
-    // Make sure we keep this list of possible tokens in sync with FontCascade::primaryFontIsSystemFont()
-    AtomString fontName;
-    switch (cssValueId) {
-        case CSSValueSmallCaption:
-            font = [NSFont systemFontOfSize:[NSFont smallSystemFontSize]];
-            break;
-        case CSSValueMenu:
-            font = [NSFont menuFontOfSize:[NSFont systemFontSize]];
-            fontName = AtomString("-apple-menu", AtomString::ConstructFromLiteral);
-            break;
-        case CSSValueStatusBar:
-            font = [NSFont labelFontOfSize:[NSFont labelFontSize]];
-            fontName = AtomString("-apple-status-bar", AtomString::ConstructFromLiteral);
-            break;
-        case CSSValueWebkitMiniControl:
-            font = [NSFont systemFontOfSize:ThemeMac::systemFontSizeFor(NSControlSizeMini)];
-            break;
-        case CSSValueWebkitSmallControl:
-            font = [NSFont systemFontOfSize:ThemeMac::systemFontSizeFor(NSControlSizeSmall)];
-            break;
-        case CSSValueWebkitControl:
-            font = [NSFont systemFontOfSize:ThemeMac::systemFontSizeFor(NSControlSizeRegular)];
-            break;
-        default:
-            font = [NSFont systemFontOfSize:[NSFont systemFontSize]];
-    }
-
-    if (!font)
-        return;
-
-    if (fontName.isNull())
-        fontName = AtomString("system-ui", AtomString::ConstructFromLiteral);
-
-    NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    fontDescription.setIsAbsoluteSize(true);
-    fontDescription.setOneFamily(fontName);
-    fontDescription.setSpecifiedSize([font pointSize]);
-    fontDescription.setWeight(toFontWeight([fontManager weightOfFont:font]));
-    fontDescription.setIsItalic([fontManager traitsOfFont:font] & NSItalicFontMask);
 }
 
 static SimpleColor menuBackgroundColor()
@@ -1087,7 +1021,7 @@ void RenderThemeMac::setFontFromControlSize(RenderStyle& style, NSControlSize co
     FontCascadeDescription fontDescription;
     fontDescription.setIsAbsoluteSize(true);
 
-    NSFont* font = [NSFont systemFontOfSize:ThemeMac::systemFontSizeFor(controlSize)];
+    NSFont* font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSize]];
     fontDescription.setOneFamily(AtomString("-apple-system", AtomString::ConstructFromLiteral));
     fontDescription.setComputedSize([font pointSize] * style.effectiveZoom());
     fontDescription.setSpecifiedSize([font pointSize] * style.effectiveZoom());
@@ -1103,12 +1037,12 @@ NSControlSize RenderThemeMac::controlSizeForSystemFont(const RenderStyle& style)
 {
     int fontSize = style.computedFontPixelSize();
 #if HAVE(LARGE_CONTROL_SIZE)
-    if (fontSize >= ThemeMac::systemFontSizeFor(NSControlSizeLarge) && ThemeMac::supportsLargeFormControls())
+    if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeLarge] && ThemeMac::supportsLargeFormControls())
         return NSControlSizeLarge;
 #endif
-    if (fontSize >= ThemeMac::systemFontSizeFor(NSControlSizeRegular))
+    if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeRegular])
         return NSControlSizeRegular;
-    if (fontSize >= ThemeMac::systemFontSizeFor(NSControlSizeSmall))
+    if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeSmall])
         return NSControlSizeSmall;
     return NSControlSizeMini;
 }
@@ -1452,39 +1386,41 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
 
     IntRect inflatedRect = progressBarRectForBounds(renderObject, rect);
     NSControlSize controlSize = controlSizeForFont(renderObject.style());
-
     const auto& renderProgress = downcast<RenderProgress>(renderObject);
-    HIThemeTrackDrawInfo trackInfo;
-    trackInfo.version = 0;
-
-    bool shouldUseLargeProgressBarIfPossible = controlSize == NSControlSizeRegular;
-#if HAVE(LARGE_CONTROL_SIZE)
-    if (ThemeMac::supportsLargeFormControls())
-        shouldUseLargeProgressBarIfPossible |= controlSize == NSControlSizeLarge;
-#endif
-    if (shouldUseLargeProgressBarIfPossible)
-        trackInfo.kind = renderProgress.position() < 0 ? kThemeLargeIndeterminateBar : kThemeLargeProgressBar;
-    else
-        trackInfo.kind = renderProgress.position() < 0 ? kThemeMediumIndeterminateBar : kThemeMediumProgressBar;
-
     float deviceScaleFactor = renderObject.document().deviceScaleFactor();
-    trackInfo.bounds = IntRect(IntPoint(), inflatedRect.size());
-    trackInfo.min = 0;
-    trackInfo.max = std::numeric_limits<SInt32>::max();
-    trackInfo.value = lround(renderProgress.position() * nextafter(trackInfo.max, 0));
-    trackInfo.trackInfo.progress.phase = lround(renderProgress.animationProgress() * nextafter(progressAnimationNumFrames, 0) * deviceScaleFactor);
-    trackInfo.attributes = kThemeTrackHorizontal;
-    trackInfo.enableState = isActive(renderObject) ? kThemeTrackActive : kThemeTrackInactive;
-    trackInfo.reserved = 0;
-    trackInfo.filler1 = 0;
-
-    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpace::SRGB, paintInfo.context());
+    bool isIndeterminate = renderProgress.position() < 0;
+    auto animationFrame = lround(renderProgress.animationProgress() * nextafter(progressAnimationNumFrames, 0) * deviceScaleFactor);
+    auto imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpace::SRGB, paintInfo.context());
     if (!imageBuffer)
         return true;
 
     ContextContainer cgContextContainer(imageBuffer->context());
     CGContextRef cgContext = cgContextContainer.context();
-    HIThemeDrawTrack(&trackInfo, 0, cgContext, kHIThemeOrientationNormal);
+
+    auto coreUISizeForProgressBarSize = [](NSControlSize size) -> CFStringRef {
+        switch (size) {
+        case NSControlSizeMini:
+        case NSControlSizeSmall:
+            return kCUISizeSmall;
+        case NSControlSizeRegular:
+#if HAVE(LARGE_CONTROL_SIZE)
+        case NSControlSizeLarge:
+#endif
+            return kCUISizeRegular;
+        }
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    };
+    [[NSAppearance currentAppearance] _drawInRect:NSMakeRect(0, 0, inflatedRect.width(), inflatedRect.height()) context:cgContext options:@{
+        (__bridge NSString *)kCUIWidgetKey: (__bridge NSString *)(isIndeterminate ? kCUIWidgetProgressIndeterminateBar : kCUIWidgetProgressBar),
+        (__bridge NSString *)kCUIValueKey: @(isIndeterminate ? 1 : std::min(nextafter(1.0, -1), renderProgress.position())),
+        (__bridge NSString *)kCUISizeKey: (__bridge NSString *)coreUISizeForProgressBarSize(controlSize),
+        (__bridge NSString *)kCUIUserInterfaceLayoutDirectionKey: (__bridge NSString *)kCUIUserInterfaceLayoutDirectionLeftToRight,
+        (__bridge NSString *)kCUIScaleKey: @(deviceScaleFactor),
+        (__bridge NSString *)kCUIPresentationStateKey: (__bridge NSString *)(isActive(renderObject) ? kCUIPresentationStateActiveKey : kCUIPresentationStateInactive),
+        (__bridge NSString *)kCUIOrientationKey: (__bridge NSString *)kCUIOrientHorizontal,
+        (__bridge NSString *)kCUIAnimationFrameKey: @(isIndeterminate ? animationFrame : 0)
+    }];
 
     GraphicsContextStateSaver stateSaver(paintInfo.context());
 
@@ -1801,9 +1737,8 @@ void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell
 {
     LocalDefaultSystemAppearance localAppearance(renderer.useDarkAppearance());
     bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto() == OutlineIsAuto::On;
-    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || renderer.page().pageScaleFactor() != 1;
     bool shouldDrawCell = true;
-    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, renderer.page().deviceScaleFactor()))
+    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, renderer.page().deviceScaleFactor()))
         renderer.page().focusController().setFocusedElementNeedsRepaint();
 }
 
@@ -1933,8 +1868,7 @@ bool RenderThemeMac::paintSliderThumb(const RenderObject& o, const PaintInfo& pa
     bool shouldDrawCell = true;
     bool shouldDrawFocusRing = false;
     float deviceScaleFactor = o.page().deviceScaleFactor();
-    bool shouldUseImageBuffer = deviceScaleFactor != 1 || zoomLevel != 1;
-    ThemeMac::drawCellOrFocusRingWithViewIntoContext(sliderThumbCell, paintInfo.context(), unzoomedRect, view, shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, deviceScaleFactor);
+    ThemeMac::drawCellOrFocusRingWithViewIntoContext(sliderThumbCell, paintInfo.context(), unzoomedRect, view, shouldDrawCell, shouldDrawFocusRing, deviceScaleFactor);
     [sliderThumbCell setControlView:nil];
 
     return false;
@@ -2086,7 +2020,7 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
         paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-unzoomedRect.location());
     }
-    [[search cancelButtonCell] drawWithFrame:unzoomedRect inView:documentViewFor(box)];
+    paintCellAndSetFocusedElementNeedsRepaintIfNecessary([search cancelButtonCell], box, paintInfo, unzoomedRect);
     [[search cancelButtonCell] setControlView:nil];
     return false;
 }
@@ -2222,7 +2156,7 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const P
         paintInfo.context().translate(-unzoomedRect.location());
     }
 
-    [[search searchButtonCell] drawWithFrame:unzoomedRect inView:documentViewFor(box)];
+    paintCellAndSetFocusedElementNeedsRepaintIfNecessary([search searchButtonCell], box, paintInfo, unzoomedRect);
     [[search searchButtonCell] setControlView:nil];
 
     return false;
@@ -2798,24 +2732,27 @@ static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsCont
     icon->paint(context, layout.iconRect);
 }
 
-#if HAVE(ALTERNATE_ICONS) && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/RenderThemeMacAdditions.mm>
-#else
-
-static std::pair<RefPtr<Image>, float> createAttachmentPlaceholderImage(float deviceScaleFactor, const AttachmentLayout&)
+static std::pair<RefPtr<Image>, float> createAttachmentPlaceholderImage(float deviceScaleFactor, const AttachmentLayout& layout)
 {
+#if HAVE(ALTERNATE_ICONS)
+    auto image = [NSImage _imageWithSystemSymbolName:@"arrow.down.circle"];
+    auto imageSize = FloatSize([image size]);
+    auto imageSizeScales = deviceScaleFactor * layout.iconRect.size() / imageSize;
+    imageSize.scale(std::min(imageSizeScales.width(), imageSizeScales.height()));
+    auto imageRect = NSMakeRect(0, 0, imageSize.width(), imageSize.height());
+    auto cgImage = [image CGImageForProposedRect:&imageRect context:nil hints:@{
+        NSImageHintSymbolFont : [NSFont systemFontOfSize:32],
+        NSImageHintSymbolScale : @(NSImageSymbolScaleMedium)
+    }];
+    return { BitmapImage::create(cgImage), deviceScaleFactor };
+#else
+    UNUSED_PARAM(layout);
     if (deviceScaleFactor >= 2)
         return { Image::loadPlatformResource("AttachmentPlaceholder@2x"), 2 };
 
     return { Image::loadPlatformResource("AttachmentPlaceholder"), 1 };
-}
-
-String RenderThemeMac::extraDefaultStyleSheet()
-{
-    return { };
-}
-
 #endif
+}
 
 static void paintAttachmentIconPlaceholder(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
 {

@@ -125,8 +125,7 @@ class MacTest(darwin_testcase.DarwinTest):
         self.assertEqual(self.args, ['ARCHS=i386'])
 
     def test_64bit(self):
-        # Apple Mac port is 64-bit by default
-        port = self.make_port()
+        port = self.make_port(options=MockOptions(architecture='x86_64'))
         self.assertEqual(port.architecture(), 'x86_64')
 
         def run_script(script, args=None, env=None):
@@ -134,7 +133,29 @@ class MacTest(darwin_testcase.DarwinTest):
 
         port._run_script = run_script
         port._build_driver()
-        self.assertEqual(self.args, [])
+        self.assertEqual(self.args, ['ARCHS=x86_64'])
+
+    def test_arm(self):
+        port = self.make_port(options=MockOptions(architecture='arm64e'))
+        self.assertEqual(port.architecture(), 'arm64')
+
+        def run_script(script, args=None, env=None):
+            self.args = args
+
+        port._run_script = run_script
+        port._build_driver()
+        self.assertEqual(self.args, ['ARCHS=arm64'])
+
+    def test_default(self):
+        port = self.make_port()
+        self.assertEqual(port.architecture(), port.host.platform.architecture())
+
+        def run_script(script, args=None, env=None):
+            self.args = args
+
+        port._run_script = run_script
+        port._build_driver()
+        self.assertEqual(self.args, ['ARCHS={}'.format(port.host.platform.architecture())])
 
     def test_sdk_name(self):
         port = self.make_port()
@@ -159,6 +180,13 @@ class MacTest(darwin_testcase.DarwinTest):
         self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/mac-lion')
         self.assertEqual(search_path[4], '/additional_testing_path/mac-add-mountainlion-wk1')
         self.assertEqual(search_path[5], '/mock-checkout/LayoutTests/platform/mac-mountainlion-wk1')
+
+    def test_big_sur_baseline_search_path(self):
+        search_path = self.make_port(port_name='macos-big-sur').default_baseline_search_path()
+        self.assertEqual(search_path[0], '/mock-checkout/LayoutTests/platform/mac-catalina-wk1')
+        self.assertEqual(search_path[1], '/mock-checkout/LayoutTests/platform/mac-catalina')
+        self.assertEqual(search_path[2], '/mock-checkout/LayoutTests/platform/mac-wk1')
+        self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/mac')
 
     def test_factory_with_future_version(self):
         port = self.make_port(options=MockOptions(webkit_test_runner=True), os_version=MacTest.FUTURE_VERSION, os_name='mac', port_name='mac')

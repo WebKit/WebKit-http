@@ -87,8 +87,15 @@ def configuration_options():
         optparse.make_option('--64-bit', action='store_const', const='x86_64', default=None, dest="architecture",
             help='use 64-bit binaries by default (x86_64 instead of x86)'),
         optparse.make_option('--32-bit', action='store_const', const='x86', default=None, dest="architecture",
-            help='use 32-bit binaries by default (x86 instead of x86_64)'),
-        ]
+             help='use 32-bit binaries by default (x86 instead of x86_64)'),
+        optparse.make_option('--arm', action='store_const', const='arm64e', default=None, dest="architecture",
+             help='Use arm64e binaries by default'),
+        optparse.make_option('--architecture', action='store', default=None, dest="architecture",
+             help='Use binaries of the specified architecture by default.'),
+        # FIXME https://bugs.webkit.org/213677: This should effect the models used by simulator ports
+        optparse.make_option('--model', action='store', default=None, dest="model",
+             help='Override the model details on upload.'),
+    ]
 
 
 def _builder_options(builder_name):

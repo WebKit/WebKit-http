@@ -94,6 +94,7 @@ public:
     bool isBlockFormattingContext() const { return root().establishesBlockFormattingContext(); }
     bool isInlineFormattingContext() const { return root().establishesInlineFormattingContext(); }
     bool isTableFormattingContext() const { return root().establishesTableFormattingContext(); }
+    bool isTableWrapperBlockFormattingContext() const { return isBlockFormattingContext() && root().isTableWrapperBox(); }
 
     enum class EscapeReason {
         NeedsGeometryFromEstablishedFormattingContext,
@@ -198,12 +199,11 @@ protected:
 
     class Quirks {
     public:
+        Quirks(const FormattingContext&);
+
         LayoutUnit heightValueOfNearestContainingBlockWithFixedHeight(const Box&);
 
     protected:
-        friend class FormattingContext;
-        Quirks(const FormattingContext&);
-
         const LayoutState& layoutState() const { return m_formattingContext.layoutState(); }
         LayoutState& layoutState() { return m_formattingContext.layoutState(); }
         const FormattingContext& formattingContext() const { return m_formattingContext; }

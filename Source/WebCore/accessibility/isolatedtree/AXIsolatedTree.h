@@ -72,7 +72,7 @@ public:
         NodeChange(const NodeChange&);
     };
 
-    void generateSubtree(AXCoreObject&, AXID parentID, bool attachWrapper);
+    void generateSubtree(AXCoreObject&, AXCoreObject*, bool attachWrapper);
     void updateNode(AXCoreObject&);
     void updateSubtree(AXCoreObject&);
     void updateChildren(AXCoreObject&);
@@ -104,8 +104,11 @@ private:
     // Call on main thread
     Ref<AXIsolatedObject> createSubtree(AXCoreObject&, AXID parentID, bool attachWrapper, Vector<NodeChange>&);
     // Queues all pending additions to the tree as the result of a subtree generation.
-    void appendNodeChanges(const Vector<NodeChange>&);
+    void appendNodeChanges(Vector<NodeChange>&&);
+    // Called on main thread to update both m_nodeMap and m_pendingChildrenUpdates.
+    void updateChildrenIDs(AXID axID, Vector<AXID>&& childrenIDs);
 
+    AXIsolatedTreeID m_treeID;
     AXObjectCache* m_axObjectCache { nullptr };
 
     // Only accessed on main thread.
@@ -120,10 +123,8 @@ private:
     Vector<AXID> m_pendingSubtreeRemovals; // Nodes whose subtrees are to be removed from the tree.
     Vector<std::pair<AXID, Vector<AXID>>> m_pendingChildrenUpdates;
     AXID m_pendingFocusedNodeID { InvalidAXID };
-    Lock m_changeLogLock;
-
-    AXIsolatedTreeID m_treeID;
     AXID m_focusedNodeID { InvalidAXID };
+    Lock m_changeLogLock;
 };
 
 } // namespace WebCore

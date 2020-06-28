@@ -70,7 +70,7 @@ fast/canvas/webgl/context-update-on-display-configuration.html [ Pass ]
 fast/misc/valid-primary-screen-displayID.html [ Pass ]
 
 # Skipped because of <rdar://problem/45388584>.
-http/tests/webAPIStatistics [ Skip ]
+http/tests/webAPIStatistics [ Pass ]
 
 webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
 
@@ -182,7 +182,6 @@ webkit.org/b/105616 editing/spelling/context-menu-suggestions-subword-selection.
 webkit.org/b/105616 editing/spelling/copy-paste-crash.html
 webkit.org/b/105616 editing/spelling/delete-into-misspelled-word.html
 webkit.org/b/105616 editing/spelling/editing-multiple-words-with-markers.html
-webkit.org/b/105616 editing/spelling/editing-word-with-marker-1.html [ Failure ]
 webkit.org/b/105616 editing/spelling/editing-word-with-marker-2.html
 webkit.org/b/105616 editing/spelling/move-cursor-around-misspelled-word.html
 webkit.org/b/105616 editing/spelling/spelling-changed-text.html
@@ -221,8 +220,6 @@ webkit.org/b/105616 editing/mac/spelling/accept-unseen-candidate-records-accepta
 webkit.org/b/105616 editing/spelling/spelling-marker-includes-hyphen.html [ Pass ImageOnlyFailure ]
 webkit.org/b/105616 editing/spelling/spelling-markers-in-overlapping-lines.html [ Pass ImageOnlyFailure ]
 webkit.org/b/105616 editing/spelling/spelling-markers-in-overlapping-lines-large-font.html [ Pass ImageOnlyFailure ]
-webkit.org/b/105616 fast/writing-mode/english-bt-text-with-spelling-marker.html [ ImageOnlyFailure ]
-webkit.org/b/105616 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -301,9 +298,6 @@ webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageO
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-c.svg  [ ImageOnlyFailure Pass ]
 webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure Pass ]
-
-# Color space issues from switching to tiled drawing.
-webkit.org/b/122234 css3/filters/null-effect-check.html [ ImageOnlyFailure ]
 
 webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initialization-multiple.html [ Pass Failure ]
 
@@ -546,10 +540,6 @@ fast/scrolling/rtl-scrollbars-animation-property.html [ Pass ]
 
 # <rdar://problem/25063128>
 media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
-
-# Hitting "The certificate for this server is invalid" loading error (not happening in WK1)
-webkit.org/b/160445 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
-webkit.org/b/160445 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
 
 webkit.org/b/167607 [ Debug ] http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html [ Pass Timeout ]
 
@@ -1037,3 +1027,13 @@ webkit.org/b/212042 [ Debug ] fast/scrolling/mac/scrollbars/select-overlay-scrol
 webkit.org/b/213212 [ Mojave Release ] webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb16f-rgb-half_float.html [ Pass Failure ]
 
 webkit.org/b/213292 [ Catalina Release ] http/tests/IndexedDB/storage-limit-1.https.html [ Pass Failure ]
+
+webkit.org/b/213375 [ Debug ] webaudio/biquad-bandpass.html [ Pass Crash ]
+
+webkit.org/b/213461 fast/mediastream/mediastreamtrack-video-frameRate-clone-increasing.html [ Pass Failure ]
+
+webkit.org/b/213553 http/tests/resourceLoadStatistics/grandfathering-database.html [ Pass Timeout ]
+
+webkit.org/b/213621 imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getContributingSources.https.html [ Pass Failure ]
+
+webkit.org/b/213652 webrtc/video-autoplay1.html [ Pass Failure ]

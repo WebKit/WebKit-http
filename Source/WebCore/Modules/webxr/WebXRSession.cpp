@@ -108,10 +108,9 @@ bool WebXRSession::referenceSpaceIsSupported(XRReferenceSpaceType type) const
             return true;
 
         // 4. If type is local or local-floor, and the XR device supports reporting orientation data, return true.
-        // TODO: add API to PlatformXR::Device
-        return true;
+        if (m_device->supportsOrientationTracking())
+            return true;
     }
-
 
     // 5. If type is bounded-floor and session is an immersive session, return the result of whether bounded
     //    reference spaces are supported by the XR device.
@@ -196,11 +195,11 @@ void WebXRSession::scheduleAnimation()
 }
 
 // https://immersive-web.github.io/webxr/#dom-xrsession-requestanimationframe
-XRFrameRequestCallback::Id WebXRSession::requestAnimationFrame(Ref<XRFrameRequestCallback>&& callback)
+unsigned WebXRSession::requestAnimationFrame(Ref<XRFrameRequestCallback>&& callback)
 {
     // 1. Let session be the target XRSession object.
     // 2. Increment session's animation frame callback identifier by one.
-    XRFrameRequestCallback::Id newId = ++m_nextCallbackId;
+    unsigned newId = m_nextCallbackId++;
 
     // 3. Append callback to session's list of animation frame callbacks, associated with session's
     // animation frame callback identifier's current value.
@@ -214,7 +213,7 @@ XRFrameRequestCallback::Id WebXRSession::requestAnimationFrame(Ref<XRFrameReques
 }
 
 // https://immersive-web.github.io/webxr/#dom-xrsession-cancelanimationframe
-void WebXRSession::cancelAnimationFrame(XRFrameRequestCallback::Id callbackId)
+void WebXRSession::cancelAnimationFrame(unsigned callbackId)
 {
     // 1. Let session be the target XRSession object.
     // 2. Find the entry in session's list of animation frame callbacks or session's list of

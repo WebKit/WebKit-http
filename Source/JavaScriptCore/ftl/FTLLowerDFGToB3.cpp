@@ -559,7 +559,7 @@ private:
         if (!m_graphDump) {
             StringPrintStream out;
             m_graph.dump(out);
-            m_graphDump = out.toString();
+            m_graphDump = out.tryToString().value_or("<out of memory while dumping graph>"_s);
         }
 
         switch (node->op()) {
@@ -4379,11 +4379,20 @@ private:
     void compileGetPrototypeOf()
     {
         JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+
+        LValue object = nullptr;
+        LValue structure = nullptr;
+        ValueFromBlock slowResult;
+
+        LBasicBlock loadPolyProto = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
+
         switch (m_node->child1().useKind()) {
         case ArrayUse:
         case FunctionUse:
         case FinalObjectUse: {
-            LValue object = lowCell(m_node->child1());
+            object = lowCell(m_node->child1());
             switch (m_node->child1().useKind()) {
             case ArrayUse:
                 speculateArray(m_node->child1(), object);
@@ -4399,7 +4408,7 @@ private:
                 break;
             }
 
-            LValue structure = loadStructure(object);
+            structure = loadStructure(object);
 
             AbstractValue& value = m_state.forNode(m_node->child1());
             if ((value.m_type && !(value.m_type & ~SpecObject)) && value.m_structure.isFinite()) {
@@ -4423,33 +4432,72 @@ private:
                 }
             }
 
-            LBasicBlock continuation = m_out.newBlock();
-            LBasicBlock loadPolyProto = m_out.newBlock();
-
-            LValue prototypeBits = m_out.load64(structure, m_heaps.Structure_prototype);
-            ValueFromBlock directPrototype = m_out.anchor(prototypeBits);
-            m_out.branch(m_out.isZero64(prototypeBits), unsure(loadPolyProto), unsure(continuation));
-
-            LBasicBlock lastNext = m_out.appendTo(loadPolyProto, continuation);
-            ValueFromBlock polyProto = m_out.anchor(
-                m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), object, m_out.constInt64(knownPolyProtoOffset), ScaleEight, JSObject::offsetOfInlineStorage())));
-            m_out.jump(continuation);
-
-            m_out.appendTo(continuation, lastNext);
-            setJSValue(m_out.phi(Int64, directPrototype, polyProto));
-            return;
+            break;
         }
         case ObjectUse: {
-            // FIXME: Add fast path based on OverridesGetPrototype type info flag
-            // https://bugs.webkit.org/show_bug.cgi?id=213191
-            setJSValue(vmCall(Int64, operationGetPrototypeOfObject, weakPointer(globalObject), lowObject(m_node->child1())));
-            return;
+            object = lowObject(m_node->child1());
+
+            LBasicBlock fastPath = m_out.newBlock();
+            LBasicBlock slowPath = m_out.newBlock();
+
+            structure = loadStructure(object);
+            m_out.branch(
+                m_out.testIsZero32(
+                    m_out.load16ZeroExt32(structure, m_heaps.Structure_outOfLineTypeFlags),
+                    m_out.constInt32(OverridesGetPrototypeOutOfLine)),
+                usually(fastPath), rarely(slowPath));
+
+            m_out.appendTo(slowPath, fastPath);
+            slowResult = m_out.anchor(vmCall(Int64, operationGetPrototypeOfObject, weakPointer(globalObject), object));
+            m_out.jump(continuation);
+
+            m_out.appendTo(fastPath, loadPolyProto);
+            break;
         }
         default: {
-            setJSValue(vmCall(Int64, operationGetPrototypeOf, weakPointer(globalObject), lowJSValue(m_node->child1())));
-            return;
+            object = lowJSValue(m_node->child1());
+            SpeculatedType valueType = provenType(m_node->child1());
+
+            LBasicBlock isCellPath = m_out.newBlock();
+            LBasicBlock isObjectPath = m_out.newBlock();
+            LBasicBlock fastPath = m_out.newBlock();
+            LBasicBlock slowPath = m_out.newBlock();
+
+            m_out.branch(isCell(object, valueType), usually(isCellPath), rarely(slowPath));
+            m_out.appendTo(isCellPath, isObjectPath);
+            m_out.branch(isObject(object, valueType), usually(isObjectPath), rarely(slowPath));
+
+            m_out.appendTo(isObjectPath, slowPath);
+            structure = loadStructure(object);
+            m_out.branch(
+                m_out.testIsZero32(
+                    m_out.load16ZeroExt32(structure, m_heaps.Structure_outOfLineTypeFlags),
+                    m_out.constInt32(OverridesGetPrototypeOutOfLine)),
+                usually(fastPath), rarely(slowPath));
+
+            m_out.appendTo(slowPath, fastPath);
+            slowResult = m_out.anchor(vmCall(Int64, operationGetPrototypeOf, weakPointer(globalObject), object));
+            m_out.jump(continuation);
+
+            m_out.appendTo(fastPath, loadPolyProto);
+            break;
         }
         }
+
+        ASSERT(object);
+        ASSERT(structure);
+
+        LValue prototypeBits = m_out.load64(structure, m_heaps.Structure_prototype);
+        ValueFromBlock monoProto = m_out.anchor(prototypeBits);
+        m_out.branch(m_out.isZero64(prototypeBits), unsure(loadPolyProto), unsure(continuation));
+
+        m_out.appendTo(loadPolyProto, continuation);
+        ValueFromBlock polyProto = m_out.anchor(
+            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), object, m_out.constInt64(knownPolyProtoOffset), ScaleEight, JSObject::offsetOfInlineStorage())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(Int64, monoProto, polyProto, slowResult));
     }
     
     void compileGetArrayLength()
@@ -15079,7 +15127,14 @@ private:
             patchpoint->numGPScratchRegisters++;
         else
             patchpoint->appendSomeRegisterWithClobber(allocator);
-        patchpoint->numGPScratchRegisters++;
+#if ENABLE(BITMAP_FREELIST)
+        constexpr unsigned scratchRegistersNeeded = 3;
+        constexpr unsigned allocatorScratch = 3;
+#else
+        constexpr unsigned scratchRegistersNeeded = 1;
+        constexpr unsigned allocatorScratch = 1;
+#endif
+        patchpoint->numGPScratchRegisters += scratchRegistersNeeded;
         patchpoint->resultConstraints = { ValueRep::SomeEarlyRegister };
         
         m_out.appendSuccessor(usually(continuation));
@@ -15092,7 +15147,7 @@ private:
                 
                 GPRReg allocatorGPR;
                 if (actualAllocator.isConstant())
-                    allocatorGPR = params.gpScratch(1);
+                    allocatorGPR = params.gpScratch(allocatorScratch);
                 else
                     allocatorGPR = params[1].gpr();
                 
@@ -15104,7 +15159,11 @@ private:
                 // all of the compiler tiers.
                 jit.emitAllocateWithNonNullAllocator(
                     params[0].gpr(), actualAllocator, allocatorGPR, params.gpScratch(0),
-                    jumpToSlowPath);
+                    jumpToSlowPath
+#if ENABLE(BITMAP_FREELIST)
+                    , params.gpScratch(1), params.gpScratch(2)
+#endif
+                    );
                 
                 CCallHelpers::Jump jumpToSuccess;
                 if (!params.fallsThroughToSuccessor(0))

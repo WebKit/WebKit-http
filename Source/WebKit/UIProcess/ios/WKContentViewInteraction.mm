@@ -936,7 +936,6 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 
     _textInteractionDidChangeFocusedElement = NO;
     _textInteractionIsHappening = NO;
-    _pointInsideLastFocusedTextInputContext = WTF::nullopt;
 
     if (_interactionViewsContainerView) {
         [self.layer removeObserver:self forKeyPath:@"transform"];
@@ -1421,7 +1420,8 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
                 auto page = strongSelf->_page;
                 if (!page)
                     return;
-                ASSERT(page->hasQueuedKeyEvent());
+                if (!page->hasQueuedKeyEvent())
+                    return;
                 keyEventHandler(page->firstQueuedKeyEvent().nativeEvent(), YES);
             });
         }
@@ -2642,7 +2642,7 @@ static Class tapAndAHalfRecognizerClass()
         break;
     case UIGestureRecognizerStateEnded:
         if (_longPressCanClick && _positionInformation.isElement) {
-            [self _attemptClickAtLocation:gestureRecognizer.startPoint modifierFlags:gestureRecognizerModifierFlags(gestureRecognizer)];
+            [self _attemptSyntheticClickAtLocation:gestureRecognizer.startPoint modifierFlags:gestureRecognizerModifierFlags(gestureRecognizer)];
             [self _finishInteraction];
         } else
             [self _cancelInteraction];
@@ -2844,13 +2844,13 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _smartMagnificationController->handleResetMagnificationGesture(gestureRecognizer.location);
 }
 
-- (void)_attemptClickAtLocation:(CGPoint)location modifierFlags:(UIKeyModifierFlags)modifierFlags
+- (void)_attemptSyntheticClickAtLocation:(CGPoint)location modifierFlags:(UIKeyModifierFlags)modifierFlags
 {
     if (![self isFirstResponder])
         [self becomeFirstResponder];
 
     [_inputPeripheral endEditing];
-    _page->handleTap(location, WebKit::webEventModifierFlags(modifierFlags), _layerTreeTransactionIdAtLastInteractionStart);
+    _page->attemptSyntheticClick(location, WebKit::webEventModifierFlags(modifierFlags), _layerTreeTransactionIdAtLastInteractionStart);
 }
 
 - (void)setUpTextSelectionAssistant
@@ -4302,7 +4302,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
     _textInteractionDidChangeFocusedElement = NO;
     _textInteractionIsHappening = NO;
-    _pointInsideLastFocusedTextInputContext = WTF::nullopt;
     _hasValidPositionInformation = NO;
     _positionInformation = { };
 }
@@ -5174,12 +5173,10 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         completionHandler(nil);
         return;
     }
-    WebCore::IntPoint pointInsideTextInputContext { point };
-    if ([self _isTextInputContextFocused:context] && _pointInsideLastFocusedTextInputContext == pointInsideTextInputContext) {
+    if ([self _isTextInputContextFocused:context]) {
         completionHandler(_focusedElementInformation.isReadOnly ? nil : self);
         return;
     }
-    _pointInsideLastFocusedTextInputContext = pointInsideTextInputContext;
     _usingGestureForSelection = YES;
     auto checkFocusedElement = [weakSelf = WeakObjCPtr<WKContentView> { self }, context = adoptNS([context copy]), completionHandler = makeBlockPtr(completionHandler)] (bool success) {
         auto strongSelf = weakSelf.get();
@@ -5193,18 +5190,20 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         strongSelf->_usingGestureForSelection = NO;
         completionHandler(isFocused && isEditable ? strongSelf.get() : nil);
     };
-    _page->focusTextInputContextAndPlaceCaret(context._textInputContext, pointInsideTextInputContext, WTFMove(checkFocusedElement));
+    _page->focusTextInputContextAndPlaceCaret(context._textInputContext, WebCore::IntPoint { point }, WTFMove(checkFocusedElement));
 }
 
 - (void)_requestTextInputContextsInRect:(CGRect)rect completionHandler:(void (^)(NSArray<_WKTextInputContext *> *))completionHandler
 {
+    WebCore::FloatRect searchRect { rect };
 #if ENABLE(EDITABLE_REGION)
-    if (!self.webView._editable && !WebKit::mayContainEditableElementsInRect(self, rect)) {
+    bool hitInteractionRect = self._hasFocusedElement && searchRect.inclusivelyIntersects(_focusedElementInformation.interactionRect);
+    if (!self.webView._editable && !hitInteractionRect && !WebKit::mayContainEditableElementsInRect(self, rect)) {
         completionHandler(@[ ]);
         return;
     }
 #endif
-    _page->textInputContextsInRect(rect, [weakSelf = WeakObjCPtr<WKContentView>(self), completionHandler = makeBlockPtr(completionHandler)] (const Vector<WebCore::ElementContext>& contexts) {
+    _page->textInputContextsInRect(searchRect, [weakSelf = WeakObjCPtr<WKContentView>(self), completionHandler = makeBlockPtr(completionHandler)] (const Vector<WebCore::ElementContext>& contexts) {
         auto strongSelf = weakSelf.get();
         if (!strongSelf || contexts.isEmpty()) {
             completionHandler(@[ ]);
@@ -5659,7 +5658,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (BOOL)hasContent
 {
-    return _page->editorState().postLayoutData().hasContent;
+    auto& editorState = _page->editorState();
+    return !editorState.selectionIsNone && editorState.postLayoutData().hasContent;
 }
 
 - (void)selectAll
@@ -6904,7 +6904,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant openElementAtLocation:(CGPoint)location
 {
-    [self _attemptClickAtLocation:location modifierFlags:0];
+    [self _attemptSyntheticClickAtLocation:location modifierFlags:0];
 }
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect
@@ -8788,9 +8788,9 @@ static RetainPtr<NSItemProvider> createItemProvider(const WebKit::WebPageProxy& 
 
 - (void)_simulateElementAction:(_WKElementActionType)actionType atLocation:(CGPoint)location
 {
-    RetainPtr<WKContentView> protectedSelf = self;
-    [self doAfterPositionInformationUpdate:[actionType, protectedSelf] (WebKit::InteractionInformationAtPosition info) {
-        _WKElementAction *action = [_WKElementAction _elementActionWithType:actionType assistant:protectedSelf->_actionSheetAssistant.get()];
+    _layerTreeTransactionIdAtLastInteractionStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+    [self doAfterPositionInformationUpdate:[actionType, self, protectedSelf = retainPtr(self)] (WebKit::InteractionInformationAtPosition info) {
+        _WKElementAction *action = [_WKElementAction _elementActionWithType:actionType assistant:_actionSheetAssistant.get()];
         _WKActivatedElementInfo *elementInfo = [_WKActivatedElementInfo activatedElementInfoWithInteractionInformationAtPosition:info userInfo:nil];
         [action runActionWithElementInfo:elementInfo];
     } forRequest:WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(location))];

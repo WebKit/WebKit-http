@@ -279,7 +279,8 @@
 #endif
 
 #if ENABLE(WEB_AUDIO)
-#include "AudioContext.h"
+#include "BaseAudioContext.h"
+#include "WebKitAudioContext.h"
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -2186,6 +2187,14 @@ ExceptionOr<uint64_t> Internals::lastSpellCheckProcessedSequence()
     return document->editor().spellChecker().lastProcessedIdentifier().toUInt64();
 }
 
+void Internals::advanceToNextMisspelling()
+{
+#if !PLATFORM(IOS_FAMILY)
+    if (auto* document = contextDocument())
+        document->editor().advanceToNextMisspelling();
+#endif
+}
+
 Vector<String> Internals::userPreferredLanguages() const
 {
     return WTF::userPreferredLanguages();
@@ -2840,12 +2849,21 @@ ExceptionOr<ScrollableArea*> Internals::scrollableAreaForNode(Node* node) const
             return Exception { InvalidAccessError };
 
         scrollableArea = frameView;
+    } else if (node == nodeRef->document().scrollingElement()) {
+        auto* frameView = nodeRef->document().view();
+        if (!frameView)
+            return Exception { InvalidAccessError };
+
+        scrollableArea = frameView;
     } else if (is<Element>(nodeRef)) {
         auto& element = downcast<Element>(nodeRef.get());
         if (!element.renderBox())
             return Exception { InvalidAccessError };
 
         auto& renderBox = *element.renderBox();
+        if (!renderBox.canBeScrolledAndHasScrollableArea())
+            return Exception { InvalidAccessError };
+
         if (is<RenderListBox>(renderBox))
             scrollableArea = &downcast<RenderListBox>(renderBox);
         else
@@ -3712,6 +3730,14 @@ void Internals::enableFixedWidthAutoSizeMode(bool enabled, int width, int height
     document->view()->enableFixedWidthAutoSizeMode(enabled, { width, height });
 }
 
+void Internals::enableSizeToContentAutoSizeMode(bool enabled, int width, int height)
+{
+    auto* document = contextDocument();
+    if (!document || !document->view())
+        return;
+    document->view()->enableSizeToContentAutoSizeMode(enabled, { width, height });
+}
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 void Internals::initializeMockCDM()
@@ -4290,22 +4316,29 @@ void Internals::sendMediaControlEvent(MediaControlEvent event)
 #endif // ENABLE(MEDIA_SESSION)
 
 #if ENABLE(WEB_AUDIO)
-void Internals::setAudioContextRestrictions(AudioContext& context, StringView restrictionsString)
+void Internals::setAudioContextRestrictions(const Variant<RefPtr<BaseAudioContext>, RefPtr<WebKitAudioContext>>& contextVariant, StringView restrictionsString)
 {
-    AudioContext::BehaviorRestrictions restrictions = context.behaviorRestrictions();
-    context.removeBehaviorRestriction(restrictions);
+    RefPtr<BaseAudioContext> context;
+    switchOn(contextVariant, [&](RefPtr<BaseAudioContext> entry) {
+        context = entry;
+    }, [&](RefPtr<WebKitAudioContext> entry) {
+        context = entry;
+    });
 
-    restrictions = AudioContext::NoRestrictions;
+    auto restrictions = context->behaviorRestrictions();
+    context->removeBehaviorRestriction(restrictions);
+
+    restrictions = BaseAudioContext::NoRestrictions;
 
     for (StringView restrictionString : restrictionsString.split(',')) {
         if (equalLettersIgnoringASCIICase(restrictionString, "norestrictions"))
-            restrictions |= AudioContext::NoRestrictions;
+            restrictions |= BaseAudioContext::NoRestrictions;
         if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforaudiostart"))
-            restrictions |= AudioContext::RequireUserGestureForAudioStartRestriction;
+            restrictions |= BaseAudioContext::RequireUserGestureForAudioStartRestriction;
         if (equalLettersIgnoringASCIICase(restrictionString, "requirepageconsentforaudiostart"))
-            restrictions |= AudioContext::RequirePageConsentForAudioStartRestriction;
+            restrictions |= BaseAudioContext::RequirePageConsentForAudioStartRestriction;
     }
-    context.addBehaviorRestriction(restrictions);
+    context->addBehaviorRestriction(restrictions);
 }
 
 void Internals::useMockAudioDestinationCocoa()
@@ -4627,31 +4660,15 @@ void Internals::setPlatformMomentumScrollingPredictionEnabled(bool enabled)
 
 ExceptionOr<String> Internals::scrollSnapOffsets(Element& element)
 {
-    element.document().updateLayoutIgnorePendingStylesheets();
+    auto areaOrException = scrollableAreaForNode(&element);
+    if (areaOrException.hasException())
+        return areaOrException.releaseException();
 
-    if (!element.renderBox())
-        return String();
-
-    RenderBox& box = *element.renderBox();
-    ScrollableArea* scrollableArea;
-
-    if (box.isBody()) {
-        FrameView* frameView = box.frame().mainFrame().view();
-        if (!frameView || !frameView->isScrollable())
-            return Exception { InvalidAccessError };
-        scrollableArea = frameView;
-
-    } else {
-        if (!box.canBeScrolledAndHasScrollableArea())
-            return Exception { InvalidAccessError };
-        scrollableArea = box.layer();
-    }
-
+    auto* scrollableArea = areaOrException.releaseReturnValue();
     if (!scrollableArea)
-        return String();
+        return Exception { InvalidAccessError };
 
     StringBuilder result;
-
     if (auto* offsets = scrollableArea->horizontalSnapOffsets()) {
         if (offsets->size()) {
             result.appendLiteral("horizontal = ");
@@ -4672,6 +4689,18 @@ ExceptionOr<String> Internals::scrollSnapOffsets(Element& element)
     return result.toString();
 }
 
+ExceptionOr<bool> Internals::isScrollSnapInProgress(Element& element)
+{
+    auto areaOrException = scrollableAreaForNode(&element);
+    if (areaOrException.hasException())
+        return areaOrException.releaseException();
+
+    auto* scrollableArea = areaOrException.releaseReturnValue();
+    if (!scrollableArea)
+        return Exception { InvalidAccessError };
+
+    return scrollableArea->isScrollSnapInProgress();
+}
 #endif
 
 bool Internals::testPreloaderSettingViewport()

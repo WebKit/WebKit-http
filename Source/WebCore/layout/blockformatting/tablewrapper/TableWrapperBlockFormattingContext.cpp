@@ -144,16 +144,6 @@ void TableWrapperBlockFormattingContext::computeBorderAndPaddingForTableBox(cons
 void TableWrapperBlockFormattingContext::computeWidthAndMarginForTableBox(const ContainerBox& tableBox, const HorizontalConstraints& horizontalConstraints)
 {
     ASSERT(tableBox.isTableBox());
-    if (!tableBox.hasChild()) {
-        auto constraintsPair = ConstraintsPair { { horizontalConstraints, { } }, { horizontalConstraints, { } } };
-        auto computedWidthAndMargin = geometry().computedWidthAndMargin(tableBox, constraintsPair);
-        auto& displayBox = formattingState().displayBox(tableBox);
-        displayBox.setContentBoxWidth(computedWidthAndMargin.contentWidth);
-        displayBox.setHorizontalMargin(computedWidthAndMargin.usedMargin);
-        displayBox.setHorizontalComputedMargin(computedWidthAndMargin.computedMargin);
-        return;
-    }
-
     // This is a special table "fit-content size" behavior handling. Not in the spec though.
     // Table returns its final width as min/max. Use this final width value to computed horizontal margins etc.
     auto& formattingStateForTableBox = layoutState().establishedTableFormattingState(tableBox);
@@ -161,16 +151,44 @@ void TableWrapperBlockFormattingContext::computeWidthAndMarginForTableBox(const 
     if (auto precomputedIntrinsicWidthConstraints = formattingStateForTableBox.intrinsicWidthConstraints())
         intrinsicWidthConstraints = *precomputedIntrinsicWidthConstraints;
     else {
-        intrinsicWidthConstraints = LayoutContext::createFormattingContext(tableBox, layoutState())->computedIntrinsicWidthConstraints();
+        if (tableBox.hasChild())
+            intrinsicWidthConstraints = LayoutContext::createFormattingContext(tableBox, layoutState())->computedIntrinsicWidthConstraints();
         formattingStateForTableBox.setIntrinsicWidthConstraints(intrinsicWidthConstraints);
     }
 
+    auto availableHorizontalSpace = horizontalConstraints.logicalWidth;
+    // 1. The table generates a principal block container box called the table wrapper box that contains the table box itself and any caption boxes.
+    // 2. The table wrapper box establishes a block formatting context, and the table box establishes a table formatting context.
+    // 3. The computed values of properties 'position', 'float', 'margin-*', 'top', 'right', 'bottom', and 'left' on
+    //    the table element are used on the table wrapper box and not the table box; all other values of non-inheritable
+    //    properties are used on the table box and not the table wrapper box.
+    // 4. In a block formatting context, each box's left outer edge touches the left edge of the containing block.
+    //    This is true even in the presence of floats, unless the box establishes a new block formatting context (in which case the
+    //    box itself may become narrower due to the floats)
+    //
+    // Now consider the following case:
+    // <div style="display: block; width: 500px;">
+    //     <div style="float: left; width: 100px;"></div>
+    //         <div style="display: table; width: 10%;"></div>
+    //     </div>
+    // </div>
+    // 1. We create a table wrapper box to wrap the "display: table" block level box (#1).
+    // 2. The table wrapper box's width property is set to auto (#3).
+    // 3. Since it establishes a new block formatting context, the available horizontal space gets shrunk by the float (#4)
+    // 4. The table wrapper box's used width computes to 500px - 100px -> 400px;
+    //
+    // Now we are inside the BFC established by the table wrapper box and try to resolve the table's width -> %10.
+    // According to the normal BFC rules, it should compute to 10% of the containing block's logical width: 400px -> 40px.
+    // However in practice it computes to 50px (10% of 500px).
+    // Similar setup with non-table content would resolve the inner block level box's width to 40px;
+    // This needs clarification in the spec.
+    auto horizontalConstraintForResolvingWidth = m_horizontalConstraintsIgnoringFloats.logicalWidth;
     auto geometry = this->geometry();
-    auto computedWidth = geometry.computedWidth(tableBox, horizontalConstraints.logicalWidth);
-    auto computedMaxWidth = geometry.computedMaxWidth(tableBox, horizontalConstraints.logicalWidth);
-    auto computedMinWidth = geometry.computedMinWidth(tableBox, horizontalConstraints.logicalWidth);
+    auto computedWidth = geometry.computedWidth(tableBox, horizontalConstraintForResolvingWidth);
+    auto computedMaxWidth = geometry.computedMaxWidth(tableBox, horizontalConstraintForResolvingWidth);
+    auto computedMinWidth = geometry.computedMinWidth(tableBox, horizontalConstraintForResolvingWidth);
     // Use the generic shrink-to-fit-width logic as the initial width for the table.
-    auto usedWidth = std::min(std::max(intrinsicWidthConstraints.minimum, horizontalConstraints.logicalWidth), intrinsicWidthConstraints.maximum);
+    auto usedWidth = std::min(std::max(intrinsicWidthConstraints.minimum, availableHorizontalSpace), intrinsicWidthConstraints.maximum);
     if (computedWidth || computedMinWidth || computedMaxWidth) {
         if (computedWidth) {
             // Normalize the computed width value first.
@@ -200,8 +218,7 @@ void TableWrapperBlockFormattingContext::computeHeightAndMarginForTableBox(const
     ASSERT(tableBox.isTableBox());
     // Table is a special BFC content. Its height is mainly driven by the content. Computed height, min-height and max-height are all
     // already been taken into account during the TFC layout.
-    auto usedHeight = geometry().contentHeightForFormattingContextRoot(tableBox);
-    auto heightAndMargin = geometry().inFlowHeightAndMargin(tableBox, constraints.horizontal, { usedHeight });
+    auto heightAndMargin = geometry().inFlowHeightAndMargin(tableBox, constraints.horizontal, { quirks().overrideTableHeight(tableBox) });
 
     auto marginCollapse = this->marginCollapse();
     auto collapsedAndPositiveNegativeValues = marginCollapse.collapsedVerticalValues(tableBox, heightAndMargin.nonCollapsedMargin);

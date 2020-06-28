@@ -1,3 +1,275 @@
+2020-06-27  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests/cors from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213668
+
+        Reviewed by Sam Weinig.
+
+        Update web-platform-tests/cors from upstream b076c305a256e7.
+
+        * web-platform-tests/cors/*: Updated.
+
+2020-06-27  Rob Buis  <rbuis@igalia.com>
+
+        Require <form> to be connected
+        https://bugs.webkit.org/show_bug.cgi?id=177356
+
+        Reviewed by Sam Weinig.
+
+        Update improved test result.
+
+        * web-platform-tests/html/semantics/forms/form-submission-0/submission-checks.window-expected.txt:
+
+2020-06-27  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests/common from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213665
+
+        Reviewed by Sam Weinig.
+
+        Update web-platform-tests/common from upstream b076c305a256e7fb7.
+
+        * web-platform-tests/common/*: Updated.
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop tests that got renamed in r263598 when re-syncing WebCryptAPI tests.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html: Removed.
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker.html: Removed.
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop test that got renamed in r263595.
+
+        This test is now called beacon-redirect.sub.window.html.
+
+        * web-platform-tests/beacon/beacon-redirect.window-expected.txt: Removed.
+        * web-platform-tests/beacon/beacon-redirect.window.html: Removed.
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/WebIDL from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213539
+
+        Reviewed by Sam Weinig.
+
+        Resync web-platform-tests/WebIDL from upstream 1001bb6b2d6b9.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/class-string-iterator-prototype-object.any-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/class-string-iterator-prototype-object.any.js:
+        (test):
+        * web-platform-tests/WebIDL/ecmascript-binding/class-string-iterator-prototype-object.any.worker-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/class-string-named-properties-object.window-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/class-string-named-properties-object.window.js:
+        * web-platform-tests/WebIDL/idlharness-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/interfaces-expected.txt.
+        * web-platform-tests/WebIDL/idlharness.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/interfaces.html.
+        * web-platform-tests/WebIDL/w3c-import.log:
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests/content-security-policy from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213664
+
+        Reviewed by Darin Adler.
+
+        Update web-platform-tests/content-security-policy from upstream b076c305a256e7fb7.
+
+        * resources/resource-files.json:
+        * web-platform-tests/content-security-policy/*: Updated.
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests/WebCryptoAPI from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213662
+
+        Reviewed by Darin Adler.
+
+        Update web-platform-tests/WebCryptoAPI from upstream b076c305a256e7.
+
+        * web-platform-tests/WebCryptoAPI/*: Updated.
+
+2020-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests/beacon from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213663
+
+        Reviewed by Darin Adler.
+
+        Update web-platform-tests/beacon from upstream b076c305a256e7fb7.
+
+        * web-platform-tests/beacon/*: Updated.
+
+2020-06-24  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] Unreviewed gardening. Updated expectations and new passing tests.
+
+        * web-platform-tests/webxr/navigator_xr_sameObject.https-expected.txt: Added.
+        * web-platform-tests/webxr/xrFrame_session_sameObject.https-expected.txt: Added.
+        * web-platform-tests/webxr/xrRigidTransform_constructor.https-expected.txt: Added.
+        * web-platform-tests/webxr/xrSession_prevent_multiple_exclusive.https-expected.txt: Added.
+
+2020-06-23  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/domparsing from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213540
+
+        Reviewed by Sam Weinig.
+
+        Resync web-platform-tests/domparsing from upstream 1001bb6b2d6b9.
+
+        * web-platform-tests/domparsing/*: Updated.
+
+2020-06-23  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/IndexedDB from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213541
+
+        Reviewed by Sam Weinig.
+
+        Resync web-platform-tests/IndexedDB from upstream 1001bb6b2d6b9.
+
+        * web-platform-tests/IndexedDB/*: Updated.
+
+2020-06-22  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] Introducing XRLayer
+        https://bugs.webkit.org/show_bug.cgi?id=213462
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/webxr/idlharness.https.window-expected.txt: Replace FAIL by PASS expectations
+        for XRLayer interface.
+
+2020-06-23  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-flex] Allow indefinite size flex items to be definite wrt resolving percentages inside them
+        https://bugs.webkit.org/show_bug.cgi?id=212264
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * web-platform-tests/css/css-flexbox/percentage-heights-003-expected.txt: There were 3 subtests
+        marked as failures. All of them work fine now.
+
+2020-06-22  Chris Dumez  <cdumez@apple.com>
+
+        Introduce BaseAudioContext interface
+        https://bugs.webkit.org/show_bug.cgi?id=213491
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+
+2020-06-22  Clark Wang  <clark_wang@apple.com>
+
+        Added getFloatTimeDomainData method to AnalyserNode
+        https://bugs.webkit.org/show_bug.cgi?id=213393
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined test to show a new passing test.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+
+2020-06-22  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for <link>
+        https://bugs.webkit.org/show_bug.cgi?id=213342
+
+        Reviewed by Darin Adler.
+
+        Fix wrong resource file name usage.
+
+        * web-platform-tests/referrer-policy/generic/multiple-headers-and-values.html:
+        * web-platform-tests/referrer-policy/generic/multiple-headers-combined.html:
+        * web-platform-tests/referrer-policy/generic/multiple-headers-one-invalid.html:
+        * web-platform-tests/referrer-policy/generic/multiple-headers-one-unknown-token.html:
+        * web-platform-tests/referrer-policy/generic/multiple-headers.html:
+
+2020-06-22  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Fix the case of "null type Blob slice" in wpt/FileAPI/blob/Blob-slice.html
+        https://bugs.webkit.org/show_bug.cgi?id=213370
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/FileAPI/blob/Blob-slice-expected.txt:
+
+2020-06-10  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] Add a preliminary implementation of XRWebGLLayer
+        https://bugs.webkit.org/show_bug.cgi?id=213022
+
+        Reviewed by Carlos Garcia Campos.
+
+        Added new expectations.
+
+        * web-platform-tests/webxr/xrWebGLLayer_constructor.https-expected.txt: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_framebuffer_sameObject.https-expected.txt: Added.
+
+2020-06-22  Rob Buis  <rbuis@igalia.com>
+
+        Image `crossorigin` mutations should be considered "relevant mutations"
+        https://bugs.webkit.org/show_bug.cgi?id=213335
+
+        Reviewed by Darin Adler.
+
+        Update improved test result.
+
+        * web-platform-tests/html/canvas/element/drawing-images-to-the-canvas/drawimage_crossorigin.sub-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/relevant-mutations-expected.txt:
+
+2020-06-19  Clark Wang  <clark_wang@apple.com>
+
+        Remove setVelocity() from PannerNode
+        https://bugs.webkit.org/show_bug.cgi?id=213360
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined previous test that now passes with velocity removed.
+
+        * web-platform-tests/webaudio/historical-expected.txt:
+
+2020-06-10  Sergio Villar Senin  <svillar@igalia.com>
+
+        REGRESSION(r262254?): [WPE] imported/w3c/web-platform-tests/webxr/idlharness.https.window.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=212897
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/webxr/idlharness.https.window-expected.txt: Updated expectations.
+
+2020-06-17  Clark Wang  <clark_wang@apple.com>
+
+        Added missing orientation attributes to PannerNode
+        https://bugs.webkit.org/show_bug.cgi?id=213301
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined previous tests that now have passing test cases.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/pannernode-basic-expected.txt:
+
+2020-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Add experimental feature flag for modern & unprefixed WebAudio API
+        https://bugs.webkit.org/show_bug.cgi?id=213268
+
+        Reviewed by Jer Noble.
+
+        Rebaseline a few web-platform-tests now that they are passing or failing at a later stage.
+        This is due to our WebAudio getting properly unprefixed in the context of layout tests.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/audiocontext-detached-execution-context.tentative-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-connect-method-chaining-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-offlineaudiocontext-interface/offlineaudiocontext-detached-execution-context.tentative-expected.txt:
+
 2020-06-17  Rob Buis  <rbuis@igalia.com>
 
         Image `referrerpolicy` mutations should be considered "relevant mutations"

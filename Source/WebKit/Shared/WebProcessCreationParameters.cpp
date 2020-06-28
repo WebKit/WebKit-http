@@ -157,10 +157,10 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     
 #if PLATFORM(IOS)
     encoder << compilerServiceExtensionHandle;
-    encoder << contentFilterExtensionHandle;
-    encoder << frontboardServiceExtensionHandle;
 #endif
 
+    encoder << containerManagerExtensionHandle;
+    
 #if PLATFORM(IOS_FAMILY)
     encoder << diagnosticsExtensionHandles;
     encoder << dynamicMachExtensionHandles;
@@ -168,8 +168,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
 
 #if PLATFORM(COCOA)
-    encoder << neHelperExtensionHandle;
-    encoder << neSessionManagerExtensionHandle;
     encoder << mapDBExtensionHandle;
     encoder << systemHasBattery;
 #endif
@@ -421,19 +419,13 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!compilerServiceExtensionHandle)
         return false;
     parameters.compilerServiceExtensionHandle = WTFMove(*compilerServiceExtensionHandle);
-
-    Optional<Optional<SandboxExtension::Handle>> contentFilterExtensionHandle;
-    decoder >> contentFilterExtensionHandle;
-    if (!contentFilterExtensionHandle)
-        return false;
-    parameters.contentFilterExtensionHandle = WTFMove(*contentFilterExtensionHandle);
-
-    Optional<Optional<SandboxExtension::Handle>> frontboardServiceExtensionHandle;
-    decoder >> frontboardServiceExtensionHandle;
-    if (!frontboardServiceExtensionHandle)
-        return false;
-    parameters.frontboardServiceExtensionHandle = WTFMove(*frontboardServiceExtensionHandle);
 #endif
+
+    Optional<Optional<SandboxExtension::Handle>> containerManagerExtensionHandle;
+    decoder >> containerManagerExtensionHandle;
+    if (!containerManagerExtensionHandle)
+        return false;
+    parameters.containerManagerExtensionHandle = WTFMove(*containerManagerExtensionHandle);
 
 #if PLATFORM(IOS_FAMILY)
     Optional<SandboxExtension::HandleArray> diagnosticsExtensionHandles;
@@ -456,18 +448,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
 #endif
 
 #if PLATFORM(COCOA)
-    Optional<Optional<SandboxExtension::Handle>> neHelperExtensionHandle;
-    decoder >> neHelperExtensionHandle;
-    if (!neHelperExtensionHandle)
-        return false;
-    parameters.neHelperExtensionHandle = WTFMove(*neHelperExtensionHandle);
-
-    Optional<Optional<SandboxExtension::Handle>> neSessionManagerExtensionHandle;
-    decoder >> neSessionManagerExtensionHandle;
-    if (!neSessionManagerExtensionHandle)
-        return false;
-    parameters.neSessionManagerExtensionHandle = WTFMove(*neSessionManagerExtensionHandle);
-
     Optional<Optional<SandboxExtension::Handle>> mapDBExtensionHandle;
     decoder >> mapDBExtensionHandle;
     if (!mapDBExtensionHandle)

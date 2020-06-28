@@ -29,15 +29,18 @@
 #include "ExceptionOr.h"
 #include <wtf/Forward.h>
 #include <wtf/LoggerHelper.h>
+#include <wtf/Variant.h>
 
 #define DEBUG_AUDIONODE_REFERENCES 0
 
 namespace WebCore {
 
-class AudioContext;
+class BaseAudioContext;
 class AudioNodeInput;
 class AudioNodeOutput;
 class AudioParam;
+class BaseAudioContext;
+class WebKitAudioContext;
 
 // An AudioNode is the basic building block for handling audio within an AudioContext.
 // It may be an audio source, an intermediate processing module, or an audio destination.
@@ -56,11 +59,13 @@ class AudioNode
 public:
     enum { ProcessingSizeInFrames = 128 };
 
-    AudioNode(AudioContext&, float sampleRate);
+    AudioNode(BaseAudioContext&, float sampleRate);
     virtual ~AudioNode();
 
-    AudioContext& context() { return m_context.get(); }
-    const AudioContext& context() const { return m_context.get(); }
+    BaseAudioContext& context() { return m_context.get(); }
+    const BaseAudioContext& context() const { return m_context.get(); }
+
+    Variant<RefPtr<BaseAudioContext>, RefPtr<WebKitAudioContext>> contextForBindings() const;
 
     enum NodeType {
         NodeTypeUnknown,
@@ -209,7 +214,7 @@ private:
 
     volatile bool m_isInitialized;
     NodeType m_nodeType;
-    Ref<AudioContext> m_context;
+    Ref<BaseAudioContext> m_context;
     float m_sampleRate;
     Vector<std::unique_ptr<AudioNodeInput>> m_inputs;
     Vector<std::unique_ptr<AudioNodeOutput>> m_outputs;

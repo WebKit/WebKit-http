@@ -2840,6 +2840,24 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
 }
 
+bool WebPage::handleKeyEventByRelinquishingFocusToChrome(const KeyboardEvent& event)
+{
+    if (m_page->tabKeyCyclesThroughElements())
+        return false;
+
+    if (event.charCode() != '\t')
+        return false;
+
+    if (!event.shiftKey() || event.ctrlKey() || event.metaKey() || event.altGraphKey())
+        return false;
+
+    ASSERT(event.type() == eventNames().keypressEvent);
+    // Allow a shift-tab keypress event to relinquish focus even if we don't allow tab to cycle between
+    // elements inside the view. We can only do this for shift-tab, not tab itself because
+    // tabKeyCyclesThroughElements is used to make tab character insertion work in editable web views.
+    return m_page->focusController().relinquishFocusToChrome(FocusDirectionBackward);
+}
+
 void WebPage::validateCommand(const String& commandName, CallbackID callbackID)
 {
     bool isEnabled = false;
@@ -6538,6 +6556,7 @@ void WebPage::removeAllUserContent()
 
 void WebPage::updateIntrinsicContentSizeIfNeeded(const WebCore::IntSize& size)
 {
+    m_pendingIntrinsicContentSize = WTF::nullopt;
     if (!minimumSizeForAutoLayout().width() && !sizeToContentAutoSizeMaximumSize().width() && !sizeToContentAutoSizeMaximumSize().height())
         return;
     ASSERT(mainFrameView());
@@ -6547,6 +6566,22 @@ void WebPage::updateIntrinsicContentSizeIfNeeded(const WebCore::IntSize& size)
         return;
     m_lastSentIntrinsicContentSize = size;
     send(Messages::WebPageProxy::DidChangeIntrinsicContentSize(size));
+}
+
+void WebPage::flushPendingIntrinsicContentSizeUpdate()
+{
+    if (auto pendingSize = std::exchange(m_pendingIntrinsicContentSize, WTF::nullopt))
+        updateIntrinsicContentSizeIfNeeded(*pendingSize);
+}
+
+void WebPage::scheduleIntrinsicContentSizeUpdate(const IntSize& size)
+{
+    if (!minimumSizeForAutoLayout().width() && !sizeToContentAutoSizeMaximumSize().width() && !sizeToContentAutoSizeMaximumSize().height())
+        return;
+    ASSERT(mainFrameView());
+    ASSERT(mainFrameView()->isFixedWidthAutoSizeEnabled() || mainFrameView()->isSizeToContentAutoSizeEnabled());
+    ASSERT(!mainFrameView()->needsLayout());
+    m_pendingIntrinsicContentSize = size;
 }
 
 void WebPage::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> milestones)

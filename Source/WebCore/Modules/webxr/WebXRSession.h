@@ -35,7 +35,6 @@
 #include "WebXRRenderState.h"
 #include "WebXRSpace.h"
 #include "XREnvironmentBlendMode.h"
-#include "XRFrameRequestCallback.h"
 #include "XRInteractionMode.h"
 #include "XRReferenceSpaceType.h"
 #include "XRSessionMode.h"
@@ -48,6 +47,7 @@
 
 namespace WebCore {
 
+class XRFrameRequestCallback;
 class WebXRReferenceSpace;
 class WebXRSystem;
 struct XRRenderStateInit;
@@ -73,19 +73,23 @@ public:
     void updateRenderState(const XRRenderStateInit&);
     void requestReferenceSpace(XRReferenceSpaceType, RequestReferenceSpacePromise&&);
 
-    XRFrameRequestCallback::Id requestAnimationFrame(Ref<XRFrameRequestCallback>&&);
-    void cancelAnimationFrame(XRFrameRequestCallback::Id handle);
+    unsigned requestAnimationFrame(Ref<XRFrameRequestCallback>&&);
+    void cancelAnimationFrame(unsigned callbackId);
+
+    // EventTarget.
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
 
     void end(EndPromise&&);
 
     bool ended() const { return m_ended; }
+
+    XRSessionMode mode() const { return m_mode; }
 
 private:
     WebXRSession(Document&, WebXRSystem&, XRSessionMode, PlatformXR::Device&);
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return WebXRSessionEventTargetInterfaceType; }
-    ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
     void refEventTarget() override { ref(); }
     void derefEventTarget() override { deref(); }
 
@@ -112,7 +116,7 @@ private:
     RefPtr<WebXRRenderState> m_activeRenderState;
     RefPtr<WebXRRenderState> m_pendingRenderState;
 
-    XRFrameRequestCallback::Id m_nextCallbackId { 0 };
+    unsigned m_nextCallbackId { 1 };
     Vector<Ref<XRFrameRequestCallback>> m_callbacks;
     Vector<Ref<XRFrameRequestCallback>> m_runningCallbacks;
 

@@ -191,6 +191,7 @@
     (sysctl-name-regex #"^hw.optional\.")
     (sysctl-name-regex #"^kern.os(release|type|variant_status|version)")
     (sysctl-name-regex #"^net.routetable")
+    (sysctl-name-prefix "sysctl.oidfmt.") ; Remove when <rdar://problem/64208532> is fixed.
 )
 
 (allow sysctl-write
@@ -400,6 +401,40 @@
 #endif
     (iokit-property "IOGVAH264EncodeCapabilities") ;; <rdar://problem/49498040>
 )
+
+;; <rdar://problem/60088861>
+(if (equal? (param "CPU") "arm64")
+    (allow iokit-get-properties
+        (iokit-property "ADSSupported")
+        (iokit-property "IOAVDHEVCDecodeCapabilities")
+    ))
+
+(if (equal? (param "CPU") "arm64")
+    (with-filter (iokit-registry-entry-class "IOService")
+        (allow iokit-get-properties
+            (iokit-property "IORegistryEntryPropertyKeys"))))
+
+(if (equal? (param "CPU") "arm64")
+    (with-filter (iokit-registry-entry-class "IOMobileFramebuffer")
+        (allow iokit-get-properties
+            (iokit-property "AppleTV"
+                            "DisplayPipePlaneBaseAlignment"
+                            "DisplayPipeStrideRequirements"
+                            "dfr"
+                            "external"
+                            "hdcp-hoover-protocol"))))
+
+(if (equal? (param "CPU") "arm64")
+    (with-filter (iokit-registry-entry-class "IOPlatformDevice")
+        (allow iokit-get-properties
+            (iokit-property "soc-generation"))))
+
+(if (equal? (param "CPU") "arm64")
+    (with-filter (iokit-registry-entry-class "IOService")
+        (allow iokit-get-properties
+            (iokit-property "chip-id"
+                            "display-rotation"
+                            "display-scale"))))
 
 (deny mach-lookup (xpc-service-name-prefix ""))
 (allow mach-lookup
@@ -625,6 +660,14 @@
     (iokit-user-client-class "AppleUpstreamUserClient")
     (iokit-user-client-class "RootDomainUserClient") ;; Needed by WebCore::PerformanceMonitor
     (iokit-user-client-class "AudioAUUC") ;; <rdar://problem/10427451> && <rdar://problem/10808817>
+)
+
+;; <rdar://problem/60088861>
+(if (equal? (param "CPU") "arm64")
+    (allow iokit-open
+        (iokit-user-client-class "AppleAVDUserClient")
+        (iokit-user-client-class "IOMobileFramebufferUserClient")
+    )
 )
 
 ;; cookied.
@@ -882,7 +925,12 @@
         (global-name "com.apple.cmio.AVCAssistant")
         (global-name "com.apple.cmio.IIDCVideoAssistant")
         ;; QuickTimeIIDCDigitizer assistant
-        (global-name "com.apple.IIDCAssistant"))
+        (global-name "com.apple.IIDCAssistant")
+        ;; applecamerad
+        (require-all
+            (extension "com.apple.webkit.extension.mach")
+            (global-name "com.apple.applecamerad")
+        ))
     (allow iokit-open
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
         (with report) (with telemetry)
@@ -898,6 +946,12 @@
     (home-subpath "/Library/Preferences/")
     (with no-log))
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101600
+(deny mach-lookup (with telemetry-backtrace)
+    (global-name "com.apple.containermanagerd")
+)
+#endif
+
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
@@ -911,6 +965,7 @@
             "com.apple.webinspector"
             "com.apple.cfprefsd.agent"
             "com.apple.cfprefsd.daemon"
+            "com.apple.containermanagerd"
             "com.apple.tccd"
             "com.apple.lsd.mapdb"
             "com.apple.BluetoothServices"
@@ -1093,6 +1148,12 @@
         (syscall-number SYS_ulock_wait2) ;; <rdar://problem/58743778>
 #endif
         (syscall-number SYS_fstat64_extended) ;; <rdar://problem/61310019>
+    )
+
+    (if (equal? (param "CPU") "arm64")
+        (allow syscall-unix
+            (syscall-number SYS_mremap_encrypted)
+        )
     )
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED > 101500

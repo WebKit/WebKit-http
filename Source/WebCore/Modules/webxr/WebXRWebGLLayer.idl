@@ -34,9 +34,10 @@ typedef (WebGLRenderingContext) WebXRWebGLRenderingContext;
     Conditional=WEBXR,
     SecureContext,
     Exposed=Window,
-    ImplementationLacksVTable,
+    JSGenerateToJSObject,
+    JSGenerateToNativeObject,
     InterfaceName=XRWebGLLayer
-] interface WebXRWebGLLayer {
+] interface WebXRWebGLLayer : WebXRLayer {
     [MayThrowException] constructor(WebXRSession session, WebXRWebGLRenderingContext context, optional XRWebGLLayerInit layerInit);
 
     // Attributes

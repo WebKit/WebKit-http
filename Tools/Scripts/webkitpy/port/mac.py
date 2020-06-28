@@ -46,10 +46,11 @@ class MacPort(DarwinPort):
     port_name = "mac"
 
     CURRENT_VERSION = Version(10, 15)
+    LAST_MACOSX = Version(10, 16)  # FIXME: Once we don't need to support the seed, deprecate in favor of Catalina
 
     SDK = 'macosx'
 
-    ARCHITECTURES = ['x86_64', 'x86']
+    ARCHITECTURES = ['x86_64', 'x86', 'arm64']
 
     DEFAULT_ARCHITECTURE = 'x86_64'
 
@@ -64,10 +65,15 @@ class MacPort(DarwinPort):
             self._os_version = self.host.platform.os_version
         if not self._os_version:
             self._os_version = MacPort.CURRENT_VERSION
-        assert self._os_version.major == 10
+
+    def architecture(self):
+        result = self.get_option('architecture') or self.host.platform.architecture()
+        if result == 'arm64e':
+            return 'arm64'
+        return result
 
     def _build_driver_flags(self):
-        return ['ARCHS=i386'] if self.architecture() == 'x86' else []
+        return ['ARCHS=i386'] if self.architecture() == 'x86' else ['ARCHS={}'.format(self.architecture())]
 
     def default_baseline_search_path(self, **kwargs):
         versions_to_fallback = []
@@ -80,9 +86,15 @@ class MacPort(DarwinPort):
             while temp_version != self.CURRENT_VERSION:
                 versions_to_fallback.append(Version.from_iterable(temp_version))
                 if temp_version < self.CURRENT_VERSION:
-                    temp_version.minor += 1
+                    if temp_version.minor < self.LAST_MACOSX.minor:
+                        temp_version.minor += 1
+                    else:
+                        temp_version = Version(11, 0)
                 else:
-                    temp_version.minor -= 1
+                    if temp_version.minor > 0:
+                        temp_version.minor -= 1
+                    else:
+                        temp_version = Version(self.LAST_MACOSX.major, self.LAST_MACOSX.minor)
         wk_string = 'wk1'
         if self.get_option('webkit_test_runner'):
             wk_string = 'wk2'
@@ -280,10 +292,12 @@ class MacPort(DarwinPort):
         host = host or self.host
         configuration = super(MacPort, self).configuration_for_upload(host=host)
 
-        output = host.executive.run_command(['/usr/sbin/sysctl', 'hw.model']).rstrip()
-        match = re.match(r'hw.model: (?P<model>.*)', output)
-        if match:
-            configuration['model'] = match.group('model')
+        # --model should override the detected model
+        if not configuration.get('model'):
+            output = host.executive.run_command(['/usr/sbin/sysctl', 'hw.model']).rstrip()
+            match = re.match(r'hw.model: (?P<model>.*)', output)
+            if match:
+                configuration['model'] = match.group('model')
 
         return configuration
 

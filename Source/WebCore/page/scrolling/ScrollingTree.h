@@ -94,8 +94,9 @@ public:
 
     void setMainFrameIsRubberBanding(bool);
     bool isRubberBandInProgress();
-    void setMainFrameIsScrollSnapping(bool);
-    bool isScrollSnapInProgress();
+
+    void setNodeScrollSnapInProgress(ScrollingNodeID, bool);
+    bool isScrollSnapInProgressForNode(ScrollingNodeID);
 
     virtual void invalidate() { }
     WEBCORE_EXPORT virtual void commitTreeState(std::unique_ptr<ScrollingStateTree>&&);
@@ -210,6 +211,8 @@ protected:
     Optional<unsigned> nominalFramesPerSecond();
 
     void applyLayerPositionsInternal();
+    void removeAllNodes();
+
     Lock m_treeMutex; // Protects the scrolling tree.
 
 private:
@@ -224,8 +227,6 @@ private:
     WEBCORE_EXPORT virtual OptionSet<EventListenerRegionType> eventListenerRegionTypesForPoint(FloatPoint) const;
     virtual void receivedWheelEvent(const PlatformWheelEvent&) { }
     
-    void removeAllNodes();
-
     RefPtr<ScrollingTreeFrameScrollingNode> m_rootNode;
 
     using ScrollingTreeNodeMap = HashMap<ScrollingNodeID, RefPtr<ScrollingTreeNode>>;
@@ -244,8 +245,8 @@ private:
         FloatPoint mainFrameScrollPosition;
         PlatformDisplayID displayID { 0 };
         Optional<unsigned> nominalFramesPerSecond;
+        HashSet<ScrollingNodeID> nodesWithActiveScrollSnap;
         bool mainFrameIsRubberBanding { false };
-        bool mainFrameIsScrollSnapping { false };
     };
     
     Lock m_treeStateMutex;
