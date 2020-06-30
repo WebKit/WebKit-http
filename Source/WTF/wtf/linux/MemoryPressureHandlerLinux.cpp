@@ -51,12 +51,12 @@ namespace WTF {
 // we wait longer to try again (s_maximumHoldOffTime).
 // These value seems reasonable and testing verifies that it throttles frequent
 // low memory events, greatly reducing CPU usage.
-static const Seconds s_minimumHoldOffTime { 3_s };
-static const Seconds s_maximumHoldOffTime { 7_s };
+static const Seconds s_minimumHoldOffTime { 1_s };
+static const Seconds s_maximumHoldOffTime { 1_s };
 static const size_t s_minimumBytesFreedToUseMinimumHoldOffTime = 1 * MB;
 static const unsigned s_holdOffMultiplier = 20;
 
-static const Seconds s_memoryUsagePollerInterval { 2_s };
+static const Seconds s_memoryUsagePollerInterval { 1_s };
 static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
 static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
 
@@ -220,11 +220,9 @@ void MemoryPressureHandler::install()
     if (m_installed || m_holdOffTimer.isActive())
         return;
 
-    // If the per process limits are not defined, we don't install anything.
-    if (!initializeProcessMemoryLimits(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit))
-        return;
-
-    m_memoryUsagePoller = std::make_unique<MemoryUsagePoller>();
+    // If the per process limits are not defined, we don't create the memory poller.
+    if (initializeProcessMemoryLimits(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit))
+        m_memoryUsagePoller = std::make_unique<MemoryUsagePoller>();
 
     m_installed = true;
 }
