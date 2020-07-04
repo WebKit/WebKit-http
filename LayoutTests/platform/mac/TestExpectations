@@ -1357,15 +1357,10 @@ webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failu
 webkit.org/b/172052 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
 
 # <rdar://problem/29031509> REGRESSION? (FontParser-195): svg/W3C-SVG-1.1/fonts-elem-* and svg/W3C-SVG-1.1/text-intro-* tests failing
-svg/W3C-SVG-1.1/fonts-elem-01-t.svg [ Failure ]
-svg/W3C-SVG-1.1/fonts-elem-02-t.svg [ Failure ]
-svg/W3C-SVG-1.1/fonts-elem-03-b.svg [ Failure ]
-svg/W3C-SVG-1.1/fonts-elem-07-b.svg [ Failure ]
 svg/W3C-SVG-1.1/text-intro-01-t.svg [ Failure ]
 svg/W3C-SVG-1.1/text-intro-02-b.svg [ Failure ]
 svg/W3C-SVG-1.1/text-intro-03-b.svg [ Failure ]
 svg/W3C-SVG-1.1/text-intro-04-t.svg [ Failure ]
-svg/batik/text/textEffect3.svg [ Failure ]
 svg/batik/text/textPosition2.svg [ Failure ]
 svg/custom/acid3-test-77.html [ Failure ]
 svg/custom/svg-fonts-fallback.xhtml [ Failure ]
@@ -1374,9 +1369,6 @@ fast/css-generated-content/initial-letter-first-line-wrapping.html [ ImageOnlyFa
 
 # <rdar://problem/30493910> REGRESSION: LayoutTest fast/writing-mode/broken-ideograph-small-caps.html failing
 fast/writing-mode/broken-ideograph-small-caps.html [ Failure ImageOnlyFailure ]
-
-# <rdar://problem/30182401> REGRESSION: LayoutTest media/media-source/media-source-abort-resets-parser.html failing
-media/media-source/media-source-abort-resets-parser.html [ Failure ]
 
 # <rdar://problem/30517283> REGRESSION: LayoutTests security/block-test.html and security/block-test-no-port.html failing
 security/block-test.html
@@ -1463,8 +1455,6 @@ media/modern-media-controls/time-labels-support/elapsed-time.html [ Skip ]
 # <rdar://problem/33850189>
 http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 
-webkit.org/b/177319 imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter.html [ Failure ]
-
 webkit.org/b/177322 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
 
 webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html [ Pass Failure ]
@@ -1541,7 +1531,6 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-006.html [ ImageOnlyFailure ]
 webkit.org/b/196169 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-003.html [ ImageOnlyFailure ]
 
-webkit.org/b/197970 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-010.html [ ImageOnlyFailure ]
 webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html [ ImageOnlyFailure ]
 
 http/tests/cookies/same-site [ Pass ]
@@ -1552,9 +1541,6 @@ http/tests/cookies/only-accept-first-party-cookies.html [ Skip ]
 # FIXME: Mark as Pass once the fix for <rdar://problem/42255251> is shipped.
 http/tests/cookies/same-site/set-first-party-cross-site-cookies.php [ Skip ]
 http/tests/cookies/same-site/set-first-party-same-site-cookies.php [ Skip ]
-
-# <rdar://problem/36639117> REGRESSION (Mojave): LayoutTest svg/custom/subpaths-moveto-only-rendering.svg is failing
-svg/custom/subpaths-moveto-only-rendering.svg [ Failure ]
 
 # <rdar://problem/40498290> REGRESSION (Mojave): HTMLMeterElement LayoutTests failing
 fast/dom/HTMLMeterElement/meter-boundary-values.html [ Failure ]
@@ -1733,8 +1719,6 @@ webkit.org/b/201401 imported/w3c/web-platform-tests/media-source/mediasource-vid
 webkit.org/b/198867 webgl/many-contexts.html [ Skip ]
 
 webkit.org/b/203171 inspector/layers/layers-for-node.html [ Pass Failure ]
-
-webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/before-load-001.html [ Failure ]
 
 webkit.org/b/203357 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/event-dispatch.tentative.html [ Pass Failure ]
 webkit.org/b/203356 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-003.html [ Pass Failure ]

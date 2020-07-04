@@ -174,8 +174,8 @@ struct WebPageCreationParameters {
     bool smartInsertDeleteEnabled;
     Vector<String> additionalSupportedImageTypes;
 #endif
-#if ENABLE(TINT_COLOR_SUPPORT)
-    WebCore::Color tintColor;
+#if HAVE(APP_ACCENT_COLORS)
+    WebCore::Color accentColor;
 #endif
 #if USE(WPE_RENDERER)
     IPC::Attachment hostFileDescriptor;
@@ -226,6 +226,7 @@ struct WebPageCreationParameters {
     bool shouldCaptureVideoInGPUProcess { false };
     bool shouldCaptureDisplayInUIProcess { false };
     bool shouldRenderCanvasInGPUProcess { false };
+    bool shouldEnableVP9Decoder { false };
     bool needsInAppBrowserPrivacyQuirks { false };
     bool limitsNavigationsToAppBoundDomains { false };
     WebCore::ShouldRelaxThirdPartyCookieBlocking shouldRelaxThirdPartyCookieBlocking { WebCore::ShouldRelaxThirdPartyCookieBlocking::No };

@@ -36,7 +36,6 @@
 #include "DOMFormData.h"
 #include "DateComponents.h"
 #include "DateInputType.h"
-#include "DateTimeInputType.h"
 #include "DateTimeLocalInputType.h"
 #include "EmailInputType.h"
 #include "EventNames.h"
@@ -108,9 +107,6 @@ static InputTypeFactoryMap createInputTypeFactoryMap()
 #endif
 #if ENABLE(INPUT_TYPE_DATE)
         { &RuntimeEnabledFeatures::inputTypeDateEnabled, &InputTypeNames::date, &createInputType<DateInputType> },
-#endif
-#if ENABLE(INPUT_TYPE_DATETIME_INCOMPLETE)
-        { &RuntimeEnabledFeatures::inputTypeDateTimeEnabled, &InputTypeNames::datetime, &createInputType<DateTimeInputType> },
 #endif
 #if ENABLE(INPUT_TYPE_DATETIMELOCAL)
         { &RuntimeEnabledFeatures::inputTypeDateTimeLocalEnabled, &InputTypeNames::datetimelocal, &createInputType<DateTimeLocalInputType> },
@@ -522,24 +518,16 @@ Decimal InputType::parseToNumberOrNaN(const String& string) const
     return parseToNumber(string, Decimal::nan());
 }
 
-bool InputType::parseToDateComponents(const String&, DateComponents*) const
-{
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
 String InputType::serialize(const Decimal&) const
 {
     ASSERT_NOT_REACHED();
     return String();
 }
 
-#if PLATFORM(IOS_FAMILY)
 DateComponents::Type InputType::dateType() const
 {
     return DateComponents::Invalid;
 }
-#endif
 
 void InputType::dispatchSimulatedClickIfActive(KeyboardEvent& event) const
 {

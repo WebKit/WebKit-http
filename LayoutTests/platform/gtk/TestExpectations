@@ -23,14 +23,6 @@ accessibility/gtk [ Pass ]
 editing/pasteboard/gtk [ Pass ]
 swipe [ Pass ]
 
-# OffscreenCanvas
-webkit.org/b/203146 fast/canvas/offscreen-enabled.html [ Pass ]
-webkit.org/b/203146 http/wpt/offscreen-canvas [ Pass ]
-webkit.org/b/203146 imported/w3c/web-platform-tests/html/canvas/offscreen [ Pass ]
-webkit.org/b/186759 imported/w3c/web-platform-tests/html/canvas/offscreen/text [ Skip ]
-webkit.org/b/206055 imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.svg.worker.html [ Skip ]
-webkit.org/b/206055 imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.zerosource.image.worker.html [ Skip ]
-
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -581,6 +573,9 @@ webkit.org/b/209130 fast/mediastream/change-tracks-media-stream-being-played.htm
 webkit.org/b/210385 fast/mediastream/audio-track-enabled.html [ Crash Pass ]
 
 webkit.org/b/211166 webrtc/disable-encryption.html [ Crash Pass ]
+webkit.org/b/211166 webrtc/filtering-ice-candidate-after-reload.html [ Crash Pass ]
+webkit.org/b/211166 webrtc/release-after-getting-track.html [ Crash Pass ]
+webkit.org/b/211166 webrtc/remove-track.html [ Crash Pass ]
 
 fast/mediastream/MediaDevices-addEventListener.html [ DumpJSConsoleLogInStdErr ]
 
@@ -620,57 +615,6 @@ Bug(GTK) [ Debug ] perf [ Skip ]
 Bug(GTK) editing/secure-input [ Failure ]
 
 # These are the crypo tests that are still failing.
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-128.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-192.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-256.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-raw-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-key-encrypt-decrypt.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-generate-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-jwk-key-length-128.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-jwk-key-length-192.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-jwk-key-length-256.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-decrypt.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-encrypt.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-unwrap-jwk-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-unwrap-raw-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-jwk-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-raw-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cfb-import-raw-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-decrypt.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-encrypt.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-unwrap-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-wrap-key.html [ Skip ]
-
-# RSA-PSS tests are for now skipped on all ports, so we for now explicitly enable the passing ones here.
-crypto/subtle/ecdh-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Pass ]
-crypto/subtle/ecdh-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Pass ]
-crypto/subtle/ecdsa-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Pass ]
-crypto/subtle/ecdsa-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-jwk-sha1.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-jwk-sha224.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-jwk-sha256.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-jwk-sha384.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-jwk-sha512.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-pkcs8.html [ Pass ]
-crypto/subtle/rsa-pss-generate-export-key-spki.html [ Pass ]
-crypto/subtle/rsa-pss-generate-key.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-private-key.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-empty-usages.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-sha1.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-sha224.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-sha256.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-sha384.html [ Pass ]
-crypto/subtle/rsa-pss-import-jwk-public-key-sha512.html [ Pass ]
-crypto/subtle/rsa-pss-import-key-sign-large-salt.html [ Failure ]
-crypto/subtle/rsa-pss-import-key-sign.html [ Pass ]
-crypto/subtle/rsa-pss-import-key-verify.html [ Pass ]
-crypto/subtle/rsa-pss-import-pkcs8-key.html [ Pass ]
-crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Pass ]
-crypto/subtle/rsa-pss-import-spki-key.html [ Pass ]
-crypto/workers/subtle/rsa-pss-import-key-sign.html [ Pass ]
-crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
-http/wpt/crypto/rsa-pss-crash.any.html [ Pass ]
-http/wpt/crypto/rsa-pss-crash.any.worker.html [ Pass ]
 
 # Missing support for 521-bit elliptic curves.
 webkit.org/b/175199 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p521.html [ Skip ]
@@ -693,10 +637,6 @@ webkit.org/b/175199 crypto/subtle/ecdsa-import-key-verify-p521.html [ Skip ]
 webkit.org/b/175199 crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html [ Skip ]
 
 # libgcrypt-based implementation supports ecDH algorithm identifier for ECDH SPKI imports.
-crypto/subtle/ecdh-import-spki-key-ecdh-identifier.html [ Pass ]
-
-# These are the imported web-platform-tests covering crypto sections we haven't implemented yet.
-imported/w3c/web-platform-tests/WebCryptoAPI/ [ Slow ]
 
 # GTK does not implement setAutomaticLinkDetectionEnabled
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
@@ -1271,8 +1211,6 @@ webkit.org/b/210487 http/tests/resourceLoadStatistics/switch-session-on-navigati
 webkit.org/b/210796 http/tests/resourceLoadStatistics/standalone-web-application-exempt-from-website-data-deletion-database.html [ Failure ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/standalone-web-application-exempt-from-website-data-deletion.html [ Failure ]
 
-webkit.org/b/210848 compositing/video/video-border-radius-clipping.html [ ImageOnlyFailure ]
-
 webkit.org/b/210849 compositing/overflow/rtl-scrollbar-layer-positioning.html [ Failure ]
 
 webkit.org/b/210850 compositing/tiling/coverage-adjustment-secondary-quad-mapping.html [ Failure ]
@@ -1301,9 +1239,6 @@ webkit.org/b/211887 webgl/1.0.3/conformance/textures/texture-size-limit.html [ F
 
 webkit.org/b/211940 fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
 webkit.org/b/211940 fast/text/multiple-codeunit-vertical-upright-2.html [ ImageOnlyFailure ]
-
-webkit.org/b/212017 http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral-database.html [ Failure ]
-webkit.org/b/212017 http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral.html [ Failure ]
 
 webkit.org/b/212223 compositing/tiling/perspective-on-scroller-tile-coverage.html [ Failure ]
 
@@ -1359,8 +1294,8 @@ webkit.org/b/186779 http/tests/security/sandboxed-iframe-DENIED-modals.html [ Cr
 
 webkit.org/b/188406 [ Debug ] imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/dir.html [ Crash ]
 
-webkit.org/b/191882 fast/forms/validation-message-clone.html [ Failure Crash Pass ]
-webkit.org/b/191882 fast/forms/validation-message-in-relative-body.html [ Failure Crash ]
+webkit.org/b/191882 fast/forms/validation-message-clone.html [ Failure Pass ]
+webkit.org/b/191882 fast/forms/validation-message-in-relative-body.html [ Failure Pass ]
 
 imported/w3c/web-platform-tests/mathml/relations/css-styling/color-004.html [ ImageOnlyFailure ]
 
@@ -1670,15 +1605,27 @@ webkit.org/b/183214 compositing/video/poster.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/186136 compositing/animation/layer-for-filling-animation.html [ Failure Pass Timeout ]
 
-# Tests that fail on the EWS queue since we enabled tests there
-webkit.org/b/186638 printing/print-close-crash.html [ Crash ]
-webkit.org/b/186638 fast/media/print-restores-previous-mediatype.html [ Crash ]
-webkit.org/b/186638 editing/execCommand/print.html [ Crash ]
-webkit.org/b/186638 imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.html [ Failure ]
-webkit.org/b/186638 fast/selectors/unqualified-hover-strict.html [ Failure ]
+# Tests that fail on the EWS queue since we enabled tests there (obsolete). TODO: the failures below should be filed under a different bug).
 webkit.org/b/186638 compositing/repaint/repaint-on-layer-grouping-change.html [ Failure Pass ]
-webkit.org/b/186638 editing/selection/select-bidi-run.html [ Crash Pass Timeout ]
-webkit.org/b/186638 media/video-remote-control-playpause.html [ Failure Pass Timeout ]
+webkit.org/b/186638 editing/execCommand/print.html [ Crash ]
+webkit.org/b/186638 editing/selection/select-bidi-run.html [ Timeout Pass ]
+webkit.org/b/186638 fast/media/print-restores-previous-mediatype.html [ Crash ]
+webkit.org/b/186638 fast/selectors/unqualified-hover-strict.html [ Failure ]
+webkit.org/b/186638 imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.html [ Failure ]
+webkit.org/b/186638 media/video-remote-control-playpause.html [ Failure Timeout Pass ]
+webkit.org/b/186638 printing/print-close-crash.html [ Crash ]
+webkit.org/b/177940 webkit.org/b/186638 workers/wasm-hashset-many.html [ Crash Timeout Pass ]
+
+# Tests failing on the EWS queue.
+webkit.org/b/186638 fast/forms/select/popup-closes-on-blur.html [ Failure Pass ]
+webkit.org/b/186638 fast/preloader/document-write.html [ Failure Pass ]
+webkit.org/b/186638 imported/w3c/web-platform-tests/css/css-ui/text-overflow-022.html [ ImageOnlyFailure Pass ]
+webkit.org/b/186638 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys.https.html [ Crash Pass ]
+webkit.org/b/186638 imported/w3c/web-platform-tests/xhr/xmlhttprequest-timeout-reused.html [ Failure Pass ]
+webkit.org/b/186638 js/stringimpl-to-jsstring-on-large-strings-3.html [ Timeout Pass ]
+webkit.org/b/186638 pageoverlay/overlay-small-frame-mouse-events.html [ Crash Pass ]
+webkit.org/b/186638 storage/indexeddb/cursor-overloads.html [ Timeout Pass ]
+webkit.org/b/186638 svg/W3C-SVG-1.1/animate-elem-02-t.svg [ Crash Pass ]
 
 webkit.org/b/186664 media/video-playsinline.html [ Failure Pass Crash ]
 
@@ -1692,8 +1639,6 @@ webkit.org/b/186673 editing/spelling/spellcheck-async-mutation.html [ Failure Pa
 
 webkit.org/b/186679 media/video-currentTime-delay.html [ Crash Pass Timeout ]
 
-webkit.org/b/177226 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.https.worker.html [ Failure Pass ]
-
 webkit.org/b/186847 [ Release ] http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
 webkit.org/b/192407 http/tests/inspector/network/resource-security-connection.html [ Skip ]
 webkit.org/b/191497 http/tests/inspector/network/resource-security-certificate.html [ Skip ]
@@ -1701,7 +1646,8 @@ webkit.org/b/191497 http/tests/inspector/network/getSerializedCertificate.html [
 webkit.org/b/179173 [ Release ] http/tests/inspector/network/har/har-page.html [ Failure Pass ]
 webkit.org/b/179173 [ Release ] http/tests/inspector/network/har/har-page-aggressive-gc.html [ Failure Pass ]
 
-webkit.org/b/187326 fast/selectors/selection-window-inactive-stroke-color.html [ Pass ImageOnlyFailure ]
+webkit.org/b/187326 fast/selectors/selection-window-inactive-stroke-color.html [ ImageOnlyFailure Pass ]
+webkit.org/b/187326 fast/selectors/selection-window-inactive-text-shadow.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/187588 fast/forms/form-control-element-crash.html [ Timeout Pass ]
 
@@ -1714,8 +1660,6 @@ webkit.org/b/187761 http/tests/security/contentSecurityPolicy/1.1/plugintypes-af
 webkit.org/b/187760 fast/mediastream/get-user-media-on-loadedmetadata.html [ Pass Failure ]
 
 webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Pass Failure ]
-
-webkit.org/b/188041 http/wpt/crypto/unwrap-rsa-key-crash.any.worker.html [ Failure Pass ]
 
 webkit.org/b/188042 imported/w3c/web-platform-tests/infrastructure/assumptions/ahem.html [ ImageOnlyFailure Timeout ]
 
@@ -1958,6 +1902,10 @@ webkit.org/b/198830 [ Release ] media/track/track-cues-cuechange.html [ Pass Cra
 webkit.org/b/198830 [ Release ] media/video-autoplay.html [ Pass Crash ]
 webkit.org/b/198830 [ Release ] media/video-canvas-source.html [ Pass Crash ]
 
+webkit.org/b/198830 [ Release ] webrtc/ephemeral-certificates-and-cnames.html [ Pass Crash ]
+webkit.org/b/198830 [ Release ] webrtc/getUserMedia-webaudio-autoplay.html [ Pass Crash ]
+webkit.org/b/198830 [ Release ] webrtc/remoteAudio-never-played.html [ Pass Crash ]
+webkit.org/b/198830 [ Release ] webrtc/rtcpeerconnection-error-messages.html [ Pass Crash ]
 webkit.org/b/198830 [ Release ] webrtc/video-autoplay2.html [ Pass Crash ]
 webkit.org/b/198830 [ Release ] webrtc/video-autoplay3.html [ Pass Crash ]
 webkit.org/b/198830 [ Release ] webrtc/video-autoplay4.html [ Pass Crash ]
@@ -1997,24 +1945,6 @@ webkit.org/b/198113 fast/mediastream/media-stream-page-muted.html [ Crash Timeou
 
 webkit.org/b/191886 fast/mediastream/apply-constraints-advanced.html [ Pass Crash ]
 
-# Console log lines may appear in a different order so we silence them.
-imported/w3c/web-platform-tests/html/canvas/offscreen/convert-to-blob/offscreencanvas.convert.to.blob.w.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/html/canvas/offscreen/the-offscreen-canvas/offscreencanvas.transferrable.w.html [ DumpJSConsoleLogInStdErr ]
-
-# OffscreenCanvas tests that are flaky due to console output from unhandled Promise rejections due to unimplemented API
-webkit.org/b/202782 imported/w3c/web-platform-tests/html/canvas/offscreen/compositing/2d.composite.canvas.destination-atop.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/compositing/2d.composite.canvas.destination-in.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/compositing/2d.composite.canvas.lighter.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202782 imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.3arg.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202782 imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.broken.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202782 imported/w3c/web-platform-tests/html/canvas/offscreen/drawing-images-to-the-canvas/2d.drawImage.floatsource.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeat.basic.html  [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeat.coord3.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeaty.coord1.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.repeat.empty.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/shadows/2d.shadow.pattern.transparent.1.html [ DumpJSConsoleLogInStdErr ]
-webkit.org/b/202801 imported/w3c/web-platform-tests/html/canvas/offscreen/shadows/2d.shadow.pattern.transparent.2.html [ DumpJSConsoleLogInStdErr ]
-
 # GLX error in gst_gl_context_glx_create_context
 webkit.org/b/198830 http/tests/media/media-document-referer.html [ Pass Crash ]
 webkit.org/b/198830 media/accessibility-closed-captions-has-aria-owns.html [ Pass Crash ]
@@ -2037,6 +1967,7 @@ webkit.org/b/206639 http/tests/contentextensions/block-cookies-basic.html [ Fail
 webkit.org/b/206639 http/tests/contentextensions/block-cookies-send.html [ Failure Pass ]
 
 webkit.org/b/206875 inspector/debugger/breakpoints/resolved-dump-each-line.html [ Failure Pass Timeout ]
+webkit.org/b/206875 [ Release ] inspector/debugger/breakpoints/resolved-dump-all-pause-locations.html [ Failure Pass ]
 
 webkit.org/b/206464 webrtc/peerconnection-page-cache-long.html [ Failure ]
 webkit.org/b/206464 webrtc/peerconnection-page-cache.html [ Failure Pass ]
@@ -2111,8 +2042,6 @@ webkit.org/b/208293 media/video-play-audio-require-user-gesture.html [ Failure P
 webkit.org/b/208293 media/video-restricted-invisible-autoplay-allowed-if-audible.html [ Failure Pass ]
 
 webkit.org/b/208299 fast/canvas/webgl/texImage2D-video-flipY-false.html [ Timeout Pass ]
-
-webkit.org/b/208300 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeatx.outside.html [ Failure Pass ]
 
 webkit.org/b/208301 editing/pasteboard/4922709.html [ Failure Pass ]
 webkit.org/b/208301 editing/pasteboard/5028447.html [ Failure Pass ]
@@ -2226,6 +2155,8 @@ webkit.org/b/212894 http/wpt/workers/microtasks.any.worker.html [ Failure Pass ]
 webkit.org/b/213386 fast/images/low-memory-decode.html [ Failure Timeout Pass ]
 
 webkit.org/b/213387 imported/w3c/web-platform-tests/html/browsers/offline/introduction-4/event_noupdate.https.html [ Timeout Pass ]
+
+webkit.org/b/213776 imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2455,8 +2386,6 @@ webkit.org/b/179258 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Timeout ]
 
 webkit.org/b/179261 editing/selection/drag-to-contenteditable-iframe.html [ Timeout ]
 
-webkit.org/b/177940 webkit.org/b/186638 workers/wasm-hashset-many.html [ Crash Timeout Pass ]
-
 webkit.org/b/182107 accessibility/aria-combobox-control-owns-elements.html [ Timeout ]
 
 webkit.org/b/182108 http/tests/media/hls/hls-webvtt-tracks.html [ Timeout ]
@@ -2550,18 +2479,19 @@ webkit.org/b/212202 webkit.org/b/158917 fast/scrolling/overflow-scroll-past-max.
 webkit.org/b/212202 fast/scrolling/programmatic-scroll-to-zero-zero.html [ Skip ]
 webkit.org/b/212202 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
 webkit.org/b/212202 compositing/fixed-with-main-thread-scrolling.html [ Skip ]
-# Times out due to missing event 'callAfterScrollingCompletes'.
-webkit.org/b/212202 fast/events/platform-wheelevent-in-scrolling-div.html [ Skip ]
 
 webkit.org/b/210796 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour-database.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/operating-dates-all-website-data-removed-database.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/operating-dates-all-website-data-removed.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/ping-to-prevalent-resource-database.html [ Timeout Pass ]
+webkit.org/b/210796 http/tests/resourceLoadStatistics/ping-to-prevalent-resource.html [ Timeout Pass ]
+webkit.org/b/210796 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown-database.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/telemetry-generation-advanced-functionality-database.html [ Failure Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Failure Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Timeout Pass ]
 webkit.org/b/210796 http/tests/resourceLoadStatistics/website-data-removal-for-site-with-user-interaction-database.html [ Timeout Pass ]
+webkit.org/b/210796 http/tests/resourceLoadStatistics/website-data-removal-for-site-with-user-interaction.html [ Timeout Pass ]
 
 webkit.org/b/211566 http/tests/resourceLoadStatistics/exemptDomains/app-bound-domains-exempt-from-cookie-blocking-between-each-other.html [ Skip ]
 webkit.org/b/211566 http/tests/resourceLoadStatistics/exemptDomains/app-bound-domains-exempt-from-website-data-deletion-database.html [ Skip ]
@@ -3374,7 +3304,7 @@ webkit.org/b/182765 fast/text/emphasis-overlap.html [ Failure ImageOnlyFailure ]
 
 webkit.org/b/183033 http/tests/plugins/supported-plugin-origin-specific-visibility.html [ Failure ]
 
-webkit.org/b/183611 webkit.org/b/198830 media/context-menu-actions.html [ Failure Crash ]
+webkit.org/b/198830 media/context-menu-actions.html [ Pass Crash ]
 
 webkit.org/b/183902 fast/dom/frame-loading-via-document-write.html [ Failure ]
 
@@ -3461,8 +3391,6 @@ webkit.org/b/189564 http/tests/xmlhttprequest/url-with-credentials.html [ Failur
 webkit.org/b/189739 svg/gradients/spreadMethodClose2.svg [ ImageOnlyFailure ]
 
 webkit.org/b/189994 fast/files/xhr-response-blob.html [ Failure ]
-
-webkit.org/b/189995 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html [ Failure ]
 
 webkit.org/b/190000 svg/W3C-SVG-1.1-SE/svgdom-over-01-f.svg [ Failure ]
 
@@ -3657,6 +3585,7 @@ webkit.org/b/201981 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/201981 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-readable-stream.https.html [ Failure Pass ]
 webkit.org/b/201981 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event.https.html [ Failure Pass ]
 webkit.org/b/201981 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Failure Pass ]
+webkit.org/b/201981 imported/w3c/web-platform-tests/service-workers/service-worker/resource-timing.sub.https.html [ Failure Pass ]
 webkit.org/b/201981 http/wpt/resource-timing/rt-resources-per-worker.html [ Failure Pass ]
 
 webkit.org/b/201982 fast/images/exif-orientation-background.html [ ImageOnlyFailure ]
@@ -3740,8 +3669,6 @@ webkit.org/b/211981 editing/pasteboard/data-transfer-get-data-on-pasting-html-us
 
 webkit.org/b/212744 compositing/repaint/compositing-toggle-in-overflow-scroll-repaint.html [ Failure ]
 
-imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-serializable.html [ DumpJSConsoleLogInStdErr ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -3820,8 +3747,6 @@ webkit.org/b/191506 fast/css-grid-layout/grid-item-scroll-position.html [ Pass ]
 
 css-dark-mode [ Pass ]
 css-dark-mode/older-systems [ Skip ]
-
-animations/missing-values-last-keyframe.html [ Pass ]
 
 imported/w3c/web-platform-tests/css/css-multicol/multicol-width-ch-001.xht [ Pass ]
 

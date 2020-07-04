@@ -1412,6 +1412,9 @@
     "imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/007.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-non-utf8-encoded-document.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-percent-encoded.html": [
         "slow"
     ],
@@ -2079,6 +2082,9 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/media-source/mediasource-redundant-seek.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/mediacapture-record/MediaRecorder-peerconnection.https.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https.html": [

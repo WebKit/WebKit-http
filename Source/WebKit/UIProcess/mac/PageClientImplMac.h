@@ -215,8 +215,8 @@ private:
 
     void didStartProvisionalLoadForMainFrame() override;
     void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
-    void didFinishLoadForMainFrame() override;
-    void didFailLoadForMainFrame() override;
+    void didFinishNavigation(API::Navigation*) override;
+    void didFailNavigation(API::Navigation*) override;
     void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
     void handleControlledElementIDResponse(const String&) override;
 
@@ -256,6 +256,10 @@ private:
     bool windowIsFrontWindowUnderMouse(const NativeWebMouseEvent&) override;
 
     void takeFocus(WebCore::FocusDirection) override;
+
+#if HAVE(APP_ACCENT_COLORS)
+    WebCore::Color accentColor() override;
+#endif
 
     NSView *m_view;
     WeakPtr<WebViewImpl> m_impl;

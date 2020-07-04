@@ -26,10 +26,8 @@
 #import "config.h"
 #import "WebKit2Initialize.h"
 
-#import "LogInitialization.h"
 #import "VersionChecks.h"
 #import <JavaScriptCore/InitializeThreading.h>
-#import <WebCore/LogInitialization.h>
 #import <mutex>
 #import <wtf/MainThread.h>
 #import <wtf/RefCounted.h>
@@ -52,15 +50,10 @@ static void runInitializationCode(void* = nullptr)
     InitWebCoreThreadSystemInterface();
 #endif
 
-    JSC::initializeThreading();
+    JSC::initialize();
     WTF::initializeMainThread();
 
     WTF::RefCountedBase::enableThreadingChecksGlobally();
-
-#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
-    WebCore::initializeLogChannelsIfNecessary();
-    WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 }
 
 void InitializeWebKit2()

@@ -53,6 +53,7 @@
 
 #if ENABLE(MEDIA_STREAM)
 #include "GStreamerMediaStreamSource.h"
+#include "MediaStreamPrivate.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -290,6 +291,14 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
     // about handlers running in the GStreamer thread.
     if (m_pipeline)
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    {
+        LockHolder lock(m_cdmAttachmentMutex);
+        if (m_cdmInstance)
+            m_cdmInstance->releaseDecryptionResources();
+    }
+#endif
 
     m_player = nullptr;
     m_notifier->invalidate();

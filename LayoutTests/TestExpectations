@@ -39,6 +39,7 @@ fast/viewport/watchos [ Skip ]
 fast/visual-viewport/watchos [ Skip ]
 fast/visual-viewport/tiled-drawing [ Skip ]
 swipe [ Skip ]
+http/tests/swipe [ Skip ]
 fast/zooming/ios [ Skip ]
 fast/forms/ios [ Skip ]
 fast/viewport/ios [ Skip ]
@@ -824,6 +825,7 @@ webkit.org/b/189905 imported/w3c/web-platform-tests/resource-timing/resource_ini
 webkit.org/b/190523 imported/w3c/web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain.html [ Pass Failure ]
 
 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-default-feature-policy.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/mediacapture-record/passthrough/MediaRecorder-passthrough.https.html [ Failure Timeout Pass ]
 
 # These fetch tests are flaky or fail.
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.any.html [ Pass Failure ]
@@ -1171,10 +1173,8 @@ webkit.org/b/175588 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/sc
 
 # Tests that are flaky due to console log / error messages
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/basic.htm [ Failure Pass ]
-webkit.org/b/169565 imported/w3c/web-platform-tests/cors/preflight-failure.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-origin.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/remote-origin.htm [ Failure ]
-webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-async.htm [ Failure Pass ]
 
 # These tests used to have deterministic load delegate callback order before webkit.org/b/160677
 http/tests/svg/svg-use-external.html [ Pass Failure ]
@@ -1830,7 +1830,6 @@ webrtc/simulcast-h264.html [ Slow ]
 
 imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html [ Slow ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
-webkit.org/b/172521 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-answer.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceGatheringState.html [ Pass Failure ]
@@ -1969,8 +1968,8 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 fast/text/user-installed-fonts/extended-character.html [ Pass ImageOnlyFailure ]
 fast/text/user-installed-fonts/extended-character-with-user-font.html [ Pass ImageOnlyFailure ]
 
-# Do assert in OfflineAudioContext
-[ Debug ] imported/w3c/web-platform-tests/webaudio/ [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/audioparam-large-endtime.html [ Crash ]
+[ Debug ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-disconnect.html [ Crash ]
 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-disconnect.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/148922 svg/as-object/svg-in-object-dynamic-attribute-change.html [ Pass ImageOnlyFailure ]
@@ -2640,8 +2639,6 @@ webkit.org/b/175288 imported/w3c/web-platform-tests/css/css-ui/outline-013.html 
 webkit.org/b/175288 imported/w3c/web-platform-tests/css/css-ui/outline-014.html [ ImageOnlyFailure ]
 webkit.org/b/175288 imported/w3c/web-platform-tests/css/css-ui/outline-015.html [ ImageOnlyFailure ]
 webkit.org/b/175288 imported/w3c/web-platform-tests/css/css-ui/outline-016.html [ ImageOnlyFailure ]
-webkit.org/b/175288 imported/w3c/web-platform-tests/css/css-ui/outline-019.html [ ImageOnlyFailure ]
-webkit.org/b/175290 imported/w3c/web-platform-tests/css/css-ui/text-overflow-005.html [ ImageOnlyFailure ]
 
 webkit.org/b/171945 perf/class-list-remove.html [ Pass Failure Timeout ]
 
@@ -2701,7 +2698,6 @@ webkit.org/b/181100 inspector/worker/worker-recover-if-inspector-close.html [ Pa
 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-small.html [ Pass Failure ]
 webkit.org/b/186574 media/video-buffering-allowed.html [ Pass Failure ]
 
-imported/w3c/web-platform-tests/css/css-display/display-contents-button.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/display-contents-details.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/display-contents-first-letter-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/display-contents-svg-elements.html [ ImageOnlyFailure ]
@@ -2780,7 +2776,6 @@ imported/w3c/web-platform-tests/css/css-display/run-in/run-in-text-between-005.x
 imported/w3c/web-platform-tests/css/css-pseudo/first-letter-property-whitelist.html [ Pass Failure ]
 imported/w3c/web-platform-tests/css/css-pseudo/placeholder-input-number.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-scoping/slotted-with-pseudo-element.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-scoping/stylesheet-title-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-color-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-above-left-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-above-left-002.xht [ ImageOnlyFailure ]
@@ -2938,8 +2933,6 @@ imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-match
 imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-lower-greek.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-lower-latin.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-square.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-lists/counter-increment-inside-display-contents.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-lists/counter-reset-inside-display-contents.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/list-marker-with-lineheight-and-overflow-hidden-001.html [ ImageOnlyFailure ]
 webkit.org/b/167729 imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-001a.html [ ImageOnlyFailure ]
 webkit.org/b/167729 imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-001b.html [ ImageOnlyFailure ]
@@ -3113,10 +3106,8 @@ webkit.org/b/203330 imported/w3c/web-platform-tests/css/css-values/attr-px-inval
 webkit.org/b/203331 imported/w3c/web-platform-tests/css/css-values/attr-px-valid.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-002.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-003.html [ ImageOnlyFailure ]
-webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-004.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-010.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-011.html [ ImageOnlyFailure ]
-webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-012.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-013.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-014.html [ ImageOnlyFailure ]
 webkit.org/b/203333 imported/w3c/web-platform-tests/css/css-values/ch-unit-015.html [ ImageOnlyFailure ]
@@ -4277,7 +4268,6 @@ webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/flex-minimum
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/overflow-area-001.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/overflow-area-002.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/overflow-auto-005.html [ ImageOnlyFailure ]
-webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-heights-004.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-heights-007.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-heights-014.html [ ImageOnlyFailure ]
 webkit.org/b/212046 imported/w3c/web-platform-tests/css/css-flexbox/percentage-size-subitems-001.html [ ImageOnlyFailure ]

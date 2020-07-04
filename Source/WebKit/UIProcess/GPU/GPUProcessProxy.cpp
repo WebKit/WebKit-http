@@ -183,17 +183,23 @@ void GPUProcessProxy::getGPUProcessConnection(WebProcessProxy& webProcessProxy, 
 #endif
 
     RELEASE_LOG(ProcessSuspension, "%p - GPUProcessProxy is taking a background assertion because a web process is requesting a connection", this);
-    sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(*this), reply = WTFMove(reply)](auto&& connectionIdentifier) mutable {
+    sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(*this), reply = WTFMove(reply)](auto&& identifier) mutable {
         if (!weakThis) {
             RELEASE_LOG_ERROR(Process, "GPUProcessProxy::getGPUProcessConnection: GPUProcessProxy deallocated during connection establishment");
             return reply({ });
         }
+
+        if (!identifier) {
+            RELEASE_LOG_ERROR(Process, "GPUProcessProxy::getGPUProcessConnection: connection identifier is empty");
+            return reply({ });
+        }
+
 #if USE(UNIX_DOMAIN_SOCKETS) || OS(WINDOWS)
-        reply(GPUProcessConnectionInfo { WTFMove(*connectionIdentifier) });
+        reply(GPUProcessConnectionInfo { WTFMove(*identifier) });
         UNUSED_VARIABLE(this);
 #elif OS(DARWIN)
-        MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier->port()));
-        reply(GPUProcessConnectionInfo { IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND }, this->connection()->getAuditToken() });
+        MESSAGE_CHECK(MACH_PORT_VALID(identifier->port()));
+        reply(GPUProcessConnectionInfo { IPC::Attachment { identifier->port(), MACH_MSG_TYPE_MOVE_SEND }, this->connection()->getAuditToken() });
 #else
         notImplemented();
 #endif
@@ -274,13 +280,8 @@ static inline GPUProcessSessionParameters gpuProcessSessionParameters(const Webs
 
     parameters.mediaCacheDirectory = store.resolvedMediaCacheDirectory();
     SandboxExtension::Handle mediaCacheDirectoryExtensionHandle;
-    if (!parameters.mediaCacheDirectory.isEmpty()) {
-        String parentFolder = parameters.mediaCacheDirectory;
-        auto position = parentFolder.reverseFind("/");
-        if (position != notFound)
-            parentFolder = parentFolder.substring(0, position);
-        SandboxExtension::createHandleWithoutResolvingPath(parentFolder, SandboxExtension::Type::ReadWrite, parameters.mediaCacheDirectorySandboxExtensionHandle);
-    }
+    if (!parameters.mediaCacheDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaCacheDirectory, SandboxExtension::Type::ReadWrite, parameters.mediaCacheDirectorySandboxExtensionHandle);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     parameters.mediaKeysStorageDirectory = store.resolvedMediaKeysDirectory();

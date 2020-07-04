@@ -1,3 +1,95 @@
+2020-07-03  Darin Adler  <darin@apple.com>
+
+        Make generate-unified-sources.sh not depend on features being listed in FEATURE_DEFINES environment variable
+        https://bugs.webkit.org/show_bug.cgi?id=212420
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/WebKitCommon.cmake: Removed call to SET_CONFIGURATION_FOR_UNIFIED_SOURCE_LISTS.
+        * Source/cmake/WebKitFeatures.cmake: Removed SET_CONFIGURATION_FOR_UNIFIED_SOURCE_LISTS.
+        * Source/cmake/WebKitMacros.cmake: Removed use of "--feature-flags" when invoking the
+        generate-unified-source-bundles.rb, which also means no longer depending on the
+        UNIFIED_SOURCE_LIST_ENABLED_FEATURES variable, which was set by the
+        SET_CONFIGURATION_FOR_UNIFIED_SOURCE_LISTS function.
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Remove support for ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
+        https://bugs.webkit.org/show_bug.cgi?id=213932
+
+        Reviewed by Darin Adler.
+
+        Removes support for non-standard <input type="datetime">, currently being 
+        guarded by the macro ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE. This macro, was
+        added back in 2013 as a temporary measure to support some engines who shipped
+        support for <input type="datetime">. It is currently not enabled for any
+        ports so now seems like as good a time as any to remove it.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Update Mac CMake build
+
+        * Source/cmake/OptionsMac.cmake:
+
+2020-07-01  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WOFF2 targets
+        https://bugs.webkit.org/show_bug.cgi?id=213865
+
+        Reviewed by Fujii Hironori.
+
+        Rework the Find module for WOFF2 to provide targets for libwoff2common and
+        libwoff2dec. Previously only libwoff2dec was specified in the find module. This
+        is because pkg-config works on that platform and because shared libraries are
+        supported. Neither is true for Windows so the module was expanded in anticipation
+        of support for WinCairo.
+
+        * Source/cmake/FindWOFF2.cmake: Added.
+        * Source/cmake/FindWOFF2Dec.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-06-30  Andres Gonzalez  <andresg_22@apple.com>
+
+        Code cleanup in AccessibilityMenuList.cpp and AXIsolatedTree.h.
+        https://bugs.webkit.org/show_bug.cgi?id=213806
+
+        Reviewed by Darin Adler.
+
+        * WebKit.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings:
+
+2020-06-29  Guowei Yang  <guowei_yang@apple.com>
+
+        Adding Experimental Feature Flags for CoreImage backed SVG/CSS Filters
+        https://bugs.webkit.org/show_bug.cgi?id=213578
+
+        Reviewed by Darin Adler, Simon Fraser, Myles C. Maxfield.
+
+        Preparing to implement CoreImage backed filter rendering
+        Needs Compiler guards and experimental feature guard.
+
+        * Source/cmake/WebKitFeatures.cmake: added definition of 
+          CoreImage-accelerated filter rendering feature flag, 
+          ENABLE_CORE_IMAGE_ACCELERATED_FILTER_RENDER
+
+2020-06-29  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Remove ENABLE_STREAMS_API compilation flag
+        https://bugs.webkit.org/show_bug.cgi?id=213728
+
+        Reviewed by Sam Weinig.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+
 2020-06-25  Diego Pino Garcia  <dpino@igalia.com>
 
         [GTK] Enable WEB_API_STATISTICS

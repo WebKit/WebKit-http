@@ -50,8 +50,10 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/paymentrequest"
+    "${WEBCORE_DIR}/Modules/pictureinpicture"
     "${WEBCORE_DIR}/Modules/plugins"
     "${WEBCORE_DIR}/Modules/quota"
+    "${WEBCORE_DIR}/Modules/remoteplayback"
     "${WEBCORE_DIR}/Modules/speech"
     "${WEBCORE_DIR}/Modules/streams"
     "${WEBCORE_DIR}/Modules/webaudio"
@@ -242,6 +244,18 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/credentialmanagement/CredentialsContainer.idl
     Modules/credentialmanagement/NavigatorCredentials.idl
 
+    Modules/encryptedmedia/MediaKeyEncryptionScheme.idl
+    Modules/encryptedmedia/MediaKeyMessageEvent.idl
+    Modules/encryptedmedia/MediaKeySession.idl
+    Modules/encryptedmedia/MediaKeySessionType.idl
+    Modules/encryptedmedia/MediaKeyStatusMap.idl
+    Modules/encryptedmedia/MediaKeySystemAccess.idl
+    Modules/encryptedmedia/MediaKeySystemConfiguration.idl
+    Modules/encryptedmedia/MediaKeySystemMediaCapability.idl
+    Modules/encryptedmedia/MediaKeys.idl
+    Modules/encryptedmedia/MediaKeysRequirement.idl
+    Modules/encryptedmedia/NavigatorEME.idl
+
     Modules/entriesapi/DOMFileSystem.idl
     Modules/entriesapi/ErrorCallback.idl
     Modules/entriesapi/FileCallback.idl
@@ -413,6 +427,9 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/pictureinpicture/EnterPictureInPictureEvent.idl
     Modules/pictureinpicture/HTMLVideoElementPictureInPicture.idl
     Modules/pictureinpicture/PictureInPictureWindow.idl
+
+    Modules/remoteplayback/RemotePlayback.idl
+    Modules/remoteplayback/RemotePlaybackAvailabilityCallback.idl
 
     Modules/speech/DOMWindowSpeechSynthesis.idl
     Modules/speech/SpeechSynthesis.idl
@@ -873,6 +890,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/ImageBitmapOptions.idl
     html/ImageData.idl
     html/MediaController.idl
+    html/MediaEncryptedEvent.idl
     html/MediaError.idl
     html/OffscreenCanvas.idl
     html/RadioNodeList.idl
@@ -1184,22 +1202,22 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGZoomEvent.idl
 )
 
+list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/gamepad"
+)
+
+list(APPEND WebCore_IDL_INCLUDES
+    Modules/gamepad
+)
+
+list(APPEND WebCore_NON_SVG_IDL_FILES
+    Modules/gamepad/Gamepad.idl
+    Modules/gamepad/GamepadButton.idl
+    Modules/gamepad/GamepadEvent.idl
+    Modules/gamepad/NavigatorGamepad.idl
+)
+
 if (ENABLE_GAMEPAD)
-    list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/Modules/gamepad"
-    )
-
-    list(APPEND WebCore_IDL_INCLUDES
-        Modules/gamepad
-    )
-
-    list(APPEND WebCore_NON_SVG_IDL_FILES
-        Modules/gamepad/Gamepad.idl
-        Modules/gamepad/GamepadButton.idl
-        Modules/gamepad/GamepadEvent.idl
-        Modules/gamepad/NavigatorGamepad.idl
-    )
-
     list(APPEND WebCore_SOURCES
         Modules/gamepad/Gamepad.cpp
         Modules/gamepad/GamepadButton.cpp
@@ -1212,43 +1230,41 @@ if (ENABLE_GAMEPAD)
     )
 endif ()
 
-if (ENABLE_WEBXR)
-    list(APPEND WebCore_NON_SVG_IDL_FILES
-        Modules/webxr/NavigatorWebXR.idl
-        Modules/webxr/WebXRBoundedReferenceSpace.idl
-        Modules/webxr/WebXRFrame.idl
-        Modules/webxr/WebXRInputSource.idl
-        Modules/webxr/WebXRInputSourceArray.idl
-        Modules/webxr/WebXRLayer.idl
-        Modules/webxr/WebXRPose.idl
-        Modules/webxr/WebXRReferenceSpace.idl
-        Modules/webxr/WebXRRenderState.idl
-        Modules/webxr/WebXRRigidTransform.idl
-        Modules/webxr/WebXRSession.idl
-        Modules/webxr/WebXRSpace.idl
-        Modules/webxr/WebXRSystem.idl
-        Modules/webxr/WebXRView.idl
-        Modules/webxr/WebXRViewerPose.idl
-        Modules/webxr/WebXRViewport.idl
-        Modules/webxr/WebXRWebGLLayer.idl
-        Modules/webxr/XREnvironmentBlendMode.idl
-        Modules/webxr/XREye.idl
-        Modules/webxr/XRFrameRequestCallback.idl
-        Modules/webxr/XRHandedness.idl
-        Modules/webxr/XRInputSourceEvent.idl
-        Modules/webxr/XRInputSourcesChangeEvent.idl
-        Modules/webxr/XRInteractionMode.idl
-        Modules/webxr/XRReferenceSpaceEvent.idl
-        Modules/webxr/XRReferenceSpaceType.idl
-        Modules/webxr/XRRenderStateInit.idl
-        Modules/webxr/XRSessionEvent.idl
-        Modules/webxr/XRSessionInit.idl
-        Modules/webxr/XRSessionMode.idl
-        Modules/webxr/XRTargetRayMode.idl
-        Modules/webxr/XRVisibilityState.idl
-        Modules/webxr/XRWebGLLayerInit.idl
-    )
-endif ()
+list(APPEND WebCore_NON_SVG_IDL_FILES
+    Modules/webxr/NavigatorWebXR.idl
+    Modules/webxr/WebXRBoundedReferenceSpace.idl
+    Modules/webxr/WebXRFrame.idl
+    Modules/webxr/WebXRInputSource.idl
+    Modules/webxr/WebXRInputSourceArray.idl
+    Modules/webxr/WebXRLayer.idl
+    Modules/webxr/WebXRPose.idl
+    Modules/webxr/WebXRReferenceSpace.idl
+    Modules/webxr/WebXRRenderState.idl
+    Modules/webxr/WebXRRigidTransform.idl
+    Modules/webxr/WebXRSession.idl
+    Modules/webxr/WebXRSpace.idl
+    Modules/webxr/WebXRSystem.idl
+    Modules/webxr/WebXRView.idl
+    Modules/webxr/WebXRViewerPose.idl
+    Modules/webxr/WebXRViewport.idl
+    Modules/webxr/WebXRWebGLLayer.idl
+    Modules/webxr/XREnvironmentBlendMode.idl
+    Modules/webxr/XREye.idl
+    Modules/webxr/XRFrameRequestCallback.idl
+    Modules/webxr/XRHandedness.idl
+    Modules/webxr/XRInputSourceEvent.idl
+    Modules/webxr/XRInputSourcesChangeEvent.idl
+    Modules/webxr/XRInteractionMode.idl
+    Modules/webxr/XRReferenceSpaceEvent.idl
+    Modules/webxr/XRReferenceSpaceType.idl
+    Modules/webxr/XRRenderStateInit.idl
+    Modules/webxr/XRSessionEvent.idl
+    Modules/webxr/XRSessionInit.idl
+    Modules/webxr/XRSessionMode.idl
+    Modules/webxr/XRTargetRayMode.idl
+    Modules/webxr/XRVisibilityState.idl
+    Modules/webxr/XRWebGLLayerInit.idl
+)
 
 set(WebCore_IDL_FILES
     ${WebCore_NON_SVG_IDL_FILES}
@@ -1312,15 +1328,16 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCoreTestSupport_SOURCES
         testing/LegacyMockCDM.cpp
     )
-    list(APPEND WebCore_IDL_FILES
-        Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl
-        Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl
-        Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl
-        Modules/encryptedmedia/legacy/WebKitMediaKeys.idl
-
-        html/WebKitMediaKeyError.idl
-    )
 endif ()
+
+list(APPEND WebCore_IDL_FILES
+    Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl
+    Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl
+    Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl
+    Modules/encryptedmedia/legacy/WebKitMediaKeys.idl
+
+    html/WebKitMediaKeyError.idl
+)
 
 if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
@@ -1334,21 +1351,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/NavigatorEME.cpp
 
         html/MediaEncryptedEvent.cpp
-    )
-    list(APPEND WebCore_IDL_FILES
-        Modules/encryptedmedia/MediaKeyEncryptionScheme.idl
-        Modules/encryptedmedia/MediaKeyMessageEvent.idl
-        Modules/encryptedmedia/MediaKeySession.idl
-        Modules/encryptedmedia/MediaKeySessionType.idl
-        Modules/encryptedmedia/MediaKeyStatusMap.idl
-        Modules/encryptedmedia/MediaKeySystemAccess.idl
-        Modules/encryptedmedia/MediaKeySystemConfiguration.idl
-        Modules/encryptedmedia/MediaKeySystemMediaCapability.idl
-        Modules/encryptedmedia/MediaKeys.idl
-        Modules/encryptedmedia/MediaKeysRequirement.idl
-        Modules/encryptedmedia/NavigatorEME.idl
-
-        html/MediaEncryptedEvent.idl
     )
 endif ()
 
@@ -1410,56 +1412,57 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLVertexArrayObjectBase.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
     )
-    list(APPEND WebCore_IDL_FILES
-        html/canvas/ANGLEInstancedArrays.idl
-        html/canvas/EXTBlendMinMax.idl
-        html/canvas/EXTColorBufferFloat.idl
-        html/canvas/EXTColorBufferHalfFloat.idl
-        html/canvas/EXTFragDepth.idl
-        html/canvas/EXTShaderTextureLOD.idl
-        html/canvas/EXTTextureFilterAnisotropic.idl
-        html/canvas/EXTsRGB.idl
-        html/canvas/OESElementIndexUint.idl
-        html/canvas/OESStandardDerivatives.idl
-        html/canvas/OESTextureFloat.idl
-        html/canvas/OESTextureFloatLinear.idl
-        html/canvas/OESTextureHalfFloat.idl
-        html/canvas/OESTextureHalfFloatLinear.idl
-        html/canvas/OESVertexArrayObject.idl
-        html/canvas/WebGL2RenderingContext.idl
-        html/canvas/WebGLActiveInfo.idl
-        html/canvas/WebGLBuffer.idl
-        html/canvas/WebGLColorBufferFloat.idl
-        html/canvas/WebGLCompressedTextureASTC.idl
-        html/canvas/WebGLCompressedTextureATC.idl
-        html/canvas/WebGLCompressedTextureETC.idl
-        html/canvas/WebGLCompressedTextureETC1.idl
-        html/canvas/WebGLCompressedTexturePVRTC.idl
-        html/canvas/WebGLCompressedTextureS3TC.idl
-        html/canvas/WebGLContextAttributes.idl
-        html/canvas/WebGLContextEvent.idl
-        html/canvas/WebGLDebugRendererInfo.idl
-        html/canvas/WebGLDebugShaders.idl
-        html/canvas/WebGLDepthTexture.idl
-        html/canvas/WebGLDrawBuffers.idl
-        html/canvas/WebGLFramebuffer.idl
-        html/canvas/WebGLLoseContext.idl
-        html/canvas/WebGLProgram.idl
-        html/canvas/WebGLQuery.idl
-        html/canvas/WebGLRenderbuffer.idl
-        html/canvas/WebGLRenderingContext.idl
-        html/canvas/WebGLRenderingContextBase.idl
-        html/canvas/WebGLSampler.idl
-        html/canvas/WebGLShader.idl
-        html/canvas/WebGLShaderPrecisionFormat.idl
-        html/canvas/WebGLSync.idl
-        html/canvas/WebGLTexture.idl
-        html/canvas/WebGLTransformFeedback.idl
-        html/canvas/WebGLUniformLocation.idl
-        html/canvas/WebGLVertexArrayObject.idl
-        html/canvas/WebGLVertexArrayObjectOES.idl
-    )
 endif ()
+
+list(APPEND WebCore_IDL_FILES
+    html/canvas/ANGLEInstancedArrays.idl
+    html/canvas/EXTBlendMinMax.idl
+    html/canvas/EXTColorBufferFloat.idl
+    html/canvas/EXTColorBufferHalfFloat.idl
+    html/canvas/EXTFragDepth.idl
+    html/canvas/EXTShaderTextureLOD.idl
+    html/canvas/EXTTextureFilterAnisotropic.idl
+    html/canvas/EXTsRGB.idl
+    html/canvas/OESElementIndexUint.idl
+    html/canvas/OESStandardDerivatives.idl
+    html/canvas/OESTextureFloat.idl
+    html/canvas/OESTextureFloatLinear.idl
+    html/canvas/OESTextureHalfFloat.idl
+    html/canvas/OESTextureHalfFloatLinear.idl
+    html/canvas/OESVertexArrayObject.idl
+    html/canvas/WebGL2RenderingContext.idl
+    html/canvas/WebGLActiveInfo.idl
+    html/canvas/WebGLBuffer.idl
+    html/canvas/WebGLColorBufferFloat.idl
+    html/canvas/WebGLCompressedTextureASTC.idl
+    html/canvas/WebGLCompressedTextureATC.idl
+    html/canvas/WebGLCompressedTextureETC.idl
+    html/canvas/WebGLCompressedTextureETC1.idl
+    html/canvas/WebGLCompressedTexturePVRTC.idl
+    html/canvas/WebGLCompressedTextureS3TC.idl
+    html/canvas/WebGLContextAttributes.idl
+    html/canvas/WebGLContextEvent.idl
+    html/canvas/WebGLDebugRendererInfo.idl
+    html/canvas/WebGLDebugShaders.idl
+    html/canvas/WebGLDepthTexture.idl
+    html/canvas/WebGLDrawBuffers.idl
+    html/canvas/WebGLFramebuffer.idl
+    html/canvas/WebGLLoseContext.idl
+    html/canvas/WebGLProgram.idl
+    html/canvas/WebGLQuery.idl
+    html/canvas/WebGLRenderbuffer.idl
+    html/canvas/WebGLRenderingContext.idl
+    html/canvas/WebGLRenderingContextBase.idl
+    html/canvas/WebGLSampler.idl
+    html/canvas/WebGLShader.idl
+    html/canvas/WebGLShaderPrecisionFormat.idl
+    html/canvas/WebGLSync.idl
+    html/canvas/WebGLTexture.idl
+    html/canvas/WebGLTransformFeedback.idl
+    html/canvas/WebGLUniformLocation.idl
+    html/canvas/WebGLVertexArrayObject.idl
+    html/canvas/WebGLVertexArrayObjectOES.idl
+)
 
 if (ENABLE_QUOTA)
     list(APPEND WebCore_SOURCES
@@ -1470,18 +1473,18 @@ if (ENABLE_QUOTA)
         Modules/quota/StorageQuota.cpp
         Modules/quota/WorkerNavigatorStorageQuota.cpp
     )
-
-    list(APPEND WebCore_IDL_FILES
-        Modules/quota/DOMWindowQuota.idl
-        Modules/quota/NavigatorStorageQuota.idl
-        Modules/quota/StorageErrorCallback.idl
-        Modules/quota/StorageInfo.idl
-        Modules/quota/StorageQuota.idl
-        Modules/quota/StorageQuotaCallback.idl
-        Modules/quota/StorageUsageCallback.idl
-        Modules/quota/WorkerNavigatorStorageQuota.idl
-    )
 endif ()
+
+list(APPEND WebCore_IDL_FILES
+    Modules/quota/DOMWindowQuota.idl
+    Modules/quota/NavigatorStorageQuota.idl
+    Modules/quota/StorageErrorCallback.idl
+    Modules/quota/StorageInfo.idl
+    Modules/quota/StorageQuota.idl
+    Modules/quota/StorageQuotaCallback.idl
+    Modules/quota/StorageUsageCallback.idl
+    Modules/quota/WorkerNavigatorStorageQuota.idl
+)
 
 if (ENABLE_GRAPHICS_CONTEXT_GL)
     list(APPEND WebCore_SOURCES
@@ -1539,12 +1542,13 @@ if (ENABLE_GRAPHICS_CONTEXT_GL)
     )
 endif ()
 
+list(APPEND WebCore_IDL_FILES
+    page/UserMessageHandler.idl
+    page/UserMessageHandlersNamespace.idl
+    page/WebKitNamespace.idl
+)
+
 if (ENABLE_USER_MESSAGE_HANDLERS)
-    list(APPEND WebCore_IDL_FILES
-        page/UserMessageHandler.idl
-        page/UserMessageHandlersNamespace.idl
-        page/WebKitNamespace.idl
-    )
     list(APPEND WebCore_SOURCES
         page/UserMessageHandler.cpp
         page/UserMessageHandlerDescriptor.cpp
@@ -1554,8 +1558,7 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
 endif ()
 
 if (USE_WOFF2)
-  list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES "${WOFF2DEC_INCLUDE_DIRS}")
-  list(APPEND WebCore_LIBRARIES "${WOFF2DEC_LIBRARIES}")
+  list(APPEND WebCore_LIBRARIES WOFF2::dec)
 endif ()
 
 if (USE_XDGMIME)

@@ -3143,31 +3143,34 @@ static bool shouldTreatURLProtocolAsAppBound(const URL& requestURL)
 bool WebPageProxy::setIsNavigatingToAppBoundDomainAndCheckIfPermitted(bool isMainFrame, const URL& requestURL, Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain)
 {
 #if PLATFORM(IOS_FAMILY)
-    if (isMainFrame) {
-        if (WEB_PAGE_PROXY_ADDITIONS_SETISNAVIGATINGTOAPPBOUNDDOMAIN)
-            return true;
-        if (!isNavigatingToAppBoundDomain) {
-            m_isNavigatingToAppBoundDomain = WTF::nullopt;
-            return true;
-        }
-        if (m_ignoresAppBoundDomains)
-            return true;
-        
-        if (shouldTreatURLProtocolAsAppBound(requestURL)) {
-            isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::Yes;
-            m_limitsNavigationsToAppBoundDomains = true;
-        }
-        if (m_limitsNavigationsToAppBoundDomains) {
-            if (*isNavigatingToAppBoundDomain == NavigatingToAppBoundDomain::No)
-                return false;
-            m_configuration->setWebViewCategory(WebViewCategory::AppBoundDomain);
-            m_isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::Yes;
-        } else {
-            if (m_hasExecutedAppBoundBehaviorBeforeNavigation)
+    if (WEB_PAGE_PROXY_ADDITIONS_SETISNAVIGATINGTOAPPBOUNDDOMAIN)
+        return true;
+    if (!isNavigatingToAppBoundDomain) {
+        m_isNavigatingToAppBoundDomain = WTF::nullopt;
+        return true;
+    }
+    if (m_ignoresAppBoundDomains)
+        return true;
+
+    if (shouldTreatURLProtocolAsAppBound(requestURL)) {
+        isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::Yes;
+        m_limitsNavigationsToAppBoundDomains = true;
+    }
+    if (m_limitsNavigationsToAppBoundDomains) {
+        if (*isNavigatingToAppBoundDomain == NavigatingToAppBoundDomain::No) {
+            if (isMainFrame)
                 return false;
             m_configuration->setWebViewCategory(WebViewCategory::InAppBrowser);
             m_isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::No;
+            return true;
         }
+        m_configuration->setWebViewCategory(WebViewCategory::AppBoundDomain);
+        m_isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::Yes;
+    } else {
+        if (m_hasExecutedAppBoundBehaviorBeforeNavigation)
+            return false;
+        m_configuration->setWebViewCategory(WebViewCategory::InAppBrowser);
+        m_isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::No;
     }
 #else
     UNUSED_PARAM(isMainFrame);
@@ -4872,7 +4875,7 @@ void WebPageProxy::didFinishLoadForFrame(FrameIdentifier frameID, FrameInfoData&
 
     if (isMainFrame) {
         reportPageLoadResult();
-        pageClient().didFinishLoadForMainFrame();
+        pageClient().didFinishNavigation(navigation.get());
 
         if (navigation)
             navigation->setClientNavigationActivity(nullptr);
@@ -4926,7 +4929,7 @@ void WebPageProxy::didFailLoadForFrame(FrameIdentifier frameID, FrameInfoData&& 
 
     if (isMainFrame) {
         reportPageLoadResult(error);
-        pageClient().didFailLoadForMainFrame();
+        pageClient().didFailNavigation(navigation.get());
         if (navigation)
             navigation->setClientNavigationActivity(nullptr);
     }
@@ -5204,16 +5207,20 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
             }
             receivedNavigationPolicyDecision(policyAction, navigation.get(), processSwapRequestedByClient, frame, WTFMove(policies), WTFMove(sender));
         };
-        
+
+#if PLATFORM(COCOA)
         if (policyAction != PolicyAction::Ignore) {
             if (!setIsNavigatingToAppBoundDomainAndCheckIfPermitted(frame->isMainFrame(), navigation->currentRequest().url(), isAppBoundDomain)) {
-                auto error = ResourceError { String { }, 0, navigation->currentRequest().url(), "App-bound domain failure"_s };
+                auto error = errorForUnpermittedAppBoundDomainNavigation(navigation->currentRequest().url());
                 m_navigationClient->didFailProvisionalNavigationWithError(*this, FrameInfoData { frameInfo }, navigation.get(), error, userDataObject);
                 RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "Ignoring request to load this main resource because it is attempting to navigate away from an app-bound domain or navigate after using restricted APIs");
                 completionHandler(PolicyAction::Ignore);
                 return;
             }
+            if (frame->isMainFrame())
+                m_isTopFrameNavigatingToAppBoundDomain = m_isNavigatingToAppBoundDomain;
         }
+#endif
 
         if (!m_pageClient)
             return completionHandler(policyAction);
@@ -6693,7 +6700,7 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(WTFMove(sandboxExtensionHandles)));
 #endif
 
-    send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs));
+    send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs, { }));
 
     m_openPanelResultListener->invalidate();
     m_openPanelResultListener = nullptr;
@@ -7793,8 +7800,8 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.smartInsertDeleteEnabled = m_isSmartInsertDeleteEnabled;
     parameters.additionalSupportedImageTypes = m_configuration->additionalSupportedImageTypes();
 #endif
-#if ENABLE(TINT_COLOR_SUPPORT)
-    parameters.tintColor = pageClient().tintColor();
+#if HAVE(APP_ACCENT_COLORS)
+    parameters.accentColor = pageClient().accentColor();
 #endif
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
     parameters.userInterfaceLayoutDirection = pageClient().userInterfaceLayoutDirection();
@@ -7846,6 +7853,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.shouldCaptureVideoInUIProcess = preferences().captureVideoInUIProcessEnabled();
     parameters.shouldCaptureVideoInGPUProcess = preferences().captureVideoInGPUProcessEnabled();
     parameters.shouldRenderCanvasInGPUProcess = preferences().renderCanvasInGPUProcessEnabled();
+    parameters.shouldEnableVP9Decoder = preferences().vp9DecoderEnabled();
     parameters.shouldCaptureDisplayInUIProcess = m_process->processPool().configuration().shouldCaptureDisplayInUIProcess();
     parameters.limitsNavigationsToAppBoundDomains = m_limitsNavigationsToAppBoundDomains;
     parameters.shouldRelaxThirdPartyCookieBlocking = m_configuration->shouldRelaxThirdPartyCookieBlocking();

@@ -3100,17 +3100,18 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     information.focusedElementIdentifier = m_currentFocusedElementIdentifier;
 
     if (is<LabelableElement>(*focusedElement)) {
-        auto labels = downcast<LabelableElement>(*focusedElement).labels();
-        Vector<Ref<Element>> associatedLabels;
-        for (unsigned index = 0; index < labels->length(); ++index) {
-            if (is<Element>(labels->item(index)) && labels->item(index)->renderer())
-                associatedLabels.append(downcast<Element>(*labels->item(index)));
-        }
-        for (auto& labelElement : associatedLabels) {
-            auto text = labelElement->innerText();
-            if (!text.isEmpty()) {
-                information.label = WTFMove(text);
-                break;
+        if (auto labels = downcast<LabelableElement>(*focusedElement).labels()) {
+            Vector<Ref<Element>> associatedLabels;
+            for (unsigned index = 0; index < labels->length(); ++index) {
+                if (is<Element>(labels->item(index)) && labels->item(index)->renderer())
+                    associatedLabels.append(downcast<Element>(*labels->item(index)));
+            }
+            for (auto& labelElement : associatedLabels) {
+                auto text = labelElement->innerText();
+                if (!text.isEmpty()) {
+                    information.label = WTFMove(text);
+                    break;
+                }
             }
         }
     }
@@ -4136,7 +4137,7 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
     VisiblePosition selectionStart = selection.visibleStart();
     VisiblePosition selectionEnd = selection.visibleEnd();
 
-    bool isSpatialRequest = request.options.contains(DocumentEditingContextRequest::Options::Spatial);
+    bool isSpatialRequest = request.options.containsAny({ DocumentEditingContextRequest::Options::Spatial, DocumentEditingContextRequest::Options::SpatialAndCurrentSelection });
     bool wantsRects = request.options.contains(DocumentEditingContextRequest::Options::Rects);
     bool wantsMarkedTextRects = request.options.contains(DocumentEditingContextRequest::Options::MarkedTextRects);
 
@@ -4160,6 +4161,12 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
         rangeOfInterestEnd = visiblePositionForPointInRootViewCoordinates(frame.get(), request.rect.maxXMaxYCorner());
         if (rangeOfInterestEnd < rangeOfInterestStart)
             std::exchange(rangeOfInterestStart, rangeOfInterestEnd);
+        if (request.options.contains(DocumentEditingContextRequest::Options::SpatialAndCurrentSelection)) {
+            if (selectionStart < rangeOfInterestStart)
+                rangeOfInterestStart = selectionStart;
+            if (selectionEnd > rangeOfInterestEnd)
+                rangeOfInterestEnd = selectionEnd;
+        }
     } else if (!selection.isNone()) {
         rangeOfInterestStart = selectionStart;
         rangeOfInterestEnd = selectionEnd;
@@ -4179,8 +4186,8 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
     auto selectionRange = selection.toNormalizedRange();
     auto rangeOfInterest = makeRange(rangeOfInterestStart, rangeOfInterestEnd);
     if (selectionRange && rangesOverlap(rangeOfInterest.get(), createLiveRange(*selectionRange).ptr())) {
-        startOfRangeOfInterestInSelection = rangeOfInterestStart > selectionStart ? rangeOfInterestStart : selectionStart;
-        endOfRangeOfInterestInSelection = rangeOfInterestEnd < selectionEnd ? rangeOfInterestEnd : selectionEnd;
+        startOfRangeOfInterestInSelection = std::max(rangeOfInterestStart, selectionStart);
+        endOfRangeOfInterestInSelection = std::min(rangeOfInterestEnd, selectionEnd);
     } else {
         auto rootNode = makeRefPtr(rangeOfInterest->commonAncestorContainer());
         if (!rootNode) {
@@ -4221,12 +4228,14 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
         contextBeforeStart = rangeOfInterestStart;
         contextAfterEnd = rangeOfInterestEnd;
         if (wantsMarkedTextRects && compositionRange) {
-            // In the case where the client has requested marked text rects, additionally make sure that the
-            // context range encompasses the entire marked text range.
+            // In the case where the client has requested marked text rects make sure that the context
+            // range encompasses the entire marked text range so that we don't return a truncated result.
             auto compositionStart = compositionRange->startPosition();
             auto compositionEnd = compositionRange->endPosition();
-            contextBeforeStart = contextBeforeStart > compositionStart ? compositionStart : contextBeforeStart;
-            contextAfterEnd = contextAfterEnd < compositionEnd ? compositionEnd : contextAfterEnd;
+            if (contextBeforeStart > compositionStart)
+                contextBeforeStart = compositionStart;
+            if (contextAfterEnd < compositionEnd)
+                contextAfterEnd = compositionEnd;
         }
     }
 
@@ -4315,6 +4324,9 @@ void WebPage::textInputContextsInRect(FloatRect searchRect, CompletionHandler<vo
         return context;
     });
     completionHandler(contexts);
+#if ENABLE(EDITABLE_REGION)
+    m_page->setEditableRegionEnabled();
+#endif
 }
 
 void WebPage::focusTextInputContextAndPlaceCaret(const ElementContext& elementContext, const IntPoint& point, CompletionHandler<void(bool)>&& completionHandler)

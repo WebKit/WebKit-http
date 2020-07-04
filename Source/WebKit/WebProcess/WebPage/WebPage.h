@@ -1326,10 +1326,9 @@ public:
     void getAllFrames(CompletionHandler<void(FrameTreeNodeData&&)>&&);
 
     void notifyPageOfAppBoundBehavior();
-    bool shouldEnableInAppBrowserPrivacyProtections();
-    void setIsNavigatingToAppBoundDomain(Optional<NavigatingToAppBoundDomain>);
-    Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain() const { return m_isNavigatingToAppBoundDomain; }
-    
+    void setIsNavigatingToAppBoundDomain(Optional<NavigatingToAppBoundDomain>, WebFrame*);
+    bool needsInAppBrowserPrivacyQuirks() { return m_needsInAppBrowserPrivacyQuirks; }
+
     bool shouldUseRemoteRenderingFor(WebCore::RenderingPurpose);
 
 #if ENABLE(MEDIA_USAGE)
@@ -1573,8 +1572,8 @@ private:
     void drawPagesToPDFFromPDFDocument(CGContextRef, PDFDocument *, const PrintInfo&, uint32_t first, uint32_t count);
 #endif
 
-#if ENABLE(TINT_COLOR_SUPPORT)
-    void setTintColor(WebCore::Color);
+#if HAVE(APP_ACCENT_COLORS)
+    void setAccentColor(WebCore::Color);
 #endif
 
     void setMainFrameIsScrollable(bool);
@@ -1603,7 +1602,7 @@ private:
     void failedToShowPopupMenu();
 #endif
 
-    void didChooseFilesForOpenPanel(const Vector<String>&);
+    void didChooseFilesForOpenPanel(const Vector<String>& files, const Vector<String>& replacementFiles);
     void didCancelForOpenPanel();
 
 #if PLATFORM(IOS_FAMILY)
@@ -2130,7 +2129,6 @@ private:
     String m_themeName;
 #endif
     
-    Optional<NavigatingToAppBoundDomain> m_isNavigatingToAppBoundDomain;
     bool m_limitsNavigationsToAppBoundDomains { false };
     bool m_navigationHasOccured { false };
 };

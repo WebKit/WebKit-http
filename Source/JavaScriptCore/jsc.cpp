@@ -1231,10 +1231,12 @@ static EncodedJSValue printInternal(JSGlobalObject* globalObject, CallFrame* cal
             if (EOF == fputc(' ', out))
                 goto fail;
 
-        auto viewWithString = callFrame->uncheckedArgument(i).toString(globalObject)->viewWithUnderlyingString(globalObject);
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        auto* jsString = callFrame->uncheckedArgument(i).toString(globalObject);
+        RETURN_IF_EXCEPTION(scope, { });
+        auto viewWithString = jsString->viewWithUnderlyingString(globalObject);
+        RETURN_IF_EXCEPTION(scope, { });
         auto string = cStringFromViewWithString(globalObject, scope, viewWithString);
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        RETURN_IF_EXCEPTION(scope, { });
         fwrite(string.data(), sizeof(char), string.length(), out);
         if (ferror(out))
             goto fail;
@@ -1253,10 +1255,12 @@ EncodedJSValue JSC_HOST_CALL functionDebug(JSGlobalObject* globalObject, CallFra
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    auto viewWithString = callFrame->argument(0).toString(globalObject)->viewWithUnderlyingString(globalObject);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    auto* jsString = callFrame->argument(0).toString(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
+    auto viewWithString = jsString->viewWithUnderlyingString(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
     auto string = cStringFromViewWithString(globalObject, scope, viewWithString);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    RETURN_IF_EXCEPTION(scope, { });
     fputs("--> ", stderr);
     fwrite(string.data(), sizeof(char), string.length(), stderr);
     fputc('\n', stderr);
@@ -2634,10 +2638,10 @@ int main(int argc, char** argv)
         WTFLogAlways("Locale not supported by C library.\n\tUsing the fallback 'C' locale.");
 #endif
 
-    // Need to initialize WTF threading before we start any threads. Cannot initialize JSC
-    // threading yet, since that would do somethings that we'd like to defer until after we
+    // Need to initialize WTF before we start any threads. Cannot initialize JSC
+    // yet, since that would do somethings that we'd like to defer until after we
     // have a chance to parse options.
-    WTF::initializeThreading();
+    WTF::initialize();
 
 #if PLATFORM(IOS_FAMILY)
     Options::crashIfCantAllocateJITMemory() = true;
@@ -3297,8 +3301,7 @@ int jscmain(int argc, char** argv)
             Options::dumpGeneratedBytecodes() = true;
     }
 
-    // Initialize JSC before getting VM.
-    JSC::initializeThreading();
+    JSC::initialize();
     initializeTimeoutIfNeeded();
 
 #if OS(DARWIN) || OS(LINUX)

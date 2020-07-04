@@ -171,7 +171,6 @@ set(WebKit_MESSAGES_IN_FILES
     NetworkProcess/webrtc/NetworkMDNSRegister
     NetworkProcess/webrtc/NetworkRTCMonitor
     NetworkProcess/webrtc/NetworkRTCProvider
-    NetworkProcess/webrtc/NetworkRTCSocket
 
     PluginProcess/PluginControllerProxy
     PluginProcess/PluginProcess

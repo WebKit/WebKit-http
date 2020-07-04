@@ -136,6 +136,7 @@
 #import <WebCore/CacheStorageProvider.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/ColorSerialization.h>
 #import <WebCore/CookieJar.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DeprecatedGlobalSettings.h>
@@ -1208,7 +1209,7 @@ static const NSUInteger orderedListSegment = 2;
 - (void)_webChangeColor:(id)sender
 {
     _textColor = self.colorPickerItem.color;
-    [_webView _executeCoreCommandByName:@"ForeColor" value: WebCore::colorFromNSColor(_textColor.get()).serialized()];
+    [_webView _executeCoreCommandByName:@"ForeColor" value: WebCore::serializationForHTML(WebCore::colorFromNSColor(_textColor.get()))];
 }
 
 - (NSViewController *)textListViewController
@@ -3312,10 +3313,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setCacheAPIEnabled([preferences cacheAPIEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled([preferences fetchAPIEnabled]);
 
-#if ENABLE(STREAMS_API)
     RuntimeEnabledFeatures::sharedFeatures().setWritableStreamAPIEnabled([preferences writableStreamAPIEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setReadableByteStreamAPIEnabled([preferences readableByteStreamAPIEnabled]);
-#endif
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
@@ -3361,7 +3360,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setLayoutFormattingContextIntegrationEnabled([preferences layoutFormattingContextIntegrationEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setIsInAppBrowserPrivacyEnabled([preferences isInAppBrowserPrivacyEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setWebSQLDisabled(![preferences webSQLEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setNeedsInAppBrowserPrivacyQuirks([preferences needsInAppBrowserPrivacyQuirks]);
     
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);
@@ -5557,7 +5555,7 @@ IGNORE_WARNINGS_END
     initialized = YES;
 
 #if !PLATFORM(IOS_FAMILY)
-    JSC::initializeThreading();
+    JSC::initialize();
     WTF::initializeMainThread();
 #endif
 

@@ -67,6 +67,7 @@ OBJC_CLASS WKView;
 namespace API {
 class Attachment;
 class HitTestResult;
+class Navigation;
 class Object;
 class OpenPanelParameters;
 class SecurityOrigin;
@@ -350,8 +351,8 @@ public:
     virtual void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&) = 0;
 #endif
 
-#if ENABLE(TINT_COLOR_SUPPORT)
-    virtual WebCore::Color tintColor() = 0;
+#if HAVE(APP_ACCENT_COLORS)
+    virtual WebCore::Color accentColor() = 0;
 #endif
 
     virtual bool effectiveAppearanceIsDark() const { return false; }
@@ -461,8 +462,8 @@ public:
     virtual void didRemoveNavigationGestureSnapshot() = 0;
 
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() = 0;
-    virtual void didFinishLoadForMainFrame() = 0;
-    virtual void didFailLoadForMainFrame() = 0;
+    virtual void didFinishNavigation(API::Navigation*) = 0;
+    virtual void didFailNavigation(API::Navigation*) = 0;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
 
     virtual void didChangeBackgroundColor() = 0;

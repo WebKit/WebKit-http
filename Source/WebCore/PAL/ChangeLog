@@ -1,3 +1,159 @@
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        Update comment in FeatureDefines.xcconfig since PlatformEnableCocoa.h should be used instead
+        https://bugs.webkit.org/show_bug.cgi?id=213952
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Updated comment.
+
+2020-07-03  Saagar Jha  <saagar@saagarjha.com>
+
+        Fix a build error by forward declaring _NSHTTPAlternativeServicesStorage
+        https://bugs.webkit.org/show_bug.cgi?id=213911
+
+        Reviewed by Darin Adler.
+
+        The public 10.16 SDK does not define _NSHTTPAlternativeServicesStorage, and the interface
+        declaration comes after it is used. Forward declare it to fix the error.
+
+        * pal/spi/cf/CFNetworkSPI.h: Forward declare _NSHTTPAlternativeServicesStorage.
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Remove support for ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
+        https://bugs.webkit.org/show_bug.cgi?id=213932
+
+        Reviewed by Darin Adler.
+
+        Removes support for non-standard <input type="datetime">, currently being 
+        guarded by the macro ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE. This macro, was
+        added back in 2013 as a temporary measure to support some engines who shipped
+        support for <input type="datetime">. It is currently not enabled for any
+        ports so now seems like as good a time as any to remove it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Add "-Wliteral-conversion" warning to Xcode based builds and fix the issues it finds
+        https://bugs.webkit.org/show_bug.cgi?id=213931
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+        Add -Wliteral-conversion.
+
+2020-07-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263882.
+        https://bugs.webkit.org/show_bug.cgi?id=213933
+
+        Broke the build
+
+        Reverted changeset:
+
+        "Make _WKWebsiteDataStoreConfiguration SPI for HSTS storage to
+        replace _WKProcessPoolConfiguration.hstsStorageDirectory"
+        https://bugs.webkit.org/show_bug.cgi?id=213048
+        https://trac.webkit.org/changeset/263882
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Make _WKWebsiteDataStoreConfiguration SPI for HSTS storage to replace _WKProcessPoolConfiguration.hstsStorageDirectory
+        https://bugs.webkit.org/show_bug.cgi?id=213048
+
+        Reviewed by Youenn Fablet.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Add testing infrastructure and SPI declaration for HTTP/2 ping
+        https://bugs.webkit.org/show_bug.cgi?id=213913
+
+        Reviewed by Jer Noble.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-07-01  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream application accent color support
+        https://bugs.webkit.org/show_bug.cgi?id=213859
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/mac/NSApplicationSPI.h:
+
+2020-06-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Connections to the preference daemon are established before entering the sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=213379
+
+        Reviewed by Darin Adler.
+
+        Use correct parameter types in _CFPrefsSetDirectModeEnabled and _CFPrefsSetReadOnly, and move
+        _CFPrefsSetDirectModeEnabled inside an Objective-C guard, since BOOL only seems to be a builtin
+        type in Objective-C.
+
+        * pal/spi/cf/CFUtilitiesSPI.h:
+
+2020-06-30  Peng Liu  <peng.liu6@apple.com>
+
+        Enable the support of FULLSCREEN_API in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=213774
+
+        Reviewed by Youenn Fablet.
+
+        Replace the definition of ENABLE_FULLSCREEN_API in FeatureDefines.xcconfig with
+        the one in PlatformEnableCocoa.h. We have to do that because WebKitTestRunner
+        does not have a FeatureDefines.xcconfig but it uses "ENABLE(FULLSCREEN_API)"
+        to conditionally compile code to test the element fullscreen API.
+        WebKitTestRunner can use the macro defined in PlatformEnableCocoa.h.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-30  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable the "My Mac (Mac Catalyst)" destination in WebKit Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=213740
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set SUPPORTS_MACCATALYST to YES to tell Xcode that this
+        project supports building for Mac Catalyst.
+
+2020-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263724.
+        https://bugs.webkit.org/show_bug.cgi?id=213781
+
+
+        Reverted changeset:
+
+        "Make _WKWebsiteDataStoreConfiguration SPI for HSTS storage to
+        replace _WKProcessPoolConfiguration.hstsStorageDirectory"
+        https://bugs.webkit.org/show_bug.cgi?id=213048
+        https://trac.webkit.org/changeset/263724
+
+2020-06-29  Alex Christensen  <achristensen@webkit.org>
+
+        Make _WKWebsiteDataStoreConfiguration SPI for HSTS storage to replace _WKProcessPoolConfiguration.hstsStorageDirectory
+        https://bugs.webkit.org/show_bug.cgi?id=213048
+
+        Reviewed by Youenn Fablet.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-06-29  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Remove ENABLE_STREAMS_API compilation flag
+        https://bugs.webkit.org/show_bug.cgi?id=213728
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2020-06-24  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, reverting r263295.

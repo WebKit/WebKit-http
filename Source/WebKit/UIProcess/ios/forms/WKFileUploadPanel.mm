@@ -250,7 +250,7 @@ static bool arrayContainsUTIThatConformsTo(NSArray<NSString *> *typeIdentifiers,
 
     Ref<API::Array> acceptFileExtensions = parameters->acceptFileExtensions();
     for (auto extension : acceptFileExtensions->elementsOfType<API::String>()) {
-        String mimeType = WebCore::MIMETypeRegistry::getMIMETypeForExtension(extension->stringView().substring(1).toString());
+        String mimeType = WebCore::MIMETypeRegistry::mimeTypeForExtension(extension->stringView().substring(1).toString());
         if (!mimeType.isEmpty())
             [mimeTypes addObject:mimeType];
     }
@@ -283,13 +283,14 @@ static bool arrayContainsUTIThatConformsTo(NSArray<NSString *> *typeIdentifiers,
 {
     // Dismiss any view controller that is being presented. This works for all types of view controllers, popovers, etc.
     // If there is any kind of view controller presented on this view, it will be removed.
-    
-    [[UIViewController _viewControllerForFullScreenPresentationFromView:_view.getAutoreleased()] dismissViewControllerAnimated:NO completion:nil];
+
+    if (auto view = _view.get())
+        [[UIViewController _viewControllerForFullScreenPresentationFromView:view.get()] dismissViewControllerAnimated:NO completion:nil];
     
     [_presentationPopover setDelegate:nil];
     _presentationPopover = nil;
     _presentationViewController = nil;
-    
+
     [self _cancel];
 }
 

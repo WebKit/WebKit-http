@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Canon Inc.
+ * Copyright (C) 2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted, provided that the following conditions
@@ -176,8 +177,11 @@ ExceptionOr<Ref<FetchResponse>> FetchResponse::clone(ScriptExecutionContext& con
     ASSERT(scriptExecutionContext());
 
     // If loading, let's create a stream so that data is teed on both clones.
-    if (isLoading() && !m_readableStreamSource)
-        createReadableStream(*context.execState());
+    if (isLoading() && !m_readableStreamSource) {
+        auto voidOrException = createReadableStream(*context.execState());
+        if (UNLIKELY(voidOrException.hasException()))
+            return voidOrException.releaseException();
+    }
 
     // Synthetic responses do not store headers in m_internalResponse.
     if (m_internalResponse.type() == ResourceResponse::Type::Default)
@@ -271,14 +275,13 @@ void FetchResponse::BodyLoader::didSucceed()
     ASSERT(m_response.hasPendingActivity());
     m_response.m_body->loadingSucceeded();
 
-#if ENABLE(STREAMS_API)
     if (m_response.m_readableStreamSource) {
         if (m_response.body().consumer().hasData())
             m_response.m_readableStreamSource->enqueue(m_response.body().consumer().takeAsArrayBuffer());
 
         m_response.closeStream();
     }
-#endif
+
     if (auto consumeDataCallback = WTFMove(m_consumeDataCallback))
         consumeDataCallback(nullptr);
 
@@ -300,13 +303,12 @@ void FetchResponse::BodyLoader::didFail(const ResourceError& error)
     if (auto consumeDataCallback = WTFMove(m_consumeDataCallback))
         consumeDataCallback(Exception { TypeError, error.localizedDescription() });
 
-#if ENABLE(STREAMS_API)
     if (m_response.m_readableStreamSource) {
         if (!m_response.m_readableStreamSource->isCancelling())
             m_response.m_readableStreamSource->error(*m_response.loadingException());
         m_response.m_readableStreamSource = nullptr;
     }
-#endif
+
     if (m_response.m_body)
         m_response.m_body->loadingFailed(*m_response.loadingException());
 
@@ -349,11 +351,7 @@ void FetchResponse::BodyLoader::didReceiveResponse(const ResourceResponse& resou
 
 void FetchResponse::BodyLoader::didReceiveData(const char* data, size_t size)
 {
-#if ENABLE(STREAMS_API)
     ASSERT(m_response.m_readableStreamSource || m_consumeDataCallback);
-#else
-    ASSERT(m_consumeDataCallback);
-#endif
 
     if (m_consumeDataCallback) {
         ReadableStreamChunk chunk { reinterpret_cast<const uint8_t*>(data), size };
@@ -361,7 +359,6 @@ void FetchResponse::BodyLoader::didReceiveData(const char* data, size_t size)
         return;
     }
 
-#if ENABLE(STREAMS_API)
     auto& source = *m_response.m_readableStreamSource;
 
     if (!source.isPulling()) {
@@ -378,10 +375,6 @@ void FetchResponse::BodyLoader::didReceiveData(const char* data, size_t size)
         return;
     }
     source.resolvePullPromise();
-#else
-    UNUSED_PARAM(data);
-    UNUSED_PARAM(size);
-#endif
 }
 
 bool FetchResponse::BodyLoader::start(ScriptExecutionContext& context, const FetchRequest& request)
@@ -458,7 +451,6 @@ void FetchResponse::setBodyData(ResponseData&& data, uint64_t bodySizeWithPaddin
     );
 }
 
-#if ENABLE(STREAMS_API)
 void FetchResponse::consumeChunk(Ref<JSC::Uint8Array>&& chunk)
 {
     body().consumer().append(chunk->data(), chunk->byteLength());
@@ -522,8 +514,6 @@ void FetchResponse::cancel()
     m_isDisturbed = true;
     stop();
 }
-
-#endif
 
 void FetchResponse::stop()
 {

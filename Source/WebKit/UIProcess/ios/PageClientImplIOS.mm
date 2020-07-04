@@ -150,9 +150,10 @@ bool PageClientImpl::isViewVisible()
 
 bool PageClientImpl::isApplicationVisible()
 {
-    auto* window = [m_webView window];
-    if (!window || applicationType(window) == ApplicationType::Application)
+    if (applicationType([m_webView window]) == ApplicationType::Application) {
+        ASSERT(!_UIApplicationIsExtension());
         return [[UIApplication sharedApplication] applicationState] != UIApplicationStateBackground;
+    }
 
     // Complex code path for extensions and view services.
     UIViewController *serviceViewController = nil;
@@ -790,14 +791,14 @@ void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 {
 }
 
-void PageClientImpl::didFinishLoadForMainFrame()
+void PageClientImpl::didFinishNavigation(API::Navigation* navigation)
 {
-    [m_webView _didFinishLoadForMainFrame];
+    [m_webView _didFinishNavigation:navigation];
 }
 
-void PageClientImpl::didFailLoadForMainFrame()
+void PageClientImpl::didFailNavigation(API::Navigation* navigation)
 {
-    [m_webView _didFailLoadForMainFrame];
+    [m_webView _didFailNavigation:navigation];
 }
 
 void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType navigationType)

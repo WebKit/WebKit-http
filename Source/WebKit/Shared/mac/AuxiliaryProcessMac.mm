@@ -36,6 +36,7 @@
 #import "WKFoundation.h"
 #import "XPCServiceEntryPoint.h"
 #import <WebCore/FileHandle.h>
+#import <WebCore/FloatingPointEnvironment.h>
 #import <WebCore/SystemVersion.h>
 #import <mach-o/dyld.h>
 #import <mach/mach.h>
@@ -161,6 +162,9 @@ void AuxiliaryProcess::launchServicesCheckIn()
 void AuxiliaryProcess::platformInitialize()
 {
     initializeTimerCoalescingPolicy();
+
+    FloatingPointEnvironment::singleton().saveMainThreadEnvironment();
+
     [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
 }
 
@@ -256,10 +260,7 @@ static Optional<CString> setAndSerializeSandboxParameters(const SandboxInitializ
 static String sandboxDataVaultParentDirectory()
 {
     char temp[PATH_MAX];
-    // We save the profiles in the user tempory directory so that they get cleaned on reboot
-    // or if they are not accessed in 3 days. This avoids accumulating profiles whenever we change
-    // our sandbox rules or webkit cache directories (rdar://problem/54613619).
-    size_t length = confstr(_CS_DARWIN_USER_TEMP_DIR, temp, sizeof(temp));
+    size_t length = confstr(_CS_DARWIN_USER_CACHE_DIR, temp, sizeof(temp));
     if (!length) {
         WTFLogAlways("%s: Could not retrieve user temporary directory path: %s\n", getprogname(), strerror(errno));
         exit(EX_NOPERM);
@@ -520,7 +521,7 @@ static bool tryApplyCachedSandbox(const SandboxInfo& info)
 
 static inline const NSBundle *webKit2Bundle()
 {
-    const static NSBundle *bundle = [NSBundle bundleForClass:NSClassFromString(@"WKWebView")];
+    const static NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit"];
     return bundle;
 }
 

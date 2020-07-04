@@ -113,8 +113,8 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << smartInsertDeleteEnabled;
     encoder << additionalSupportedImageTypes;
 #endif
-#if ENABLE(TINT_COLOR_SUPPORT)
-    encoder << tintColor;
+#if HAVE(APP_ACCENT_COLORS)
+    encoder << accentColor;
 #endif
 #if USE(WPE_RENDERER)
     encoder << hostFileDescriptor;
@@ -153,6 +153,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldCaptureVideoInGPUProcess;
     encoder << shouldCaptureDisplayInUIProcess;
     encoder << shouldRenderCanvasInGPUProcess;
+    encoder << shouldEnableVP9Decoder;
     encoder << needsInAppBrowserPrivacyQuirks;
     encoder << limitsNavigationsToAppBoundDomains;
     encoder << shouldRelaxThirdPartyCookieBlocking;
@@ -359,8 +360,8 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
 #endif
 
-#if ENABLE(TINT_COLOR_SUPPORT)
-    if (!decoder.decode(parameters.tintColor))
+#if HAVE(APP_ACCENT_COLORS)
+    if (!decoder.decode(parameters.accentColor))
         return WTF::nullopt;
 #endif
 
@@ -489,6 +490,9 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
 
     if (!decoder.decode(parameters.shouldRenderCanvasInGPUProcess))
+        return WTF::nullopt;
+
+    if (!decoder.decode(parameters.shouldEnableVP9Decoder))
         return WTF::nullopt;
 
     if (!decoder.decode(parameters.needsInAppBrowserPrivacyQuirks))

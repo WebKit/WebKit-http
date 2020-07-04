@@ -97,6 +97,7 @@
 #import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/Color.h>
 #import <WebCore/ColorIOS.h>
+#import <WebCore/ColorSerialization.h>
 #import <WebCore/CompositionHighlight.h>
 #import <WebCore/DOMPasteAccess.h>
 #import <WebCore/DataDetection.h>
@@ -3196,7 +3197,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
 - (void)_setTextColorForWebView:(UIColor *)color sender:(id)sender
 {
-    _page->executeEditCommand("ForeColor"_s, WebCore::Color(color.CGColor).serialized());
+    _page->executeEditCommand("ForeColor"_s, WebCore::serializationForHTML(WebCore::Color(color.CGColor)));
 }
 
 - (void)toggleStrikeThroughForWebView:(id)sender
@@ -3447,18 +3448,15 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
     if (action == @selector(select:)) {
         // Disable select in password fields so that you can't see word boundaries.
-        return !editorState.isInPasswordField && [self hasContent] && !editorState.selectionIsNone && !editorState.selectionIsRange;
+        return !editorState.isInPasswordField && !editorState.selectionIsRange && self.hasContent;
     }
 
     if (action == @selector(selectAll:)) {
-        // By platform convention we don't show Select All in the callout menu for a range selection.
-        if ([sender isKindOfClass:UIMenuController.class])
-            return !editorState.selectionIsNone && !editorState.selectionIsRange;
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
+        if ([sender isKindOfClass:UIMenuController.class]) {
+            // By platform convention we don't show Select All in the callout menu for a range selection.
+            return !editorState.selectionIsRange && self.hasContent;
+        }
         return YES;
-#else
-        return !editorState.selectionIsNone && self.hasContent;
-#endif
     }
 
     if (action == @selector(replace:))
@@ -7802,6 +7800,8 @@ static inline OptionSet<WebKit::DocumentEditingContextRequest::Options> toWebDoc
         options.add(WebKit::DocumentEditingContextRequest::Options::Annotation);
     if (flags & UIWKDocumentRequestMarkedTextRects)
         options.add(WebKit::DocumentEditingContextRequest::Options::MarkedTextRects);
+    if (flags & UIWKDocumentRequestSpatialAndCurrentSelection)
+        options.add(WebKit::DocumentEditingContextRequest::Options::SpatialAndCurrentSelection);
 
     return options;
 }

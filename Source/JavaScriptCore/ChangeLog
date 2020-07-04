@@ -1,3 +1,394 @@
+2020-07-03  Darin Adler  <darin@apple.com>
+
+        Make generate-unified-sources.sh not depend on features being listed in FEATURE_DEFINES environment variable
+        https://bugs.webkit.org/show_bug.cgi?id=212420
+
+        Reviewed by Don Olmstead.
+
+        * Scripts/generate-unified-sources.sh: Removed many unneeded quote marks from the
+        invocation of generate-unified-source-bundles.rb.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        Update comment in FeatureDefines.xcconfig since PlatformEnableCocoa.h should be used instead
+        https://bugs.webkit.org/show_bug.cgi?id=213952
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Updated comment.
+
+2020-07-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Promise should check whether a user-provided function is set by using `@isUndefinedOrNull`
+        https://bugs.webkit.org/show_bug.cgi?id=213951
+
+        Reviewed by Ross Kirsling.
+
+        If a user-provided function is masquerade-as-undefined value, `if (!xxx.@onRejected)` returns wrong
+        value since this function object is considered as undefined in this context. We should use `@isUndefinedOrNull`
+        here instead since this if-branch is checking whether this property is null/undefined actually.
+        And `if (@isUndefinedOrNull(...))` is efficient since we have `jundefined_or_null` / `jnundefined_or_null` bytecodes.
+
+        * builtins/PromiseOperations.js:
+        (globalPrivate.promiseReactionJob):
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Remove support for ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
+        https://bugs.webkit.org/show_bug.cgi?id=213932
+
+        Reviewed by Darin Adler.
+
+        Removes support for non-standard <input type="datetime">, currently being 
+        guarded by the macro ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE. This macro, was
+        added back in 2013 as a temporary measure to support some engines who shipped
+        support for <input type="datetime">. It is currently not enabled for any
+        ports so now seems like as good a time as any to remove it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Add "-Wliteral-conversion" warning to Xcode based builds and fix the issues it finds
+        https://bugs.webkit.org/show_bug.cgi?id=213931
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+        Add -Wliteral-conversion.
+
+2020-07-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add exception checks before and after viewWithUnderlyingString
+        https://bugs.webkit.org/show_bug.cgi?id=213923
+        <rdar://problem/65068473>
+
+        Reviewed by Sam Weinig.
+
+        This patch inserts missing exception checks before and after viewWithUnderlyingString.
+
+        * jsc.cpp:
+        (printInternal):
+        (functionDebug):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncParseFloat):
+        * runtime/JSONObject.cpp:
+        (JSC::JSONProtoFuncParse):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncCharAt):
+        (JSC::stringProtoFuncCharCodeAt):
+
+2020-07-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add exception checks in JSStringBuilder and Array#join
+        https://bugs.webkit.org/show_bug.cgi?id=213915
+        <rdar://problem/64878225>
+
+        Reviewed by Saam Barati and Mark Lam.
+
+        This patch adds missing exception checks into Array#join's certain place and JSStringBuilder.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        * runtime/JSStringJoiner.h:
+        (JSC::JSStringJoiner::append):
+
+2020-07-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Builtin internal wrapper implementation files wrap static global initialization code with incorrect guards
+        https://bugs.webkit.org/show_bug.cgi?id=213792
+
+        Reviewed by Youenn Fablet.
+
+        Streams API hadn't worked since r263700 for AppleWin and WinCairo
+        ports. r263700 removed the unused ENABLE_STREAMS_API.
+
+        Before r263700, the static global initialization code was wrapped
+        by "ENABLE(WEB_RTC) || ENABLE(STREAMS_API)". After r263700, it was
+        wrapped by "ENABLE(WEB_RTC)". AppleWin and WinCairo doesn't turn
+        on ENABLE_WEB_RTC. So, builtins for Streams API weren't properly
+        initialized for them.
+
+        * Scripts/tests/builtins/expected/WebCoreJSBuiltins.h-result: Rebaselined.
+        * Scripts/wkbuiltins/builtins_generate_internals_wrapper_implementation.py:
+        (BuiltinsInternalsWrapperImplementationGenerator.generate_initialize_method):
+        Removed calling wrap_with_guard for the value of _generate_initialize_static_globals().
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Update Mac CMake build
+
+        * PlatformMac.cmake:
+
+2020-07-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Configure option-offered numberingSystem in Intl.NumberFormat through locale
+        https://bugs.webkit.org/show_bug.cgi?id=213872
+
+        Reviewed by Ross Kirsling.
+
+        We need to pass numberingSystem option to ICU through locale when constructing UNumberFormat.
+        We are passing it when we get "en-US-u-nu-hanidec" locale, but we are not passing it when
+        we are getting `new Intl.NumberFormat("en-US", { numberingSystem: "hanidec" })`.
+
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::initializeNumberFormat):
+
+2020-07-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Intl.Collator should set usage:"search" option through ICU locale
+        https://bugs.webkit.org/show_bug.cgi?id=213869
+
+        Reviewed by Ross Kirsling.
+
+        Intl.Collator has usage:"search" option, and it affects on collation. However, UCollator does not have an interface to set this collation option,
+        and only way to configure UCollator is setting "-u-co-search" unicode extension to passed locale string. This patch adds "-u-co-search" unicode
+        extension if Usage::Search is specified.
+
+        * runtime/IntlCollator.cpp:
+        (JSC::IntlCollator::initializeCollator):
+
+2020-07-01  Keith Miller  <keith_miller@apple.com>
+
+        Rename zeroExtend32ToPtr to zeroExtend32ToWord
+        https://bugs.webkit.org/show_bug.cgi?id=213866
+
+        Reviewed by Saam Barati.
+
+        The old name no longer makes sense now that we have configurations
+        where sizeof(void*) != sizeof(CPURegister).
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::branchTruncateDoubleToInt32):
+        (JSC::MacroAssemblerARM64::zeroExtend32ToWord):
+        (JSC::MacroAssemblerARM64::branchMul32):
+        (JSC::MacroAssemblerARM64::zeroExtend32ToPtr): Deleted.
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::zeroExtend32ToWord):
+        (JSC::MacroAssemblerARMv7::zeroExtend32ToPtr): Deleted.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::zeroExtend32ToWord):
+        (JSC::MacroAssemblerMIPS::zeroExtend32ToPtr): Deleted.
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::add32):
+        (JSC::MacroAssemblerX86Common::and32):
+        (JSC::MacroAssemblerX86Common::mul32):
+        (JSC::MacroAssemblerX86Common::or32):
+        (JSC::MacroAssemblerX86Common::xor32):
+        (JSC::MacroAssemblerX86Common::zeroExtend32ToWord):
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        (JSC::MacroAssemblerX86Common::zeroExtend32ToPtr): Deleted.
+        * b3/air/AirOpcode.opcodes:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateWithGuard):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::compileExit):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStringSlice):
+        (JSC::DFG::SpeculativeJIT::compileValueToInt32):
+        (JSC::DFG::SpeculativeJIT::compileUInt32ToNumber):
+        (JSC::DFG::SpeculativeJIT::setIntTypedArrayLoadResult):
+        (JSC::DFG::SpeculativeJIT::compileArithDiv):
+        (JSC::DFG::SpeculativeJIT::compileCreateRest):
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+        (JSC::DFG::SpeculativeJIT::compileNewTypedArrayWithSize):
+        (JSC::DFG::SpeculativeJIT::emitAllocateButterfly):
+        (JSC::DFG::SpeculativeJIT::compileWeakMapGet):
+        (JSC::DFG::SpeculativeJIT::emitInitializeButterfly):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::reboxAccordingToFormat):
+        * jit/CallFrameShuffler64.cpp:
+        (JSC::CallFrameShuffler::emitBox):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_has_indexed_property):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_has_indexed_property):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_by_val):
+        * jit/JSInterfaceJIT.h:
+        (JSC::JSInterfaceJIT::emitLoadInt32):
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::boxWasmResult):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::wasmToJS):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::jsCallEntrypointSlow):
+        * yarr/YarrJIT.cpp:
+
+2020-07-01  Saam Barati  <sbarati@apple.com>
+
+        Script to copy over testapi.js is redundant in xcodebuild
+        https://bugs.webkit.org/show_bug.cgi?id=213824
+
+        Reviewed by Keith Miller.
+
+        We're already copying over the entire testapiScripts directory.
+        No need to manually copy just one file from it, too.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2020-07-01  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Use properly flag names for tests of Tools/Scripts/run-builtins-generator-tests
+        https://bugs.webkit.org/show_bug.cgi?id=213733
+
+        Reviewed by Youenn Fablet.
+
+        Test cases under Source/JavaScriptCore/Scripts/tests/builtins/ uses exist compilation flags.
+        But they can take an arbitary flag name and don't have to use an exist flag.
+        I think it's better to rename them to more proper ones.
+
+        * Scripts/tests/builtins/WebCore-ArbitraryConditionalGuard-Separate.js:
+        * Scripts/tests/builtins/WebCore-DuplicateKeyValueAnnotation-Separate.js:
+        * Scripts/tests/builtins/WebCore-GuardedBuiltin-Separate.js:
+        * Scripts/tests/builtins/WebCore-GuardedInternalBuiltin-Separate.js:
+        * Scripts/tests/builtins/WebCore-xmlCasingTest-Separate.js:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCoreJSBuiltins.h-result:
+
+2020-06-30  Peng Liu  <peng.liu6@apple.com>
+
+        Enable the support of FULLSCREEN_API in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=213774
+
+        Reviewed by Youenn Fablet.
+
+        Replace the definition of ENABLE_FULLSCREEN_API in FeatureDefines.xcconfig with
+        the one in PlatformEnableCocoa.h. We have to do that because WebKitTestRunner
+        does not have a FeatureDefines.xcconfig but it uses "ENABLE(FULLSCREEN_API)"
+        to conditionally compile code to test the element fullscreen API.
+        WebKitTestRunner can use the macro defined in PlatformEnableCocoa.h.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-30  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable the "My Mac (Mac Catalyst)" destination in WebKit Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=213740
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set SUPPORTS_MACCATALYST to YES to tell Xcode that this
+        project supports building for Mac Catalyst.
+
+2020-06-29  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Remove ENABLE_STREAMS_API compilation flag
+        https://bugs.webkit.org/show_bug.cgi?id=213728
+
+        Reviewed by Sam Weinig.
+
+        test cases under Scripts/tests/builtins/ does not uses
+        this removed compilation flag. So we don't have to touch them in this change.
+        
+        But they are confusable so I plan to fix them in bug 213733.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-06-29  Keith Miller  <keith_miller@apple.com>
+
+        ConservativeRoots should mark any cell it finds an interior pointer to
+        https://bugs.webkit.org/show_bug.cgi?id=213686
+
+        Reviewed by Yusuke Suzuki.
+
+        Currently, if ConserativeRoots finds an interior pointer to a cell
+        it will only mark that cell if it's a butterfly of some
+        kind. However, this can cause problems if the C++ or B3 compilers
+        pre-compute the offset of some cell member they want to load from
+        after a call. If this happens and that interior pointer is the
+        only reference to the cell it can get collected while it is still
+        "alive".
+
+        A naive patch that doesn't return from
+        findGCObjectPointersForMarking after finding a live non-interior,
+        non-butterfly cell was a 2% regression on Speedometer2 and
+        JetStream2. So, this patch immediately returns after
+        marking some non-butterfly cell, which appears to have fixed the
+        regression locally. Given this was such a big regression (likely
+        from running MarkedBlock::isLive) more than once there's possibly
+        an optimization opportunity here. I filed
+        https://bugs.webkit.org/show_bug.cgi?id=213687 to investigate
+        further.
+
+        * heap/HeapCell.cpp:
+        (WTF::printInternal):
+        * heap/HeapCell.h:
+        (JSC::isJSCellKind):
+        (JSC::mayHaveIndexingHeader):
+        (JSC::hasInteriorPointers): Deleted.
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+
+2020-06-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Rename initializeThreading to initialize
+        https://bugs.webkit.org/show_bug.cgi?id=213674
+
+        Reviewed by Mark Lam.
+
+        * API/JSClassRef.cpp:
+        * API/JSContextRef.cpp:
+        (JSContextGroupCreate):
+        (JSGlobalContextCreate):
+        (JSGlobalContextCreateInGroup):
+        * API/JSObjectRef.cpp:
+        (JSClassCreate):
+        * API/JSStringRef.cpp:
+        (JSStringCreateWithCharacters):
+        (JSStringCreateWithUTF8CString):
+        (JSStringCreateWithCharactersNoCopy):
+        * API/JSStringRefCF.cpp:
+        (JSStringCreateWithCFString):
+        * API/tests/CompareAndSwapTest.cpp:
+        (testCompareAndSwap):
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        (testExecutionTimeLimit):
+        * API/tests/FunctionOverridesTest.cpp:
+        (testFunctionOverrides):
+        * API/tests/MultithreadedMultiVMExecutionTest.cpp:
+        (startMultithreadedMultiVMExecutionTest):
+        * API/tests/PingPongStackOverflowTest.cpp:
+        (testPingPongStackOverflow):
+        * JavaScriptCore.order:
+        * assembler/testmasm.cpp:
+        (JSC::run):
+        * b3/air/testair.cpp:
+        (main):
+        * b3/testb3_1.cpp:
+        (main):
+        * dfg/testdfg.cpp:
+        (main):
+        * dynbench.cpp:
+        (main):
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::singleton):
+        * jsc.cpp:
+        (main):
+        (jscmain):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initialize):
+        (JSC::initializeThreading): Deleted.
+        * runtime/InitializeThreading.h:
+        * runtime/JSCConfig.h:
+        * shell/playstation/TestShell.cpp:
+        (setupTestRun):
+        * testRegExp.cpp:
+        (main):
+
 2020-06-27  Saam Barati  <sbarati@apple.com>
 
         BytecodeBasicBlock::addSuccessor should check if the  successor already exists

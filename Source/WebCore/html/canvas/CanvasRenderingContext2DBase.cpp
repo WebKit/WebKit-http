@@ -40,6 +40,8 @@
 #include "CachedImage.h"
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
+#include "ColorConversion.h"
+#include "ColorSerialization.h"
 #include "DOMMatrix.h"
 #include "DOMMatrix2DInit.h"
 #include "DisplayListDrawingContext.h"
@@ -371,7 +373,7 @@ void CanvasRenderingContext2DBase::setStrokeStyle(CanvasStyle style)
     if (!style.isValid())
         return;
 
-    if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentColor(style))
+    if (state().strokeStyle.isEquivalentColor(style))
         return;
 
     if (style.isCurrentColor())
@@ -394,7 +396,7 @@ void CanvasRenderingContext2DBase::setFillStyle(CanvasStyle style)
     if (!style.isValid())
         return;
 
-    if (state().fillStyle.isValid() && state().fillStyle.isEquivalentColor(style))
+    if (state().fillStyle.isEquivalentColor(style))
         return;
 
     if (style.isCurrentColor())
@@ -626,7 +628,7 @@ void CanvasRenderingContext2DBase::setShadowBlur(float blur)
 
 String CanvasRenderingContext2DBase::shadowColor() const
 {
-    return state().shadowColor.serialized();
+    return serializationForHTML(state().shadowColor);
 }
 
 void CanvasRenderingContext2DBase::setShadowColor(const String& colorString)
@@ -914,23 +916,26 @@ void CanvasRenderingContext2DBase::setStrokeColor(const String& color, Optional<
 
 void CanvasRenderingContext2DBase::setStrokeColor(float grayLevel, float alpha)
 {
-    if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentRGBA(grayLevel, grayLevel, grayLevel, alpha))
+    auto color = SRGBA { grayLevel, grayLevel, grayLevel, alpha };
+    if (state().strokeStyle.isEquivalent(color))
         return;
-    setStrokeStyle(CanvasStyle(grayLevel, alpha));
+    setStrokeStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::setStrokeColor(float r, float g, float b, float a)
 {
-    if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentRGBA(r, g, b, a))
+    auto color = SRGBA { r, g, b, a };
+    if (state().strokeStyle.isEquivalent(color))
         return;
-    setStrokeStyle(CanvasStyle(r, g, b, a));
+    setStrokeStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::setStrokeColor(float c, float m, float y, float k, float a)
 {
-    if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentCMYKA(c, m, y, k, a))
+    auto color = CMYKA { c, m, y, k, a };
+    if (state().strokeStyle.isEquivalent(color))
         return;
-    setStrokeStyle(CanvasStyle(c, m, y, k, a));
+    setStrokeStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::setFillColor(const String& color, Optional<float> alpha)
@@ -950,23 +955,26 @@ void CanvasRenderingContext2DBase::setFillColor(const String& color, Optional<fl
 
 void CanvasRenderingContext2DBase::setFillColor(float grayLevel, float alpha)
 {
-    if (state().fillStyle.isValid() && state().fillStyle.isEquivalentRGBA(grayLevel, grayLevel, grayLevel, alpha))
+    auto color = SRGBA { grayLevel, grayLevel, grayLevel, alpha };
+    if (state().fillStyle.isEquivalent(color))
         return;
-    setFillStyle(CanvasStyle(grayLevel, alpha));
+    setFillStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::setFillColor(float r, float g, float b, float a)
 {
-    if (state().fillStyle.isValid() && state().fillStyle.isEquivalentRGBA(r, g, b, a))
+    auto color = SRGBA { r, g, b, a };
+    if (state().fillStyle.isEquivalent(color))
         return;
-    setFillStyle(CanvasStyle(r, g, b, a));
+    setFillStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::setFillColor(float c, float m, float y, float k, float a)
 {
-    if (state().fillStyle.isValid() && state().fillStyle.isEquivalentCMYKA(c, m, y, k, a))
+    auto color = CMYKA { c, m, y, k, a };
+    if (state().fillStyle.isEquivalent(color))
         return;
-    setFillStyle(CanvasStyle(c, m, y, k, a));
+    setFillStyle(CanvasStyle(color));
 }
 
 void CanvasRenderingContext2DBase::beginPath()
@@ -1307,17 +1315,17 @@ void CanvasRenderingContext2DBase::setShadow(float width, float height, float bl
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float grayLevel, float alpha)
 {
-    setShadow(FloatSize(width, height), blur, makeSimpleColorFromFloats(grayLevel, grayLevel, grayLevel, alpha));
+    setShadow(FloatSize(width, height), blur, makeSimpleColor(SRGBA { grayLevel, grayLevel, grayLevel, alpha }));
 }
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float r, float g, float b, float a)
 {
-    setShadow(FloatSize(width, height), blur, makeSimpleColorFromFloats(r, g, b, a));
+    setShadow(FloatSize(width, height), blur, makeSimpleColor(SRGBA { r, g, b, a }));
 }
 
 void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, float c, float m, float y, float k, float a)
 {
-    setShadow(FloatSize(width, height), blur, makeSimpleColorFromCMYKA(c, m, y, k, a));
+    setShadow(FloatSize(width, height), blur, makeSimpleColor(toSRGBA(CMYKA { c, m, y, k, a })));
 }
 
 void CanvasRenderingContext2DBase::clearShadow()

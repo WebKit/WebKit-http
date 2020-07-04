@@ -30,6 +30,8 @@
 
 #import "Attr.h"
 #import "CSSStyleDeclaration.h"
+#import "ColorConversion.h"
+#import "ColorSerialization.h"
 #import "Editing.h"
 #import "ElementAncestorIterator.h"
 #import "ElementTraversal.h"
@@ -628,7 +630,7 @@ NSArray *DataDetection::detectContentInRange(const SimpleRange& contextRange, Da
                         auto underlineColor = makeSimpleColor(toSRGBA(hsla));
 
                         anchorElement->setInlineStyleProperty(CSSPropertyColor, CSSValueCurrentcolor);
-                        anchorElement->setInlineStyleProperty(CSSPropertyTextDecorationColor, underlineColor.serializationForCSS());
+                        anchorElement->setInlineStyleProperty(CSSPropertyTextDecorationColor, serializationForCSS(underlineColor));
                     }
                 }
             }

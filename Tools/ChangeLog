@@ -1,3 +1,588 @@
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        Make generate-unified-sources.sh not depend on features being listed in FEATURE_DEFINES environment variable
+        https://bugs.webkit.org/show_bug.cgi?id=212420
+
+        * Scripts/generate-unified-sources.sh: Removed --feature-flags from the
+        arguments passed to generate-unified-source-bundles.rb. Also removed many
+        unneeded quotes.
+
+2020-07-04  Lauro Moura  <lmoura@igalia.com>
+
+        [WebDriver][WPE] Allow running Selenium tests with the WPE WebDriver
+        https://bugs.webkit.org/show_bug.cgi?id=213500
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add missing method used to discover the selenium name of
+        the WPE webdriver.
+
+        Proper gardening/triaging of failures will come in following commits.
+
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_wpe.py:
+        (WebDriverWPE.selenium_name):
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        Update comment in FeatureDefines.xcconfig since PlatformEnableCocoa.h should be used instead
+        https://bugs.webkit.org/show_bug.cgi?id=213952
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Updated comment.
+
+2020-07-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Tests that show system menu popups may fail when run concurrently
+        https://bugs.webkit.org/show_bug.cgi?id=213950
+        <rdar://problem/64551566>
+
+        Reviewed by Darin Adler.
+
+        Make it possible to run tests that present system modal popups simultaneously, without the possibility of these
+        tests interfering with each other. Examples include context menus, select menus, and the DOM paste popup. To do
+        this, we swizzle out codepaths for showing and dimissing popups, and instead dispatch notifications and the
+        appropriate NSMenuDelegate methods ourselves.
+
+        This change has the side effect of fixing several layout tests that are currently timing out only on arm64e
+        macOS, due to reasons detailed in <rdar://problem/65084503>.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::setSwizzledPopUpMenu):
+        (WTR::swizzledPopUpContextMenu):
+        (WTR::swizzledPopUpMenu):
+        (WTR::swizzledCancelTracking):
+        (WTR::TestController::platformInitialize):
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Remove support for ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
+        https://bugs.webkit.org/show_bug.cgi?id=213932
+
+        Reviewed by Darin Adler.
+
+        Removes support for non-standard <input type="datetime">, currently being 
+        guarded by the macro ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE. This macro, was
+        added back in 2013 as a temporary measure to support some engines who shipped
+        support for <input type="datetime">. It is currently not enabled for any
+        ports so now seems like as good a time as any to remove it.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2020-07-03  Sam Weinig  <weinig@apple.com>
+
+        Split color conversion functions out of ColorUtilities.h/cpp into their own file.
+        https://bugs.webkit.org/show_bug.cgi?id=213803
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebCore/ColorTests.cpp:
+        Update to include ColorConversion.h and ColorTypes.h rather than ColorUtilities.h
+
+2020-07-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE][webkitpy] Use headless driver instead of wayland driver
+        https://bugs.webkit.org/show_bug.cgi?id=213914
+
+        Reviewed by Philippe Normand.
+
+        WPE now supports running tests completely headless, but we are
+        still using the webkitpy WaylandDriver to run the tests.
+        This causes an error if the environment doesn't have defined the
+        WAYLAND_DISPLAY or WAYLAND_SOCKET environment variables.
+        Switch the driver to HeadlessDriver.
+
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._driver_class):
+
+2020-07-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r261779): [GTK][WPE] http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=212017
+
+        Reviewed by Michael Catanzaro.
+
+        Use the ephemeral data store when useEphemeralSession option is enabled.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::platformInitializeDataStore):
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Update Mac CMake build
+
+        * DumpRenderTree/PlatformMac.cmake:
+        * WebKitTestRunner/PlatformMac.cmake:
+
+2020-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Add testing infrastructure and SPI declaration for HTTP/2 ping
+        https://bugs.webkit.org/show_bug.cgi?id=213913
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Preconnect.mm:
+        (-[SessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+        (TestWebKitAPI::pingPong):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/HTTPServer.h:
+        (TestWebKitAPI::H2::Frame::Frame):
+        (TestWebKitAPI::H2::Frame::type const):
+        (TestWebKitAPI::H2::Frame::flags const):
+        (TestWebKitAPI::H2::Frame::streamID const):
+        (TestWebKitAPI::H2::Frame::payload const):
+        (TestWebKitAPI::H2::Connection::create):
+        (TestWebKitAPI::H2::Connection::Connection):
+        * TestWebKitAPI/cocoa/HTTPServer.mm:
+        (TestWebKitAPI::HTTPServer::listenerParameters):
+        (TestWebKitAPI::dataFromVector):
+        (TestWebKitAPI::vectorFromData):
+        (TestWebKitAPI::HTTPServer::request const):
+        (TestWebKitAPI::Connection::receiveBytes const):
+        (TestWebKitAPI::Connection::receiveHTTPRequest const):
+        (TestWebKitAPI::Connection::send const):
+        (TestWebKitAPI::H2::Connection::send const):
+        (TestWebKitAPI::H2::Connection::receive const):
+
+2020-07-02  Kate Cheney  <katherine_cheney@apple.com>
+
+        Custom URL schemes should be treated as app-bound
+        https://bugs.webkit.org/show_bug.cgi?id=213889
+        <rdar://problem/64804671>
+
+        Reviewed by Brent Fulgham.
+
+        Added custom schemes to TestWebKitAPI's Info.plist for testing
+        duplicate values and the max of 10 domains/schemes. Added
+        two API tests to check that schemes are properly read from the
+        Info.plist and that content loaded using a specified app-bound scheme
+        has restricted API use.
+
+        * TestWebKitAPI/Info.plist:
+        * TestWebKitAPI/Tests/WebKitCocoa/InAppBrowserPrivacy.mm:
+        (TEST):
+
+2020-07-02  Philippe Normand  <pnormand@igalia.com>
+
+        REGRESSION(r263625): run-minibrowser fails on mac
+        https://bugs.webkit.org/show_bug.cgi?id=213876
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.run_minibrowser): _run_script() expects a string as first argument. Command-line args
+        are passed through a keyword.
+
+2020-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK4 build
+
+        * MiniBrowser/gtk/BrowserSettingsDialog.c:
+        (browser_settings_dialog_init):
+
+2020-07-02  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Add perl-term-readkey
+        https://bugs.webkit.org/show_bug.cgi?id=213787
+
+        Reviewed by Adrian Perez de Castro.
+
+        This is yet another git-svn runtime dependency.
+
+        * buildstream/elements/sdk-platform.bst:
+        * buildstream/elements/sdk/perl-term-readkey.bst: Added.
+
+2020-07-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix the WebKit build after <rdar://problem/64288191>
+        https://bugs.webkit.org/show_bug.cgi?id=213832
+
+        Reviewed by Tim Horton.
+
+        Additionally, fix a naming conflict that will result from `WebArchivePboardType` being declared in both
+        `<WebKitLegacy/WebArchive.h>` and DumpRenderTree, by making the latter a local variable instead.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::imageCountInGeneralPasteboard const):
+
+2020-07-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Implement support for UIWKDocumentRequestSpatialAndCurrentSelection
+        https://bugs.webkit.org/show_bug.cgi?id=213704
+        <rdar://problem/59738878>
+
+        Reviewed by Wenson Hsieh.
+
+        Add some tests.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        (TEST):
+        * TestWebKitAPI/ios/UIKitSPI.h: Define the enumerator using a macro just like what was done for
+        UIWKDocumentRequestMarkedTextRects. The reason for the macro instead of modifying the enumeration
+        definition in this file is to 1) avoid breaking the build for Apple engineers that haven't picked
+        up <rdar://problem/64867540> and to 2) avoid breaking the OpenSource build.
+
+2020-07-01  Kate Cheney  <katherine_cheney@apple.com>
+
+        WKUserScripts injecting into all frames seem to violate app-bound domains
+        https://bugs.webkit.org/show_bug.cgi?id=213816
+        <rdar://problem/64872296>
+
+        Reviewed by Brady Eidson.
+
+        Added API test coverage. Sets up a tree like so: [app-bound domain,
+        non-app-bound domain, app-bound domain]. Script injection should only
+        be successful in the top frame. Since message handlers are disabled for non-
+        app-bound domains, this test injects script which loads an image using a
+        custom url scheme. If the load succeeds, we increment a counter, and
+        expect only one successful script load (the main frame).
+
+        * TestWebKitAPI/Tests/WebKitCocoa/InAppBrowserPrivacy.mm:
+        (-[InAppBrowserSchemeHandler webView:startURLSchemeTask:]):
+
+2020-06-30  Sam Weinig  <weinig@apple.com>
+
+        Split Color serialization out of Color classes
+        https://bugs.webkit.org/show_bug.cgi?id=213820
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ExtendedColorTests.cpp:
+        (TestWebKitAPI::TEST):
+        Update tests to use ColorSerialization.h
+
+2020-06-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Several key event tests in fast/events/ios are failing after <rdar://problem/62197116>
+        https://bugs.webkit.org/show_bug.cgi?id=213821
+        <rdar://problem/64821309>
+
+        Reviewed by Megan Gardner.
+
+        After the UIKit changes in <rdar://problem/62197116>, double tapping the Option key now enters dictation mode
+        by default, and additionally displays a modal popup prompting the user to set up dictation. Both of these
+        behaviors interfere with layout tests that attempt to press the option key twice in rapid succession, causing
+        them to time out or fail.
+
+        Fix this by setting the default that determines the modifier key to use as the dictation shortcut to -1, which
+        disables the dictation keyboard shortcut altogether.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+2020-06-30  Geoffrey Garen  <ggaren@apple.com>
+
+        [Cocoa] [GTK] RunLoop::Timer::isActive() is incorrect for timers while they are firing
+        https://bugs.webkit.org/show_bug.cgi?id=213771
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::DerivedOneShotTimer::fired):
+        (TestWebKitAPI::DerivedRepeatingTimer::fired):
+
+2020-06-30  Brady Eidson  <beidson@apple.com>
+
+        App-bound JavaScript and Navigation failures should have specific error codes.
+        <rdar://problem/64940268> and https://bugs.webkit.org/show_bug.cgi?id=213808
+
+        Reviewed by Tim Hatcher.
+        (Informally by Kate Cheney)
+
+        * TestWebKitAPI/Tests/WebKitCocoa/InAppBrowserPrivacy.mm:
+        (TEST):
+
+2020-06-30  Peng Liu  <peng.liu6@apple.com>
+
+        Enable the support of FULLSCREEN_API in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=213774
+
+        Reviewed by Youenn Fablet.
+
+        Replace the definition of ENABLE_FULLSCREEN_API in FeatureDefines.xcconfig with
+        the one in PlatformEnableCocoa.h. We have to do that because WebKitTestRunner
+        does not have a FeatureDefines.xcconfig but it uses "ENABLE(FULLSCREEN_API)"
+        to conditionally compile code to test the element fullscreen API.
+        WebKitTestRunner can use the macro defined in PlatformEnableCocoa.h.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2020-06-30  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WTF::MD5
+        https://bugs.webkit.org/show_bug.cgi?id=213766
+
+        Reviewed by Youenn Fablet.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/MD5.cpp: Removed.
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::computeSHA1HashStringForContext):
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected):
+        (WTR::computeMD5HashStringForContext): Deleted.
+
+2020-06-30  Jonathan Bedard  <jbedard@apple.com>
+
+        [TestExpectations] Add architecture for Apple's ports
+        https://bugs.webkit.org/show_bug.cgi?id=213769
+        <rdar://problem/64920013>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser): Add architectures for Apple's ports.
+
+2020-06-30  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable the "My Mac (Mac Catalyst)" destination in WebKit Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=213740
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * ImageDiff/cg/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig: Set SUPPORTS_MACCATALYST to YES to tell
+        Xcode that these projects support building for Mac Catalyst.
+
+        * MiniBrowser/Configurations/MiniBrowser.xcconfig: Excluded all source files on Mac Catalyst
+        so that schemes that include MiniBrowser can build for Mac Catalyst.
+
+2020-06-30  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE][GTK] Port API test harness to Python3
+        https://bugs.webkit.org/show_bug.cgi?id=213784
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        At least now the import chain starting from run-gtk-tests succeeds when the host Python
+        version is 3. Within the SDK the harness is still executed under Python2 though, for now.
+
+        * Scripts/run-gtk-tests:
+        (GtkTestRunner._setup_testing_environment):
+        * glib/api_test_runner.py:
+        (TestRunner._run_test_qt):
+        * glib/glib_test_runner.py:
+        (GLibTestRunner._read_from_pipe):
+        (GLibTestRunner._read_from_stderr):
+        * jhbuild/jhbuildutils.py:
+
+2020-06-30  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitperl] nativeArchitecture() needs to support remote devices
+        https://bugs.webkit.org/show_bug.cgi?id=213727
+        <rdar://problem/64892021>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/run-javascriptcore-tests: Determine the machine actually running tests and pass
+        that to nativeArchitecture(...).
+        (runTest): Pass nativeTarget and nativePort.
+        (runJSCStressTests): Ditto.
+        * Scripts/webkitdirs.pm:
+        (determineNativeArchitecture): Native architecture is dependent on the target device.
+        (determineArchitecture): Call nativeArchitecture() instead of accessing the variable directly.
+        (nativeArchitecture): Ensure that we return only the architecture of the specified target.
+
+2020-06-30  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Unreviewed API test gardening. Update test expectations after r263738.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2020-06-30  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Add libserf
+        https://bugs.webkit.org/show_bug.cgi?id=213682
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Subversion depends on SERF, which requires SCons for its build (the SERF CMake support is
+        incomplete)...
+
+        * buildstream/elements/sdk-build-depends/scons.bst: Added.
+        * buildstream/elements/sdk/libserf.bst: Added.
+        * buildstream/elements/sdk/subversion.bst:
+
+2020-06-29  Brady Eidson  <beidson@apple.com>
+
+        JavaScript cannot be injected into iframes
+        <rdar://problem/54168946> and https://bugs.webkit.org/show_bug.cgi?id=213556
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AsyncFunction.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/UserContentController.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEvaluateJavaScript.mm:
+        (TEST):
+        (-[FramesMessageHandler userContentController:didReceiveScriptMessage:]):
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[WKWebView objectByCallingAsyncFunction:withArguments:error:]):
+
+2020-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        [TestExpectations] Remove --csv option
+        https://bugs.webkit.org/show_bug.cgi?id=213762
+        <rdar://problem/64913762>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationLine.to_csv): Deleted.
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (PrintExpectations.__init__): Remove --csv option.
+        (PrintExpectations._format_lines): Ditto.
+        (PrintBaselines.__init__): Ditto.
+        (PrintBaselines.execute): Ditto.
+        (PrintBaselines._print_baselines): Ditto.
+        * Scripts/webkitpy/tool/commands/queries_unittest.py:
+        (PrintExpectationsTest.run_test):
+        (PrintExpectationsTest.test_include):
+        (PrintBaselinesTest.test_basic):
+        (PrintBaselinesTest.test_multiple):
+        (PrintExpectationsTest.test_csv): Deleted.
+        (PrintBaselinesTest.test_csv): Deleted.
+
+2020-06-29  Tetsuharu Ohzeki  <tetsuharu.ohzeki@gmail.com>
+
+        Remove ENABLE_STREAMS_API compilation flag
+        https://bugs.webkit.org/show_bug.cgi?id=213728
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2020-06-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] editing/selection/ios/select-text-after-changing-focus.html sometimes fails
+        https://bugs.webkit.org/show_bug.cgi?id=213745
+        Work towards <rdar://problem/64808138>
+
+        Reviewed by Tim Horton.
+
+        See WebKit/ChangeLog for more details. If this test happens to be run after another test that has written
+        something to the pasteboard, it will still fail due to the callout menu showing up with the option to paste.
+        Mitigate this by clearing the contents of the system pasteboard between tests, such that content copied from
+        previous tests doesn't change the behavior of subsequent tests.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+2020-06-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] run-webkit-tests is failing to run DRT and WTR without --architecture x86_64
+        https://bugs.webkit.org/show_bug.cgi?id=213688
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._port_flag_for_scripts):
+        (WinPort._build_path):
+        (WinPort._ntsd_location):
+        Replaced self.get_option('architecture') with self.architecture().
+
+2020-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        run-javascriptcore-tests: Support Apple Silicon running x86 processes
+        https://bugs.webkit.org/show_bug.cgi?id=213487
+        <rdar://problem/64606667>
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitdirs.pm:
+        (architecturesForProducts): Return architecutre(), not determineArchitecture().
+
+2020-06-29  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [webkitpy] PHP7.4 support on Debian platforms
+        https://bugs.webkit.org/show_bug.cgi?id=213721
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._debian_php_version):
+
+2020-06-29  Philippe Normand  <pnormand@igalia.com>
+
+        REGRESSION(r263625): [WPE][GTK] MiniBrowser output no longer includes stderr and stdout
+        https://bugs.webkit.org/show_bug.cgi?id=213696
+
+        Reviewed by Žan Doberšek.
+
+        This patch adds a new optional argument to Executive.run_command() to control stdout output.
+        By default the subprocess.PIPE value is used, to keep backward compatibility. Set the stdout
+        argument to None to display the output on the terminal tty.
+
+        The GTK and WPE run_minibrowser() implementations now use this new argument, along with
+        setting return_stderr to False to indicate we also want stderr displayed on the terminal
+        tty.
+
+        * Scripts/webkitpy/common/system/abstractexecutive.py:
+        (AbstractExecutive.run_command):
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.run_command):
+        * Scripts/webkitpy/common/system/executive_mock.py:
+        (MockExecutive.run_command):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.run_minibrowser):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.run_minibrowser):
+
+2020-06-29  Philippe Normand  <pnormand@igalia.com>
+
+        REGRESSION(r263625): run-minibrowser --debug/--release options gone
+        https://bugs.webkit.org/show_bug.cgi?id=213697
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/webkitpy/minibrowser/run_webkit_app.py:
+        (main): Explicitely skip the --target option. Previous code was also skipping --release and
+        --debug options because their `dest` is the same as with the --target option.
+
+2020-06-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add webkit_authentication_request_get_security_origin
+        https://bugs.webkit.org/show_bug.cgi?id=213596
+
+        Reviewed by Michael Catanzaro.
+
+        Update the unit tests to check the new API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestAuthentication.cpp:
+        (testWebViewAuthenticationRequest):
+        (testWebViewAuthenticationProxy):
+        (testWebViewAuthenticationProxyHTTPS):
+
+2020-06-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Rename initializeThreading to initialize
+        https://bugs.webkit.org/show_bug.cgi?id=213674
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WebCore/ApplicationManifestParser.cpp:
+        (ApplicationManifestParserTest::SetUp):
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::ComplexTextControllerTest::SetUp):
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::ContentExtensionTest::SetUp):
+        * TestWebKitAPI/Tests/WebCore/StringUtilities.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/cocoa/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        * TestWebKitAPI/glib/WebKitGLib/WebKitTestServer.cpp:
+        (WebKitTestServer::WebKitTestServer):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
 2020-06-27  Daniel Bates  <dabates@apple.com>
 
         Revert r262654 because it caused <rdar://problem/64664156>.

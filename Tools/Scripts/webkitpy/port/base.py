@@ -1253,7 +1253,7 @@ class Port(object):
 
     def _debian_php_version(self):
         prefix = "/usr/lib/apache2/modules/"
-        for version in ("7.0", "7.1", "7.2", "7.3"):
+        for version in ("7.0", "7.1", "7.2", "7.3", "7.4"):
             if self._filesystem.exists("%s/libphp%s.so" % (prefix, version)):
                 return "-php%s" % version
         _log.error("No libphp7.x.so found in %s" % prefix)
@@ -1369,7 +1369,7 @@ class Port(object):
 
     def run_minibrowser(self, args):
         # FIXME: Migrate to webkitpy based run-minibrowser. https://bugs.webkit.org/show_bug.cgi?id=213464
-        return self._run_script(["old-run-minibrowser", ] + args)
+        return self._run_script("old-run-minibrowser", args=args)
 
     @memoized
     def _path_to_image_diff(self):

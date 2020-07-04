@@ -32,6 +32,7 @@
 #include "RenderFlexibleBox.h"
 
 #include "FlexibleBoxAlgorithm.h"
+#include "HitTestResult.h"
 #include "LayoutRepainter.h"
 #include "RenderChildIterator.h"
 #include "RenderLayer.h"
@@ -252,6 +253,26 @@ void RenderFlexibleBox::styleDidChange(StyleDifference diff, const RenderStyle* 
                 child.setChildNeedsLayout(MarkOnlyThis);
         }
     }
+}
+
+bool RenderFlexibleBox::hitTestChildren(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& adjustedLocation, HitTestAction hitTestAction)
+{
+    if (hitTestAction != HitTestForeground)
+        return false;
+
+    LayoutPoint scrolledOffset = hasOverflowClip() ? adjustedLocation - toLayoutSize(scrollPosition()) : adjustedLocation;
+
+    for (auto* child : m_reversedOrderIteratorForHitTesting) {
+        if (child->hasSelfPaintingLayer())
+            continue;
+        auto childPoint = flipForWritingModeForChild(child, scrolledOffset);
+        if (child->hitTest(request, result, locationInContainer, childPoint)) {
+            updateHitTestResult(result, flipForWritingMode(toLayoutPoint(locationInContainer.point() - adjustedLocation)));
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
@@ -872,7 +893,9 @@ void RenderFlexibleBox::layoutFlexItems(bool relayoutChildren)
     // Set up our master list of flex items. All of the rest of the algorithm
     // should work off this list of a subset.
     // TODO(cbiesinger): That second part is not yet true.
+    // Also initialize the reversed order iterator that would be eventually used for hit testing.
     Vector<FlexItem> allItems;
+    m_reversedOrderIteratorForHitTesting.clear();
     m_orderIterator.first();
     for (RenderBox* child = m_orderIterator.currentChild(); child; child = m_orderIterator.next()) {
         if (m_orderIterator.shouldSkipChild(*child)) {
@@ -881,8 +904,10 @@ void RenderFlexibleBox::layoutFlexItems(bool relayoutChildren)
                 prepareChildForPositionedLayout(*child);
             continue;
         }
+        m_reversedOrderIteratorForHitTesting.append(child);
         allItems.append(constructFlexItem(*child, relayoutChildren));
     }
+    m_reversedOrderIteratorForHitTesting.reverse();
     
     const LayoutUnit lineBreakLength = mainAxisContentExtent(LayoutUnit::max());
     FlexLayoutAlgorithm flexAlgorithm(style(), lineBreakLength, allItems);
@@ -1136,14 +1161,13 @@ LayoutUnit RenderFlexibleBox::adjustChildSizeForMinAndMax(const RenderBox& child
     
 Optional<LayoutUnit> RenderFlexibleBox::crossSizeForPercentageResolution(const RenderBox& child)
 {
+    ASSERT(!hasOrthogonalFlow(child));
     if (alignmentForChild(child) != ItemPosition::Stretch)
         return WTF::nullopt;
 
     // Here we implement https://drafts.csswg.org/css-flexbox/#algo-stretch
-    if (hasOrthogonalFlow(child) && child.hasOverrideContentLogicalWidth())
-        return child.overrideContentLogicalWidth();
-    if (!hasOrthogonalFlow(child) && child.hasOverrideContentLogicalHeight())
-        return child.overrideContentLogicalHeight();
+    if (child.hasOverrideContentLogicalHeight())
+        return child.overrideContentLogicalHeight() - child.scrollbarLogicalHeight();
     
     // We don't currently implement the optimization from
     // https://drafts.csswg.org/css-flexbox/#definite-sizes case 1. While that
@@ -1156,15 +1180,14 @@ Optional<LayoutUnit> RenderFlexibleBox::crossSizeForPercentageResolution(const R
 
 Optional<LayoutUnit> RenderFlexibleBox::mainSizeForPercentageResolution(const RenderBox& child)
 {
+    ASSERT(hasOrthogonalFlow(child));
     // This function implements section 9.8. Definite and Indefinite Sizes, case 2) of the flexbox spec.
     // If the flex container has a definite main size the flex item post-flexing main size is also treated
     // as definite. We make up a percentage to check whether we have a definite size.
     if (!mainAxisLengthIsDefinite(child, Length(0, Percent)))
         return WTF::nullopt;
 
-    if (hasOrthogonalFlow(child))
-        return child.hasOverrideContentLogicalHeight() ? Optional<LayoutUnit>(child.overrideContentLogicalHeight()) : WTF::nullopt;
-    return child.hasOverrideContentLogicalWidth() ? Optional<LayoutUnit>(child.overrideContentLogicalWidth()) : WTF::nullopt;
+    return child.hasOverrideContentLogicalHeight() ? Optional<LayoutUnit>(child.overrideContentLogicalHeight() - child.scrollbarLogicalHeight()) : WTF::nullopt;
 }
 
 Optional<LayoutUnit> RenderFlexibleBox::childLogicalHeightForPercentageResolution(const RenderBox& child)

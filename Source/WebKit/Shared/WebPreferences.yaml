@@ -597,6 +597,15 @@ InterruptAudioOnPageVisibilityChangeEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(MEDIA_STREAM)
 
+WebRTCH264LowLatencyEncoderEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC H264 LowLatency encoder"
+  humanReadableDescription: "Enable H264 LowLatency encoder"
+  category: experimental
+
 WebRTCH265CodecEnabled:
   type: bool
   defaultValue: false
@@ -604,6 +613,15 @@ WebRTCH265CodecEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC H265 codec"
   humanReadableDescription: "Enable WebRTC H265 codec"
+  category: experimental
+
+WebRTCVP9CodecEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC VP9 codec"
+  humanReadableDescription: "Enable WebRTC VP9 codec"
   category: experimental
 
 WebRTCPlatformCodecsInGPUProcessEnabled:
@@ -641,6 +659,14 @@ WebRTCMDNSICECandidatesEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
   condition: ENABLE(WEB_RTC)
+
+VP9DecoderEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: none
+  humanReadableName: "VP9 decoder"
+  humanReadableDescription: "Enable VP9 decoder"
+  category: experimental
 
 UseLegacyTextAlignPositionedElementBehavior:
   type: bool
@@ -1631,7 +1657,6 @@ ReadableByteStreamAPIEnabled:
   humanReadableDescription: "Enable Readable Byte Streams"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(STREAMS_API)
 
 ServiceWorkersEnabled:
   type: bool
@@ -2061,3 +2086,11 @@ MediaCaptureRequiresSecureConnection:
   type: bool
   defaultValue: true
   condition: ENABLE(MEDIA_STREAM)
+
+CoreImageAcceleratedFilterRenderEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CoreImage-Accelerated Filter Rendering"
+  humanReadableDescription: "Accelerated CSS and SVG filter rendering using CoreImage"
+  category: experimental
+  condition: ENABLE(CORE_IMAGE_ACCELERATED_FILTER_RENDER)

@@ -1605,9 +1605,6 @@ test/built-ins/TypedArrayConstructors/of/new-instance-using-custom-ctor.js:
 test/intl402/Collator/missing-unicode-ext-value-defaults-to-true.js:
   default: "Test262Error: \"kn-true\" is returned in locale, but shouldn't be. Expected SameValue(«7», «-1») to be true"
   strict mode: "Test262Error: \"kn-true\" is returned in locale, but shouldn't be. Expected SameValue(«7», «-1») to be true"
-test/intl402/Collator/usage-de.js:
-  default: 'Test262Error: Expected [Ä, AE] and [AE, Ä] to have the same contents. search'
-  strict mode: 'Test262Error: Expected [Ä, AE] and [AE, Ä] to have the same contents. search'
 test/intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js:
   default: 'Test262Error: Expected SameValue(«h24», «h23») to be true'
   strict mode: 'Test262Error: Expected SameValue(«h24», «h23») to be true'
@@ -1704,9 +1701,6 @@ test/intl402/Locale/likely-subtags.js:
 test/intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js:
   default: 'Test262Error: "und".minimize() should be "en" Expected SameValue(«en-u-va-posix», «en») to be true'
   strict mode: 'Test262Error: "und".minimize() should be "en" Expected SameValue(«en-u-va-posix», «en») to be true'
-test/intl402/NumberFormat/prototype/format/numbering-systems.js:
-  default: 'Test262Error: numberingSystem: adlm, digit: 0 Expected SameValue(«0», «𞥐») to be true'
-  strict mode: 'Test262Error: numberingSystem: adlm, digit: 0 Expected SameValue(«0», «𞥐») to be true'
 test/intl402/RelativeTimeFormat/constructor/constructor/locales-valid.js:
   default: 'Test262Error: Grandfathered Expected a RangeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Grandfathered Expected a RangeError to be thrown but no exception was thrown at all'

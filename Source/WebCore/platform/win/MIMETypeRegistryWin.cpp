@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-static String mimeTypeForExtension(const String& extension)
+static String mimeTypeForExtensionFromRegistry(const String& extension)
 {
     String ext = "." + extension;
     WCHAR contentTypeStr[256];
@@ -48,7 +48,7 @@ static String mimeTypeForExtension(const String& extension)
     return String();
 }
 
-String MIMETypeRegistry::getPreferredExtensionForMIMEType(const String& type)
+String MIMETypeRegistry::preferredExtensionForMIMEType(const String& type)
 {
     String path = "MIME\\Database\\Content Type\\" + type;
     WCHAR extStr[MAX_PATH];
@@ -63,7 +63,7 @@ String MIMETypeRegistry::getPreferredExtensionForMIMEType(const String& type)
     return String();
 }
 
-String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
+String MIMETypeRegistry::mimeTypeForExtension(const String &ext)
 {
     ASSERT(isMainThread());
 
@@ -102,7 +102,7 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
     }
     String result = mimetypeMap.get(ext);
     if (result.isEmpty()) {
-        result = mimeTypeForExtension(ext);
+        result = mimeTypeForExtensionFromRegistry(ext);
         if (!result.isEmpty())
             mimetypeMap.add(ext, result);
     }
@@ -112,6 +112,12 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 bool MIMETypeRegistry::isApplicationPluginMIMEType(const String&)
 {
     return false;
+}
+
+Vector<String> MIMETypeRegistry::extensionsForMIMEType(const String&)
+{
+    ASSERT_NOT_IMPLEMENTED_YET();
+    return { };
 }
 
 }

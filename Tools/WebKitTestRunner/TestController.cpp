@@ -444,7 +444,7 @@ void TestController::initialize(int argc, const char* argv[])
 {
     AutodrainedPool pool;
 
-    JSC::initializeThreading();
+    JSC::initialize();
     WTF::initializeMainThread();
     WTF::setProcessPrivileges(allPrivileges());
 
@@ -3133,9 +3133,12 @@ void TestController::platformWillRunTest(const TestInvocation&)
 {
 }
 
-void TestController::platformInitializeDataStore(WKPageConfigurationRef, const TestOptions&)
+void TestController::platformInitializeDataStore(WKPageConfigurationRef configuration, const TestOptions& options)
 {
-    m_websiteDataStore = defaultWebsiteDataStore();
+    if (options.useEphemeralSession)
+        m_websiteDataStore = WKPageConfigurationGetWebsiteDataStore(configuration);
+    else
+        m_websiteDataStore = defaultWebsiteDataStore();
 }
 
 void TestController::platformCreateWebView(WKPageConfigurationRef configuration, const TestOptions& options)

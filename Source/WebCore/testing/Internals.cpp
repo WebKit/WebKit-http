@@ -51,6 +51,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClientOrigin.h"
+#include "ColorSerialization.h"
 #include "ComposedTreeIterator.h"
 #include "CookieJar.h"
 #include "Cursor.h"
@@ -1613,6 +1614,25 @@ void Internals::applyRotationForOutgoingVideoSources(RTCPeerConnection& connecti
 {
     connection.applyRotationForOutgoingVideoSources();
 }
+void Internals::setWebRTCH265Support(bool value)
+{
+#if USE(LIBWEBRTC)
+    if (auto* page = contextDocument()->page()) {
+        page->libWebRTCProvider().setH265Support(value);
+        page->libWebRTCProvider().clearFactory();
+    }
+#endif
+}
+
+void Internals::setWebRTCVP9Support(bool value)
+{
+#if USE(LIBWEBRTC)
+    if (auto* page = contextDocument()->page()) {
+        page->libWebRTCProvider().setVP9Support(value);
+        page->libWebRTCProvider().clearFactory();
+    }
+#endif
+}
 
 void Internals::setEnableWebRTCEncryption(bool value)
 {
@@ -1936,7 +1956,7 @@ ExceptionOr<String> Internals::viewBaseBackgroundColor()
     Document* document = contextDocument();
     if (!document || !document->view())
         return Exception { InvalidAccessError };
-    return document->view()->baseBackgroundColor().cssText();
+    return serializationForCSS(document->view()->baseBackgroundColor());
 }
 
 ExceptionOr<void> Internals::setViewBaseBackgroundColor(const String& colorValue)
@@ -4774,8 +4794,6 @@ void Internals::setShowAllPlugins(bool show)
     page->setShowAllPlugins(show);
 }
 
-#if ENABLE(STREAMS_API)
-
 bool Internals::isReadableStreamDisturbed(JSC::JSGlobalObject& lexicalGlobalObject, JSValue stream)
 {
     return ReadableStream::isDisturbed(lexicalGlobalObject, stream);
@@ -4803,8 +4821,6 @@ JSValue Internals::cloneArrayBuffer(JSC::JSGlobalObject& lexicalGlobalObject, JS
 
     return JSC::call(&lexicalGlobalObject, function, callData, JSC::jsUndefined(), arguments);
 }
-
-#endif
 
 String Internals::resourceLoadStatisticsForURL(const DOMURL& url)
 {
@@ -5645,7 +5661,7 @@ String Internals::highlightPseudoElementColor(const String& highlightName, Eleme
     if (!style)
         return { };
 
-    return style->color().cssText();
+    return serializationForCSS(style->color());
 }
     
 Internals::TextIndicatorInfo::TextIndicatorInfo()
@@ -5757,7 +5773,7 @@ String Internals::systemColorForCSSValue(const String& cssValue, bool useDarkMod
     if (useElevatedUserInterfaceLevel)
         options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
     
-    return RenderTheme::singleton().systemColor(id, options).cssText();
+    return serializationForCSS(RenderTheme::singleton().systemColor(id, options));
 }
 
 bool Internals::systemHasBattery() const
@@ -5812,8 +5828,7 @@ bool Internals::supportsPictureInPicture()
 
 String Internals::focusRingColor()
 {
-    OptionSet<StyleColor::Options> options;
-    return RenderTheme::singleton().focusRingColor(options).cssText();
+    return serializationForCSS(RenderTheme::singleton().focusRingColor({ }));
 }
 
 unsigned Internals::createSleepDisabler(const String& reason, bool display)

@@ -1,3 +1,182 @@
+2020-07-03  Youenn Fablet  <youenn@apple.com>
+
+        MediaRecorder should support peer connection remote video tracks
+        https://bugs.webkit.org/show_bug.cgi?id=213924
+
+        Reviewed by Darin Adler.
+
+        Resync to WPT ToT.
+
+        * resources/resource-files.json:
+        * web-platform-tests/mediacapture-record/BlobEvent-constructor.html:
+        * web-platform-tests/mediacapture-record/MediaRecorder-bitrate.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-bitrate.https.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-creation.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-creation.https.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-detached-context-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-detached-context.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-disabled-tracks.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-disabled-tracks.https.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-error.html:
+        * web-platform-tests/mediacapture-record/MediaRecorder-events-and-exceptions-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-events-and-exceptions.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-mimetype-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-mimetype.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-no-sink.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-no-sink.https.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-pause-resume-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-pause-resume.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-peerconnection.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-peerconnection.https.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop-expected.txt:
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop.html:
+        * web-platform-tests/mediacapture-record/idlharness.window-expected.txt:
+        * web-platform-tests/mediacapture-record/idlharness.window.js:
+        * web-platform-tests/mediacapture-record/passthrough/MediaRecorder-passthrough.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/passthrough/MediaRecorder-passthrough.https.html: Added.
+        * web-platform-tests/mediacapture-record/passthrough/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/mediacapture-record/w3c-import.log.
+        * web-platform-tests/mediacapture-record/support/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/mediacapture-record/w3c-import.log.
+        * web-platform-tests/mediacapture-record/utils/peerconnection.js: Added.
+        (async exchangeOfferAnswer):
+        (setTransceiverCodecPreference):
+        (async startConnection):
+        (async waitForReceivedFrames):
+        (async waitForReceivedCodec):
+        * web-platform-tests/mediacapture-record/utils/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/mediacapture-record/w3c-import.log.
+        * web-platform-tests/mediacapture-record/w3c-import.log:
+
+2020-07-03  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/html/dom & web-platform-tests/html/infrastructure from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213908
+
+        Reviewed by Youenn Fablet.
+
+        Resync web-platform-tests/html/dom & web-platform-tests/html/infrastructure from upstream 145839c323ba1ec8b.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/html/dom/*: Updated.
+        * web-platform-tests/html/infrastructure/*: Updated.
+
+2020-07-02  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/html/browsers from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213892
+
+        Reviewed by Geoffrey Garen.
+
+        Resync web-platform-tests/html/browsers from upstream 145839c323ba1ec8b9737.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/html/browsers/*: Updated.
+
+2020-07-02  Zalan Bujtas  <zalan@apple.com>
+
+        Overlapping content on earny.co
+        https://bugs.webkit.org/show_bug.cgi?id=213864
+        <rdar://problem/61011802>
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001-expected.txt:
+        * web-platform-tests/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001q-expected.txt:
+        * web-platform-tests/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001r-expected.txt:
+        * web-platform-tests/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001u-expected.txt:
+        * web-platform-tests/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001v-expected.txt:
+
+2020-07-02  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop some outdated tests in WebCrypto API.
+
+        Those tests failed to get removed during the recent re-sync from upstream in r263598.
+        They are actually still present but under different names so we have duplicate
+        copies right now.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_hkdf-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/getRandomValues.js: Removed.
+        * web-platform-tests/WebCryptoAPI/getRandomValues.worker-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/getRandomValues.worker.html: Removed.
+        * web-platform-tests/WebCryptoAPI/getRandomValues.worker.js: Removed.
+        * web-platform-tests/WebCryptoAPI/test_getRandomValues-expected.txt: Removed.
+        * web-platform-tests/WebCryptoAPI/test_getRandomValues.html: Removed.
+
+2020-07-02  Rob Buis  <rbuis@igalia.com>
+
+        Fragment navigation involving fragment identifiers does not match specification
+        https://bugs.webkit.org/show_bug.cgi?id=83930
+
+        Reviewed by Darin Adler.
+
+        Update improved test results and import scroll-frag-non-utf8-encoded-document.html.
+
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/fragment-and-encoding-2-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/fragment-and-encoding-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-non-utf8-encoded-document-expected.txt: Added.
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-non-utf8-encoded-document.html: Added.
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-anchor-name-expected.txt:
+
+2020-06-29  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(r263626): 2 imported/w3c/web-platform-tests/cors/ tests failing constantly
+        https://bugs.webkit.org/show_bug.cgi?id=213729
+
+        Unreviewed, rebaseline a couple of cors tests after upstream resync in r263626.
+
+        * web-platform-tests/cors/credentials-flag-expected.txt:
+        * web-platform-tests/cors/origin-expected.txt:
+
+2020-06-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-flexbox] WebKit mistakenly lets pointer events (click/hover/etc) pass through flex items, if they have negative margin
+        https://bugs.webkit.org/show_bug.cgi?id=185771
+
+        Reviewed by Javier Fernandez.
+
+        * web-platform-tests/css/css-flexbox/hittest-overlapping-margin-expected.txt: Replaced FAIL by PASS expectation.
+        * web-platform-tests/css/css-flexbox/hittest-overlapping-order-expected.txt: Ditto.
+
+2020-06-29  Rob Buis  <rbuis@igalia.com>
+
+        window.location.replace with invalid urls should throw
+        https://bugs.webkit.org/show_bug.cgi?id=153121
+
+        Reviewed by Darin Adler.
+
+        Add a subtest to verify that location.replace throws SyntaxError if
+        the resulting url is not valid.
+
+        * web-platform-tests/html/browsers/history/the-location-interface/location_replace-expected.txt:
+        * web-platform-tests/html/browsers/history/the-location-interface/location_replace.html:
+
+2020-06-29  Pinki Gyanchandani  <pgyanchandani@apple.com>
+
+        Add a new Web Platform Test in LayoutTest/imported/w3c/web-platform-tests/dom/ranges
+        https://bugs.webkit.org/show_bug.cgi?id=213667
+
+        Reviewed by Darin Adler.
+
+        Adding a Web Platfotm Test to test the handling of Ranges, when range is associated with a parentless node, and this parentless node moves to
+        new document.
+
+        This test has been provided by Darin Adler.
+
+        * web-platform-tests/dom/ranges/Range-adopt-test-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-adopt-test.html: Added.
+
+2020-06-28  Rob Buis  <rbuis@igalia.com>
+
+        Setting url.search="??" (two questionmarks) has incorrect behavior
+        https://bugs.webkit.org/show_bug.cgi?id=170452
+
+        Reviewed by Darin Adler.
+
+        Update improved test result.
+
+        * web-platform-tests/url/url-setters-expected.txt:
+
 2020-06-27  Chris Dumez  <cdumez@apple.com>
 
         Update web-platform-tests/cors from upstream

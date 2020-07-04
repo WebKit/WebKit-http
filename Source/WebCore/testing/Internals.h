@@ -597,6 +597,8 @@ public:
     void stopPeerConnection(RTCPeerConnection&);
     void clearPeerConnectionFactory();
     void applyRotationForOutgoingVideoSources(RTCPeerConnection&);
+    void setWebRTCH265Support(bool);
+    void setWebRTCVP9Support(bool);
     void setEnableWebRTCEncryption(bool);
     void setUseDTLS10(bool);
     void setUseGPUProcessForWebRTC(bool);
@@ -720,10 +722,8 @@ public:
     String resourceLoadStatisticsForURL(const DOMURL&);
     void setResourceLoadStatisticsEnabled(bool);
 
-#if ENABLE(STREAMS_API)
     bool isReadableStreamDisturbed(JSC::JSGlobalObject&, JSC::JSValue);
     JSC::JSValue cloneArrayBuffer(JSC::JSGlobalObject&, JSC::JSValue, JSC::JSValue, JSC::JSValue);
-#endif
 
     String composedTreeAsText(Node&);
 

@@ -387,7 +387,7 @@ public:
 + (void)initialize
 {
 #if !PLATFORM(IOS_FAMILY)
-    JSC::initializeThreading();
+    JSC::initialize();
     WTF::initializeMainThread();
     bool attachmentElementEnabled = MacApplication::isAppleMail();
     bool webSQLEnabled = false;
@@ -651,10 +651,9 @@ public:
         @NO, WebKitCacheAPIEnabledPreferenceKey,
         @YES, WebKitFetchAPIEnabledPreferenceKey,
 
-#if ENABLE(STREAMS_API)
         @NO, WebKitReadableByteStreamAPIEnabledPreferenceKey,
         @NO, WebKitWritableStreamAPIEnabledPreferenceKey,
-#endif
+
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         @NO, WebKitDownloadAttributeEnabledPreferenceKey,
 #endif
@@ -717,7 +716,6 @@ public:
         @NO, WebKitDebugInAppBrowserPrivacyEnabledPreferenceKey,
         @NO, WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey,
         @(webSQLEnabled), WebKitWebSQLEnabledPreferenceKey,
-        @YES, WebKitDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -3681,16 +3679,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitDebugInAppBrowserPrivacyEnabledPreferenceKey];
-}
-
-- (BOOL)needsInAppBrowserPrivacyQuirks
-{
-    return [self _boolValueForKey:WebKitDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey];
-}
-
-- (void)setNeedsInAppBrowserPrivacyQuirks:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey];
 }
 
 - (BOOL)aspectRatioOfImgFromWidthAndHeightEnabled

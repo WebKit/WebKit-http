@@ -62,8 +62,7 @@ class VideoSampleBufferCompressor;
 
 class WEBCORE_EXPORT MediaRecorderPrivateWriter : public ThreadSafeRefCounted<MediaRecorderPrivateWriter, WTF::DestructionThread::Main>, public CanMakeWeakPtr<MediaRecorderPrivateWriter, WeakPtrFactoryInitialization::Eager> {
 public:
-    static RefPtr<MediaRecorderPrivateWriter> create(const MediaStreamTrackPrivate* audioTrack, const MediaStreamTrackPrivate* videoTrack);
-    static RefPtr<MediaRecorderPrivateWriter> create(bool hasAudio, int width, int height);
+    static RefPtr<MediaRecorderPrivateWriter> create(bool hasAudio, bool hasVideo);
     ~MediaRecorderPrivateWriter();
 
     void appendVideoSampleBuffer(CMSampleBufferRef);
@@ -114,8 +113,8 @@ private:
     RetainPtr<CMFormatDescriptionRef> m_videoFormatDescription;
     std::unique_ptr<VideoSampleBufferCompressor> m_videoCompressor;
     RetainPtr<AVAssetWriterInput> m_videoAssetWriterInput;
-    CMTime m_lastVideoPresentationTime;
-    CMTime m_lastVideoDecodingTime;
+    CMTime m_lastVideoPresentationTime { kCMTimeInvalid };
+    CMTime m_lastVideoDecodingTime { kCMTimeInvalid };
     bool m_hasEncodedVideoSamples { false };
 
     RetainPtr<WebAVAssetWriterDelegate> m_writerDelegate;

@@ -1064,6 +1064,7 @@ WTF_EXTERN_C_END
 + (UIKeyboardPreferencesController *)sharedPreferencesController;
 - (void)setValue:(id)value forPreferenceKey:(NSString *)key;
 - (BOOL)boolForPreferenceKey:(NSString *)key;
+- (id)valueForPreferenceKey:(NSString *)key;
 @end
 
 @interface UIMenuItem (UIMenuController_SPI)
@@ -1224,6 +1225,7 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 #endif // USE(APPLE_INTERNAL_SDK)
 
 #define UIWKDocumentRequestMarkedTextRects (1 << 5)
+#define UIWKDocumentRequestSpatialAndCurrentSelection (1 << 6)
 
 @interface UITextInteractionAssistant (IPI)
 @property (nonatomic, readonly) BOOL inGesture;

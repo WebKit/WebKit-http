@@ -101,7 +101,6 @@ my (
     $indexedDatabaseSupport,
     $inputTypeColorSupport,
     $inputTypeDateSupport,
-    $inputTypeDatetimeSupport,
     $inputTypeDatetimelocalSupport,
     $inputTypeMonthSupport,
     $inputTypeTimeSupport,
@@ -349,9 +348,6 @@ my @features = (
     { option => "input-type-datetimelocal", desc => "Toggle Input Type Datetimelocal support",
       define => "ENABLE_INPUT_TYPE_DATETIMELOCAL", value => \$inputTypeDatetimelocalSupport },
 
-    { option => "input-type-datetime", desc => "Toggle broken Input Type Datetime support",
-      define => "ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE", value => \$inputTypeDatetimeSupport },
-
     { option => "input-type-month", desc => "Toggle Input Type Month support",
       define => "ENABLE_INPUT_TYPE_MONTH", value => \$inputTypeMonthSupport },
 
@@ -516,9 +512,6 @@ my @features = (
 
     { option => "spellcheck", desc => "Toggle Spellchecking support (requires Enchant)",
       define => "ENABLE_SPELLCHECK", value => \$spellcheckSupport },
-
-    { option => "streams-api", desc => "Toggle Streams API support",
-      define => "ENABLE_STREAMS_API", value => \$streamsAPISupport },
 
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", value => \$svgFontsSupport },
