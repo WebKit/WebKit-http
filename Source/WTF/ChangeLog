@@ -1,5 +1,15 @@
 2020-07-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
 
+        Simplify BoxPtr::create
+        https://bugs.webkit.org/show_bug.cgi?id=214144
+
+        Reviewed by Darin Adler.
+
+        * wtf/BoxPtr.h:
+        (WTF::createBoxPtr): Use the alias instead of the unrolled type.
+
+2020-07-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
         [WTF] Implement new BoxPtr alias
         https://bugs.webkit.org/show_bug.cgi?id=212379
 
