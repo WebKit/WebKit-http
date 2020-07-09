@@ -107,6 +107,33 @@ webkit.org/b/211837 perf/rel-list-remove.html [ Failure Pass ]
 # 5. SLOW TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Failure Timeout Pass ]
+webkit.org/b/79203  fast/mediastream/RTCRtpSender-replaceTrack.html [ Failure Crash ]
+webkit.org/b/187603 fast/mediastream/media-stream-track-source-failure.html [ Timeout Failure Pass ]
+webkit.org/b/191886 webkit.org/b/210800 fast/mediastream/MediaStream-video-element-remove-track.html [ Failure Crash ]
+webkit.org/b/199440 fast/mediastream/mediastreamtrack-video-clone.html [ Crash Pass ]
+webkit.org/b/210337 fast/mediastream/mediastreamtrack-audio-clone.html [ Failure Pass ]
+webkit.org/b/210385 fast/mediastream/stream-switch.html [ Crash Timeout ]
+webkit.org/b/210385 fast/mediastream/getUserMedia-default.html [ Crash Pass ]
+webkit.org/b/210528 fast/mediastream/MediaStream-MediaElement-setObject-null.html [ Crash Pass ]
+webkit.org/b/210528 fast/mediastream/mediastreamtrack-video-frameRate-clone-decreasing.html [ Crash Pass ]
+webkit.org/b/213011 fast/mediastream/media-stream-track-interrupted.html [ Failure ]
+webkit.org/b/210498 webkit.org/b/210840 fast/mediastream/play-newly-added-audio-track.html  [ Failure Crash ]
+
+webkit.org/b/203078 media/media-source/media-source-remove-unload-crash.html [ Crash Timeout Pass ]
+webkit.org/b/210528 media/media-source/media-source-seek-back.html [ Crash Pass ]
+
+webkit.org/b/210528 media/video-src-blob-replay.html [ Crash Pass ]
+
+webkit.org/b/211995 fast/images/animated-image-mp4.html [ Failure ]
+webkit.org/b/213947 media/vp9.html [ Failure ]
+
+webkit.org/b/214038 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/track-cues-cuechange.html [ Missing Failure ]
+
+webkit.org/b/214031 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video-poster-shown-preload-auto.html [ ImageOnlyFailure ]
+
+webkit.org/b/207547 media/media-can-play-av1.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of slow tests
 #////////////////////////////////////////////////////////////////////////////////////////
