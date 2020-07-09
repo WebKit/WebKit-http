@@ -71,7 +71,7 @@ MediaSourcePrivateGStreamer::~MediaSourcePrivateGStreamer()
 
 MediaSourcePrivateGStreamer::AddStatus MediaSourcePrivateGStreamer::addSourceBuffer(const ContentType& contentType, RefPtr<SourceBufferPrivate>& sourceBufferPrivate)
 {
-    sourceBufferPrivate = SourceBufferPrivateGStreamer::create(this, m_client.get(), contentType);
+    sourceBufferPrivate = SourceBufferPrivateGStreamer::create(this, m_client.get(), contentType, m_playerPrivate);
     RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivateGStreamer = static_cast<SourceBufferPrivateGStreamer*>(sourceBufferPrivate.get());
     m_sourceBuffers.add(sourceBufferPrivateGStreamer);
     return m_client->addSourceBuffer(sourceBufferPrivateGStreamer, contentType);

@@ -49,7 +49,7 @@ class MediaSourcePrivateGStreamer;
 class SourceBufferPrivateGStreamer final : public SourceBufferPrivate {
 
 public:
-    static Ref<SourceBufferPrivateGStreamer> create(MediaSourcePrivateGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&);
+    static Ref<SourceBufferPrivateGStreamer> create(MediaSourcePrivateGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&, MediaPlayerPrivateGStreamerMSE&);
     virtual ~SourceBufferPrivateGStreamer() = default;
 
     void clearMediaSource() { m_mediaSource = nullptr; }
@@ -79,13 +79,17 @@ public:
 
     ContentType type() const { return m_type; }
 
+    AppendPipeline& appendPipeline() { return *m_appendPipeline; }
+
 private:
-    SourceBufferPrivateGStreamer(MediaSourcePrivateGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&);
+    SourceBufferPrivateGStreamer(MediaSourcePrivateGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&, MediaPlayerPrivateGStreamerMSE&);
     friend class MediaSourceClientGStreamerMSE;
 
     MediaSourcePrivateGStreamer* m_mediaSource;
     ContentType m_type;
     Ref<MediaSourceClientGStreamerMSE> m_client;
+    MediaPlayerPrivateGStreamerMSE& m_playerPrivate;
+    std::unique_ptr<AppendPipeline> m_appendPipeline;
     SourceBufferPrivateClient* m_sourceBufferPrivateClient { nullptr };
     bool m_isReadyForMoreSamples = true;
     bool m_notifyWhenReadyForMoreSamples = false;
