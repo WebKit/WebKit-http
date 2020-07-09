@@ -33,7 +33,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <wtf/RAMSize.h>
 #include <wtf/Threading.h>
 #include <wtf/UniStdExtras.h>
 
@@ -190,16 +189,6 @@ static int systemMemoryUsedAsPercentage()
 
     if (memoryAvailable > memoryTotal)
         return -1;
-
-    if (getenv("WPE_RAM_SIZE")) {
-        // Use custom RAM size.
-        size_t customRAM = ramSize() / KB;
-        if (memoryTotal > customRAM) {
-            size_t memoryReduction = memoryTotal - customRAM;
-            memoryAvailable = memoryAvailable > memoryReduction ? memoryAvailable - memoryReduction : 0;
-            memoryTotal = customRAM;
-        }
-    }
 
     return ((memoryTotal - memoryAvailable) * 100) / memoryTotal;
 }
