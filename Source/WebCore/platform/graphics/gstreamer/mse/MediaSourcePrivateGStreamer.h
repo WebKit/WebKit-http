@@ -45,7 +45,6 @@ typedef struct _WebKitMediaSrc WebKitMediaSrc;
 namespace WebCore {
 
 class SourceBufferPrivateGStreamer;
-class MediaSourceClientGStreamerMSE;
 class MediaPlayerPrivateGStreamerMSE;
 class PlatformTimeRanges;
 
@@ -58,7 +57,6 @@ public:
     static void open(MediaSourcePrivateClient&, MediaPlayerPrivateGStreamerMSE&);
     virtual ~MediaSourcePrivateGStreamer();
 
-    MediaSourceClientGStreamerMSE& client() { return m_client.get(); }
     AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) override;
     void removeSourceBuffer(SourceBufferPrivate*);
 
@@ -81,7 +79,6 @@ private:
 
     HashSet<RefPtr<SourceBufferPrivateGStreamer>> m_sourceBuffers;
     HashSet<SourceBufferPrivateGStreamer*> m_activeSourceBuffers;
-    Ref<MediaSourceClientGStreamerMSE> m_client;
     Ref<MediaSourcePrivateClient> m_mediaSource;
     MediaPlayerPrivateGStreamerMSE& m_playerPrivate;
 };
