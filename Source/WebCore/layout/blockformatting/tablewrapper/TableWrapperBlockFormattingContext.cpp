@@ -209,8 +209,7 @@ void TableWrapperBlockFormattingContext::computeWidthAndMarginForTableBox(const 
 
     auto& displayBox = formattingState().displayBox(tableBox);
     displayBox.setContentBoxWidth(contentWidthAndMargin.contentWidth);
-    displayBox.setHorizontalMargin(contentWidthAndMargin.usedMargin);
-    displayBox.setHorizontalComputedMargin(contentWidthAndMargin.computedMargin);
+    displayBox.setHorizontalMargin({ contentWidthAndMargin.usedMargin.start, contentWidthAndMargin.usedMargin.end });
 }
 
 void TableWrapperBlockFormattingContext::computeHeightAndMarginForTableBox(const ContainerBox& tableBox, const ConstraintsForInFlowContent& constraints)
@@ -221,15 +220,14 @@ void TableWrapperBlockFormattingContext::computeHeightAndMarginForTableBox(const
     auto heightAndMargin = geometry().inFlowHeightAndMargin(tableBox, constraints.horizontal, { quirks().overrideTableHeight(tableBox) });
 
     auto marginCollapse = this->marginCollapse();
-    auto collapsedAndPositiveNegativeValues = marginCollapse.collapsedVerticalValues(tableBox, heightAndMargin.nonCollapsedMargin);
+    auto verticalMargin = marginCollapse.collapsedVerticalValues(tableBox, heightAndMargin.nonCollapsedMargin);
     // Cache the computed positive and negative margin value pair.
-    formattingState().setPositiveAndNegativeVerticalMargin(tableBox, collapsedAndPositiveNegativeValues.positiveAndNegativeVerticalValues);
-    auto verticalMargin = UsedVerticalMargin { heightAndMargin.nonCollapsedMargin, collapsedAndPositiveNegativeValues.collapsedValues };
+    formattingState().setUsedVerticalMargin(tableBox, verticalMargin);
 
     auto& displayBox = formattingState().displayBox(tableBox);
     displayBox.setTop(verticalPositionWithMargin(tableBox, verticalMargin, constraints.vertical));
     displayBox.setContentBoxHeight(heightAndMargin.contentHeight);
-    displayBox.setVerticalMargin(verticalMargin);
+    displayBox.setVerticalMargin({ marginBefore(verticalMargin), marginAfter(verticalMargin) });
     // Adjust the previous sibling's margin bottom now that this box's vertical margin is computed.
     MarginCollapse::updateMarginAfterForPreviousSibling(*this, marginCollapse, tableBox);
 }

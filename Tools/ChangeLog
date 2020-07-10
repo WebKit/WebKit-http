@@ -1,3 +1,905 @@
+2020-07-10  Aakash Jain  <aakash_jain@apple.com>
+
+        [EWS] layout-test results shouldn't be hosted on ews server
+        https://bugs.webkit.org/show_bug.cgi?id=201937
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ExtractTestResults.resultDirectoryURL):
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+
+2020-07-10  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][EME][OpenCDM] Implement OpenCDM support
+        https://bugs.webkit.org/show_bug.cgi?id=213550
+
+        Reviewed by Philippe Normand.
+
+        Added support to build OpenCDM and its dependencies. There is an
+        opt in env var to get JHBuild building Thunder its Widevine
+        dependencies. We also include a couple of GStreamer patches needed
+        to get key IDs in the decryptors.
+
+        Widevine is obviously proprietary and as you need to be licensed
+        to access it, you need credentials to build it.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/gst-plugins-bad-0006-mssdemux-parse-protection-data.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0002-Check-if-an-upstream-demuxer-provided-a-default-kid.patch: Added.
+        * gtk/install-dependencies:
+        * jhbuild/jhbuildrc_common.py:
+        (init):
+        * wpe/install-dependencies:
+
+2020-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser: title of back-forward menu items needs to be truncated when it's too large
+        https://bugs.webkit.org/show_bug.cgi?id=214180
+
+        Reviewed by Adrian Perez de Castro.
+
+        The popover menu doesn't set ellipsize on the inner label, so we need to do it manually. In the case of GTK4 we
+        also need to markup escape it.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowCreateBackForwardMenu):
+
+2020-07-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Add Slack-aware WebKitBot implementation
+        https://bugs.webkit.org/show_bug.cgi?id=211707
+
+        Reviewed by Devin Rousso and Brian Burg.
+
+        This patch adds Slack-aware WebKitBot implementation which supports "ping", "revert", and the other commands.
+        I decided to implement this feature in chat-bot because of the following reasons.
+
+            1. It is the previous way we are familiar with.
+            2. Creating a revert-patch sometimes takes long time because it involves working-copy clean-up, creating a revert, generating a patch...
+               So asynchronous request-response is better for developers who do not want to watch whether the patch is created until it is done.
+               Chat-bot can tell us when it is ready.
+            3. Requesting a revert-patch in public channel can easily tell the other developers that reverting is going on now.
+
+        We reuse python's `webkit-patch create-revert` command as it was in the old webkitbot. We enhance WKR bot to support webkitbot feature.
+        Once webkitbot app is installed into a channel, it monitors messages in the channel and works when the mention to this bot's user happens.
+
+        We use Real Time Message Slack API instead of Event API, because Event API requires public facing HTTPS server which accepts incoming webhook.
+        Real Time Message Slack API just requires a server app which connects to Slack via WebSocket, so it is easier to deploy for now.
+
+        The implementation of webkitbot is client-server model inside one process. There is one AsyncTaskQueue, and there is one async main loop which
+        takes the task from the queue and replies when it is done. Every time we noticed the request, this request queues the task to this task queue.
+        This design ensures that only one task is using the working-copy WebKit repository at a time, this is required to make a revert-patch without
+        conflict.
+
+        * WKR/ReadMe.md: Removed.
+        * WKR/WKR.mjs: Removed.
+        * WKR/package-lock.json: Removed.
+        * WKR/package.json: Removed.
+        * WebKitBot/.eslintrc: Added.
+        * WebKitBot/.gitignore: Renamed from Tools/WKR/.gitignore.
+        * WebKitBot/ReadMe.md: Added.
+        * WebKitBot/data/.gitignore: Renamed from Tools/WKR/data/.gitignore.
+        * WebKitBot/package-lock.json: Added.
+        * WebKitBot/package.json: Added.
+        * WebKitBot/src/AsyncTaskQueue.mjs: Added.
+        * WebKitBot/src/Commit.mjs: Added.
+        * WebKitBot/src/Contributors.mjs: Added.
+        * WebKitBot/src/Utility.mjs: Added.
+        * WebKitBot/src/WKR.mjs: Added.
+        * WebKitBot/src/WebKitBot.mjs: Added.
+        * WebKitBot/src/index.mjs: Added.
+        * WebKitBot/tests/Commit.test.mjs: Added.
+        * WebKitBot/tests/WebKitBot.test.mjs: Added.
+        * WebKitBot/tests/resources/.gitattributes: Added.
+        * WebKitBot/tests/resources/HaveRadarAndBugzilla.json: Added.
+        * WebKitBot/tests/resources/HavingBugzilla.json: Added.
+        * WebKitBot/tests/resources/NoRadarAndBugzilla.json: Added.
+
+2020-07-09  Andres Gonzalez  <andresg_22@apple.com>
+
+        Make accessibility/Mac/selected-visible-position-range.html time-deterministic.
+        https://bugs.webkit.org/show_bug.cgi?id=214154
+
+        Reviewed by Chris Fleizach.
+
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+        Check passed parameter for null.
+
+        (WTR::AccessibilityUIElement::selectedTextMarkerRange):
+        Use attributeValue to run on secondary AX thread.
+
+2020-07-09  Per Arne Vollan  <pvollan@apple.com>
+
+        Move XPCEndpoint and XPCEndpointClient classes from WebCore to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=214099
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit/XPCEndpoint.mm:
+
+2020-07-09  Aakash Jain  <aakash_jain@apple.com>
+
+        Add EWS queues for tvOS and watchOS builders
+        https://bugs.webkit.org/show_bug.cgi?id=214147
+
+        Reviewed by Stephanie Lewis.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py: Added status-bubbles for tvos and watchos queues.
+        * BuildSlaveSupport/ews-build/config.json: Added watchos and tvos builders.
+        * BuildSlaveSupport/ews-build/factories.py:
+        (watchOSBuildFactory):
+        (tvOSBuildFactory):
+        * BuildSlaveSupport/ews-build/factories_unittest.py: Added unit-tests.
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        * BuildSlaveSupport/ews-build/steps.py:
+        (appendCustomBuildFlags): Added support for tvos and watchos.
+        (CompileWebKit.start): Ditto.
+        (PrintConfiguration.run): Ditto.
+
+2020-07-09  Tim Horton  <timothy_horton@apple.com>
+
+        Local internal builds fail on Apple Silicon (building yasm)
+        https://bugs.webkit.org/show_bug.cgi?id=214129
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitdirs.pm:
+        (determineNativeArchitecture):
+        Build for arm64e when building with the internal SDK.
+        Importantly, this matches the ARCHS_STANDARD_* build settings, so this way we
+        won't set an ARCH that isn't in VALID_ARCHS for projects who use ARCHS_STANDARD_*.
+
+        (determineXcodeSDK):
+        Fall back to "macosx", so that other code can correctly identify that we're building for macOS.
+        This logic needs to be here, instead of in the caller (who could assume undefined means macOS),
+        because we want the ".internal" search to take place as well.
+
+2020-07-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Occasional crash under -[UIView _setViewDelegate:] when presenting date and time pickers
+        https://bugs.webkit.org/show_bug.cgi?id=214120
+        <rdar://problem/65246918>
+
+        Reviewed by Darin Adler.
+
+        Implement additional support for testing date and time pickers presented using context menus on iOS 14. 
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        (WTR::UIScriptController::isShowingContextMenu const):
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView _didShowContextMenu]):
+        (-[TestRunnerWKWebView _didDismissContextMenu]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptControllerIOS::setDidDismissContextMenuCallback):
+
+        Call the completion callback with `CallbackTypeDidDismissContextMenu`, rather than
+        `CallbackTypeDidEndFormControlInteraction`.
+
+        (WTR::UIScriptControllerIOS::isShowingContextMenu const):
+
+        Add a new script controller to ask whether we're currently presenting a context menu. This is useful in the case
+        where we want to wait until we're no longer showing a context menu, since we'll either immediately invoke script
+        completion, or stash a completion callback on `didDismissContextMenuCallback` to invoke script completion after
+        the context menu is finished dismissing.
+
+2020-07-09  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Unable to build without Internet connection
+        https://bugs.webkit.org/show_bug.cgi?id=213920
+
+        Reviewed by Sergio Villar Senin.
+
+        Set the flathub ostree repo url explicitely in order to avoid retrieving it from the
+        flatpakrepo remote file. This is unlikely to change.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak._get_packages):
+
+2020-07-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [WTF] Implement new BoxPtr alias
+        https://bugs.webkit.org/show_bug.cgi?id=212379
+
+        Reviewed by Darin Adler.
+
+        Tests for BoxPtr.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/BoxPtr.cpp: Added.
+        (TestWebKitAPI::BoxPtrLogger::create):
+        (TestWebKitAPI::BoxPtrLogger::BoxPtrLogger):
+        (TestWebKitAPI::boxPtrLoggerDeleter):
+        (TestWebKitAPI::TEST):
+
+2020-07-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Add support for HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain
+        https://bugs.webkit.org/show_bug.cgi?id=213954
+
+        Reviewed by Michael Catanzaro.
+
+        Update libsoup to version 2.71.0.
+
+        * buildstream/elements/sdk/libsoup.bst:
+        * gtk/jhbuild.modules:
+
+2020-07-08  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Windows] Fix errors from calls to uname when not available
+        https://bugs.webkit.org/show_bug.cgi?id=214101
+
+        Reviewed by Darin Adler.
+
+        As bare windows doesn't default to having uname, avoid calls
+        to it for architecture determination.
+
+        * Scripts/webkitdirs.pm:
+          Do not call uname on windows (non-cygwin) perl
+        * Scripts/webkitpy/common/system/platforminfo.py:
+          Do not call uname for windows (non-cygwin) python,
+          os.uname() also doesn't necessarily exist there, 
+          so use platform.uname() instead.
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILURE: Completion handlers not invalidated when WebPage::~WebPage() invoked navigating to docs.google.com and signing in
+        https://bugs.webkit.org/show_bug.cgi?id=214098
+        <rdar://problem/64848288>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSuspension.mm:
+        (TEST):
+
+2020-07-08  Sam Weinig  <weinig@apple.com>
+
+        Part 3 of SimpleColor and SRGBA<uint8_t> are essentially the same - let's converge them
+        https://bugs.webkit.org/show_bug.cgi?id=214082
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ColorTests.cpp:
+        (TestWebKitAPI::TEST):
+        Update to account for makeSimpleColor no longer returning an object that has a
+        asSRGBA<uint8_t>() function (it is already a SRGBA<uint8_t>).
+
+2020-07-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Make it possible to establish direct XPC connections between WebKit processes
+        https://bugs.webkit.org/show_bug.cgi?id=214079
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/XPCEndpoint.mm: Added.
+        (TEST):
+
+2020-07-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Limit layout tests failures to display in the status-bubble tooltip and buildbot summary
+        https://bugs.webkit.org/show_bug.cgi?id=214085
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/steps.py: Limit NUM_FAILURES_TO_DISPLAY to 10.
+        (AnalyzeLayoutTestsResults.report_failure):
+        (AnalyzeLayoutTestsResults.report_pre_existing_failures):
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+        (TestAnalyzeLayoutTestsResults.test_clean_tree_has_some_failures): Updated as per new behavior.
+        (TestAnalyzeLayoutTestsResults.test_failure_on_clean_tree): Updated to also test for build_summary.
+        (TestAnalyzeLayoutTestsResults.test_flaky_and_inconsistent_failures_with_clean_tree_failures): Ditto.
+        (TestAnalyzeLayoutTestsResults.test_mildly_flaky_patch_with_some_tree_redness_and_flakiness): Ditto.
+        (TestAnalyzeLayoutTestsResults.test_flaky_failures_in_first_run): Added unit-test.
+        (TestAnalyzeLayoutTestsResults.test_clean_tree_has_lot_of_failures_and_no_new_failure): Added unit-test.
+        (TestAnalyzeLayoutTestsResults.test_patch_introduces_lot_of_failures): Added unit-test.
+
+2020-07-08  Sihui Liu  <sihui_liu@appe.com>
+
+        Text manipulation should ignore white spaces between nodes
+        https://bugs.webkit.org/show_bug.cgi?id=213907
+
+        Reviewed by Wenson Hsieh. 
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+        (TestWebKitAPI::TEST):
+
+2020-07-08  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r207558): [Mac] Context clicks on links sometimes result in navigations
+        https://bugs.webkit.org/show_bug.cgi?id=213793
+        <rdar://problem/64294015>
+
+        Reviewed by Tim Horton.
+
+        Added API tests.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/xcshareddata/xcschemes/TestWebKitAPI.xcscheme:
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuMouseEvents.mm: Renamed from Tools/TestWebKitAPI/Tests/WebKit/mac/ContextMenuControlClick.mm.
+        (TestWebKitAPI::runTest):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebViewHostWindow _mouseDownAtPoint:simulatePressure:clickCount:modifierFlags:mouseEventType:]):
+        (-[TestWKWebViewHostWindow _mouseUpAtPoint:clickCount:modifierFlags:eventType:]):
+        (-[TestWKWebView mouseDownAtPoint:simulatePressure:]):
+        (-[TestWKWebView mouseDownAtPoint:simulatePressure:withFlags:eventType:]):
+        (-[TestWKWebView mouseUpAtPoint:]):
+        (-[TestWKWebView mouseUpAtPoint:withFlags:eventType:]):
+        (-[TestWKWebView sendClicksAtPoint:numberOfClicks:]):
+        (-[TestWKWebViewHostWindow _mouseDownAtPoint:simulatePressure:clickCount:modifierFlags:]): Deleted.
+        (-[TestWKWebViewHostWindow _mouseUpAtPoint:clickCount:modifierFlags:]): Deleted.
+        (-[TestWKWebView mouseDownAtPoint:simulatePressure:withFlags:]): Deleted.
+        (-[TestWKWebView mouseUpAtPoint:withFlags:]): Deleted.
+
+2020-07-08  Jer Noble  <jer.noble@apple.com>
+
+        Flaky API Test: TestWebKitAPI.SleepDisabler.NavigateBack
+        https://bugs.webkit.org/show_bug.cgi?id=213513
+        <rdar://problem/64642715>
+
+        Reviewed by Eric Carlson.
+
+        Make the test less dependent on the specific behavior of restoring the history state by adding code within
+        the source HTML itself to explicitly play the contained video after state restoration.
+
+        * TestWebKitAPI/Tests/WebKit/SleepDisabler.mm:
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/video-with-audio.html:
+
+2020-07-07  Antoine Quint  <graouts@webkit.org>
+
+        [iOS] Sharing an <img> element with a base64-encoded URL shares the URL as raw text instead of an image
+        https://bugs.webkit.org/show_bug.cgi?id=214042
+        <rdar://problem/56669102>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test that loads a page with an <img> with its data encoded as a base64 URL, brings up the share sheet for it
+        and checks a single NSURL object is made available in the activity items.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/ShareSheetTests.mm: Added.
+        (-[ShareSheetObserver _webView:actionsForElement:defaultActions:]):
+        (-[ShareSheetObserver _webView:willShareActivityItems:]):
+        (TestWebKitAPI::showShareSheet):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/img-with-base64-url.html: Added.
+
+2020-07-08  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Pre-start sccache server
+        https://bugs.webkit.org/show_bug.cgi?id=213973
+
+        Reviewed by Žan Doberšek.
+
+        Pre-start the sccache-dist server when the flatpak sandbox is being invoked for a build.
+        Usually the first sccache client process would do it but it seems to be racy when a large
+        number of clients is being started simultaneously.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.run_in_sandbox):
+
+2020-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] install-dependencies should install the gstreamer plugins
+        https://bugs.webkit.org/show_bug.cgi?id=214045
+
+        Reviewed by Adrian Perez de Castro.
+
+        When building webkit against system libraries (without flatpak/jhbuild)
+        its needed to have installed the webkit plugins to play media files.
+        The install-dependencies script should install them.
+
+        gstreamer-plugins-ugly its likely not needed for the majority of the cases,
+        but it can be required by some ugly media files that require an ugly decoder.
+        Since we are installing it on the flatpak, let's add it here as well.
+
+        * gtk/install-dependencies:
+        * wpe/install-dependencies:
+
+2020-07-08  Philippe Normand  <pnormand@igalia.com>
+
+        [webkitpy] run-minibrowser doesn't handle unicode urls
+        https://bugs.webkit.org/show_bug.cgi?id=214036
+
+        Reviewed by Žan Doberšek.
+
+        Convert unregistered command-line arguments to utf-8 and append parsed URL. Previously
+        unrelated arguments (like the platform arg) were passed to the final MiniBrowser app, this
+        is no longer the case.
+
+        * Scripts/webkitpy/minibrowser/run_webkit_app.py:
+        (main):
+
+2020-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JHBuild] Add support for using a minimal moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=213614
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch introduces a way of specifying a moduleset other than the default
+        via the environment variable WEBKIT_JHBUILD_MODULESET and adds a minimal moduleset
+        that allows building WebKit with it. This minimal moduleset includes the libraries
+        needed for building WebKit on Ubuntu-18.04, and those libraries are only build if
+        needed since they include the <pkg-config> entries that tells JHBuild to not build
+        them if those are already installed system wide. So this minimal moduleset should
+        work also on newer versions of Ubuntu or even other distributions.
+
+        Currently a recipe for newer libsoup than the one shipped by Ubuntu-18.04 is included
+        since we need this to have support for SameSite cookie support.
+        The minimal moduleset is shared between WPE and GTK to reduce code duplication.
+
+        To use this, you have to export on the build environment:
+        WEBKIT_JHBUILD=1
+        WEBKIT_JHBUILD_MODULESET=minimal
+
+        * Scripts/update-webkit-libs-jhbuild:
+        (getJhbuildIncludedFilePaths):
+        (jhbuildModulesetNameChanged):
+        (jhbuildConfigurationChanged):
+        (saveJhbuildMd5):
+        (saveJhbuildModulesetName):
+        (saveJhbuildConfig):
+        (deleteJhbuildMd5):
+        (deleteJhbuildModulesetName):
+        (deleteJhbuildConfig):
+        * Scripts/webkitdirs.pm:
+        (getJhbuildModulesetName):
+        * gtk/jhbuild-minimal.modules: Added.
+        * jhbuild/jhbuild-minimal.modules: Added.
+        * jhbuild/jhbuildrc_common.py:
+        (init):
+        * jhbuild/patches/libsoup-lower-glib-dependency-to-2.38.patch: Added.
+        * wpe/jhbuild-minimal.modules: Added.
+
+2020-07-08  Philippe Normand  <pnormand@igalia.com>
+
+        [webkitpy] run-minibrowser doesn't default to mac and stdout/stderr are not displayed
+        https://bugs.webkit.org/show_bug.cgi?id=214072
+
+        Reviewed by Adrian Perez de Castro.
+
+        * Scripts/webkitpy/minibrowser/run_webkit_app.py:
+        (main): Default to mac platform, like in old-run-minibrowser.
+        * Scripts/webkitpy/port/base.py:
+        (Port.run_minibrowser): Display MiniBrowser stdout and stderr on the terminal output.
+
+2020-07-08  Diego Pino Garcia  <dpino@igalia.com>
+
+        [Flatpak] Avoid error message 'error: org.webkit.Sdk/*unspecified*/*unspecified*' not installed
+        https://bugs.webkit.org/show_bug.cgi?id=213871
+
+        Reviewed by Philippe Normand.
+
+        The error message happens when requesting a Flatpak SDK version but there's no Flatpak SDK installed yet.
+        In that case, ignore stderr to filter out the message.
+
+        * flatpak/flatpakutils.py:
+        (run_sanitized):
+        (FlatpakObject.flatpak):
+        (FlatpakObject.version):
+
+2020-07-08  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Initial installation with IceCC enabled fails
+        https://bugs.webkit.org/show_bug.cgi?id=213833
+
+        Reviewed by Adrian Perez de Castro.
+
+        Avoid attempting to use the IceCC environment during the toolchain
+        archive update. The initial SDK installation triggers this when
+        IceCC is enabled on the command-line or via CCACHE_PREFIX, after
+        resetting the internal toolchain mapping. So the solution is to
+        opt-out of this runtime configuration setup, which is useless
+        anyway when the toolchain archive is being generated.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.run_in_sandbox):
+        (WebkitFlatpak.pack_toolchain):
+
+2020-07-07  Sam Weinig  <weinig@apple.com>
+
+        Enabled testing of date/time input types for WebKit2 macOS
+        https://bugs.webkit.org/show_bug.cgi?id=214044
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Enable the date/time input types unconditionally for testing when support is compiled in. 
+
+2020-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebCoreNSURLSession SPI to send HTTP/2 ping
+        https://bugs.webkit.org/show_bug.cgi?id=214030
+        <rdar://problem/64495827>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Preconnect.mm:
+        (TestWebKitAPI::TEST):
+        Add a disabled test I used to verify this works correctly.
+
+2020-07-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Added a test for callOnMainThread
+        https://bugs.webkit.org/show_bug.cgi?id=214025
+
+        Reviewed by Sam Weinig.
+
+        This test failed prior to https://trac.webkit.org/changeset/263981.
+
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::TEST): Added a test demonstrating why a simple "is the
+        queue empty?" check doesn't work when you support both re-entrancy and
+        threads. While the main thread is sleeping in a nested RunLoop, a
+        secondary thread can see a non-empty queue.
+
+2020-07-07  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] OGV/VP8 video not playing on minibrowser (neither epiphany)
+        https://bugs.webkit.org/show_bug.cgi?id=205916
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * buildstream/elements/sdk/gst-plugins-base.bst: Vendor upstreamed GStreamer patch. It is
+        merged in the 1.16 branch and scheduled for 1.16.3 release but we don't know when/if it will
+        happen.
+        * buildstream/patches/gst-plugins-base-0001-oggstream-Workaround-for-broken-PAR-in-VP8-BOS.patch: Added.
+
+2020-07-07  Yury Semikhatsky  <yurys@chromium.org>
+
+        [GTK][MiniBrowser] occasional crashes when closing while download in progress
+        https://bugs.webkit.org/show_bug.cgi?id=214007
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove signal handlers from WebKitDownload when BrowserDownload is finalized,
+        WebKitDownload may emit a signal after the UI item has been destroyed which leads
+        to a crash.
+
+        * MiniBrowser/gtk/BrowserDownloadsBar.c:
+        (browserDownloadFinalize):
+
+2020-07-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Web process sometimes crashes when translating an article on spiegel.de
+        https://bugs.webkit.org/show_bug.cgi?id=214014
+        <rdar://problem/65099253>
+
+        Reviewed by Tim Horton.
+
+        Add a test case that dynamically adds an `object` element, immediately removes it, and then adds a chunk of text
+        and verifies that the text manipulation delegate method for new content is invoked.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+
+2020-07-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        svn-apply should use verbose mode when adding files to git
+        https://bugs.webkit.org/show_bug.cgi?id=214022
+
+        Reviewed by Darin Adler.
+
+        If a patch contains several copy or add operations it can happen that there is
+        no output for more than 600 seconds meanwhile the tool is applying the patch.
+        This can cause a fatal error on the EWS. Pass the verbose flag to git,
+        so it outputs the name of the file after adding it to the index.
+        This is consequent how "svn add" works by default (it outputs the name of the file),
+        or how "git rm" works (it also outputs the name of the file by default as well).
+
+        * Scripts/svn-apply:
+        (scmCopy):
+        (scmAdd):
+        (scmCommitQueueAdded):
+
+2020-07-06  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement user action spec for Escape action
+        https://bugs.webkit.org/show_bug.cgi?id=213875
+        <rdar://problem/65022980>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (dismissCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::dismiss):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::dismiss):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        (WTR::AccessibilityUIElement::dismiss):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::dismiss):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::dismiss):
+
+2020-07-06  Jonathan Bedard  <jbedard@apple.com>
+
+        [test-webkitpy] Use platform architecture
+        https://bugs.webkit.org/show_bug.cgi?id=214002
+        <rdar://problem/65144773>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/test/main.py:
+        (Tester._run_tests):
+
+2020-07-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPadOS] Unable to change focus between Google Docs windows by tapping
+        https://bugs.webkit.org/show_bug.cgi?id=213985
+        <rdar://problem/57083267>
+
+        Reviewed by Darin Adler.
+
+        Add WebKitTestRunner support for being able to verify that a web view's window has become the key window.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/UIScriptController.cpp: Added.
+        (WTR::UIScriptController::setWindowIsKey):
+        (WTR::UIScriptController::windowIsKey const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * TestRunnerShared/UIScriptContext/UIScriptControllerShared.cpp: Renamed from Tools/TestRunnerShared/UIScriptContext/UIScriptController.cpp.
+
+        Rename `UIScriptController.cpp` (in TestRunnerShared) to `UIScriptControllerShared.cpp`, and introduce new
+        DumpRenderTree and WebKitTestRunner versions of `UIScriptController.cpp` to house DumpRenderTree and
+        WebKitTestRunner-specific UIScriptController method implementations.
+
+        For now, these are just `windowIsKey` and `setWindowIsKey` below, which plumb into their respective platform-
+        agnostic `PlatformWebView` methods in WebKitTestRunner.
+
+        * WebKitTestRunner/UIScriptController.cpp: Added.
+        (WTR::UIScriptController::windowIsKey const):
+        (WTR::UIScriptController::setWindowIsKey):
+        * WebKitTestRunner/CMakeLists.txt:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (-[WebKitTestRunnerWindow becomeKeyWindow]):
+        (-[WebKitTestRunnerWindow resignKeyWindow]):
+
+        Update these two methods to update `m_windowIsKey` when the test runner's `UIWindow` becomes the key window (or
+        stops being the key window). This is invoked when `-[UIWindow makeKeyWindow]` is called (e.g. from within WebKit
+        code when tapping on an editable element).
+
+        (WTR::PlatformWebView::setWindowIsKey):
+
+        Avoid infinitely looping when setting windowIsKey to `true`, due to `-becomeKeyWindow` calling back into
+        `setWindowIsKey`.
+
+2020-07-06  Zhifei Fang  <zhifei_fang@apple.com>
+
+        [result database] Empty search will return too many tests to display
+        https://bugs.webkit.org/show_bug.cgi?id=213898
+
+        Reviewed by Jonathan Bedard.
+
+        * resultsdbpy/resultsdbpy/view/static/js/search.js: Trim the search string before fetching the tests, ingore empty string on paste event
+
+2020-07-06  Geoffrey Garen  <ggaren@apple.com>
+
+        RunLoop::dispatch should only call wakeUp when needed
+        https://bugs.webkit.org/show_bug.cgi?id=213705
+
+        Reviewed by Brady Eidson.
+
+        Added some tests for interesting edge cases.
+
+        Now that we have tests, we don't need so many comments.
+
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        (TestWebKitAPI::TEST): Test that re-entry maintiains ordering. Test that
+        re-entry does not deadlock with cross-thread posting. (This deadlock is
+        why we can't just use a naive check for an empty queue.)
+
+        * TestWebKitAPI/glib/UtilitiesGLib.cpp:
+        (TestWebKitAPI::Util::run):
+        (TestWebKitAPI::Util::spinRunLoop):
+        (TestWebKitAPI::Util::sleep): Try to fix the GLib RunLoop testing code.
+        GLib fails my two new tests, and seems to fail other RunLoop-y tests.
+        I think this is because g_idle_add is defined not to work in nested
+        RunLoops. Let's see if using WTF's RunLoop API instead can help.
+
+2020-07-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Enable storageAccess tests
+        https://bugs.webkit.org/show_bug.cgi?id=213881
+
+        Reviewed by Adrian Perez de Castro.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::getAllStorageAccessEntries): Use the right website data store.
+
+2020-07-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Change the cookies accept policy when ITP is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=213502
+
+        Reviewed by Michael Catanzaro.
+
+        Add tests to check the policy is changed and restored correctly when ITP is enabled and disabled.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestCookieManager.cpp:
+        (testCookieManagerAcceptPolicy):
+
+2020-07-06  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Misc updates
+        https://bugs.webkit.org/show_bug.cgi?id=213968
+
+        Reviewed by Sergio Villar Senin.
+
+        * buildstream/README.rst: ReST format fixes and doc additions.
+        * buildstream/elements/sdk/perl-term-readkey.bst: Remove perllocal.pod as it can clash with other recipes.
+        * flatpak/flatpakutils.py:
+        (run_in_sandbox_if_available): Add --flatpak- option pass-through support. This was lost
+        after the migration of run-minibrowser to python.
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263960.
+        https://bugs.webkit.org/show_bug.cgi?id=213980
+
+        Re-land, because r263959 somehow fixed the build issue caused
+        by r263953
+
+        Reverted changeset:
+
+        "Unreviewed, reverting r263953 and r263959."
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+        https://trac.webkit.org/changeset/263960
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263953 and r263959.
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+
+        Broke internal build
+
+        Reverted changesets:
+
+        "[Cocoa] Move almost all features from FeatureDefines.xcconfig
+        to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+        https://trac.webkit.org/changeset/263953
+
+        "[Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build
+        system"
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+        https://trac.webkit.org/changeset/263959
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build system
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitpy/style/checkers/featuredefines.py: Removed all FeatureDefines.xcconfig
+        files except for the two that remain, WebCore and WebKit.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig: Removed FEATURE_DEFINES.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Removed.
+        * TestWebKitAPI/Configurations/TestWTF.xcconfig: Removed include of FeatureDefines.xcconfig.
+        * TestWebKitAPI/Configurations/TestWTFLibrary.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/TestWebKitAPILibrary.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Ditto.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Removed FeatureDefines.xcconfig.
+
+2020-07-05  Sihui Liu  <sihui_liu@appe.com>
+
+        Text manipulation: add a new heuristic to decide paragraph boundary
+        https://bugs.webkit.org/show_bug.cgi?id=213918
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+        (TestWebKitAPI::TEST):
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Move almost all features from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Delete everything except
+        ENABLE_EXPERIMENTAL_FEATURES and ENABLE_WEBRTC.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig: Added include of
+        WebKitTargetConditionals.xcconfig.
+
+2020-07-05  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE] run-wpe-tests Python3 compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=213969
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/run-wpe-tests:
+
+2020-07-05  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS] Allow selecting HEIF images if the 'accept' attribute includes an image MIME type that the platform can transcode the HEIF to
+        https://bugs.webkit.org/show_bug.cgi?id=212489
+
+        Reviewed by Darin Adler.
+
+        The scope of this enhancement will be scaled down. No UI change will be
+        done for now. Only allow HEIF/HEIC images to be selected if the 'accept'
+        attribute include a mime type which CG supports transcoding the HEIF/HEIC
+        images to.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController dealloc]):
+        (-[WK2BrowserWindowController webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:]):
+        (-[FileExtensionsPopupTarget initWithOpenPanel:allowedFileExtensions:]): Deleted.
+        (-[FileExtensionsPopupTarget popupAction:]): Deleted.
+        (-[FileExtensionsPopupTarget dealloc]): Deleted.
+        (-[WK2BrowserWindowController createFilterView:popupTarget:]): Deleted.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all features from FeatureDefines.xcconfig that are already mentioned in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=213962
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Removed all features that were mentioned
+        in PlatformEnableCocoa.h; the rules in that file now define whether they are enabled.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove unconditional features from FeatureDefines.xcconfig, making sure they are covered in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212418
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Removed features that are either unconditionally not enabled,
+        or unconditionally enabled. Double checked that all the enabled ones are either in PlatformEnable.h or
+        PlatformEnableCocoa.h.
+
+2020-07-04  Sam Weinig  <weinig@apple.com>
+
+        Part 1 of SimpleColor and SRGBA<uint8_t> are essentially the same - let's converge them
+        https://bugs.webkit.org/show_bug.cgi?id=213948
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ColorTests.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/ExtendedColorTests.cpp:
+        (TestWebKitAPI::TEST):
+        Adapt tests to use templatized toSRGBALossy<float/uint8_t>.
+
+2020-07-04  Sergio Villar Senin  <svillar@igalia.com>
+
+        [Flatpak SDK] Require OpenXR 1.0.9
+        https://bugs.webkit.org/show_bug.cgi?id=213930
+
+        Reviewed by Philippe Normand.
+
+        * buildstream/elements/sdk/openxr.bst:
+
 2020-07-04  Darin Adler  <darin@apple.com>
 
         Make generate-unified-sources.sh not depend on features being listed in FEATURE_DEFINES environment variable

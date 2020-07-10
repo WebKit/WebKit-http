@@ -1423,6 +1423,19 @@ webkit.org/b/181752 storage/indexeddb/transaction-coordination-within-database.h
 webkit.org/b/181752 storage/indexeddb/transaction-starvation.html [ Skip ]
 webkit.org/b/176078 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-onnegotiationneeded.html [ Pass Failure ]
 
+# Newly imported web-platform-tests that are flaky on iOS.
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-parse-error-inline-classic.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-parse-error-inline-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-success-empty-src-classic.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-success-empty-src-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-success-inline-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-parse-error-inline-classic.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-parse-error-inline-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-success-empty-src-classic.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-success-empty-src-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-success-external-module.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-success-inline-classic.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-iframe-success-inline-module.html [ Pass Failure ]
 
 # SVG tests that fail:
 svg/W3C-SVG-1.1-SE/text-intro-02-b.svg [ Failure ]
@@ -1621,6 +1634,7 @@ fast/events/tabindex-focus-blur-all.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
 # Ref-test imported form W3C that is failing because the test is off by a couple of pixels on iOS.
 imported/w3c/web-platform-tests/css/css-multicol/multicol-fill-auto-block-children-001.xht [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-slow.html [ ImageOnlyFailure ]
 
 webkit.org/b/204505 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-fraction-003.xht [ ImageOnlyFailure ]
 webkit.org/b/204505 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-shorthand-2.xht [ ImageOnlyFailure ]
@@ -1634,16 +1648,6 @@ fast/forms/button-inner-block-reuse.html [ Failure ]
 fast/forms/button-with-float.html [ ImageOnlyFailure ]
 
 fast/forms/datalist/input-list.html [ Failure ]
-fast/forms/datetime/ValidityState-rangeOverflow-datetime.html [ Failure ]
-fast/forms/datetime/ValidityState-rangeUnderflow-datetime.html [ Failure ]
-fast/forms/datetime/ValidityState-stepMismatch-datetime.html [ Failure ]
-fast/forms/datetime/ValidityState-typeMismatch-datetime.html [ Failure ]
-fast/forms/datetime/datetime-input-type.html [ Failure ]
-fast/forms/datetime/datetime-setrangetext.html [ Failure ]
-fast/forms/datetime/datetime-stepup-stepdown.html [ Failure ]
-fast/forms/datetime/datetime-value-sanitization.html [ Failure ]
-fast/forms/datetime/input-valueasdate-datetime.html [ Failure ]
-fast/forms/datetime/input-valueasnumber-datetime.html [ Failure ]
 fast/forms/fieldset-legend-padding-unclipped-fieldset-border.html [ Failure ]
 fast/forms/fieldset-with-float.html [ Failure ]
 fast/forms/file/file-style-inheritance.html [ Failure ]
@@ -2523,6 +2527,7 @@ imported/w3c/web-platform-tests/dom/events/scrolling [ Pass ]
 
 fast/attachment/attachment-wrapping-action.html [ Pass ]
 fast/attachment/attachment-borderless.html [ Pass ]
+fast/attachment/attachment-dynamic-type.html [ Pass ]
 fast/images/pdf-as-image-dest-rect-change.html [ Pass ]
 
 fast/events/page-visibility-iframe-move-test.html [ Skip ]
@@ -2836,7 +2841,6 @@ http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 # <rdar://problem/34051745>
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
-imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 
 # <rdar://problem/34209038>
 webgl/1.0.3/conformance/ogles/GL/log/log_001_to_008.html [ Skip ]
@@ -3468,3 +3472,5 @@ webkit.org/b/212493 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid
 webkit.org/b/212565 imported/w3c/web-platform-tests/encoding/single-byte-decoder.html [ Failure ]
 
 fast/text/text-styles/-apple-system [ Pass ]
+
+webkit.org/b/214155 [ Debug ] imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/blob.https.html [ Pass Failure ]

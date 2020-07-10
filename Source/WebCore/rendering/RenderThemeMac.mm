@@ -120,7 +120,6 @@
 @end
 
 static const Seconds progressAnimationFrameRate = 33_ms; // 30 fps
-static const double progressAnimationNumFrames = 256;
 
 @interface WebCoreRenderThemeNotificationObserver : NSObject
 @end
@@ -485,7 +484,7 @@ Color RenderThemeMac::platformTextSearchHighlightColor(OptionSet<StyleColor::Opt
     return colorFromNSColor([NSColor findHighlightColor]);
 }
 
-static SimpleColor menuBackgroundColor()
+static SRGBA<uint8_t> menuBackgroundColor()
 {
     RetainPtr<NSBitmapImageRep> offscreenRep = adoptNS([[NSBitmapImageRep alloc] initWithBitmapDataPlanes:nil pixelsWide:1 pixelsHigh:1
         bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:4 bitsPerPixel:32]);
@@ -738,11 +737,11 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
         case CSSValueThreedface:
             // We selected this value instead of [NSColor controlColor] to avoid website incompatibilities.
             // We may want to consider changing to [NSColor controlColor] some day.
-            return SimpleColor { 0xFFC0C0C0 };
+            return makeSimpleColor(192, 192, 192);
 
         case CSSValueInfobackground:
             // No corresponding NSColor for this so we use a hard coded value.
-            return SimpleColor { 0xFFFBFCC5 };
+            return makeSimpleColor(251, 252, 197);
 
         case CSSValueMenu:
             return menuBackgroundColor();
@@ -751,30 +750,30 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
         case CSSValueActiveborder:
             // Hardcoded to avoid exposing a user appearance preference to the web for fingerprinting.
             if (localAppearance.usingDarkAppearance())
-                return { SimpleColor { 0xFF1AA9FF }, Color::Semantic };
-            return { SimpleColor { 0xFF0067F4 }, Color::Semantic };
+                return { makeSimpleColor(26, 169, 255), Color::Semantic };
+            return { makeSimpleColor(0, 103, 244), Color::Semantic };
 
         case CSSValueAppleSystemControlAccent:
             // Hardcoded to avoid exposing a user appearance preference to the web for fingerprinting.
             // Same color in light and dark appearances.
-            return { SimpleColor { 0xFF007AFF }, Color::Semantic };
+            return { makeSimpleColor(0, 122, 255), Color::Semantic };
 
         case CSSValueAppleSystemSelectedContentBackground:
             // Hardcoded to avoid exposing a user appearance preference to the web for fingerprinting.
             if (localAppearance.usingDarkAppearance())
-                return { SimpleColor { 0xFF0058D0 }, Color::Semantic };
-            return { SimpleColor { 0xFF0063E1 }, Color::Semantic };
+                return { makeSimpleColor(0, 88, 208), Color::Semantic };
+            return { makeSimpleColor(0, 99, 225), Color::Semantic };
 
         case CSSValueHighlight:
         case CSSValueAppleSystemSelectedTextBackground:
             // Hardcoded to avoid exposing a user appearance preference to the web for fingerprinting.
             if (localAppearance.usingDarkAppearance())
-                return { SimpleColor { 0xCC3F638B }, Color::Semantic };
-            return { SimpleColor { 0x9980BCFE }, Color::Semantic };
+                return { makeSimpleColor(63, 99, 139, 204), Color::Semantic };
+            return { makeSimpleColor(128, 188, 254, 153), Color::Semantic };
 
 #if !HAVE(OS_DARK_MODE_SUPPORT)
         case CSSValueAppleSystemContainerBorder:
-            return SimpleColor { 0xFFC5C5C5 };
+            return makeSimpleColor(197, 197, 197);
 #endif
 
         case CSSValueAppleSystemEvenAlternatingContentBackground: {
@@ -1370,11 +1369,6 @@ Seconds RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) c
     return progressAnimationFrameRate;
 }
 
-Seconds RenderThemeMac::animationDurationForProgressBar(RenderProgress&) const
-{
-    return progressAnimationFrameRate * progressAnimationNumFrames;
-}
-
 void RenderThemeMac::adjustProgressBarStyle(RenderStyle&, const Element*) const
 {
 }
@@ -1389,7 +1383,6 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
     const auto& renderProgress = downcast<RenderProgress>(renderObject);
     float deviceScaleFactor = renderObject.document().deviceScaleFactor();
     bool isIndeterminate = renderProgress.position() < 0;
-    auto animationFrame = lround(renderProgress.animationProgress() * nextafter(progressAnimationNumFrames, 0) * deviceScaleFactor);
     auto imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpace::SRGB, paintInfo.context());
     if (!imageBuffer)
         return true;
@@ -1419,7 +1412,8 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
         (__bridge NSString *)kCUIScaleKey: @(deviceScaleFactor),
         (__bridge NSString *)kCUIPresentationStateKey: (__bridge NSString *)(isActive(renderObject) ? kCUIPresentationStateActiveKey : kCUIPresentationStateInactive),
         (__bridge NSString *)kCUIOrientationKey: (__bridge NSString *)kCUIOrientHorizontal,
-        (__bridge NSString *)kCUIAnimationFrameKey: @(isIndeterminate ? animationFrame : 0)
+        (__bridge NSString *)kCUIAnimationStartTimeKey: @(renderProgress.animationStartTime().secondsSinceEpoch().seconds()),
+        (__bridge NSString *)kCUIAnimationTimeKey: @(MonotonicTime::now().secondsSinceEpoch().seconds())
     }];
 
     GraphicsContextStateSaver stateSaver(paintInfo.context());
@@ -2419,8 +2413,8 @@ const CGFloat attachmentIconSelectionBorderThickness = 1;
 const CGFloat attachmentIconBackgroundRadius = 3;
 const CGFloat attachmentIconToTitleMargin = 2;
 
-constexpr SimpleColor attachmentIconBackgroundColor = makeSimpleColor(0, 0, 0, 30);
-constexpr SimpleColor attachmentIconBorderColor = makeSimpleColor(255, 255, 255, 125);
+constexpr auto attachmentIconBackgroundColor = makeSimpleColor(0, 0, 0, 30);
+constexpr auto attachmentIconBorderColor = makeSimpleColor(255, 255, 255, 125);
 
 const CGFloat attachmentTitleFontSize = 12;
 const CGFloat attachmentTitleBackgroundRadius = 3;
@@ -2428,23 +2422,23 @@ const CGFloat attachmentTitleBackgroundPadding = 3;
 const CGFloat attachmentTitleMaximumWidth = 100 - (attachmentTitleBackgroundPadding * 2);
 const CFIndex attachmentTitleMaximumLineCount = 2;
 
-constexpr SimpleColor attachmentTitleInactiveBackgroundColor = makeSimpleColor(204, 204, 204, 255);
-constexpr SimpleColor attachmentTitleInactiveTextColor = makeSimpleColor(100, 100, 100, 255);
+constexpr auto attachmentTitleInactiveBackgroundColor = makeSimpleColor(204, 204, 204);
+constexpr auto attachmentTitleInactiveTextColor = makeSimpleColor(100, 100, 100);
 
 const CGFloat attachmentSubtitleFontSize = 10;
 const int attachmentSubtitleWidthIncrement = 10;
-constexpr SimpleColor attachmentSubtitleTextColor = makeSimpleColor(82, 145, 214, 255);
+constexpr auto attachmentSubtitleTextColor = makeSimpleColor(82, 145, 214);
 
 const CGFloat attachmentProgressBarWidth = 30;
 const CGFloat attachmentProgressBarHeight = 5;
 const CGFloat attachmentProgressBarOffset = -9;
 const CGFloat attachmentProgressBarBorderWidth = 1;
-constexpr SimpleColor attachmentProgressBarBackgroundColor = makeSimpleColor(0, 0, 0, 89);
-constexpr SimpleColor attachmentProgressBarFillColor = Color::white;
-constexpr SimpleColor attachmentProgressBarBorderColor = makeSimpleColor(0, 0, 0, 128);
+constexpr auto attachmentProgressBarBackgroundColor = makeSimpleColor(0, 0, 0, 89);
+constexpr auto attachmentProgressBarFillColor = Color::white;
+constexpr auto attachmentProgressBarBorderColor = makeSimpleColor(0, 0, 0, 128);
 
 const CGFloat attachmentPlaceholderBorderRadius = 5;
-constexpr SimpleColor attachmentPlaceholderBorderColor = makeSimpleColor(0, 0, 0, 56);
+constexpr auto attachmentPlaceholderBorderColor = makeSimpleColor(0, 0, 0, 56);
 const CGFloat attachmentPlaceholderBorderWidth = 2;
 const CGFloat attachmentPlaceholderBorderDashLength = 6;
 

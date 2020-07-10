@@ -56,6 +56,8 @@ public:
     void deviceRemoved(IOHIDDeviceRef);
     void valuesChanged(IOHIDValueRef);
 
+    void ignoreGameControllerFrameworkDevices() { m_ignoresGameControllerFrameworkDevices = true; }
+
 private:
     HIDGamepadProvider();
 
@@ -64,19 +66,21 @@ private:
     void openAndScheduleManager();
     void closeAndUnscheduleManager();
 
-    void connectionDelayTimerFired();
+    void initialGamepadsConnectedTimerFired();
     void inputNotificationTimerFired();
 
     unsigned indexForNewlyConnectedDevice();
 
     Vector<PlatformGamepad*> m_gamepadVector;
     HashMap<IOHIDDeviceRef, std::unique_ptr<HIDGamepad>> m_gamepadMap;
+    HashSet<IOHIDDeviceRef> m_gameControllerManagedGamepads;
 
     RetainPtr<IOHIDManagerRef> m_manager;
 
-    bool m_shouldDispatchCallbacks;
+    bool m_initialGamepadsConnected { false };
+    bool m_ignoresGameControllerFrameworkDevices { false };
 
-    Timer m_connectionDelayTimer;
+    Timer m_initialGamepadsConnectedTimer;
     Timer m_inputNotificationTimer;
 };
 

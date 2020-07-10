@@ -290,6 +290,10 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
 {
     AuxiliaryProcess::initializeConnection(connection);
 
+#if PLATFORM(COCOA)
+    handleXPCEndpointMessages();
+#endif
+
     // We call _exit() directly from the background queue in case the main thread is unresponsive
     // and AuxiliaryProcess::didClose() does not get called.
     connection->setDidCloseOnConnectionWorkQueueCallback(callExit);
@@ -1049,9 +1053,9 @@ void WebProcess::setInitialGamepads(const Vector<WebKit::GamepadData>& gamepadDa
     WebGamepadProvider::singleton().setInitialGamepads(gamepadDatas);
 }
 
-void WebProcess::gamepadConnected(const GamepadData& gamepadData)
+void WebProcess::gamepadConnected(const GamepadData& gamepadData, WebCore::EventMakesGamepadsVisible eventVisibility)
 {
-    WebGamepadProvider::singleton().gamepadConnected(gamepadData);
+    WebGamepadProvider::singleton().gamepadConnected(gamepadData, eventVisibility);
 }
 
 void WebProcess::gamepadDisconnected(unsigned index)

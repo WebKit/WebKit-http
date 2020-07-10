@@ -103,7 +103,7 @@ public:
     void decrement();
     void showMenu();
     void press();
-    bool dismiss();
+    void dismiss();
 #if PLATFORM(MAC)
     void syncPress();
     void asyncIncrement();
@@ -353,7 +353,9 @@ public:
     void assistiveTechnologySimulatedFocus();
     bool isSearchField() const;
     bool isTextArea() const;
-    
+    bool isInDefinitionListDefinition() const;
+    bool isInDefinitionListTerm() const;
+
     bool scrollPageUp();
     bool scrollPageDown();
     bool scrollPageLeft();

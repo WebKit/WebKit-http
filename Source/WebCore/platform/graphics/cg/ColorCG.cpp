@@ -51,9 +51,12 @@ RetainPtr<CGColorRef> TinyLRUCachePolicy<WebCore::Color, RetainPtr<CGColorRef>>:
 
 namespace WebCore {
 
-static SimpleColor makeSimpleColorFromCGColor(CGColorRef color)
+static Optional<SRGBA<uint8_t>> roundAndClampToSRGBALossy(CGColorRef color)
 {
     // FIXME: ExtendedColor - needs to handle color spaces.
+
+    if (!color)
+        return WTF::nullopt;
 
     size_t numComponents = CGColorGetNumberOfComponents(color);
     const CGFloat* components = CGColorGetComponents(color);
@@ -78,32 +81,17 @@ static SimpleColor makeSimpleColorFromCGColor(CGColorRef color)
         ASSERT_NOT_REACHED();
     }
 
-    return makeSimpleColor(SRGBA { r, g, b, a });
+    return convertToComponentBytes(SRGBA { r, g, b, a });
 }
 
 Color::Color(CGColorRef color)
+    : Color(roundAndClampToSRGBALossy(color))
 {
-    // FIXME: ExtendedColor - needs to handle color spaces.
-
-    if (!color) {
-        m_colorData.simpleColorAndFlags = invalidSimpleColor;
-        return;
-    }
-
-    setSimpleColor(makeSimpleColorFromCGColor(color));
 }
 
-Color::Color(CGColorRef color, SemanticTag)
+Color::Color(CGColorRef color, SemanticTag tag)
+    : Color(roundAndClampToSRGBALossy(color), tag)
 {
-    // FIXME: ExtendedColor - needs to handle color spaces.
-
-    if (!color) {
-        m_colorData.simpleColorAndFlags = invalidSimpleColor;
-        return;
-    }
-
-    setSimpleColor(makeSimpleColorFromCGColor(color));
-    tagAsSemantic();
 }
 
 static CGColorRef leakCGColor(const Color& color)
@@ -128,24 +116,22 @@ static CGColorRef leakCGColor(const Color& color)
 
 CGColorRef cachedCGColor(const Color& color)
 {
-    if (color.isSimple()) {
-        switch (color.asSimple().value()) {
-        case Color::transparent.value(): {
+    if (color.isInline()) {
+        switch (Packed::RGBA { color.asInline() }.value) {
+        case Packed::RGBA { Color::transparent }.value: {
             static CGColorRef transparentCGColor = leakCGColor(color);
             return transparentCGColor;
         }
-        case Color::black.value(): {
+        case Packed::RGBA { Color::black }.value: {
             static CGColorRef blackCGColor = leakCGColor(color);
             return blackCGColor;
         }
-        case Color::white.value(): {
+        case Packed::RGBA { Color::white }.value: {
             static CGColorRef whiteCGColor = leakCGColor(color);
             return whiteCGColor;
         }
         }
     }
-
-    ASSERT(color.isExtended() || color.asSimple().value());
 
     static NeverDestroyed<TinyLRUCache<Color, RetainPtr<CGColorRef>, 32>> cache;
     return cache.get().get(color).get();

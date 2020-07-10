@@ -119,7 +119,7 @@ class Console:
         cls.colored_message_if_supported(Colors.WARNING, str_format, *args)
 
 
-def run_sanitized(command, gather_output=False):
+def run_sanitized(command, gather_output=False, ignore_stderr=False):
     """ Runs a command in a santized environment and optionally returns decoded output or raises
         subprocess.CalledProcessError
     """
@@ -132,7 +132,11 @@ def run_sanitized(command, gather_output=False):
 
     keywords = dict(env=sanitized_env)
     if gather_output:
-        output = subprocess.check_output(command, **keywords)
+        if ignore_stderr:
+            with open(os.devnull, 'w') as devnull:
+                output = subprocess.check_output(command, stderr=devnull, **keywords)
+        else:
+            output = subprocess.check_output(command, **keywords)
         return output.decode('utf-8')
     else:
         keywords["stdout"] = sys.stdout
@@ -179,6 +183,7 @@ class FlatpakObject:
     def flatpak(self, command, *args, **kwargs):
         comment = kwargs.pop("comment", None)
         gather_output = kwargs.get("gather_output", False)
+        ignore_stderr = kwargs.get("ignore_stderr", False)
         if comment:
             Console.message(comment)
 
@@ -194,11 +199,11 @@ class FlatpakObject:
         command.extend(args)
 
         _log.debug("Executing %s" % ' '.join(command))
-        return run_sanitized(command, gather_output=gather_output)
+        return run_sanitized(command, gather_output=gather_output, ignore_stderr=ignore_stderr)
 
     def version(self, ref_id):
         try:
-            output = self.flatpak("info", ref_id, gather_output=True)
+            output = self.flatpak("info", ref_id, gather_output=True, ignore_stderr=True)
         except subprocess.CalledProcessError:
             # ref is likely not installed
             return ""
@@ -648,10 +653,12 @@ class WebkitFlatpak:
 
     def run_in_sandbox(self, *args, **kwargs):
         self.setup_builddir()
-        cwd = kwargs.pop("cwd", None)
-        extra_env_vars = kwargs.pop("env", {})
-        stdout = kwargs.pop("stdout", sys.stdout)
-        extra_flatpak_args = kwargs.pop("extra_flatpak_args", [])
+        cwd = kwargs.get("cwd", None)
+        extra_env_vars = kwargs.get("env", {})
+        stdout = kwargs.get("stdout", sys.stdout)
+        extra_flatpak_args = kwargs.get("extra_flatpak_args", [])
+        start_sccache = kwargs.get("start_sccache", True)
+        skip_icc = kwargs.get("skip_icc", False)
 
         if not isinstance(args, list):
             args = list(args)
@@ -768,19 +775,30 @@ class WebkitFlatpak:
         remote_sccache_configs = set(["SCCACHE_REDIS", "SCCACHE_BUCKET", "SCCACHE_MEMCACHED",
                                       "SCCACHE_GCS_BUCKET", "SCCACHE_AZURE_CONNECTION_STRING",
                                       "WEBKIT_USE_SCCACHE"])
-        if remote_sccache_configs.intersection(set(os.environ.keys())):
+        if remote_sccache_configs.intersection(set(os.environ.keys())) and start_sccache:
             _log.debug("Enabling network access for the remote sccache")
             flatpak_command.append(share_network_option)
 
-            if os.path.isfile(self.sccache_config_file) and not self.regenerate_toolchains and "SCCACHE_CONF" not in os.environ.keys():
-                sandbox_environment["SCCACHE_CONF"] = self.host_path_to_sandbox_path(self.sccache_config_file)
+            sccache_environment = {}
+            if os.path.isfile(self.sccache_config_file) and not self.regenerate_toolchains and \
+               "SCCACHE_CONF" not in os.environ.keys():
+                sccache_environment["SCCACHE_CONF"] = self.host_path_to_sandbox_path(self.sccache_config_file)
 
-        override_sccache_server_port = os.environ.get("WEBKIT_SCCACHE_SERVER_PORT")
-        if override_sccache_server_port:
-            _log.debug("Overriding sccache server port to %s" % override_sccache_server_port)
-            sandbox_environment["SCCACHE_SERVER_PORT"] = override_sccache_server_port
+            override_sccache_server_port = os.environ.get("WEBKIT_SCCACHE_SERVER_PORT")
+            if override_sccache_server_port:
+                _log.debug("Overriding sccache server port to %s" % override_sccache_server_port)
+                sccache_environment["SCCACHE_SERVER_PORT"] = override_sccache_server_port
 
-        if self.use_icecream and not self.regenerate_toolchains:
+            if building:
+                # Spawn the sccache server in background, and avoid recursing here, using a bool keyword.
+                _log.debug("Pre-starting the SCCache dist server")
+                self.run_in_sandbox("sccache", "--start-server", env=sccache_environment,
+                                    extra_flatpak_args=[share_network_option], start_sccache=False)
+
+            # Forward sccache server env vars to sccache clients.
+            sandbox_environment.update(sccache_environment)
+
+        if self.use_icecream and not skip_icc:
             _log.debug('Enabling the icecream compiler')
             if share_network_option not in flatpak_command:
                 flatpak_command.append(share_network_option)
@@ -900,7 +918,7 @@ class WebkitFlatpak:
         with tempfile.NamedTemporaryFile() as tmpfile:
             command = ['icecc', '--build-native']
             command.extend(["/usr/bin/%s" % compiler for compiler in compilers])
-            self.run_in_sandbox(*command, stdout=tmpfile, cwd=self.source_root)
+            self.run_in_sandbox(*command, stdout=tmpfile, cwd=self.source_root, skip_icc=True)
             tmpfile.flush()
             tmpfile.seek(0)
             icc_version_filename, = re.findall(br'.*creating (.*)', tmpfile.read())
@@ -958,9 +976,8 @@ class WebkitFlatpak:
         # FIXME: For unknown reasons, the GL extension needs to be explicitely
         # installed for Flatpak 1.2.x to be able to make use of it. Seems like
         # it's not correctly inheriting it from the SDK.
-        self.flathub_repo = self.repos.add(
-            FlatpakRepo("flathub", repo_file="https://dl.flathub.org/repo/flathub.flatpakrepo")
-        )
+        self.flathub_repo = self.repos.add(FlatpakRepo("flathub", url="https://dl.flathub.org/repo/",
+                                                       repo_file="https://dl.flathub.org/repo/flathub.flatpakrepo"))
 
         packages.append(FlatpakPackage("org.freedesktop.Platform.GL.default", "19.08",
                                        self.flathub_repo, arch))
@@ -1026,11 +1043,22 @@ def run_in_sandbox_if_available(args):
     if not check_flatpak(verbose=False):
         return None
 
-    flatpak_runner = WebkitFlatpak.load_from_args(args, add_help=False)
+    # Filter out flatpakutils args for the app.
+    runner_args = []
+    app_args = []
+    opt_prefix = "--flatpak-"
+    for arg in args:
+        if arg.startswith(opt_prefix):
+            runner_args.append("--%s" % arg[len(opt_prefix):])
+        else:
+            runner_args.append(arg)
+            app_args.append(arg)
+
+    flatpak_runner = WebkitFlatpak.load_from_args(runner_args, add_help=False)
     if not flatpak_runner.clean_args():
         return None
 
     if not flatpak_runner.has_environment():
         return None
 
-    sys.exit(flatpak_runner.run_in_sandbox(*args))
+    sys.exit(flatpak_runner.run_in_sandbox(*app_args))

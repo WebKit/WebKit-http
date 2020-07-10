@@ -1324,8 +1324,6 @@ webkit.org/b/207466 http/wpt/service-workers/service-worker-networkprocess-crash
 
 webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure DumpJSConsoleLogInStdErr ]
 
-webkit.org/b/207551 http/tests/adClickAttribution/store-disabled-in-ephemeral-session.html [ Pass Timeout ]
-
 webkit.org/b/190852 imported/w3c/web-platform-tests/service-workers/service-worker/redirected-response.https.html [ Pass Failure ]
 
 webkit.org/b/209514 http/tests/cache-storage/page-cache-domcache-pending-promise.html [ Pass Timeout DumpJSConsoleLogInStdErr ]
@@ -1401,6 +1399,9 @@ webkit.org/b/208739 http/tests/resourceLoadStatistics/third-party-cookie-blockin
 webkit.org/b/208890 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_openKeyCursor.htm [ Pass Failure ]
 
 webkit.org/b/209006 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/execution-timing/085.html [ Pass Failure ]
+
+# Newly imported WPT test that is flaky on iOS only.
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-compositing-change.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/209205 fast/events/autoscroll-in-iframe.html [ Pass Failure ]
 
@@ -1701,13 +1702,6 @@ http/tests/quicklook/secure-document-with-subresources.html [ Skip ]
 
 # Newly imported canvas web-platform-tests that are failing on iOS only.
 imported/w3c/web-platform-tests/html/canvas/element/building-paths/canvas_complexshapes_beziercurveto_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/compositing/canvas_compositing_globalcompositeoperation_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/line-styles/canvas_linestyles_linecap_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/line-styles/lineto_a.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/the-canvas-state/canvas_state_restore_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/transformations/canvas_transformations_reset_001.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/transformations/canvas_transformations_scale_001.htm [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/canvas/element/transformations/transform_a.html [ ImageOnlyFailure ]
 
 webkit.org/b/209352 http/tests/security/stylesheet-href-redirect.html [ Pass Timeout ]
 
@@ -1755,3 +1749,5 @@ webkit.org/b/213520 perf/htmlcollection-backwards-iteration.html [ Pass Failure 
 webkit.org/b/213553 http/tests/resourceLoadStatistics/grandfathering-database.html [ Pass Timeout ]
 
 webkit.org/b/21365 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/intrinsic_sizes.htm [ Pass Failure ]
+
+webkit.org/b/214084 [ Release ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]

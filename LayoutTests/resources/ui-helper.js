@@ -448,10 +448,12 @@ window.UIHelper = class UIHelper {
             testRunner.runUIScript(`
                 (function() {
                     function clearCallbacksAndScriptComplete() {
+                        uiController.didShowContextMenuCallback = null;
                         uiController.didShowKeyboardCallback = null;
                         uiController.willPresentPopoverCallback = null;
                         uiController.uiScriptComplete();
                     }
+                    uiController.didShowContextMenuCallback = clearCallbacksAndScriptComplete;
                     uiController.didShowKeyboardCallback = clearCallbacksAndScriptComplete;
                     uiController.willPresentPopoverCallback = clearCallbacksAndScriptComplete;
                     uiController.singleTapAtPoint(${x}, ${y}, function() { });
@@ -464,13 +466,21 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`
                 (function() {
+                    if (!uiController.isShowingKeyboard && !uiController.isShowingContextMenu && !uiController.isShowingPopover) {
+                        uiController.uiScriptComplete();
+                        return;
+                    }
+
                     function clearCallbacksAndScriptComplete() {
                         uiController.didHideKeyboardCallback = null;
                         uiController.didDismissPopoverCallback = null;
+                        uiController.didHideContextMenuCallback = null;
                         uiController.uiScriptComplete();
                     }
+
                     uiController.didHideKeyboardCallback = clearCallbacksAndScriptComplete;
                     uiController.didDismissPopoverCallback = clearCallbacksAndScriptComplete;
+                    uiController.didHideContextMenuCallback = clearCallbacksAndScriptComplete;
                 })()`, resolve);
         });
     }
@@ -579,6 +589,22 @@ window.UIHelper = class UIHelper {
                 (function() {
                     if (uiController.isShowingPopover)
                         uiController.didDismissPopoverCallback = () => uiController.uiScriptComplete();
+                    else
+                        uiController.uiScriptComplete();
+                })()`, resolve);
+        });
+    }
+
+    static waitForContextMenuToHide()
+    {
+        if (!this.isWebKit2() || !this.isIOSFamily())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    if (uiController.isShowingContextMenu)
+                        uiController.didDismissContextMenuCallback = () => uiController.uiScriptComplete();
                     else
                         uiController.uiScriptComplete();
                 })()`, resolve);
@@ -1186,6 +1212,20 @@ window.UIHelper = class UIHelper {
                 });
             })();`, resolve);
         });
+    }
+
+    static setWindowIsKey(isKey)
+    {
+        const script = `uiController.windowIsKey = ${isKey}`;
+        return new Promise(resolve => testRunner.runUIScript(script, resolve));
+    }
+
+    static windowIsKey()
+    {
+        const script = "uiController.uiScriptComplete(uiController.windowIsKey)";
+        return new Promise(resolve => testRunner.runUIScript(script, (result) => {
+            resolve(result === "true");
+        }));
     }
 
     static waitForDoubleTapDelay()

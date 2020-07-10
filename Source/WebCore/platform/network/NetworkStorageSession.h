@@ -131,6 +131,7 @@ public:
 
     SoupCookieJar* cookieStorage() const { return m_cookieStorage.get(); }
     void setCookieStorage(GRefPtr<SoupCookieJar>&&);
+    void setCookieAcceptPolicy(HTTPCookieAcceptPolicy);
     void setCookieObserverHandler(Function<void ()>&&);
     void getCredentialFromPersistentStorage(const ProtectionSpace&, GCancellable*, Function<void (Credential&&)>&& completionHandler);
     void saveCredentialToPersistentStorage(const ProtectionSpace&, const Credential&);
@@ -185,7 +186,7 @@ public:
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void setResourceLoadStatisticsEnabled(bool enabled) { m_isResourceLoadStatisticsEnabled = enabled; }
+    WEBCORE_EXPORT void setResourceLoadStatisticsEnabled(bool);
     WEBCORE_EXPORT bool shouldBlockCookies(const ResourceRequest&, Optional<FrameIdentifier>, Optional<PageIdentifier>, ShouldRelaxThirdPartyCookieBlocking) const;
     WEBCORE_EXPORT bool shouldBlockCookies(const URL& firstPartyForCookies, const URL& resource, Optional<FrameIdentifier>, Optional<PageIdentifier>, ShouldRelaxThirdPartyCookieBlocking) const;
     WEBCORE_EXPORT bool shouldBlockThirdPartyCookies(const RegistrableDomain&) const;
@@ -237,6 +238,7 @@ private:
 #elif USE(SOUP)
     static void cookiesDidChange(NetworkStorageSession*);
 
+    HTTPCookieAcceptPolicy m_cookieAcceptPolicy;
     GRefPtr<SoupCookieJar> m_cookieStorage;
     Function<void ()> m_cookieObserverHandler;
 #elif USE(HAIKU)

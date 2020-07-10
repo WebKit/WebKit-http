@@ -97,6 +97,7 @@
 #include "NetworkCacheCoders.h"
 
 #if PLATFORM(COCOA)
+#include "LaunchServicesDatabaseObserver.h"
 #include "NetworkSessionCocoa.h"
 #endif
 
@@ -162,6 +163,9 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
     addSupplement<WebCookieManager>();
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
+#endif
+#if PLATFORM(COCOA)
+    addSupplement<LaunchServicesDatabaseObserver>();
 #endif
 #if PLATFORM(COCOA) && ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     LegacyCustomProtocolManager::networkProcessCreated(*this);
@@ -415,7 +419,9 @@ void NetworkProcess::createNetworkConnectionToWebProcess(ProcessIdentifier ident
 
     m_storageManagerSet->addConnection(connection.connection());
 
+#if ENABLE(INDEXED_DATABASE)
     webIDBServer(sessionID).addConnection(connection.connection(), identifier);
+#endif
 }
 
 void NetworkProcess::clearCachedCredentials()
@@ -596,8 +602,10 @@ void NetworkProcess::destroySession(PAL::SessionID sessionID)
 #endif
 
     m_storageManagerSet->remove(sessionID);
-    if (auto webIDBServer = m_webIDBServers.take(sessionID))
-        webIDBServer->close();
+
+#if ENABLE(INDEXED_DATABASE)
+    removeWebIDBServerIfPossible(sessionID);
+#endif
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1421,7 +1429,7 @@ void NetworkProcess::preconnectTo(PAL::SessionID sessionID, WebPageProxyIdentifi
     parameters.storedCredentialsPolicy = storedCredentialsPolicy;
     parameters.shouldPreconnectOnly = PreconnectOnly::Yes;
 
-    new PreconnectTask(*this, sessionID, WTFMove(parameters), [](const WebCore::ResourceError&) { });
+    (new PreconnectTask(*this, sessionID, WTFMove(parameters), [](const WebCore::ResourceError&) { }))->start();
 #else
     UNUSED_PARAM(url);
     UNUSED_PARAM(userAgent);
@@ -1925,6 +1933,9 @@ void NetworkProcess::deleteAndRestrictWebsiteDataForRegistrableDomains(PAL::Sess
     if (m_storageManagerSet->contains(sessionID)) {
         if (websiteDataTypes.contains(WebsiteDataType::SessionStorage)) {
             m_storageManagerSet->getSessionStorageOrigins(sessionID, [protectedThis = makeRef(*this), this, sessionID, callbackAggregator, domainsToDeleteAllNonCookieWebsiteDataFor](auto&& origins) {
+                if (!m_storageManagerSet->contains(sessionID))
+                    return;
+
                 auto originsToDelete = filterForRegistrableDomains(origins, domainsToDeleteAllNonCookieWebsiteDataFor, callbackAggregator->m_domains);
                 m_storageManagerSet->deleteSessionStorageForOrigins(sessionID, originsToDelete, [callbackAggregator] { });
             });
@@ -1932,6 +1943,9 @@ void NetworkProcess::deleteAndRestrictWebsiteDataForRegistrableDomains(PAL::Sess
 
         if (websiteDataTypes.contains(WebsiteDataType::LocalStorage)) {
             m_storageManagerSet->getLocalStorageOrigins(sessionID, [protectedThis = makeRef(*this), this, sessionID, callbackAggregator, domainsToDeleteAllNonCookieWebsiteDataFor](auto&& origins) {
+                if (!m_storageManagerSet->contains(sessionID))
+                    return;
+
                 auto originsToDelete = filterForRegistrableDomains(origins, domainsToDeleteAllNonCookieWebsiteDataFor, callbackAggregator->m_domains);
                 m_storageManagerSet->deleteLocalStorageForOrigins(sessionID, originsToDelete, [callbackAggregator] { });
             });
@@ -2500,6 +2514,24 @@ void NetworkProcess::setSessionStorageQuotaManagerIDBRootPath(PAL::SessionID ses
     sessionStorageQuotaManager->setIDBRootPath(idbRootPath);
 }
 
+void NetworkProcess::removeWebIDBServerIfPossible(PAL::SessionID sessionID)
+{
+    ASSERT(RunLoop::isMain());
+
+    auto iterator = m_webIDBServers.find(sessionID);
+    if (iterator == m_webIDBServers.end())
+        return;
+
+    if (m_networkSessions.contains(sessionID))
+        return;
+
+    if (iterator->value->hasConnection())
+        return;
+
+    iterator->value->close();
+    m_webIDBServers.remove(iterator);
+}
+
 #endif // ENABLE(INDEXED_DATABASE)
 
 void NetworkProcess::syncLocalStorage(CompletionHandler<void()>&& completionHandler)
@@ -2731,8 +2763,13 @@ void NetworkProcess::getLocalStorageOriginDetails(PAL::SessionID sessionID, Comp
 void NetworkProcess::connectionToWebProcessClosed(IPC::Connection& connection, PAL::SessionID sessionID)
 {
     m_storageManagerSet->removeConnection(connection);
-    if (auto* webIDBServer = m_webIDBServers.get(sessionID))
-        webIDBServer->removeConnection(connection);
+
+#if ENABLE(INDEXED_DATABASE)
+    auto* webIDBServer = m_webIDBServers.get(sessionID);
+    ASSERT(webIDBServer);
+    webIDBServer->removeConnection(connection);
+    removeWebIDBServerIfPossible(sessionID);
+#endif
 }
 
 NetworkConnectionToWebProcess* NetworkProcess::webProcessConnection(ProcessIdentifier identifier) const

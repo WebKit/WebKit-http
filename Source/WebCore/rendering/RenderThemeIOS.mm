@@ -73,12 +73,13 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreImage/CoreImage.h>
 #import <objc/runtime.h>
-#import <pal/ios/UIKitSoftLink.h>
+#import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RefPtr.h>
 #import <wtf/StdLibExtras.h>
+#import <pal/ios/UIKitSoftLink.h>
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
@@ -893,16 +894,6 @@ bool RenderThemeIOS::paintSliderThumbDecorations(const RenderObject& box, const 
     return false;
 }
 
-Seconds RenderThemeIOS::animationRepeatIntervalForProgressBar(RenderProgress&) const
-{
-    return 0_s;
-}
-
-Seconds RenderThemeIOS::animationDurationForProgressBar(RenderProgress&) const
-{
-    return 0_s;
-}
-
 bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintInfo& paintInfo, const IntRect& rect)
 {
     if (!is<RenderProgress>(renderer))
@@ -926,10 +917,10 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     const float verticalRenderingPosition = rect.y() + verticalOffset;
     auto strokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-    strokeGradient->addColorStop(0.0, makeSimpleColor(0x8d, 0x8d, 0x8d));
-    strokeGradient->addColorStop(0.45, makeSimpleColor(0xee, 0xee, 0xee));
-    strokeGradient->addColorStop(0.55, makeSimpleColor(0xee, 0xee, 0xee));
-    strokeGradient->addColorStop(1.0, makeSimpleColor(0x8d, 0x8d, 0x8d));
+    strokeGradient->addColorStop(0.0, makeSimpleColor(141, 141, 141));
+    strokeGradient->addColorStop(0.45, makeSimpleColor(238, 238, 238));
+    strokeGradient->addColorStop(0.55, makeSimpleColor(238, 238, 238));
+    strokeGradient->addColorStop(1.0, makeSimpleColor(141, 141, 141));
     context.setStrokeGradient(WTFMove(strokeGradient));
 
     context.setFillColor(Color::black);
@@ -1055,7 +1046,7 @@ bool RenderThemeIOS::paintButtonDecorations(const RenderObject& box, const Paint
 static bool shouldUseConvexGradient(const Color& backgroundColor)
 {
     // FIXME: This should probably be using luminance.
-    auto [r, g, b, a] = backgroundColor.toSRGBALossy();
+    auto [r, g, b, a] = backgroundColor.toSRGBALossy<float>();
     float largestNonAlphaChannel = std::max({ r, g, b });
     return a > 0.5 && largestNonAlphaChannel < 0.5;
 }
@@ -1392,10 +1383,10 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
 const CGSize attachmentSize = { 160, 119 };
 
 const CGFloat attachmentBorderRadius = 16;
-constexpr SimpleColor attachmentBorderColor = makeSimpleColor(204, 204, 204);
+constexpr auto attachmentBorderColor = makeSimpleColor(204, 204, 204);
 static CGFloat attachmentBorderThickness = 1;
 
-constexpr SimpleColor attachmentProgressColor = makeSimpleColor(222, 222, 222);
+constexpr auto attachmentProgressColor = makeSimpleColor(222, 222, 222);
 const CGFloat attachmentProgressBorderThickness = 3;
 
 const CGFloat attachmentProgressSize = 36;
@@ -1425,6 +1416,22 @@ static RetainPtr<CTFontRef> attachmentTitleFont()
 {
     RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(kCTUIFontTextStyleShortCaption1, RenderThemeIOS::singleton().contentSizeCategory(), 0));
     return adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
+}
+
+static CGFloat shortCaptionPointSizeWithContentSizeCategory(CFStringRef contentSizeCategory)
+{
+    auto descriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(kCTUIFontTextStyleShortCaption1, contentSizeCategory, 0));
+    auto pointSize = adoptCF(CTFontDescriptorCopyAttribute(descriptor.get(), kCTFontSizeAttribute));
+    return [dynamic_objc_cast<NSNumber>((__bridge id)pointSize.get()) floatValue];
+}
+
+static CGFloat attachmentDynamicTypeScaleFactor()
+{
+    CGFloat fixedPointSize = shortCaptionPointSizeWithContentSizeCategory(kCTFontContentSizeCategoryL);
+    CGFloat dynamicPointSize = shortCaptionPointSizeWithContentSizeCategory(RenderThemeIOS::singleton().contentSizeCategory());
+    if (!dynamicPointSize || !fixedPointSize)
+        return 1;
+    return std::max<CGFloat>(1, dynamicPointSize / fixedPointSize);
 }
 
 static UIColor *attachmentTitleColor() { return [PAL::getUIColorClass() systemGrayColor]; }
@@ -1490,7 +1497,8 @@ void RenderAttachmentInfo::buildWrappedLines(const String& text, CTFontRef font,
     RetainPtr<CTFramesetterRef> framesetter = adoptCF(CTFramesetterCreateWithAttributedString((CFAttributedStringRef)attributedText.get()));
 
     CFRange fitRange;
-    CGSize textSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter.get(), CFRangeMake(0, 0), nullptr, CGSizeMake(attachmentWrappingTextMaximumWidth, CGFLOAT_MAX), &fitRange);
+    CGFloat wrappingWidth = attachmentWrappingTextMaximumWidth * attachmentDynamicTypeScaleFactor();
+    CGSize textSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter.get(), CFRangeMake(0, 0), nullptr, CGSizeMake(wrappingWidth, CGFLOAT_MAX), &fitRange);
 
     RetainPtr<CGPathRef> textPath = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, textSize.width, textSize.height), nullptr));
     RetainPtr<CTFrameRef> textFrame = adoptCF(CTFramesetterCreateFrame(framesetter.get(), fitRange, textPath.get(), nullptr));
@@ -1519,7 +1527,7 @@ void RenderAttachmentInfo::buildWrappedLines(const String& text, CTFontRef font,
     RetainPtr<NSAttributedString> ellipsisString = adoptNS([[NSAttributedString alloc] initWithString:@"\u2026" attributes:textAttributes]);
     RetainPtr<CTLineRef> ellipsisLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)ellipsisString.get()));
     CTLineRef remainingLine = (CTLineRef)CFArrayGetValueAtIndex(CTFrameGetLines(remainingFrame.get()), 0);
-    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine, attachmentWrappingTextMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
+    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine, wrappingWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
 
     if (!truncatedLine)
         truncatedLine = remainingLine;
@@ -1656,7 +1664,7 @@ RenderAttachmentInfo::RenderAttachmentInfo(const RenderAttachment& attachment)
 
 LayoutSize RenderThemeIOS::attachmentIntrinsicSize(const RenderAttachment&) const
 {
-    return LayoutSize(FloatSize(attachmentSize));
+    return LayoutSize(FloatSize(attachmentSize) * attachmentDynamicTypeScaleFactor());
 }
 
 int RenderThemeIOS::attachmentBaseline(const RenderAttachment& attachment) const

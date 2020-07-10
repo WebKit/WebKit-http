@@ -38,32 +38,50 @@ struct ComputedVerticalMargin {
 };
 
 struct UsedVerticalMargin {
-    LayoutUnit before() const { return m_collapsedValues.before.valueOr(m_nonCollapsedValues.before); }
-    LayoutUnit after() const { return m_collapsedValues.after.valueOr(m_nonCollapsedValues.after); }
-    bool isCollapsedThrough() const { return m_collapsedValues.isCollapsedThrough; }
-
     struct NonCollapsedValues {
         LayoutUnit before;
         LayoutUnit after;
     };
-    NonCollapsedValues nonCollapsedValues() const { return m_nonCollapsedValues; }
+    NonCollapsedValues nonCollapsedValues;
 
     struct CollapsedValues {
         Optional<LayoutUnit> before;
         Optional<LayoutUnit> after;
         bool isCollapsedThrough { false };
     };
-    CollapsedValues collapsedValues() const { return m_collapsedValues; }
-    bool hasCollapsedValues() const { return m_collapsedValues.before || m_collapsedValues.after; }
-    void setCollapsedValues(CollapsedValues collapsedValues) { m_collapsedValues = collapsedValues; }
+    CollapsedValues collapsedValues;
 
-    UsedVerticalMargin(NonCollapsedValues, CollapsedValues);
-    UsedVerticalMargin() = default;
+    // FIXME: This structure might need to change to indicate that the cached value is not necessarily the same as the box's computed margin value.
+    // This only matters in case of collapse through margins when they collapse into another sibling box.
+    // <div style="margin: 1px"></div><div style="margin: 10px"></div> <- the second div's before/after marings collapse through and the same time they collapse into
+    // the first div. When the parent computes its before margin, it should see the second div's collapsed through margin as the value to collapse width (adjoining margin value).
+    // So while the first div's before margin is not 10px, the cached value is 10px so that when we compute the parent's margin we just need to check the first
+    // inflow child's cached margin values.
+    struct PositiveAndNegativePair {
+        struct Values {
+            bool isNonZero() const { return positive.valueOr(0) || negative.valueOr(0); }
 
-private:
-    NonCollapsedValues m_nonCollapsedValues;
-    CollapsedValues m_collapsedValues;
+            Optional<LayoutUnit> positive;
+            Optional<LayoutUnit> negative;
+            bool isQuirk { false };
+        };
+        Values before;
+        Values after;
+    };
+    PositiveAndNegativePair positiveAndNegativeValues;
 };
+
+static inline LayoutUnit marginBefore(const UsedVerticalMargin& usedVerticalMargin)
+{
+    return usedVerticalMargin.collapsedValues.before.valueOr(usedVerticalMargin.nonCollapsedValues.before);
+}
+
+static inline LayoutUnit marginAfter(const UsedVerticalMargin& usedVerticalMargin)
+{
+    if (usedVerticalMargin.collapsedValues.isCollapsedThrough)
+        return 0_lu;
+    return usedVerticalMargin.collapsedValues.after.valueOr(usedVerticalMargin.nonCollapsedValues.after);
+}
 
 struct ComputedHorizontalMargin {
     Optional<LayoutUnit> start;
@@ -75,36 +93,12 @@ struct UsedHorizontalMargin {
     LayoutUnit end;
 };
 
-// FIXME: This structure might need to change to indicate that the cached value is not necessarily the same as the box's computed margin value.
-// This only matters in case of collapse through margins when they collapse into another sibling box.
-// <div style="margin: 1px"></div><div style="margin: 10px"></div> <- the second div's before/after marings collapse through and the same time they collapse into
-// the first div. When the parent computes its before margin, it should see the second div's collapsed through margin as the value to collapse width (adjoining margin value).
-// So while the first div's before margin is not 10px, the cached value is 10px so that when we compute the parent's margin we just need to check the first
-// inflow child's cached margin values.
-struct PositiveAndNegativeVerticalMargin {
-    struct Values {
-        bool isNonZero() const { return positive.valueOr(0) || negative.valueOr(0); }
-
-        Optional<LayoutUnit> positive;
-        Optional<LayoutUnit> negative;
-        bool isQuirk { false };
-    };
-    Values before;
-    Values after;
-};
-
 struct PrecomputedMarginBefore {
     LayoutUnit usedValue() const { return collapsedValue.valueOr(nonCollapsedValue); }
     LayoutUnit nonCollapsedValue;
     Optional<LayoutUnit> collapsedValue;
-    PositiveAndNegativeVerticalMargin::Values positiveAndNegativeMarginBefore;
+    UsedVerticalMargin::PositiveAndNegativePair::Values positiveAndNegativeMarginBefore;
 };
-
-inline UsedVerticalMargin::UsedVerticalMargin(UsedVerticalMargin::NonCollapsedValues nonCollapsedValues, UsedVerticalMargin::CollapsedValues collapsedValues)
-    : m_nonCollapsedValues(nonCollapsedValues)
-    , m_collapsedValues(collapsedValues)
-{
-}
 
 }
 }

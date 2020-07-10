@@ -1,3 +1,195 @@
+2020-07-09  Brady Eidson  <beidson@apple.com>
+
+        Multiplex the HID and GameController gamepad providers on Mac.
+        <rdar://problem/63192532> and https://bugs.webkit.org/show_bug.cgi?id=214126
+
+        Reviewed by Tim Horton.
+
+        The current "IOKitSPI.h" is really weird.
+        It is mostly needed for iOS, but also used on Mac a little...
+        And since some of what it declares on Mac is actually public, anyone else
+        that uses public headers on Mac runs into redefinitions.
+        
+        Since the use of it on iOS and Mac are so different, let's just make a Mac one.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/IOKitSPIMac.h: Copied from Source/WebCore/platform/gamepad/cocoa/GameControllerSoftLink.h.
+
+2020-07-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Update Launch Services database in the WebContent process from the Network process
+        https://bugs.webkit.org/show_bug.cgi?id=213794
+
+        Reviewed by Brent Fulgham.
+
+        Declare interface for observing and consuming the Launch Services database.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-07-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r264148.
+        https://bugs.webkit.org/show_bug.cgi?id=214136
+
+        Introduced layout test failures
+
+        Reverted changeset:
+
+        "[Cocoa] Update Launch Services database in the WebContent
+        process from the Network process"
+        https://bugs.webkit.org/show_bug.cgi?id=213794
+        https://trac.webkit.org/changeset/264148
+
+2020-07-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Update Launch Services database in the WebContent process from the Network process
+        https://bugs.webkit.org/show_bug.cgi?id=213794
+
+        Reviewed by Brent Fulgham.
+
+        Declare interface for observing and consuming the Launch Services database.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r264132 and r264139.
+        https://bugs.webkit.org/show_bug.cgi?id=214108
+
+        Introduced assert failure.
+
+        Reverted changesets:
+
+        "[Cocoa] Update Launch Services database in the WebContent
+        process from the Network process"
+        https://bugs.webkit.org/show_bug.cgi?id=213794
+        https://trac.webkit.org/changeset/264132
+
+        "Unreviewed build fix attempt after r264132."
+        https://trac.webkit.org/changeset/264139
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix attempt after r264132.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-07-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Update Launch Services database in the WebContent process from the Network process
+        https://bugs.webkit.org/show_bug.cgi?id=213794
+
+        Reviewed by Brent Fulgham.
+
+        Declare interface for observing and consuming the Launch Services database.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2020-07-07  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Fix the build on Catalina internal SDKs
+        https://bugs.webkit.org/show_bug.cgi?id=214066
+
+        Unreviewed build fix for the 10.15.0 Internal SDK.
+
+        * pal/spi/cocoa/PassKitInstallmentsSPI.h:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-07-07  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> layout does not scale with Dynamic Type size changes
+        https://bugs.webkit.org/show_bug.cgi?id=214023
+        <rdar://problem/64914762>
+
+        Reviewed by Sam Weinig.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263960.
+        https://bugs.webkit.org/show_bug.cgi?id=213980
+
+        Re-land, because r263959 somehow fixed the build issue caused
+        by r263953
+
+        Reverted changeset:
+
+        "Unreviewed, reverting r263953 and r263959."
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+        https://trac.webkit.org/changeset/263960
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263953 and r263959.
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+
+        Broke internal build
+
+        Reverted changesets:
+
+        "[Cocoa] Move almost all features from FeatureDefines.xcconfig
+        to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+        https://trac.webkit.org/changeset/263953
+
+        "[Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build
+        system"
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+        https://trac.webkit.org/changeset/263959
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build system
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Removed.
+        * Configurations/PAL.xcconfig: Removed FEATURE_DEFINES and the include
+        of FeatureDefines.xcconfig.
+        * PAL.xcodeproj/project.pbxproj: Removed FeatureDefines.xcconfig.
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Move almost all features from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Delete everything except
+        ENABLE_EXPERIMENTAL_FEATURES and ENABLE_WEBRTC.
+
+2020-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS 11] Indeterminate progress bar animation periodically jumps
+        https://bugs.webkit.org/show_bug.cgi?id=213967
+
+        Reviewed by Sam Weinig.
+
+        * pal/spi/mac/CoreUISPI.h: Add declarations for `kCUIAnimationStartTimeKey` and `kCUIAnimationTimeKey`.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all features from FeatureDefines.xcconfig that are already mentioned in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=213962
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Removed all features that were mentioned
+        in PlatformEnableCocoa.h; the rules in that file now define whether they are enabled.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove unconditional features from FeatureDefines.xcconfig, making sure they are covered in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212418
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Removed features that are either unconditionally not enabled,
+        or unconditionally enabled. Double checked that all the enabled ones are either in PlatformEnable.h or
+        PlatformEnableCocoa.h.
+
 2020-07-04  Darin Adler  <darin@apple.com>
 
         Update comment in FeatureDefines.xcconfig since PlatformEnableCocoa.h should be used instead

@@ -107,6 +107,8 @@ WEBCORE_EXPORT bool isStocks();
 WEBCORE_EXPORT bool isFeedly();
 WEBCORE_EXPORT bool isPocketCity();
 WEBCORE_EXPORT bool isEssentialSkeleton();
+WEBCORE_EXPORT bool isLaBanquePostale();
+WEBCORE_EXPORT bool isESPNFantasySports();
 
 } // IOSApplication
 

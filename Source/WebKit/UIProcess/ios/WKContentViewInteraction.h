@@ -377,6 +377,7 @@ struct WKAutoCorrectionData {
     BOOL _isChangingFocus;
     BOOL _isFocusingElementWithKeyboard;
     BOOL _isBlurringFocusedElement;
+    BOOL _isRelinquishingFirstResponderToFocusedElement;
 
     BOOL _focusRequiresStrongPasswordAssistance;
     BOOL _waitingForEditDragSnapshot;
@@ -389,6 +390,8 @@ struct WKAutoCorrectionData {
     BlockPtr<void(UIWKAutocorrectionContext *)> _pendingAutocorrectionContextHandler;
 
     RetainPtr<NSDictionary> _additionalContextForStrongPasswordAssistance;
+
+    Optional<UChar32> _lastInsertedCharacterToOverrideCharacterBeforeSelection;
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::DragDropInteractionState _dragDropInteractionState;
@@ -546,8 +549,8 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 - (NSString *)inputLabelText;
 
-- (void)preserveFocus;
-- (void)releaseFocus;
+- (void)startRelinquishingFirstResponderToFocusedElement;
+- (void)stopRelinquishingFirstResponderToFocusedElement;
 
 // UIWebFormAccessoryDelegate protocol
 - (void)accessoryDone;

@@ -1871,13 +1871,29 @@ IntRect RenderLayer::scrollableAreaBoundingBox(bool* isInsideFixed) const
     return renderer().absoluteBoundingBoxRect(/* useTransforms */ true, isInsideFixed);
 }
 
+bool RenderLayer::isUserScrollInProgress() const
+{
+    if (!scrollsOverflow())
+        return false;
+
+    if (auto scrollingCoordinator = page().scrollingCoordinator()) {
+        if (scrollingCoordinator->isUserScrollInProgress(scrollingNodeID()))
+            return true;
+    }
+
+    if (auto scrollAnimator = existingScrollAnimator())
+        return scrollAnimator->isUserScrollInProgress();
+    
+    return false;
+}
+
 bool RenderLayer::isRubberBandInProgress() const
 {
 #if ENABLE(RUBBER_BANDING)
     if (!scrollsOverflow())
         return false;
 
-    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
+    if (auto scrollAnimator = existingScrollAnimator())
         return scrollAnimator->isRubberBandInProgress();
 #endif
 
@@ -4213,12 +4229,12 @@ void RenderLayer::clipToRect(GraphicsContext& context, const LayerPaintingInfo& 
 
 void RenderLayer::restoreClip(GraphicsContext& context, const LayerPaintingInfo& paintingInfo, const ClipRect& clipRect)
 {
-    if ((!clipRect.isInfinite() && clipRect.rect() != paintingInfo.paintDirtyRect) || clipRect.affectedByRadius()) {
+    bool needsClipping = !clipRect.isInfinite() && clipRect.rect() != paintingInfo.paintDirtyRect;
+    if (needsClipping || clipRect.affectedByRadius())
         context.restore();
 
-        if (paintingInfo.eventRegionContext)
-            paintingInfo.eventRegionContext->popClip();
-    }
+    if (needsClipping && paintingInfo.eventRegionContext)
+        paintingInfo.eventRegionContext->popClip();
 }
 
 static void performOverlapTests(OverlapTestRequestMap& overlapTestRequests, const RenderLayer* rootLayer, const RenderLayer* layer)

@@ -630,6 +630,15 @@ void AXIsolatedObject::setIsExpanded(bool value)
     });
 }
 
+bool AXIsolatedObject::performDismissAction()
+{
+    return Accessibility::retrieveValueFromMainThread<bool>([this] () -> bool {
+        if (auto* axObject = associatedAXObject())
+            return axObject->performDismissAction();
+        return false;
+    });
+}
+
 bool AXIsolatedObject::setValue(float value)
 {
     return Accessibility::retrieveValueFromMainThread<bool>([&value, this] () -> bool {
@@ -701,10 +710,10 @@ void AXIsolatedObject::setPreventKeyboardDOMEventDispatch(bool value)
 
 void AXIsolatedObject::colorValue(int& r, int& g, int& b) const
 {
-    auto color = colorAttributeValue(AXPropertyName::ColorValue).toSRGBASimpleColorLossy();
-    r = color.redComponent();
-    g = color.greenComponent();
-    b = color.blueComponent();
+    auto color = colorAttributeValue(AXPropertyName::ColorValue).toSRGBALossy<uint8_t>();
+    r = color.red;
+    g = color.green;
+    b = color.blue;
 }
 
 AXCoreObject* AXIsolatedObject::accessibilityHitTest(const IntPoint& point) const
@@ -1070,6 +1079,22 @@ PlainTextRange AXIsolatedObject::selectedTextRange() const
             return object->selectedTextRange();
         return PlainTextRange();
     });
+}
+
+VisibleSelection AXIsolatedObject::selection() const
+{
+    ASSERT(isMainThread());
+
+    auto* object = associatedAXObject();
+    return object ? object->selection() : VisibleSelection();
+}
+
+void AXIsolatedObject::setSelectedVisiblePositionRange(const VisiblePositionRange& visiblePositionRange) const
+{
+    ASSERT(isMainThread());
+
+    if (auto* object = associatedAXObject())
+        object->setSelectedVisiblePositionRange(visiblePositionRange);
 }
 
 bool AXIsolatedObject::isListBoxOption() const

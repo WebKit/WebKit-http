@@ -119,9 +119,9 @@ enum class WheelEventStatus {
     UserScrollBegin,
     UserScrolling,
     UserScrollEnd,
-    InertialScrollBegin,
-    InertialScrolling,
-    InertialScrollEnd,
+    MomentumScrollBegin,
+    MomentumScrolling,
+    MomentumScrollEnd,
     StatelessScrollEvent,
     Unknown
 };
@@ -137,6 +137,9 @@ public:
     bool handleWheelEvent(const PlatformWheelEvent&);
 #endif
 
+    bool usesScrollSnap() const;
+
+    bool isUserScrollInProgress() const;
     bool isRubberBandInProgress() const;
     bool isScrollSnapInProgress() const;
 
@@ -148,6 +151,9 @@ public:
     void setScrollSnapIndexDidChange(bool state) { m_activeScrollSnapIndexDidChange = state; }
     unsigned activeScrollSnapIndexForAxis(ScrollEventAxis) const;
     void updateScrollSnapState(const ScrollableArea&);
+
+    void updateGestureInProgressState(const PlatformWheelEvent&);
+
 #if PLATFORM(MAC)
     bool processWheelEventForScrollSnap(const PlatformWheelEvent&);
 #endif
@@ -178,7 +184,7 @@ private:
     void startScrollSnapTimer();
     void stopScrollSnapTimer();
 
-    bool shouldOverrideInertialScrolling() const;
+    bool shouldOverrideMomentumScrolling() const;
     void statelessSnapTransitionTimerFired();
     void scheduleStatelessScrollSnap();
 
@@ -190,7 +196,7 @@ private:
     ScrollControllerClient& m_client;
 
 #if PLATFORM(MAC)
-    CFTimeInterval m_lastMomentumScrollTimestamp { 0 };
+    WallTime m_lastMomentumScrollTimestamp;
 #endif
     FloatSize m_overflowScrollDelta;
     FloatSize m_stretchScrollForce;
@@ -198,7 +204,7 @@ private:
 
 #if ENABLE(RUBBER_BANDING)
     // Rubber band state.
-    CFTimeInterval m_startTime { 0 };
+    MonotonicTime m_startTime;
     FloatSize m_startStretch;
     FloatSize m_origVelocity;
     std::unique_ptr<ScrollControllerTimer> m_snapRubberbandTimer;

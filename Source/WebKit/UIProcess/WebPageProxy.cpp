@@ -4027,7 +4027,7 @@ void WebPageProxy::pluginZoomFactorDidChange(double pluginZoomFactor)
     m_pluginZoomFactor = pluginZoomFactor;
 }
 
-void WebPageProxy::findStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
+void WebPageProxy::findStringMatches(const String& string, OptionSet<FindOptions> options, unsigned maxMatchCount)
 {
     if (string.isEmpty()) {
         didFindStringMatches(string, Vector<Vector<WebCore::IntRect>> (), 0);
@@ -4037,22 +4037,9 @@ void WebPageProxy::findStringMatches(const String& string, FindOptions options, 
     send(Messages::WebPage::FindStringMatches(string, options, maxMatchCount));
 }
 
-void WebPageProxy::findString(const String& string, FindOptions options, unsigned maxMatchCount, Function<void (bool, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::findString(const String& string, OptionSet<FindOptions> options, unsigned maxMatchCount, CompletionHandler<void(bool)>&& callbackFunction)
 {
-    Optional<CallbackID> callbackID;
-    if (callbackFunction)
-        callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivity("WebPageProxy::findString"_s));
-
-    send(Messages::WebPage::FindString(string, options, maxMatchCount, callbackID));
-}
-
-void WebPageProxy::findStringCallback(bool found, CallbackID callbackID)
-{
-    auto callback = m_callbacks.take<BoolCallback>(callbackID);
-    if (!callback)
-        return;
-
-    callback->performCallbackWithReturnValue(found);
+    sendWithAsyncReply(Messages::WebPage::FindString(string, options, maxMatchCount), WTFMove(callbackFunction));
 }
 
 void WebPageProxy::getImageForFindMatch(int32_t matchIndex)
@@ -4075,7 +4062,7 @@ void WebPageProxy::hideFindUI()
     send(Messages::WebPage::HideFindUI());
 }
 
-void WebPageProxy::countStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
+void WebPageProxy::countStringMatches(const String& string, OptionSet<FindOptions> options, unsigned maxMatchCount)
 {
     if (!hasRunningProcess())
         return;
@@ -6108,7 +6095,7 @@ void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const Int
 
 void WebPageProxy::setColorPickerColor(const WebCore::Color& color)
 {
-    ASSERT(m_colorPicker);
+    MESSAGE_CHECK(m_process, m_colorPicker);
 
     m_colorPicker->setSelectedColor(color);
 }
@@ -6569,15 +6556,7 @@ void WebPageProxy::showContextMenu(ContextMenuContextData&& contextMenuContextDa
 
     m_activeContextMenu = pageClient().createContextMenuProxy(*this, WTFMove(contextMenuContextData), userData);
 
-    // Since showContextMenu() can spin a nested run loop we need to turn off the responsiveness timer.
-    m_process->stopResponsivenessTimer();
-
-    // m_activeContextMenu might get cleared if WebPageProxy code is re-entered from the menu runloop or delegates.
-    Ref<WebContextMenuProxy> protector(*m_activeContextMenu);
     m_activeContextMenu->show();
-
-    // No matter the result of internalShowContextMenu, always notify the WebProcess that the menu is hidden so it starts handling mouse events again.
-    send(Messages::WebPage::ContextMenuHidden());
 }
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
@@ -6690,7 +6669,7 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
 }
 #endif
 
-void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
+void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs, const Vector<String>&)
 {
     if (!hasRunningProcess())
         return;
@@ -7159,20 +7138,6 @@ void WebPageProxy::unsignedCallback(uint64_t result, CallbackID callbackID)
     }
 
     callback->performCallbackWithReturnValue(result);
-}
-
-void WebPageProxy::editingRangeCallback(const EditingRange& range, CallbackID callbackID)
-{
-    MESSAGE_CHECK(m_process, range.isValid());
-
-    auto callback = m_callbacks.take<EditingRangeCallback>(callbackID);
-    if (!callback) {
-        // FIXME: Log error or assert.
-        // this can validly happen if a load invalidated the callback, though
-        return;
-    }
-
-    callback->performCallbackWithReturnValue(range);
 }
 
 void WebPageProxy::editorStateChanged(const EditorState& editorState)
@@ -7920,9 +7885,9 @@ void WebPageProxy::backForwardClear()
 
 #if ENABLE(GAMEPAD)
 
-void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas, bool shouldMakeGamepadsVisible)
+void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas, EventMakesGamepadsVisible eventVisibility)
 {
-    send(Messages::WebPage::GamepadActivity(gamepadDatas, shouldMakeGamepadsVisible));
+    send(Messages::WebPage::GamepadActivity(gamepadDatas, eventVisibility));
 }
 
 #endif
@@ -8749,26 +8714,24 @@ void WebPageProxy::hasMarkedText(CompletionHandler<void(bool)>&& callback)
     sendWithAsyncReply(Messages::WebPage::HasMarkedText(), WTFMove(callback));
 }
 
-void WebPageProxy::getMarkedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::getMarkedRangeAsync(CompletionHandler<void(const EditingRange&)>&& callbackFunction)
 {
     if (!hasRunningProcess()) {
-        callbackFunction(EditingRange(), CallbackBase::Error::Unknown);
+        callbackFunction(EditingRange());
         return;
     }
 
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivity("WebPageProxy::getMarkedRangeAsync"_s));
-    send(Messages::WebPage::GetMarkedRangeAsync(callbackID));
+    sendWithAsyncReply(Messages::WebPage::GetMarkedRangeAsync(), WTFMove(callbackFunction));
 }
 
-void WebPageProxy::getSelectedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::getSelectedRangeAsync(CompletionHandler<void(const EditingRange&)>&& callbackFunction)
 {
     if (!hasRunningProcess()) {
-        callbackFunction(EditingRange(), CallbackBase::Error::Unknown);
+        callbackFunction(EditingRange());
         return;
     }
 
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivity("WebPageProxy::getSelectedRangeAsync"_s));
-    send(Messages::WebPage::GetSelectedRangeAsync(callbackID));
+    sendWithAsyncReply(Messages::WebPage::GetSelectedRangeAsync(), WTFMove(callbackFunction));
 }
 
 void WebPageProxy::characterIndexForPointAsync(const WebCore::IntPoint& point, WTF::Function<void (uint64_t, CallbackBase::Error)>&& callbackFunction)

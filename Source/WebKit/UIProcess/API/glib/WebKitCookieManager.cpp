@@ -95,12 +95,12 @@ static inline WebKitCookieAcceptPolicy toWebKitCookieAcceptPolicy(WebCore::HTTPC
         return WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS;
     case WebCore::HTTPCookieAcceptPolicy::Never:
         return WEBKIT_COOKIE_POLICY_ACCEPT_NEVER;
-    case WebCore::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain:
+    case WebCore::HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain:
         return WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY;
-    default:
-        ASSERT_NOT_REACHED();
-        return WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS;
+    case WebCore::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain:
+        break;
     }
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 static inline WebCore::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(WebKitCookieAcceptPolicy kitPolicy)
@@ -111,11 +111,9 @@ static inline WebCore::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(WebKitCoo
     case WEBKIT_COOKIE_POLICY_ACCEPT_NEVER:
         return WebCore::HTTPCookieAcceptPolicy::Never;
     case WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY:
-        return WebCore::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain;
-    default:
-        ASSERT_NOT_REACHED();
-        return WebCore::HTTPCookieAcceptPolicy::AlwaysAccept;
+        return WebCore::HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain;
     }
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 static void webkit_cookie_manager_class_init(WebKitCookieManagerClass* findClass)
@@ -185,6 +183,10 @@ void webkit_cookie_manager_set_persistent_storage(WebKitCookieManager* manager, 
  * @policy: a #WebKitCookieAcceptPolicy
  *
  * Set the cookie acceptance policy of @cookie_manager as @policy.
+ * Note that ITP has its own way to handle third-party cookies, so when it's enabled,
+ * and @policy is set to %WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY, %WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS
+ * will be used instead. Once disabled, the policy will be set back to %WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY.
+ * See also webkit_website_data_manager_set_itp_enabled().
  */
 void webkit_cookie_manager_set_accept_policy(WebKitCookieManager* manager, WebKitCookieAcceptPolicy policy)
 {
@@ -202,6 +204,9 @@ void webkit_cookie_manager_set_accept_policy(WebKitCookieManager* manager, WebKi
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously get the cookie acceptance policy of @cookie_manager.
+ * Note that when policy was set to %WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY and
+ * ITP is enabled, this will return %WEBKIT_COOKIE_POLICY_ACCEPT_ALWAYS.
+ * See also webkit_website_data_manager_set_itp_enabled().
  *
  * When the operation is finished, @callback will be called. You can then call
  * webkit_cookie_manager_get_accept_policy_finish() to get the result of the operation.

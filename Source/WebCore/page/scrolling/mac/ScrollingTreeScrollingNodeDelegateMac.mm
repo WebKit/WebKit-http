@@ -35,6 +35,7 @@
 #import "ScrollingTreeScrollingNode.h"
 #import <QuartzCore/QuartzCore.h>
 #import <pal/spi/mac/NSScrollerImpSPI.h>
+#import <wtf/BlockObjCExceptions.h>
 
 namespace WebCore {
 
@@ -121,19 +122,28 @@ bool ScrollingTreeScrollingNodeDelegateMac::activeScrollSnapIndexDidChange() con
 
 bool ScrollingTreeScrollingNodeDelegateMac::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
 {
-    if (wheelEvent.momentumPhase() == PlatformWheelEventPhaseBegan) {
-        [m_verticalScrollerImp setUsePresentationValue:YES];
-        [m_horizontalScrollerImp setUsePresentationValue:YES];
-    }
-    if (wheelEvent.momentumPhase() == PlatformWheelEventPhaseEnded || wheelEvent.momentumPhase() == PlatformWheelEventPhaseCancelled) {
-        [m_verticalScrollerImp setUsePresentationValue:NO];
-        [m_horizontalScrollerImp setUsePresentationValue:NO];
+    bool wasInMomentumPhase = m_inMomentumPhase;
+
+    if (wheelEvent.momentumPhase() == PlatformWheelEventPhaseBegan)
+        m_inMomentumPhase = true;
+    else if (wheelEvent.momentumPhase() == PlatformWheelEventPhaseEnded || wheelEvent.momentumPhase() == PlatformWheelEventPhaseCancelled)
+        m_inMomentumPhase = false;
+    
+    if (wasInMomentumPhase != m_inMomentumPhase) {
+        [m_verticalScrollerImp setUsePresentationValue:m_inMomentumPhase];
+        [m_horizontalScrollerImp setUsePresentationValue:m_inMomentumPhase];
     }
 
 #if ENABLE(CSS_SCROLL_SNAP) || ENABLE(RUBBER_BANDING)
     if (scrollingTree().isMonitoringWheelEvents())
         deferWheelEventTestCompletionForReason(reinterpret_cast<WheelEventTestMonitor::ScrollableAreaIdentifier>(scrollingNode().scrollingNodeID()), WheelEventTestMonitor::HandlingWheelEvent);
 #endif
+
+    bool wasInUserScroll = m_scrollController.isUserScrollInProgress();
+    m_scrollController.updateGestureInProgressState(wheelEvent);
+    bool isInUserScroll = m_scrollController.isUserScrollInProgress();
+    if (isInUserScroll != wasInUserScroll)
+        scrollingNode().setUserScrollInProgress(isInUserScroll);
 
     // PlatformWheelEventPhaseMayBegin fires when two fingers touch the trackpad, and is used to flash overlay scrollbars.
     // We know we're scrollable at this point, so handle the event.
@@ -388,10 +398,10 @@ void ScrollingTreeScrollingNodeDelegateMac::removeWheelEventTestCompletionDeferr
 
 void ScrollingTreeScrollingNodeDelegateMac::updateScrollbarPainters()
 {
-    if (m_verticalScrollerImp || m_horizontalScrollerImp) {
+    if (m_inMomentumPhase && (m_verticalScrollerImp || m_horizontalScrollerImp)) {
+        BEGIN_BLOCK_OBJC_EXCEPTIONS
         auto scrollOffset = scrollingNode().currentScrollOffset();
 
-        [CATransaction begin];
         [CATransaction lock];
 
         if ([m_verticalScrollerImp shouldUsePresentationValue]) {
@@ -409,7 +419,7 @@ void ScrollingTreeScrollingNodeDelegateMac::updateScrollbarPainters()
         }
 
         [CATransaction unlock];
-        [CATransaction commit];
+        END_BLOCK_OBJC_EXCEPTIONS
     }
 }
 

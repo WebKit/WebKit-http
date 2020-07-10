@@ -29,6 +29,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #ifndef NDEBUG
+#include "BlockFormattingState.h"
 #include "DisplayBox.h"
 #include "InlineFormattingState.h"
 #include "InlineTextBox.h"
@@ -217,7 +218,7 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
     return mismatched;
 }
 
-static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, const LayoutState& context, const RenderBox& renderer, const Box& layoutBox)
+static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, const LayoutState& layoutState, const RenderBox& renderer, const Box& layoutBox)
 {
     bool firstMismatchingRect = true;
     auto outputRect = [&] (const String& prefix, const LayoutRect& rendererRect, const LayoutRect& layoutRect) {
@@ -232,15 +233,36 @@ static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, con
         stream.nextLine();
     };
 
-    auto renderBoxLikeMarginBox = [](auto& displayBox) {
-        // Produce a RenderBox matching margin box.
-        auto borderBox = displayBox.borderBox();
+    auto renderBoxLikeMarginBox = [&] (const auto& displayBox) {
+        if (layoutBox.isInitialContainingBlock())
+            return displayBox.rect();
 
+        // Produce a RenderBox matching margin box.
+        auto containingBlockWidth = layoutState.displayBoxForLayoutBox(layoutBox.containingBlock()).contentBoxWidth();
+        auto marginStart = LayoutUnit { };
+        auto& marginStartStyle = layoutBox.style().marginStart();
+        if (marginStartStyle.isFixed() || marginStartStyle.isPercent() || marginStartStyle.isCalculated())
+            marginStart = valueForLength(marginStartStyle, containingBlockWidth);
+
+        auto marginEnd = LayoutUnit { };
+        auto& marginEndStyle = layoutBox.style().marginEnd();
+        if (marginEndStyle.isFixed() || marginEndStyle.isPercent() || marginEndStyle.isCalculated())
+            marginEnd = valueForLength(marginEndStyle, containingBlockWidth);
+
+        auto marginBefore = displayBox.marginBefore();
+        auto marginAfter = displayBox.marginAfter();
+        if (layoutBox.isBlockLevelBox()) {
+            auto& formattingState = downcast<BlockFormattingState>(layoutState.formattingStateForBox(layoutBox));
+            auto verticalMargin = formattingState.usedVerticalMargin(layoutBox);
+            marginBefore = verticalMargin.nonCollapsedValues.before;
+            marginAfter = verticalMargin.nonCollapsedValues.after;
+        }
+        auto borderBox = displayBox.borderBox();
         return Display::Rect {
-            borderBox.top() - displayBox.nonCollapsedMarginBefore(),
-            borderBox.left() - displayBox.computedMarginStart().valueOr(0),
-            displayBox.computedMarginStart().valueOr(0) + borderBox.width() + displayBox.computedMarginEnd().valueOr(0),
-            displayBox.nonCollapsedMarginBefore() + borderBox.height() + displayBox.nonCollapsedMarginAfter()
+            borderBox.top() - marginBefore,
+            borderBox.left() - marginStart,
+            marginStart + borderBox.width() + marginEnd,
+            marginBefore + borderBox.height() + marginAfter
         };
     };
 
@@ -249,12 +271,15 @@ static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, con
     if (renderer.isInFlowPositioned())
         frameRect.move(renderer.offsetForInFlowPosition());
 
-    auto displayBox = Display::Box { context.displayBoxForLayoutBox(layoutBox) };
+    auto displayBox = Display::Box { layoutState.displayBoxForLayoutBox(layoutBox) };
     if (layoutBox.isTableBox()) {
         // When the <table> is out-of-flow positioned, the wrapper table box has the offset
         // while the actual table box is static, inflow.
-        auto& tableWrapperDisplayBox = context.displayBoxForLayoutBox(layoutBox.containingBlock());
+        auto& tableWrapperDisplayBox = layoutState.displayBoxForLayoutBox(layoutBox.containingBlock());
         displayBox.moveBy(tableWrapperDisplayBox.topLeft());
+        // Table wrapper box has the margin values for the table.
+        displayBox.setHorizontalMargin(tableWrapperDisplayBox.horizontalMargin());
+        displayBox.setVerticalMargin(tableWrapperDisplayBox.verticalMargin());
     }
 
     if (is<RenderTableRow>(renderer) || is<RenderTableSection>(renderer)) {

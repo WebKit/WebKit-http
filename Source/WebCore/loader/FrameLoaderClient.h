@@ -35,7 +35,7 @@
 #include "LayoutMilestone.h"
 #include "LinkIcon.h"
 #include "PageIdentifier.h"
-#include <functional>
+#include <wtf/Expected.h>
 #include <wtf/Forward.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
@@ -360,6 +360,7 @@ public:
 #endif
 
     virtual void prefetchDNS(const String&) = 0;
+    virtual void sendH2Ping(const URL&, CompletionHandler<void(Expected<Seconds, ResourceError>&&)>&&) = 0;
 
     virtual void didRestoreScrollPosition() { }
 

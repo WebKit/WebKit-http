@@ -36,4 +36,8 @@ SOFT_LINK_CLASS_FOR_HEADER(WebCore, GCController)
 SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, GameController, GCControllerDidConnectNotification, NSString *)
 SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, GameController, GCControllerDidDisconnectNotification, NSString *)
 
+#if HAVE(MULTIGAMEPADPROVIDER_SUPPORT)
+SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, GameController, ControllerClassForService, Class, (IOHIDServiceClientRef service), (service))
+#endif
+
 #endif // ENABLE(GAMEPAD) && PLATFORM(COCOA)

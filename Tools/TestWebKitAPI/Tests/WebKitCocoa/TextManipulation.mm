@@ -659,7 +659,7 @@ TEST(TextManipulation, StartTextManipulationFindsInsertedClippedText)
     EXPECT_WK_STREQ("after", items[2].tokens[0].content);
 }
 
-TEST(TextManipulation, StartTextManipulationTreatsInlineBlockLinksAndButtonsAsParagraphs)
+TEST(TextManipulation, StartTextManipulationTreatsInlineBlockLinksAndButtonsAndSpansAsParagraphs)
 {
     auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
@@ -679,7 +679,9 @@ TEST(TextManipulation, StartTextManipulationTreatsInlineBlockLinksAndButtonsAsPa
         "    <button>One</button><button>Two</button>"
         "    <div><br></div>"
         "    <a href='#'>Three</a><a href='#'>Four</a>"
-        "    <span role='button'>Five</span><span role='button'>Six</span>"
+        "    <span role='button'>Five</span>"
+        "    <span>Six</span>"
+        "    <b>End</b>"
         "</body>"];
 
     done = false;
@@ -689,17 +691,21 @@ TEST(TextManipulation, StartTextManipulationTreatsInlineBlockLinksAndButtonsAsPa
     TestWebKitAPI::Util::run(&done);
 
     NSArray<_WKTextManipulationItem *> *items = [delegate items];
-    EXPECT_EQ(items.count, 6UL);
+    EXPECT_EQ(items.count, 7UL);
     EXPECT_EQ(items[0].tokens.count, 1UL);
     EXPECT_EQ(items[1].tokens.count, 1UL);
     EXPECT_EQ(items[2].tokens.count, 1UL);
     EXPECT_EQ(items[3].tokens.count, 1UL);
+    EXPECT_EQ(items[4].tokens.count, 1UL);
+    EXPECT_EQ(items[5].tokens.count, 1UL);
+    EXPECT_EQ(items[6].tokens.count, 1UL);
     EXPECT_WK_STREQ("One", items[0].tokens[0].content);
     EXPECT_WK_STREQ("Two", items[1].tokens[0].content);
     EXPECT_WK_STREQ("Three", items[2].tokens[0].content);
     EXPECT_WK_STREQ("Four", items[3].tokens[0].content);
     EXPECT_WK_STREQ("Five", items[4].tokens[0].content);
     EXPECT_WK_STREQ("Six", items[5].tokens[0].content);
+    EXPECT_WK_STREQ("End", items[6].tokens[0].content);
 }
 
 TEST(TextManipulation, StartTextManipulationTreatsLinksInNavigationElementsAsParagraphs)
@@ -977,6 +983,7 @@ TEST(TextManipulation, StartTextManipulationExtractsValuesByNode)
         "<body>"
         "<span>one</span><span style='white-space:pre;'>two &#10; three</span><span>four</span>"
         "<span style='white-space:pre;'>&#10;five</span>"
+        "<span>   six</span>        <span>seven</span>"
         "</body>"];
 
     done = false;
@@ -988,14 +995,17 @@ TEST(TextManipulation, StartTextManipulationExtractsValuesByNode)
     auto items = [delegate items];
     EXPECT_EQ(items.count, 2UL);
     EXPECT_EQ(items[0].tokens.count, 5UL);
-    EXPECT_STREQ("one", items[0].tokens[0].content.UTF8String);
-    EXPECT_STREQ("two", items[0].tokens[1].content.UTF8String);
-    EXPECT_STREQ(" \n ", items[0].tokens[2].content.UTF8String);
-    EXPECT_STREQ("three", items[0].tokens[3].content.UTF8String);
-    EXPECT_STREQ("four", items[0].tokens[4].content.UTF8String);
-    EXPECT_EQ(items[1].tokens.count, 2UL);
-    EXPECT_STREQ("\n", items[1].tokens[0].content.UTF8String);
-    EXPECT_STREQ("five", items[1].tokens[1].content.UTF8String);
+    EXPECT_WK_STREQ("one", items[0].tokens[0].content);
+    EXPECT_WK_STREQ("two", items[0].tokens[1].content);
+    EXPECT_WK_STREQ(" \n ", items[0].tokens[2].content);
+    EXPECT_WK_STREQ("three", items[0].tokens[3].content);
+    EXPECT_WK_STREQ("four", items[0].tokens[4].content);
+    EXPECT_EQ(items[1].tokens.count, 5UL);
+    EXPECT_WK_STREQ("\n", items[1].tokens[0].content);
+    EXPECT_WK_STREQ("five", items[1].tokens[1].content);
+    EXPECT_WK_STREQ(" six", items[1].tokens[2].content);
+    EXPECT_WK_STREQ(" ", items[1].tokens[3].content);
+    EXPECT_WK_STREQ("seven", items[1].tokens[4].content);
 }
 
 TEST(TextManipulation, StartTextManipulationExcludesTextRenderedAsIcons)
@@ -1042,6 +1052,44 @@ TEST(TextManipulation, StartTextManipulationExcludesTextRenderedAsIcons)
     EXPECT_FALSE(item.tokens[2].isExcluded);
     EXPECT_WK_STREQ(item.tokens[3].content, "four");
     EXPECT_FALSE(item.tokens[3].isExcluded);
+}
+
+TEST(TextManipulation, StartTextManipulationAvoidCrashWhenExtractingOrphanedPositions)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<p>hello world</p>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto items = [delegate items];
+    EXPECT_EQ(items.count, 1UL);
+    EXPECT_EQ(items[0].tokens.count, 1UL);
+    EXPECT_WK_STREQ("hello world", items[0].tokens[0].content);
+
+    done = false;
+    delegate.get().itemCallback = ^(_WKTextManipulationItem *item) {
+        done = true;
+    };
+
+    [webView objectByEvaluatingJavaScript:@"(() => {"
+        "    const objectElement = document.createElement('object');"
+        "    document.body.appendChild(objectElement);"
+        "    document.body.scrollTop;"
+        "    objectElement.remove();"
+        "    const text = document.createTextNode('testing');"
+        "    const container = document.createElement('div');"
+        "    container.appendChild(text);"
+        "    document.body.appendChild(container);"
+        "})();"];
+
+    TestWebKitAPI::Util::run(&done);
 }
 
 struct Token {
@@ -2398,6 +2446,48 @@ TEST(TextManipulation, CompleteTextManipulationCanMergeContentAndPreserveLineBre
     TestWebKitAPI::Util::run(&done);
 
     EXPECT_WK_STREQ("<span style=\"white-space:pre;\">ONE \n TWO \n</span>", [webView stringByEvaluatingJavaScript:@"document.body.innerHTML"]);
+}
+
+TEST(TextManipulation, CompleteTextManipulationIgnoreWhiteSpacesBetweenParagraphs)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+    [webView synchronouslyLoadHTMLString:@""
+        "<style>"
+            ".inline-block { display: inline-block; }"
+            ".list-item { display: list-item; }"
+            ".hide-absolute { display: none; position: absolute; }"
+            ".float-relative { float: left; position: relative; }"
+        "</style>"
+        "<ul class='float-relative'>"
+        "   <li class='list-item float-relative'><a class='inline-block'>hello</a>           <div class='hide-absolute'><a class='inline-block float-relative'>hide</a></div></li>"
+        "   <li class='list-item float-relative'><a class='inline-block'>world</a></li>"
+        "</ul>"];
+    auto configuration = adoptNS([[_WKTextManipulationConfiguration alloc] init]);
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:configuration.get() completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 2UL);
+    EXPECT_EQ(items[0].tokens.count, 1UL);
+    EXPECT_WK_STREQ("hello", items[0].tokens[0].content);
+    EXPECT_EQ(items[1].tokens.count, 1UL);
+    EXPECT_WK_STREQ("world", items[1].tokens[0].content);
+
+    done = false;
+    [webView _completeTextManipulationForItems:@[
+        createItem(items[0].identifier, {{ items[0].tokens[0].identifier, @"Hello" }}).get(),
+        createItem(items[1].identifier, {{ items[1].tokens[0].identifier, @"World" }}).get()
+    ] completion:^(NSArray<NSError *> *errors) {
+        EXPECT_EQ(errors, nil);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
 }
 
 TEST(TextManipulation, CompleteTextManipulationShouldPreserveNodesAfterParagraphRange)

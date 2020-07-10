@@ -210,6 +210,8 @@ interface UIScriptController {
     attribute object didShowContextMenuCallback;
     attribute object didDismissContextMenuCallback;
 
+    readonly attribute boolean isShowingContextMenu;
+
     // <select> picker
     void selectFormAccessoryPickerRow(long rowIndex);
     boolean selectFormAccessoryHasCheckedItemAtRow(long rowIndex);
@@ -240,6 +242,8 @@ interface UIScriptController {
     attribute object didHideKeyboardCallback;
     readonly attribute boolean isShowingKeyboard;
     readonly attribute boolean hasInputSession;
+
+    attribute boolean windowIsKey;
 
     attribute object didShowMenuCallback;
     attribute object didHideMenuCallback;

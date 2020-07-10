@@ -37,6 +37,7 @@ import os
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
 S3URL = 'https://s3-us-west-2.amazonaws.com/'
+S3_RESULTS_URL = 'https://ews-build.s3-us-west-2.amazonaws.com/'
 EWS_BUILD_URL = 'https://ews-build.webkit.org/'
 EWS_URL = 'https://ews.webkit.org/'
 WithProperties = properties.WithProperties
@@ -1231,12 +1232,12 @@ class InstallWpeDependencies(shell.ShellCommand):
 
 def appendCustomBuildFlags(step, platform, fullPlatform):
     # FIXME: Make a common 'supported platforms' list.
-    if platform not in ('gtk', 'wincairo', 'ios', 'jsc-only', 'wpe'):
+    if platform not in ('gtk', 'wincairo', 'ios', 'jsc-only', 'wpe', 'playstation', 'tvos', 'watchos'):
         return
-    if fullPlatform.startswith('ios-simulator'):
-        platform = 'ios-simulator'
-    elif platform == 'ios':
-        platform = 'device'
+    if 'simulator' in fullPlatform:
+        platform = platform + '-simulator'
+    elif platform in ['ios', 'tvos', 'watchos']:
+        platform = platform + '-device'
     step.setCommand(step.command + ['--' + platform])
 
 
@@ -1286,11 +1287,11 @@ class CompileWebKit(shell.Compile):
 
         if additionalArguments:
             self.setCommand(self.command + additionalArguments)
-        if platform in ('mac', 'ios') and architecture:
+        if platform in ('mac', 'ios', 'tvos', 'watchos') and architecture:
             self.setCommand(self.command + ['ARCHS=' + architecture])
             if platform == 'ios':
                 self.setCommand(self.command + ['ONLY_ACTIVE_ARCH=NO'])
-        if platform in ('mac', 'ios') and buildOnly:
+        if platform in ('mac', 'ios', 'tvos', 'watchos') and buildOnly:
             # For build-only bots, the expectation is that tests will be run on separate machines,
             # so we need to package debug info as dSYMs. Only generating line tables makes
             # this much faster than full debug info, and crash logs still have line numbers.
@@ -1920,13 +1921,16 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
     name = 'analyze-layout-tests-results'
     description = ['analyze-layout-test-results']
     descriptionDone = ['analyze-layout-tests-results']
+    NUM_FAILURES_TO_DISPLAY = 10
 
     def report_failure(self, new_failures):
         self.finished(FAILURE)
         self.build.results = FAILURE
         pluralSuffix = 's' if len(new_failures) > 1 else ''
-        new_failures_string = ', '.join([failure_name for failure_name in new_failures])
+        new_failures_string = ', '.join(sorted(new_failures)[:self.NUM_FAILURES_TO_DISPLAY])
         message = 'Found {} new test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
+        if len(new_failures) > self.NUM_FAILURES_TO_DISPLAY:
+            message += ' ...'
         self.descriptionDone = message
 
         if self.getProperty('buildername', '').lower() == 'commit-queue':
@@ -1943,13 +1947,17 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         self.descriptionDone = 'Passed layout tests'
         message = ''
         if clean_tree_failures:
-            clean_tree_failures_string = ', '.join([failure_name for failure_name in clean_tree_failures])
+            clean_tree_failures_string = ', '.join(sorted(clean_tree_failures)[:self.NUM_FAILURES_TO_DISPLAY])
             pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
             message = 'Found {} pre-existing test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
+            if len(clean_tree_failures) > self.NUM_FAILURES_TO_DISPLAY:
+                message += ' ...'
         if flaky_failures:
-            flaky_failures_string = ', '.join(flaky_failures)
+            flaky_failures_string = ', '.join(sorted(flaky_failures)[:self.NUM_FAILURES_TO_DISPLAY])
             pluralSuffix = 's' if len(flaky_failures) > 1 else ''
             message += ' Found flaky test{}: {}'.format(pluralSuffix, flaky_failures_string)
+            if len(flaky_failures) > self.NUM_FAILURES_TO_DISPLAY:
+                message += ' ...'
         self.setProperty('build_summary', message)
         return defer.succeed(None)
 
@@ -2411,10 +2419,12 @@ class ExtractTestResults(master.MasterShellCommand):
         master.MasterShellCommand.__init__(self, command=self.command, logEnviron=False)
 
     def resultDirectoryURL(self):
-        return self.resultDirectory.replace('public_html/', '/') + '/'
+        path = self.resultDirectory.replace('public_html/results/', '') + '/'
+        return '{}{}'.format(S3_RESULTS_URL, path)
 
     def resultsDownloadURL(self):
-        return self.zipFile.replace('public_html/', '/')
+        path = self.zipFile.replace('public_html/results/', '')
+        return '{}{}'.format(S3_RESULTS_URL, path)
 
     def getLastBuildStepByName(self, name):
         for step in reversed(self.build.executedSteps):
@@ -2457,7 +2467,7 @@ class PrintConfiguration(steps.ShellSequence):
         platform = self.getProperty('platform', '*')
         if platform != 'jsc-only':
             platform = platform.split('-')[0]
-        if platform in ('mac', 'ios', '*'):
+        if platform in ('mac', 'ios', 'tvos', 'watchos', '*'):
             command_list.extend(self.command_list_apple)
         elif platform in ('gtk', 'wpe', 'jsc-only'):
             command_list.extend(self.command_list_linux)

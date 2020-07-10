@@ -1,3 +1,461 @@
+2020-07-09  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r262302): ITMLKit debuggables in listings are missing a title, use UUID instead
+        https://bugs.webkit.org/show_bug.cgi?id=214153
+
+        Reviewed by Devin Rousso.
+
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::listingForInspectionTarget const):
+        Looks like this is due to copypasta.
+
+2020-07-09  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        ErrorInstance::finishCreation() puts "message" twice, with different attributes
+        https://bugs.webkit.org/show_bug.cgi?id=214089
+
+        Reviewed by Yusuke Suzuki.
+
+        This change refactors appendSourceToError() to return new message, making it almost pure
+        and eliminating extra JSString -> String -> JSString conversion and {get,put}Direct() calls
+        from ErrorInstance::finishCreation(). Also, moves null message check as early as possible.
+
+        Removed putDirect() call didn't pass PropertyAttribute::DontEnum. An implementation detail,
+        that is about to change in https://webkit.org/b/142933, prevented "message" property from
+        beind redefined with PropertyAttribute::None.
+
+        No behavior change. Advances provided microbenchmark by 5%.
+
+        * runtime/ErrorInstance.cpp:
+        (JSC::appendSourceToErrorMessage):
+        (JSC::ErrorInstance::finishCreation):
+        (JSC::appendSourceToError): Deleted.
+
+2020-07-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] B3 PureCSE should ignore values which are moved to new BasicBlock
+        https://bugs.webkit.org/show_bug.cgi?id=214115
+        <rdar://problem/65189470>
+
+        Reviewed by Saam Barati.
+
+        We are performing "Select" specialization like this.
+
+              BB#target
+                 ...
+                 @a = Select(@p, @x, 42)
+                 @b = Add(@a, 35)
+                 Check(@b)
+                 @c = ...
+
+             becomes this:
+
+               BB#predecessor
+                 ...
+                 Branch(@p, #truecase, #falsecase)
+
+               BB#truecase:
+                 @b_truecase = Add(@x, 35)
+                 Check(@b_truecase)
+                 Upsilon(@x, ^a)
+                 Upsilon(@b_truecase, ^b)
+                 Jump(#continuation)
+
+               BB#falsecase:
+                 @b_falsecase = Add(42, 35)
+                 Check(@b_falsecase)
+                 Upsilon(42, ^a)
+                 Upsilon(@b_falsecase, ^b)
+                 Jump(#continuation)
+
+               BB#continuation:
+                 @a = Phi()
+                 @b = Phi()
+                 Jump(#target)
+
+               BB#target
+                 @c = ...
+
+        In the above transformation, we create a new BasicBlock and move @a and @b to that one. This is good since we do not need to rewrite all the use of @a and @b.
+        However, this confuses PureCSE since @a and @b point to a BasicBlock (BB#continuation) which is not inserted into the graph yet.
+
+        This patch changes PureCSE so that it ignores values which owners are not inserted yet.
+
+        * b3/B3BasicBlock.h:
+        (JSC::B3::BasicBlock::isInserted const):
+        * b3/B3GenericBlockInsertionSet.h:
+        (JSC::B3::GenericBlockInsertionSet::insert):
+        * b3/B3PureCSE.cpp:
+        (JSC::B3::PureCSE::findMatch):
+        (JSC::B3::PureCSE::process):
+        * b3/air/AirBasicBlock.h:
+
+2020-07-08  Saam Barati  <sbarati@apple.com>
+
+        Add a fuzzing toggle for LICM
+        https://bugs.webkit.org/show_bug.cgi?id=214093
+
+        Reviewed by Yusuke Suzuki.
+
+        We have an AI based safety checker for LICM, to determine if it's safe to
+        hoist nodes. Historically, we've had bugs here, where we allow unsafe
+        hoisting. In practice, we've been saved by safety checks also being hoisted
+        at the same time as the operation they're protecting, so even if we
+        have bugs in AI-based safeToExecute, things usually just work. Since
+        we've had security bugs here before, where the safety checks don't get hoisted,
+        leading to issues, it's helpful if we can fuzz this area.  This patch implements
+        a way to says we won't hoist a node based on some probability, allowing us to play
+        with what does and doesn't get hoisted.
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run):
+        * runtime/OptionsList.h:
+
+2020-07-08  Saam Barati  <sbarati@apple.com>
+
+        Add a way to return early from detected infinite loops to aid the fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=214067
+
+        Reviewed by Yusuke Suzuki.
+
+        It's useful for the fuzzer to not get stuck in infinite loops so its
+        test cases can make forward progress trying to find bugs. This patch
+        adds a new mechanism where we can early return if we've exceeded a total
+        execution count for a static loop in bytecode. Note: this is not on a
+        per-frame basis, but it's a way to implement this in a non-invasive way
+        which is also practical for the fuzzer to use.
+
+        * b3/air/AirAllocateRegistersAndStackAndGenerateCode.cpp:
+        (JSC::B3::Air::GenerateAndAllocateRegisters::generate):
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::emitEpilogue):
+        * b3/air/AirCode.h:
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generateWithAlreadyAllocatedRegisters):
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::~CodeBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileLoopHint):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_loop_hint):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/mips.rb:
+        * runtime/OptionsList.h:
+        * runtime/VM.cpp:
+        (JSC::VM::addLoopHintExecutionCounter):
+        (JSC::VM::getLoopHintExecutionCounter):
+        (JSC::VM::removeLoopHintExecutionCounter):
+        * runtime/VM.h:
+
+2020-07-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] BytecodeGenerator should be robust against failed constant generation
+        https://bugs.webkit.org/show_bug.cgi?id=214062
+        <rdar://problem/65117916>
+
+        Reviewed by Saam Barati.
+
+        Some code in NodesCodegen.cpp assumes `jsValue(generator)` call for constant nodes must succeed.
+        But this can fail when BigInt in source code is too large and becomes OOM. BytecodeGenerator should
+        be robust against BigInt OOM.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ConstantNode::emitBytecodeInConditionContext):
+        (JSC::ArrayNode::emitBytecode):
+        (JSC::BinaryOpNode::tryFoldToBranch):
+
+2020-07-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Should not pass Exception to JSPromise::reject
+        https://bugs.webkit.org/show_bug.cgi?id=214061
+        <rdar://problem/65134450>
+
+        Reviewed by Mark Lam.
+
+        In some places, we are passing Exception* as JSValue instead of Exception::value()'s JSValue.
+        Error and Exception are different, and Exception is not an object. We should pass Exception::value()'s
+        thrown value instead. I checked `reject(` call sites and ensure error is passed.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::JSAPIGlobalObject::moduleLoaderImportModule):
+        (JSC::JSAPIGlobalObject::moduleLoaderFetch):
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderFetch):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::importModule):
+        (JSC::JSModuleLoader::resolve):
+        (JSC::JSModuleLoader::fetch):
+        (JSC::moduleLoaderParseModule):
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::resolve):
+        (JSC::JSPromise::reject):
+
+2020-07-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Fix btjs by recovering CallFrame::describeFrame
+        https://bugs.webkit.org/show_bug.cgi?id=214055
+
+        Reviewed by Mark Lam.
+
+        While CallFrame::describeFrame is not used in WebKit tree, it is used in LLDB btjs which is invoked from python.
+        So we need to keep it. We also use std::call_once based buffer allocation instead of `static char buffer[...]`
+        to avoid spreading debug-use-only buffer in BSS segment.
+
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::describeFrame):
+        * interpreter/CallFrame.h:
+
+2020-07-07  Keith Miller  <keith_miller@apple.com>
+
+        Bytecode UseDef should be aware of checkpoints
+        https://bugs.webkit.org/show_bug.cgi?id=213566
+
+        Reviewed by Saam Barati.
+
+        Previously, we tried to solve teaching DFG about uses and defs of
+        locals across checkpoints by asking what locals were def'd at some
+        checkpoint. However, this was subtly wrong because we couldn't
+        report any uses at subsequent checkpoints so DFG thought the
+        local was dead immediately after its birth.
+
+        This patch reverts that change and instead teaches BytecodeUseDef
+        about checkpoints. Right now, BytecodeUseDef only knows about
+        locals at checkpoints but in the future we may teach it about tmps
+        at well.
+
+        Since the vectors containing our liveness bitmaps were already
+        sparse (they are indexed by the bytecode offset) we can reuse the
+        gaps to hold our checkpoint liveness information. To make sure we
+        don't overlap between the next bytecode and a checkpoint for the
+        current bytecode there is now a static assert that the length of
+        the bytecode is greater than the number of checkpoints. This
+        assumption is already true for existing bytecodes with checkpoints (and
+        likely to be true for future ones anyway).
+
+        Many of the BytecodeLivenessPropegation functions have been
+        renamed to reflect that they operate over the full instruction,
+        including checkpoints, rather than just the BytecodeIndex passed.
+
+        Lastly, this patch makes a speculative fix to forAllKilledOperands where we
+        wouldn't report that all tmps die at the end of each bytecode. I can't think
+        of a case where this would break things but it's probably good hygiene.
+
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::GeneratorLivenessAnalysis::run):
+        * bytecode/BytecodeIndex.h:
+        (JSC::BytecodeIndex::BytecodeIndex):
+        (JSC::BytecodeIndex::checkpoint const):
+        (JSC::BytecodeIndex::withCheckpoint const):
+        (JSC::BytecodeIndex::pack):
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        (JSC::BytecodeLivenessAnalysis::computeFullLiveness):
+        (JSC::BytecodeLivenessAnalysis::dumpResults):
+        (JSC::tmpLivenessForCheckpoint):
+        (JSC::BytecodeLivenessAnalysis::getLivenessInfoAtBytecodeIndex): Deleted.
+        (JSC::livenessForCheckpoint): Deleted.
+        * bytecode/BytecodeLivenessAnalysis.h:
+        (JSC::BytecodeLivenessAnalysis::getLivenessInfoAtInstruction):
+        * bytecode/BytecodeLivenessAnalysisInlines.h:
+        (JSC::BytecodeLivenessPropagation::stepOverBytecodeIndexDef):
+        (JSC::BytecodeLivenessPropagation::stepOverBytecodeIndexUse):
+        (JSC::BytecodeLivenessPropagation::stepOverBytecodeIndexUseInExceptionHandler):
+        (JSC::BytecodeLivenessPropagation::stepOverBytecodeIndex):
+        (JSC::BytecodeLivenessPropagation::stepOverInstruction):
+        (JSC::BytecodeLivenessPropagation::computeLocalLivenessForInstruction):
+        (JSC::BytecodeLivenessPropagation::computeLocalLivenessForBlock):
+        (JSC::BytecodeLivenessPropagation::getLivenessInfoAtInstruction):
+        (JSC::BytecodeLivenessPropagation::stepOverInstructionDef): Deleted.
+        (JSC::BytecodeLivenessPropagation::stepOverInstructionUse): Deleted.
+        (JSC::BytecodeLivenessPropagation::stepOverInstructionUseInExceptionHandler): Deleted.
+        (JSC::BytecodeLivenessPropagation::computeLocalLivenessForBytecodeIndex): Deleted.
+        (JSC::BytecodeLivenessPropagation::getLivenessInfoAtBytecodeIndex): Deleted.
+        * bytecode/BytecodeUseDef.cpp:
+        (JSC::computeUsesForBytecodeIndexImpl):
+        (JSC::computeDefsForBytecodeIndexImpl):
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeIndex):
+        (JSC::computeDefsForBytecodeIndex):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::ensureCatchLivenessIsComputedForBytecodeIndexSlow):
+        (JSC::CodeBlock::validate):
+        * bytecode/FullBytecodeLiveness.h:
+        (JSC::FullBytecodeLiveness::getLiveness const):
+        (JSC::FullBytecodeLiveness::toIndex):
+        * bytecode/Instruction.h:
+        (JSC::BaseInstruction::numberOfCheckpoints const):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::ForInContext::finalize):
+        * dfg/DFGForAllKills.h:
+        (JSC::DFG::forAllKilledOperands):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGGraph.h:
+        * dfg/DFGMovHintRemovalPhase.cpp:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::cleanMustHandleValuesIfNecessary):
+        * generator/Opcode.rb:
+        * generator/Section.rb:
+
+2020-07-06  Geoffrey Garen  <ggaren@apple.com>
+
+        callOnMainThread should use the same queue as RunLoop::dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=213830
+
+        Reviewed by Brady Eidson.
+
+        * JavaScriptCore.order:
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263960.
+        https://bugs.webkit.org/show_bug.cgi?id=213980
+
+        Re-land, because r263959 somehow fixed the build issue caused
+        by r263953
+
+        Reverted changeset:
+
+        "Unreviewed, reverting r263953 and r263959."
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+        https://trac.webkit.org/changeset/263960
+
+2020-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r263953 and r263959.
+        https://bugs.webkit.org/show_bug.cgi?id=213979
+
+        Broke internal build
+
+        Reverted changesets:
+
+        "[Cocoa] Move almost all features from FeatureDefines.xcconfig
+        to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+        https://trac.webkit.org/changeset/263953
+
+        "[Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build
+        system"
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+        https://trac.webkit.org/changeset/263959
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove FEATURE_DEFINES from the Cocoa/Xcode build system
+        https://bugs.webkit.org/show_bug.cgi?id=213976
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed FEATURE_DEFINES.
+        * Configurations/FeatureDefines.xcconfig: Removed.
+        * Configurations/JSC.xcconfig: Removed include of FeatureDefines.xcconfig.
+        * Configurations/JavaScriptCore.xcconfig: Ditto.
+        * Configurations/ToolExecutable.xcconfig: Ditto.
+        * DerivedSources-input.xcfilelist: Removed FeatureDefines.xcconfig.
+        * DerivedSources.make: Removed FEATURE_DEFINES and FEATURE_DEFINE_FLAGS.
+        * JavaScriptCore.xcodeproj/project.pbxproj: Removed FeatureDefines.xcconfig.
+
+2020-07-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Move almost all features from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212542
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Delete everything except
+        ENABLE_EXPERIMENTAL_FEATURES and ENABLE_WEBRTC.
+
+2020-07-05  Philippe Normand  <pnormand@igalia.com>
+
+        Web Inspector: Fix python3 build warnings
+        https://bugs.webkit.org/show_bug.cgi?id=213971
+
+        Reviewed by Sam Weinig.
+
+        Fix Python3 syntax warnings. Using 'is' with string literals triggers those. Adopt the ==
+        operator instead, which is more idiomatic anyway.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_getter_method_for_type):
+        (CppGenerator.cpp_setter_method_for_type):
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCTypeCategory.category_for_type):
+        (ObjCGenerator.objc_type_for_raw_name):
+        (ObjCGenerator.objc_class_for_raw_name):
+        (ObjCGenerator.protocol_type_for_raw_name):
+        (ObjCGenerator.objc_protocol_export_expression_for_variable):
+        (ObjCGenerator.objc_protocol_import_expression_for_variable):
+        (ObjCGenerator.objc_to_protocol_expression_for_member):
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        (ObjCGenerator.payload_to_objc_expression_for_member):
+        (ObjCGenerator.objc_setter_method_for_member_internal):
+        (ObjCGenerator.objc_getter_method_for_member_internal):
+        (ObjCGenerator.objc_protocol_export_expression_for_variable.is): Deleted.
+        (ObjCGenerator.objc_protocol_import_expression_for_variable.is): Deleted.
+        (ObjCGenerator.objc_to_protocol_expression_for_member.is): Deleted.
+        (ObjCGenerator.protocol_to_objc_expression_for_member.is): Deleted.
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all features from FeatureDefines.xcconfig that are already mentioned in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=213962
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Removed all features that were mentioned
+        in PlatformEnableCocoa.h; the rules in that file now define whether they are enabled.
+
+2020-07-04  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        %TypedArray%.prototype.{indexOf,lastIndexOf} are not spec-perfect
+        https://bugs.webkit.org/show_bug.cgi?id=213715
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch:
+
+        1. Implements step 3 of {Array,%TypedArray%}.prototype.indexOf [1] and
+           %TypedArray%.prototype.lastIndexOf [2] since it is observable when
+           second argument is an object with userland toString() or valueOf() method.
+           Advances provided microbenchmark by 100% for Array and by 25% for %TypedArray%.
+
+        2. Removes argument count check from %TypedArray%.prototype.{indexOf,lastIndexOf},
+           allowing these methods to be invoked w/o arguments. The spec treats missing
+           arguments as `undefined`, always returning -1 for typed arrays.
+
+        Both changes align JSC with V8 and SpiderMonkey.
+
+        [1]: https://tc39.es/ecma262/#sec-array.prototype.indexof
+        [2]: https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncIndexOf):
+        (JSC::arrayProtoFuncLastIndexOf):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncIndexOf):
+        (JSC::genericTypedArrayViewProtoFuncLastIndexOf):
+
+2020-07-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove unconditional features from FeatureDefines.xcconfig, making sure they are covered in PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=212418
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig: Removed features that are either unconditionally not enabled,
+        or unconditionally enabled. Double checked that all the enabled ones are either in PlatformEnable.h or
+        PlatformEnableCocoa.h.
+
 2020-07-03  Darin Adler  <darin@apple.com>
 
         Make generate-unified-sources.sh not depend on features being listed in FEATURE_DEFINES environment variable

@@ -31,6 +31,7 @@
 #import <WebCore/GameControllerGamepadProvider.h>
 #import <WebCore/HIDGamepadProvider.h>
 #import <WebCore/MockGamepadProvider.h>
+#import <WebCore/MultiGamepadProvider.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -52,9 +53,14 @@ void UIGamepadProvider::platformSetDefaultGamepadProvider()
 #else
     if (useGameControllerFramework)
         GamepadProvider::setSharedProvider(GameControllerGamepadProvider::singleton());
-    else
+    else {
+#if HAVE(MULTIGAMEPADPROVIDER_SUPPORT)
+        GamepadProvider::setSharedProvider(MultiGamepadProvider::singleton());
+#else
         GamepadProvider::setSharedProvider(HIDGamepadProvider::singleton());
-#endif
+#endif // HAVE(MULTIGAMEPADPROVIDER_SUPPORT)
+    }
+#endif // PLATFORM(IOS_FAMILY)
 }
 
 void UIGamepadProvider::platformStopMonitoringInput()

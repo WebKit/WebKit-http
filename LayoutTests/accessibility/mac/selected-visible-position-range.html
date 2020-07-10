@@ -1,0 +1,60 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+<head>
+<script src="../../resources/accessibility-helper.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
+<script src="./resources/accessibility-helper.js"></script>
+</head>
+<body>
+
+<div id="content" contenteditable=true>
+    <p id="p1">First paragraph.</p>
+    <p id="p2">Last paragraph.</p>
+</div>
+
+<p id="description"></p>
+<div id="console"></div>
+
+<script>
+    description("This tests getting and setting the selected VisiblePosition range.");
+
+    function checkCurrentSelection(accessibleObject, selection)
+    {
+        waitFor(() => {
+            selectedRange = accessibleObject.selectedTextMarkerRange();
+            selectedString = accessibleObject.stringForTextMarkerRange(selectedRange);
+            return selectedString == selection;
+        });
+        debug("PASS current selection is '" + selection + "'");
+    }
+
+    if (window.accessibilityController) {
+        // Select the last paragraph using DOM API.
+        selectTextInNode("p2");
+
+        // Get current selection range via accessibility API.
+        var content = accessibilityController.accessibleElementById("content");
+        checkCurrentSelection(content, "Last paragraph.");
+
+        // Set the selection to the first paragraph via accessibility API.
+        var lastParagraphRange = content.selectedTextMarkerRange();
+        var lastParagraphStart = content.startTextMarkerForTextMarkerRange(lastParagraphRange);
+        var firstParagraphStart = content.previousParagraphStartTextMarkerForTextMarker(lastParagraphStart);
+        var firstParagraphRange = content.textMarkerRangeForMarkers(firstParagraphStart, lastParagraphStart);
+        content.setSelectedVisibleTextRange(firstParagraphRange);
+        checkCurrentSelection(content, "First paragraph.\n\n");
+
+        // Set the selection range to a collapsed range at the start position of the last paragraph.
+        var nullRange = content.textMarkerRangeForMarkers(lastParagraphStart, lastParagraphStart);
+        content.setSelectedVisibleTextRange(nullRange);
+        checkCurrentSelection(content, "");
+
+        // Set the selection range to a collapsed range at the start position of the first paragraph.
+        nullRange = content.textMarkerRangeForMarkers(firstParagraphStart, firstParagraphStart);
+        content.setSelectedVisibleTextRange(nullRange);
+        checkCurrentSelection(content, "");
+    }
+</script>
+<script src="../../resources/js-test-post.js"></script>
+</body>
+</html>

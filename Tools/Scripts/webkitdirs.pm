@@ -361,19 +361,26 @@ sub determineNativeArchitecture(;$$)
 
     my $output;
     if ($target eq "") {
-        $output = `uname -m`;
+        $output = `uname -m` unless isWindows();
     } else {
         $output = `ssh -o NoHostAuthenticationForLocalhost=yes -p $port $target 'uname  -m'`;
     }
-    chomp $output;
+    chomp $output if defined $output;
     $output = "x86_64" if (not defined $output);
 
     # FIXME: Remove this when <rdar://problem/64208532> is resolved
     if (isAppleCocoaWebKit() && $output ne "x86_64") {
         $output = "arm64";
     }
+
+    if (isAppleCocoaWebKit() && $output eq "arm64") {
+        determineXcodeSDK();
+        if ($xcodeSDK eq "macosx.internal") {
+            $output = "arm64e";
+        }
+    }
+
     $output = "arm" if $output eq "armv7l";
-    die "'arm64e' is an invalid native architecture" if $output eq "arm64e";
     $nativeArchitectureMap{"$target:$port"} = $output;
 }
 
@@ -637,7 +644,11 @@ sub determineXcodeSDK
     if (checkForArgumentAndRemoveFromARGV("--maccatalyst")) {
         $xcodeSDK ||= "maccatalyst";
     }
-    return if !defined $xcodeSDK;
+
+    # Finally, fall back to macOS if no platform is specified.
+    if (!defined $xcodeSDK) {
+        $xcodeSDK = "macosx";
+    }
     
     # Prefer the internal version of an sdk, if it exists.
     my @availableSDKs = availableXcodeSDKs();
@@ -2129,6 +2140,16 @@ sub getJhbuildPath()
     }
     return File::Spec->catdir(@jhbuildPath);
 }
+
+
+sub getJhbuildModulesetName()
+{
+    if (defined($ENV{'WEBKIT_JHBUILD_MODULESET'})) {
+        return 'jhbuild-' . $ENV{'WEBKIT_JHBUILD_MODULESET'} . '.modules';
+    }
+    return 'jhbuild.modules';
+}
+
 
 sub getUserFlatpakPath()
 {

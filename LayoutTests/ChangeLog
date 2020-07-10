@@ -1,3 +1,781 @@
+2020-07-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS VoiceOver should support definition lists
+        https://bugs.webkit.org/show_bug.cgi?id=210214
+        <rdar://problem/61478299>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/ios-simulator/definition-list.html: Added.
+
+2020-07-10  Lauro Moura  <lmoura@igalia.com>
+
+        Unreviewed, GTK/WPE debug crash gardening
+
+        * platform/glib/TestExpectations:
+
+2020-07-10  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK/WPE gardening
+
+        * platform/glib/TestExpectations: Mark a few GStreamer-related tests as crashing on Debug.
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-operations.https.html in Debug.
+
+        This test has been crashing in Debug since its import in r264202.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark imported/w3c/web-platform-tests/webrtc/protocol/split.https.html as flaky.
+
+        It has been flaky since import in r264202.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Regression (r264202): imported/w3c/web-platform-tests/html/dom/usvstring-reflection.https.html is consistently failing on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=214183
+        <rdar://problem/65335357>
+
+        Unreviewed, rebaseline test on mac-wk1 after resync in r264202.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/usvstring-reflection.https-expected.txt:
+
+2020-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floats] Normal flow element that establishes a new block formatting context must not overlap the margin box of any floats
+        https://bugs.webkit.org/show_bug.cgi?id=214185
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/float-avoider-with-inline-content-expected.html: Added.
+        * fast/layoutformattingcontext/float-avoider-with-inline-content.html: Added.
+
+2020-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][MarginCollapsing] Margins do not collapse through when the box has clearance.
+        https://bugs.webkit.org/show_bug.cgi?id=214172
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/empty-block-level-box-with-clearance-expected.html: Added.
+        * fast/layoutformattingcontext/empty-block-level-box-with-clearance.html: Added.
+
+2020-07-09  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden more failures/rebaselines after WPT updates.
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/xhr/send-entity-body-empty-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/xhr/send-entity-body-none-expected.txt: Added.
+        * platform/gtk-wayland/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/xhr/send-network-error-sync-events.sub-expected.txt:
+          Removed. This test is actually failing for gtk/wpe. Removed to
+          fallback to the w3c baseline and marked it as a failure.
+
+2020-07-09  Andres Gonzalez  <andresg_22@apple.com>
+
+        Make accessibility/Mac/selected-visible-position-range.html time-deterministic.
+        https://bugs.webkit.org/show_bug.cgi?id=214154
+
+        Reviewed by Chris Fleizach.
+
+        [WebAccessibilityObjectWrapper accessibilitySetValue] sets the selection
+        range and other properties asynchronously by dispatching the call to
+        another cycle of the run loop using callOnMainThread. thus for the JS to
+        retrieve the new value, it is necessary to wait until the value is
+        updated. this is even more so in isolated tree mode where all wrapper
+        calls come on the secondary AX thread. JS setTimeout doesn't help with
+        synchronizing these calls, so instead we are using Promises in the
+        function waitFor in accessibility-helper.js (thanks to Geoff Garen for
+        showing the way).
+
+        * accessibility/mac/selected-visible-position-range-expected.txt:
+        * accessibility/mac/selected-visible-position-range.html:
+
+        MOved waitFor(condition) to the accessibility-helper.js file to be used
+        in multiple tests.
+        * accessibility/textarea-selected-text-range.html:
+        * resources/accessibility-helper.js:
+        (waitFor):
+
+2020-07-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [macOS] Stuttery scrolling on tesla.com
+        https://bugs.webkit.org/show_bug.cgi?id=214159
+        <rdar://problem/64555500>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/scrolling/mac/adjust-scroll-snap-during-gesture-expected.txt: Added.
+        * fast/scrolling/mac/adjust-scroll-snap-during-gesture.html: Added.
+
+2020-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/webrtc from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214151
+
+        Reviewed by Alex Christensen.
+
+        * tests-options.json:
+
+2020-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/url from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214145
+
+        Reviewed by Alex Christensen.
+
+        * tests-options.json:
+
+2020-07-09  Simon Fraser  <simon.fraser@apple.com>
+
+        After a scroll gesture, content changes don't trigger re-snapping with scroll snap
+        https://bugs.webkit.org/show_bug.cgi?id=214123
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/scrolling/mac/adjust-scroll-snap-after-gesture-expected.txt: Added.
+        * fast/scrolling/mac/adjust-scroll-snap-after-gesture.html: Added.
+
+2020-07-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r259840): Pressing Esc or ⌘+"." does not dismiss time picker on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=214122
+        <rdar://problem/64940487>
+
+        Reviewed by Tim Horton.
+
+        * fast/forms/ios/dismiss-picker-using-keyboard.html:
+        * fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry.html:
+        * fast/forms/ios/time-picker-value-change-expected.txt:
+        * fast/forms/ios/time-picker-value-change.html:
+
+        Adjust a few layout tests to be compatible with date and time inputs.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForInputSessionToDismiss.return.new.Promise):
+        (window.UIHelper.waitForInputSessionToDismiss):
+
+2020-07-09  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION (r264117): [ Mac iOS ] imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/blob.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=214155
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/workers from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214146
+
+        Reviewed by Geoffrey Garen.
+
+        * tests-options.json:
+
+2020-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark ref-test as flaky on iOS since import in r263987.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Occasional crash under -[UIView _setViewDelegate:] when presenting date and time pickers
+        https://bugs.webkit.org/show_bug.cgi?id=214120
+        <rdar://problem/65246918>
+
+        Reviewed by Darin Adler.
+
+        Add a new layout test to verify that presenting a date picker twice does not result in a crash.
+
+        * fast/forms/ios/show-and-dismiss-date-input-expected.txt: Added.
+        * fast/forms/ios/show-and-dismiss-date-input.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.activateAndWaitForInputSessionAt.return.new.Promise.):
+
+        Teach this helper method to wait for context menus as well (for the case of date and time pickers on iOS).
+
+        (window.UIHelper.waitForInputSessionToDismiss.return.new.Promise.):
+        (window.UIHelper.waitForInputSessionToDismiss.return.new.Promise):
+        (window.UIHelper.waitForInputSessionToDismiss):
+
+        Likewise, teach this to wait for context menu dismissal.
+
+        (window.UIHelper.waitForContextMenuToHide.return.new.Promise):
+        (window.UIHelper.waitForContextMenuToHide):
+
+        Add a new helper to wait for context menus to hide.
+
+2020-07-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Verification] Use the table wrapper box's margin when checking the table box
+        https://bugs.webkit.org/show_bug.cgi?id=214119
+
+        Reviewed by Darin Adler.
+
+        * fast/layoutformattingcontext/table-with-margin-simple-expected.html: Added.
+        * fast/layoutformattingcontext/table-with-margin-simple.html: Added.
+
+2020-07-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][MSE] AV1 support
+        https://bugs.webkit.org/show_bug.cgi?id=207547
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/glib/TestExpectations: Mark media/media-can-play-av1.html as failing until the
+        Flatpak SDK ships gst-plugins-rs.
+
+2020-07-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Add support for HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain
+        https://bugs.webkit.org/show_bug.cgi?id=213954
+
+        Reviewed by Michael Catanzaro.
+
+        Update test expectations.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party-expected.txt: Removed.
+        * platform/glib/http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior-expected.txt: Removed.
+        * platform/gtk/TestExpectations:
+
+2020-07-08  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Gardening after latest wpt resyncs
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/fetch/redirect-navigate/preserve-fragment-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/rendering/widgets/baseline-alignment-and-overflow.tentative-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/html/rendering/widgets/button-layout/flex-expected.txt: Added.
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/fetch from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214111
+
+        Reviewed by Sam Weinig.
+
+        * tests-options.json:
+
+2020-07-08  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. Remove some mentions of non-existant files in expectations.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, add iOS-specific baseline for WPT test after resync in r264117.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/rendering/widgets/select-wrap-no-spill.optional-expected.txt: Added.
+
+2020-07-08  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r263222-263223): [ macOS wk2 debug ] accessibility/textarea-selected-text-range.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=214078
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-08  Dean Jackson  <dino@apple.com>
+
+        input button test needs rebaseline for Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=214095
+        rdar://64911045
+
+        Unreviewed gardening. This test produces different results on Big Sur.
+
+        * platform/mac-bigsur/fast/forms/input-button-sizes-expected.txt: Added.
+
+2020-07-08  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION: (r263222-263223): [ macOS wk2 debug ] accessibility/textarea-selected-text-range.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=214078
+
+        Reviewed by Darin Adler.
+
+        Make this test deterministic by waiting for the correct result.
+
+        * accessibility/textarea-selected-text-range-expected.txt:
+        * accessibility/textarea-selected-text-range.html:
+
+2020-07-08  Truitt Savell  <tsavell@apple.com>
+
+        Regression(r261756): webanimations/accelerated-animation-single-keyframe.html is consistently timing out on windows
+        https://bugs.webkit.org/show_bug.cgi?id=214088
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-07-08  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r263222-263223): [ macOS wk2 debug ] accessibility/textarea-selected-text-range.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=214078
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Resync all remaining web-platform-tests/html tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214057
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2020-07-08  Sam Weinig  <weinig@apple.com>
+
+        Remove LayoutTests/fast/forms/datetime now that <input type="datetime"> code has been removed
+        https://bugs.webkit.org/show_bug.cgi?id=214064
+
+        Reviewed by Dan Bernstein.
+
+        * fast/forms/datetime: Removed.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        Stop skipping the removed tests.
+
+2020-07-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        autocapitalize="words" capitalizes every word's second character
+        https://bugs.webkit.org/show_bug.cgi?id=148504
+        <rdar://problem/57814304>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to verify that the bug does not occur.
+
+        * fast/forms/ios/autocapitalize-words-expected.txt: Added.
+        * fast/forms/ios/autocapitalize-words.html: Added.
+
+2020-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed test gardening; "rebaseline" the video-orientation-canvas.html test to center the expected red color
+        results on observed output.
+
+        * media/video-orientation-canvas-expected.txt:
+        * media/video-orientation-canvas.html:
+
+2020-07-08  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Do not use the initial strut baseline values when the text content is inside an inline container
+        https://bugs.webkit.org/show_bug.cgi?id=214069
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/line-heigt-when-text-is-inside-inline-container-expected.html: Added.
+        * fast/layoutformattingcontext/line-heigt-when-text-is-inside-inline-container.html: Added.
+
+2020-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Skip a couple of WPT webaudio tests instead of marking them as crashing.
+
+        This avoids wasting resources on the bots since those tests are consistently crashing.
+
+        * TestExpectations:
+
+2020-07-08  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][TFC] Table width is computed as if box-sizing was border-box
+        https://bugs.webkit.org/show_bug.cgi?id=214070
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/table-with-padding-and-border-simple-expected.html: Added.
+        * fast/layoutformattingcontext/table-with-padding-and-border-simple.html: Added.
+
+2020-07-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The layout test webanimations/accelerated-animation-single-keyframe.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=214081
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-07-08  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: [ Mac wk2 Release and iOS wk2 Release ] webrtc/libwebrtc/descriptionGetters.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=214084
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-08  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME][GStreamer] web-platform-tests/encrypted-media/clearkey-events-session-closed-event.https.html random crashes
+        https://bugs.webkit.org/show_bug.cgi?id=210264
+
+        Reviewed by Philippe Normand.
+
+        * platform/glib/TestExpectations: Change test expectations.
+
+2020-07-07  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden some recent failures and move related entries together
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-07  Lauro Moura  <lmoura@igalia.com>
+
+        Add missing resource file for some imported/blink/compositing/squashing tests
+        https://bugs.webkit.org/show_bug.cgi?id=154076
+
+        Unreviewed test gardening.
+
+        Based on original patch by Danilo Cesar Lemes de Paula <danilo.cesar@collabora.co.uk>.
+
+        All but one test ran as expected for GTK/WPE.
+
+        * TestExpectations:
+        * imported/blink/compositing/squashing/resources/blue.png: Added.
+
+2020-07-07  Chris Dumez  <cdumez@apple.com>
+
+        Mark 3 WPT tests imported in r264035 as failing in iOS Simulator.
+
+        This is because of lack of WebAssembly support on this platform.
+
+        * platform/ios-simulator/TestExpectations:
+
+2020-07-07  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: (r263987): [ iOS Debug WK2 ] 12 web-platform-tests semantics/scripting consistently failing
+        https://bugs.webkit.org/show_bug.cgi?id=214058
+        <rdar://problem/65193100>
+
+        Unreviewed, mark as flaky on iOS some of the new html/semantics web-platform-tests that got added
+        during the resync in r263987. Those give different TEXT results on release and debug builds so this
+        must be due to a timing issue, indicating those tests are actually flaky.
+
+        * platform/ios/TestExpectations:
+
+2020-07-07  Sam Weinig  <weinig@apple.com>
+
+        Enabled testing of date/time input types for WebKit2 macOS
+        https://bugs.webkit.org/show_bug.cgi?id=214044
+
+        Reviewed by Chris Dumez.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+        Move skipping of date/time input types to WebKit1 specific TestExpectations
+        to allow for testing on WebKit2. If this goes well, we can look into enabling
+        them for WebKit1 as well.
+
+        * platform/mac-wk2/accessibility/roles-exposed-expected.txt:
+        * platform/mac-wk2/fast/forms/datalist: Added.
+        * platform/mac-wk2/fast/forms/datalist/input-list-expected.txt: Added.
+        * platform/mac-wk2/fast/forms/date: Added.
+        * platform/mac-wk2/fast/forms/date/date-input-rendering-basic-expected.png: Added.
+        * platform/mac-wk2/fast/forms/date/date-input-rendering-basic-expected.txt: Added.
+        * platform/mac-wk2/fast/forms/time: Added.
+        * platform/mac-wk2/fast/forms/time/time-input-rendering-basic-expected.png: Added.
+        * platform/mac-wk2/fast/forms/time/time-input-rendering-basic-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/non-replaced-elements: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/form-controls: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/form-controls/resets-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/widgets: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/widgets/appearance: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/rendering/widgets/appearance/default-styles-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-checkValidity-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-reportValidity-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-rangeOverflow-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-rangeUnderflow-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-stepMismatch-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valid-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valueMissing-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-form-element: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/date-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/datetime-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/datetime-local-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-seconds-leading-zeroes-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-valueasdate-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-valueasdate-stepping-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-valueasnumber-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-valueasnumber-stepping-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/month-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/time-2-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/time-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/week-expected.txt: Added.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange-expected.txt: Added.
+        Update results, adding new platform specific results where needed.
+
+2020-07-07  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/service-workers from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214052
+
+        Reviewed by Geoff Garen.
+
+        * tests-options.json:
+
+2020-07-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark one of the imported WPT webaudio tests as flaky.
+
+        The test is failing and printing out information that is hardware specific.
+
+        * TestExpectations:
+
+2020-07-07  Andres Gonzalez  <andresg_22@apple.com>
+
+        Web content process hangs in AccessibilityRenderObject::setSelectedVisiblePositionRange in some corner cases.
+        https://bugs.webkit.org/show_bug.cgi?id=214017
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/resources/accessibility-helper.js:
+        (selectTextInNode):
+        * accessibility/mac/selected-visible-position-range-expected.txt: Added.
+        * accessibility/mac/selected-visible-position-range.html: Added.
+        * accessibility/mac/text-marker-p-tags.html:
+
+2020-07-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Unable to scroll elcomerico.pe page until the page finishes loading
+        https://bugs.webkit.org/show_bug.cgi?id=214027
+        <rdar://problem/64646259>
+
+        Reviewed by Antti Koivisto.
+
+        macOS and iOS tests with non-invertible transforms.
+
+        * fast/scrolling/ios/non-invertible-transformed-scroller-ancestor-expected.txt: Added.
+        * fast/scrolling/ios/non-invertible-transformed-scroller-ancestor.html: Added.
+        * fast/scrolling/mac/non-invertible-transform-hit-testing-expected.txt: Added.
+        * fast/scrolling/mac/non-invertible-transform-hit-testing.html: Added.
+
+2020-07-07  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> layout does not scale with Dynamic Type size changes
+        https://bugs.webkit.org/show_bug.cgi?id=214023
+        <rdar://problem/64914762>
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations:
+        * fast/attachment/attachment-dynamic-type-expected.txt: Added.
+        * fast/attachment/attachment-dynamic-type.html: Added.
+        * platform/ios/TestExpectations:
+        Add a test that ensures that changing the content size to XXXL also increases the size of the <attachment>.
+
+2020-07-07  Truitt Savell  <tsavell@apple.com>
+
+        [ iOS ] http/tests/adClickAttribution/store-disabled-in-ephemeral-session.html is flaky timing out
+        https://bugs.webkit.org/show_bug.cgi?id=207551
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-07  Tomoki Imai  <Tomoki.Imai@sony.com>
+
+        [Win] Implement Pasteboard::writeCustomData for Web Inspector Console tab
+        https://bugs.webkit.org/show_bug.cgi?id=213986
+
+        Reviewed by Fujii Hironori.
+
+        Now pasteboard tests related to custom data pass.
+
+        * platform/win/TestExpectations:
+
+2020-07-07  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] OGV/VP8 video not playing on minibrowser (neither epiphany)
+        https://bugs.webkit.org/show_bug.cgi?id=205916
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/glib/TestExpectations: Update WPT expectations
+
+2020-07-06  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Imported semantics tests gardening after r263987
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt:
+
+2020-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark ref-test imported in r263987 as failing on iOS.
+
+        imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-slow.html is
+        a new ref-test that has been failing on iOS since import.
+
+        * platform/ios/TestExpectations:
+
+2020-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Rebaseline test for iOS after r263987.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+
+2020-07-06  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement user action spec for Escape action
+        https://bugs.webkit.org/show_bug.cgi?id=213875
+        <rdar://problem/65022980>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/keyevents-posted-for-dismiss-action-expected.txt: Added.
+        * accessibility/keyevents-posted-for-dismiss-action.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2020-07-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Locale-specific quotes infrastructure needs to compare locale strings properly
+        https://bugs.webkit.org/show_bug.cgi?id=213827
+
+        Reviewed by Darin Adler.
+
+        * fast/css-generated-content/quotes-lang-2-expected.html: Added.
+        * fast/css-generated-content/quotes-lang-2.html: Added.
+
+2020-07-06  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] No need to mark tables/mozilla_expected_failures/other/empty_cells.html with [Failure] anymore.
+
+        Unreviewed.
+
+        * platform/win/TestExpectations:
+
+2020-07-06  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Unreviewed mozilla test gardening after r263855.
+
+        * platform/win/tables/mozilla_expected_failures/other/empty_cells-expected.txt:
+
+2020-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/html/semantics from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=213994
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt:
+        * tests-options.json:
+
+2020-07-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Some tests are failing on the EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=213998
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-07-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPadOS] Unable to change focus between Google Docs windows by tapping
+        https://bugs.webkit.org/show_bug.cgi?id=213985
+        <rdar://problem/57083267>
+
+        Reviewed by Darin Adler.
+
+        Add a new layout test to verify that tapping to focus a plain textarea causes the web view's window to become
+        the key window, as well as tapping to focus a hidden contenteditable area, over a touch handler that prevents
+        default.
+
+        * editing/selection/ios/become-key-window-when-focusing-editable-area-expected.txt: Added.
+        * editing/selection/ios/become-key-window-when-focusing-editable-area.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.setWindowIsKey):
+        (window.UIHelper.windowIsKey):
+
+2020-07-06  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Unreviewed mozilla test gardening after r263855.
+
+        * platform/win/tables/mozilla/bugs/bug100334-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug10633-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug1302-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug16012-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug222336-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug3037-1-expected.txt:
+
+2020-07-06  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Unreviewed test gardening after r263855.
+
+        * platform/win/fast/css/acid2-expected.txt:
+        * platform/win/fast/css/acid2-pixel-expected.txt:
+        * platform/win/fast/css/percentage-non-integer-expected.txt:
+        * platform/win/fast/dynamic/insert-before-table-part-in-continuation-expected.txt:
+        * platform/win/fast/repaint/table-cell-move-expected.txt:
+        * platform/win/fast/table/cell-absolute-child-expected.txt:
+        * platform/win/fast/table/empty-cells-expected.txt:
+        * platform/win/fast/table/prepend-in-anonymous-table-expected.txt:
+        * platform/win/fast/table/table-cell-split-expected.txt:
+        * platform/win/fast/table/table-insert-before-non-anonymous-block-expected.txt:
+        * platform/win/http/tests/misc/acid2-expected.txt:
+        * platform/win/http/tests/misc/acid2-pixel-expected.txt:
+
+2020-07-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Enable storageAccess tests
+        https://bugs.webkit.org/show_bug.cgi?id=213881
+
+        Reviewed by Adrian Perez de Castro.
+
+        Enable storageAccess tests and mark expected failures.
+
+        * platform/glib/TestExpectations:
+
 2020-07-03  Youenn Fablet  <youenn@apple.com>
 
         MediaRecorder should support peer connection remote video tracks

@@ -510,6 +510,11 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, exposeProfilersOnGlobalObject, false, Normal, "If true, we will expose functions to enable/disable both the sampling profiler and the super sampler") \
     v(Bool, allowUnsupportedTiers, false, Normal, "If true, we will not disable DFG or FTL when an experimental feature is enabled.") \
     v(Bool, usePrivateClassFields, false, Normal, "If true, the parser will understand private data fields inside classes.") \
+    v(Bool, returnEarlyFromInfiniteLoopsForFuzzing, false, Normal, nullptr) \
+    v(Size, earlyReturnFromInfiniteLoopsLimit, 1300000000, Normal, "When returnEarlyFromInfiniteLoopsForFuzzing is true, this determines the number of executions a loop can run for before just returning. This is helpful for the fuzzer so it doesn't get stuck in infinite loops.") \
+    v(Bool, useLICMFuzzing, false, Normal, nullptr) \
+    v(Unsigned, seedForLICMFuzzer, 424242, Normal, nullptr) \
+    v(Double, allowHoistingLICMProbability, 0.5, Normal, nullptr) \
 
 enum OptionEquivalence {
     SameOption,

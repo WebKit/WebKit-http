@@ -540,9 +540,6 @@ constexpr double fasterTapSignificantZoomThreshold = 0.8;
     case WebKit::InputType::Date:
         _type = WKInputTypeDate;
         break;
-    case WebKit::InputType::DateTime:
-        _type = WKInputTypeDateTime;
-        break;
     case WebKit::InputType::DateTimeLocal:
         _type = WKInputTypeDateTimeLocal;
         break;
@@ -943,6 +940,8 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
         [_interactionViewsContainerView removeFromSuperview];
         _interactionViewsContainerView = nil;
     }
+
+    _lastInsertedCharacterToOverrideCharacterBeforeSelection = WTF::nullopt;
 
     [_touchEventGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
@@ -1499,6 +1498,9 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
 
         if (!_page->isScrollingOrZooming())
             [self _resetPanningPreventionFlags];
+
+        if (nativeWebTouchEvent.isPotentialTap() && self.hasHiddenContentEditable && self._hasFocusedElement && !self.window.keyWindow)
+            [self.window makeKeyWindow];
     }
 #endif
 }
@@ -2959,7 +2961,6 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case WebKit::InputType::ContentEditable:
     case WebKit::InputType::TextArea:
     case WebKit::InputType::Select:
-    case WebKit::InputType::DateTime:
     case WebKit::InputType::Week:
 #if ENABLE(INPUT_TYPE_COLOR)
     case WebKit::InputType::Color:
@@ -4136,7 +4137,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (UTF32Char)_characterBeforeCaretSelection
 {
-    return _page->editorState().postLayoutData().characterBeforeSelection;
+    return _lastInsertedCharacterToOverrideCharacterBeforeSelection.valueOr(_page->editorState().postLayoutData().characterBeforeSelection);
 }
 
 - (UTF32Char)_characterInRelationToCaretSelection:(int)amount
@@ -4145,7 +4146,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     case 0:
         return _page->editorState().postLayoutData().characterAfterSelection;
     case -1:
-        return _page->editorState().postLayoutData().characterBeforeSelection;
+        return self._characterBeforeCaretSelection;
     case -2:
         return _page->editorState().postLayoutData().twoCharacterBeforeSelection;
     default:
@@ -4367,6 +4368,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)accessoryDone
 {
+    [self stopRelinquishingFirstResponderToFocusedElement];
     [self endEditingAndUpdateFocusAppearanceWithReason:EndEditingReasonAccessoryDone];
     _page->setIsShowingInputViewForFocusedElement(false);
 }
@@ -4827,6 +4829,11 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
     options.processingUserGesture = [keyboard respondsToSelector:@selector(isCallingInputDelegate)] && keyboard.isCallingInputDelegate;
     options.shouldSimulateKeyboardInput = [self _shouldSimulateKeyboardInputOnTextInsertion];
     _page->insertTextAsync(aStringValue, WebKit::EditingRange(), WTFMove(options));
+
+    if (_focusedElementInformation.autocapitalizeType == WebCore::AutocapitalizeType::Words && aStringValue.length) {
+        _lastInsertedCharacterToOverrideCharacterBeforeSelection = [aStringValue characterAtIndex:aStringValue.length - 1];
+        _page->scheduleFullEditorStateUpdate();
+    }
 }
 
 - (void)insertText:(NSString *)aStringValue alternatives:(NSArray<NSString *> *)alternatives style:(UITextAlternativeStyle)style
@@ -5034,7 +5041,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         case WebKit::InputType::TextArea:
         case WebKit::InputType::Search:
         case WebKit::InputType::Date:
-        case WebKit::InputType::DateTime:
         case WebKit::InputType::DateTimeLocal:
         case WebKit::InputType::Month:
         case WebKit::InputType::Week:
@@ -5081,7 +5087,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     case WebKit::InputType::Color:
 #endif
     case WebKit::InputType::Date:
-    case WebKit::InputType::DateTime:
     case WebKit::InputType::DateTimeLocal:
     case WebKit::InputType::Drawing:
     case WebKit::InputType::Email:
@@ -5777,7 +5782,6 @@ static bool mayContainSelectableText(WebKit::InputType type)
     case WebKit::InputType::Text:
     case WebKit::InputType::TextArea:
     case WebKit::InputType::URL:
-    case WebKit::InputType::DateTime:
     case WebKit::InputType::Week:
         return true;
     }
@@ -5984,8 +5988,11 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     [self reloadInputViews];
 #endif
 
-    if (isSelectable)
+    if (isSelectable) {
         [self _showKeyboard];
+        if (!self.window.keyWindow)
+            [self.window makeKeyWindow];
+    }
 
     // The custom fixed position rect behavior is affected by -isFocusingElement, so if that changes we need to recompute rects.
     if (editableChanged)
@@ -6074,6 +6081,8 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
 
     if (!_isChangingFocus)
         _didAccessoryTabInitiateFocus = NO;
+
+    _lastInsertedCharacterToOverrideCharacterBeforeSelection = WTF::nullopt;
 }
 
 - (void)_updateInputContextAfterBlurringAndRefocusingElement
@@ -6553,6 +6562,12 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 #endif
     
     [_webView _didChangeEditorState];
+
+    if (!_page->editorState().isMissingPostLayoutData) {
+        _lastInsertedCharacterToOverrideCharacterBeforeSelection = WTF::nullopt;
+        if (!_usingGestureForSelection && _focusedElementInformation.autocapitalizeType == WebCore::AutocapitalizeType::Words)
+            [UIKeyboardImpl.sharedInstance clearShiftState];
+    }
 }
 
 - (void)selectWordForReplacement
@@ -6628,7 +6643,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
 - (BOOL)hasHiddenContentEditable
 {
-    return _suppressSelectionAssistantReasons.contains(WebKit::EditableRootIsTransparentOrFullyClipped);
+    return _suppressSelectionAssistantReasons.containsAny({ WebKit::EditableRootIsTransparentOrFullyClipped, WebKit::FocusedElementIsTooSmall });
 }
 
 - (BOOL)_shouldSuppressSelectionCommands
@@ -6793,6 +6808,16 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     [_shareSheet setDelegate:nil];
     _shareSheet = nil;
 }
+
+- (void)shareSheet:(WKShareSheet *)shareSheet willShowActivityItems:(NSArray *)activityItems
+{
+    ASSERT(_shareSheet == shareSheet);
+
+    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_webView:willShareActivityItems:)])
+        [uiDelegate _webView:self.webView willShareActivityItems:activityItems];
+}
+
 #endif
 
 - (NSString *)inputLabelText
@@ -6827,13 +6852,21 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     return NO;
 }
 
-- (void)preserveFocus
+- (void)startRelinquishingFirstResponderToFocusedElement
 {
+    if (_isRelinquishingFirstResponderToFocusedElement)
+        return;
+
+    _isRelinquishingFirstResponderToFocusedElement = YES;
     [_webView _incrementFocusPreservationCount];
 }
 
-- (void)releaseFocus
+- (void)stopRelinquishingFirstResponderToFocusedElement
 {
+    if (!_isRelinquishingFirstResponderToFocusedElement)
+        return;
+
+    _isRelinquishingFirstResponderToFocusedElement = NO;
     [_webView _decrementFocusPreservationCount];
 }
 
@@ -6909,7 +6942,15 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 {
     WebCore::ShareDataWithParsedURL shareData;
     shareData.url = { url };
-    [self _showShareSheet:shareData inRect: { [self convertRect:boundingRect toView:self.webView] } completionHandler:[] (bool success) { }];
+    [self _showShareSheet:shareData inRect: { [self convertRect:boundingRect toView:self.webView] } completionHandler:nil];
+}
+
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithImage:(UIImage *)image rect:(CGRect)boundingRect
+{
+    WebCore::ShareDataWithParsedURL shareData;
+    NSString* fileName = [NSString stringWithFormat:@"%@.png", (NSString*)WEB_UI_STRING("Shared Image", "Default name for the file created for a shared image with no explicit name.")];
+    shareData.files = { { fileName, WebCore::SharedBuffer::create(UIImagePNGRepresentation(image)) } };
+    [self _showShareSheet:shareData inRect: { [self convertRect:boundingRect toView:self.webView] } completionHandler:nil];
 }
 
 #if HAVE(APP_LINKS)
@@ -8526,6 +8567,10 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
         if (WebCore::IOSApplication::isEssentialSkeleton())
             return NO;
 
+        // <rdar://problem/64671543> "ESPN Fantasy Sports" does not respond to mouse events, only touch events
+        if (WebCore::IOSApplication::isESPNFantasySports())
+            return NO;
+
         return YES;
     }();
 
@@ -8560,6 +8605,9 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
 
     if (event->type() == WebKit::WebEvent::MouseDown)
         _layerTreeTransactionIdAtLastInteractionStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+
+    if (event->type() == WebKit::WebEvent::MouseUp && self.hasHiddenContentEditable && self._hasFocusedElement && !self.window.keyWindow)
+        [self.window makeKeyWindow];
 
     _page->handleMouseEvent(*event);
 }
@@ -9122,7 +9170,7 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
         // and create one. We need to replicate this code for the new API.
         if (!previewViewController || [(NSURL *)url iTunesStoreURL]) {
             auto ddContextMenuActionClass = getDDContextMenuActionClass();
-            BEGIN_BLOCK_OBJC_EXCEPTIONS;
+            BEGIN_BLOCK_OBJC_EXCEPTIONS
             NSDictionary *context = [self dataDetectionContextForPositionInformation:_positionInformation];
             RetainPtr<UIContextMenuConfiguration> dataDetectorsResult = [ddContextMenuActionClass contextMenuConfigurationForURL:url identifier:_positionInformation.dataDetectorIdentifier selectedText:self.selectedText results:_positionInformation.dataDetectorResults.get() inView:self context:context menuIdentifier:nil];
             if (_showLinkPreviews && dataDetectorsResult && dataDetectorsResult.get().previewProvider)
@@ -9131,7 +9179,7 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
                 auto menuElements = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
                 _contextMenuLegacyMenu = dataDetectorsResult.get().actionProvider(menuElements);
             }
-            END_BLOCK_OBJC_EXCEPTIONS;
+            END_BLOCK_OBJC_EXCEPTIONS
             return;
         }
 
@@ -9378,7 +9426,7 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
 #if ENABLE(DATA_DETECTION)
 - (void)continueContextMenuInteractionWithDataDetectors:(void(^)(UIContextMenuConfiguration *))continueWithContextMenuConfiguration
 {
-    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
     auto ddContextMenuActionClass = getDDContextMenuActionClass();
     URL linkURL = _positionInformation.url;
     NSDictionary *context = [self dataDetectionContextForPositionInformation:_positionInformation];
@@ -9386,7 +9434,7 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
     _contextMenuActionProviderDelegateNeedsOverride = YES;
     _page->startInteractionWithPositionInformation(_positionInformation);
     continueWithContextMenuConfiguration(configurationFromDD);
-    END_BLOCK_OBJC_EXCEPTIONS;
+    END_BLOCK_OBJC_EXCEPTIONS
 }
 #endif
 

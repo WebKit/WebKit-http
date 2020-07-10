@@ -25,6 +25,26 @@
 
 #if ENABLE(GAMEPAD) && PLATFORM(COCOA)
 
-// FIXME: Refactor more GC framework stuff into this header
+#import <GameController/GCController.h>
 
+@interface GCController ()
++ (void)__openXPC_and_CBApplicationDidBecomeActive__;
+@end
+
+#if HAVE(MULTIGAMEPADPROVIDER_SUPPORT)
+#if USE(APPLE_INTERNAL_SDK)
+
+WTF_EXTERN_C_BEGIN
+#import <GameController/GCUtility.h>
+WTF_EXTERN_C_END
+
+#else
+
+WTF_EXTERN_C_BEGIN
+typedef struct CF_BRIDGED_TYPE(id) __IOHIDServiceClient * IOHIDServiceClientRef;
+Class ControllerClassForService(IOHIDServiceClientRef);
+WTF_EXTERN_C_END
+
+#endif // USE(APPLE_INTERNAL_SDK)
+#endif // HAVE(MULTIGAMEPADPROVIDER_SUPPORT)
 #endif // ENABLE(GAMEPAD) && PLATFORM(COCOA)

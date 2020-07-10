@@ -96,27 +96,39 @@ String convertEnumerationToString(AudioNode::NodeType enumerationValue)
     return values[static_cast<size_t>(enumerationValue)];
 }
 
+
+// FIXME: Remove once dependencies on old constructor are removed
 AudioNode::AudioNode(BaseAudioContext& context, float sampleRate)
-    : m_isInitialized(false)
-    , m_nodeType(NodeTypeUnknown)
-    , m_context(context)
+    : m_context(context)
     , m_sampleRate(sampleRate)
-    , m_lastProcessingTime(-1)
-    , m_lastNonSilentTime(-1)
-    , m_normalRefCount(1) // start out with normal refCount == 1 (like WTF::RefCounted class)
-    , m_connectionRefCount(0)
-    , m_isMarkedForDeletion(false)
-    , m_isDisabled(false)
 #if !RELEASE_LOG_DISABLED
     , m_logger(context.logger())
     , m_logIdentifier(context.nextAudioNodeLogIdentifier())
 #endif
     , m_channelCount(2)
-    , m_channelCountMode(Max)
-    , m_channelInterpretation(AudioBus::Speakers)
+    , m_channelCountMode(ChannelCountMode::Max)
+    , m_channelInterpretation(ChannelInterpretation::Speakers)
 {
     ALWAYS_LOG(LOGIDENTIFIER);
     
+#if DEBUG_AUDIONODE_REFERENCES
+    if (!s_isNodeCountInitialized) {
+        s_isNodeCountInitialized = true;
+        atexit(AudioNode::printNodeCounts);
+    }
+#endif
+}
+
+AudioNode::AudioNode(BaseAudioContext& context)
+    : m_context(context)
+    , m_sampleRate(context.sampleRate())
+#if !RELEASE_LOG_DISABLED
+    , m_logger(context.logger())
+    , m_logIdentifier(context.nextAudioNodeLogIdentifier())
+#endif
+{
+    ALWAYS_LOG(LOGIDENTIFIER);
+
 #if DEBUG_AUDIONODE_REFERENCES
     if (!s_isNodeCountInitialized) {
         s_isNodeCountInitialized = true;
@@ -256,11 +268,6 @@ ExceptionOr<void> AudioNode::disconnect(unsigned outputIndex)
     return { };
 }
 
-unsigned AudioNode::channelCount()
-{
-    return m_channelCount;
-}
-
 ExceptionOr<void> AudioNode::setChannelCount(unsigned channelCount)
 {
     ASSERT(isMainThread());
@@ -275,26 +282,12 @@ ExceptionOr<void> AudioNode::setChannelCount(unsigned channelCount)
         return { };
 
     m_channelCount = channelCount;
-    if (m_channelCountMode != Max)
+    if (m_channelCountMode != ChannelCountMode::Max)
         updateChannelsForInputs();
     return { };
 }
 
-String AudioNode::channelCountMode()
-{
-    switch (m_channelCountMode) {
-    case Max:
-        return "max"_s;
-    case ClampedMax:
-        return "clamped-max"_s;
-    case Explicit:
-        return "explicit"_s;
-    }
-    ASSERT_NOT_REACHED();
-    return emptyString();
-}
-
-ExceptionOr<void> AudioNode::setChannelCountMode(const String& mode)
+ExceptionOr<void> AudioNode::setChannelCountMode(ChannelCountMode mode)
 {
     ASSERT(isMainThread());
     BaseAudioContext::AutoLocker locker(context());
@@ -302,15 +295,7 @@ ExceptionOr<void> AudioNode::setChannelCountMode(const String& mode)
     ALWAYS_LOG(LOGIDENTIFIER, mode);
     
     ChannelCountMode oldMode = m_channelCountMode;
-
-    if (mode == "max")
-        m_channelCountMode = Max;
-    else if (mode == "clamped-max")
-        m_channelCountMode = ClampedMax;
-    else if (mode == "explicit")
-        m_channelCountMode = Explicit;
-    else
-        return Exception { InvalidStateError };
+    m_channelCountMode = mode;
 
     if (m_channelCountMode != oldMode)
         updateChannelsForInputs();
@@ -318,31 +303,14 @@ ExceptionOr<void> AudioNode::setChannelCountMode(const String& mode)
     return { };
 }
 
-String AudioNode::channelInterpretation()
-{
-    switch (m_channelInterpretation) {
-    case AudioBus::Speakers:
-        return "speakers"_s;
-    case AudioBus::Discrete:
-        return "discrete"_s;
-    }
-    ASSERT_NOT_REACHED();
-    return emptyString();
-}
-
-ExceptionOr<void> AudioNode::setChannelInterpretation(const String& interpretation)
+ExceptionOr<void> AudioNode::setChannelInterpretation(ChannelInterpretation interpretation)
 {
     ASSERT(isMainThread());
     BaseAudioContext::AutoLocker locker(context());
 
     ALWAYS_LOG(LOGIDENTIFIER, interpretation);
     
-    if (interpretation == "speakers")
-        m_channelInterpretation = AudioBus::Speakers;
-    else if (interpretation == "discrete")
-        m_channelInterpretation = AudioBus::Discrete;
-    else
-        return Exception { InvalidStateError };
+    m_channelInterpretation = interpretation;
 
     return { };
 }

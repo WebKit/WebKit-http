@@ -398,6 +398,18 @@ bool IOSApplication::isEssentialSkeleton()
     return isEssentialSkeleton;
 }
 
+bool IOSApplication::isLaBanquePostale()
+{
+    static bool isLaBanquePostale = applicationBundleIsEqualTo("fr.labanquepostale.moncompte"_s);
+    return isLaBanquePostale;
+}
+
+bool IOSApplication::isESPNFantasySports()
+{
+    static bool isESPNFantasySports = applicationBundleIsEqualTo("com.espn.fantasyFootball"_s);
+    return isESPNFantasySports;
+}
+
 #endif
 
 } // namespace WebCore

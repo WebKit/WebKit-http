@@ -56,9 +56,10 @@ namespace WebCore {
 
 NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
+    , m_cookieAcceptPolicy(HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain)
     , m_cookieStorage(adoptGRef(soup_cookie_jar_new()))
 {
-    soup_cookie_jar_set_accept_policy(m_cookieStorage.get(), SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
+    setCookieAcceptPolicy(m_cookieAcceptPolicy);
     g_signal_connect_swapped(m_cookieStorage.get(), "changed", G_CALLBACK(cookiesDidChange), this);
 }
 
@@ -76,6 +77,7 @@ void NetworkStorageSession::cookiesDidChange(NetworkStorageSession* session)
 void NetworkStorageSession::setCookieStorage(GRefPtr<SoupCookieJar>&& jar)
 {
     g_signal_handlers_disconnect_matched(m_cookieStorage.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
+    soup_cookie_jar_set_accept_policy(jar.get(), soup_cookie_jar_get_accept_policy(m_cookieStorage.get()));
     m_cookieStorage = WTFMove(jar);
     g_signal_connect_swapped(m_cookieStorage.get(), "changed", G_CALLBACK(cookiesDidChange), this);
 }
@@ -242,17 +244,68 @@ void NetworkStorageSession::saveCredentialToPersistentStorage(const ProtectionSp
 #endif
 }
 
+void NetworkStorageSession::setCookieAcceptPolicy(HTTPCookieAcceptPolicy policy)
+{
+    if (m_isResourceLoadStatisticsEnabled && m_thirdPartyCookieBlockingMode == ThirdPartyCookieBlockingMode::All) {
+        m_cookieAcceptPolicy = policy;
+        if (m_cookieAcceptPolicy == HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain)
+            policy = HTTPCookieAcceptPolicy::AlwaysAccept;
+    }
+
+    SoupCookieJarAcceptPolicy soupPolicy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+    switch (policy) {
+    case HTTPCookieAcceptPolicy::AlwaysAccept:
+        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
+        break;
+    case HTTPCookieAcceptPolicy::Never:
+        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_NEVER;
+        break;
+    case HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain:
+#if SOUP_CHECK_VERSION(2, 71, 0)
+        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_GRANDFATHERED_THIRD_PARTY;
+        break;
+#else
+        FALLTHROUGH;
+#endif
+    case HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain:
+        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+        break;
+    }
+
+    soup_cookie_jar_set_accept_policy(cookieStorage(), soupPolicy);
+}
+
 HTTPCookieAcceptPolicy NetworkStorageSession::cookieAcceptPolicy() const
 {
     switch (soup_cookie_jar_get_accept_policy(cookieStorage())) {
     case SOUP_COOKIE_JAR_ACCEPT_ALWAYS:
         return HTTPCookieAcceptPolicy::AlwaysAccept;
     case SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY:
+        return HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain;
+#if SOUP_CHECK_VERSION(2, 71, 0)
+    case SOUP_COOKIE_JAR_ACCEPT_GRANDFATHERED_THIRD_PARTY:
         return HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain;
-    default:
+#endif
+    case SOUP_COOKIE_JAR_ACCEPT_NEVER:
         return HTTPCookieAcceptPolicy::Never;
     }
+    RELEASE_ASSERT_NOT_REACHED();
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void NetworkStorageSession::setResourceLoadStatisticsEnabled(bool enabled)
+{
+    if (enabled) {
+        m_cookieAcceptPolicy = cookieAcceptPolicy();
+        if (m_thirdPartyCookieBlockingMode == ThirdPartyCookieBlockingMode::All && m_cookieAcceptPolicy == HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain)
+            setCookieAcceptPolicy(HTTPCookieAcceptPolicy::AlwaysAccept);
+        m_isResourceLoadStatisticsEnabled = true;
+    } else {
+        m_isResourceLoadStatisticsEnabled = false;
+        setCookieAcceptPolicy(m_cookieAcceptPolicy);
+    }
+}
+#endif
 
 static inline bool httpOnlyCookieExists(const GSList* cookies, const gchar* name, const gchar* path)
 {

@@ -1886,7 +1886,6 @@ platform/graphics/Region.cpp
 platform/graphics/RemoteVideoSample.cpp
 platform/graphics/RoundedRect.cpp
 platform/graphics/ShadowBlur.cpp
-platform/graphics/SimpleColor.cpp
 platform/graphics/StringTruncator.cpp
 platform/graphics/SurrogatePairAwareTextIterator.cpp
 platform/graphics/TextRun.cpp
@@ -2633,6 +2632,7 @@ JSAudioContextState.cpp
 JSAudioDestinationNode.cpp
 JSAudioListener.cpp
 JSAudioNode.cpp
+JSAudioNodeOptions.cpp
 JSAudioParam.cpp
 JSAudioProcessingEvent.cpp
 JSAudioTrack.cpp
@@ -2701,6 +2701,8 @@ JSCanvasTextBaseline.cpp
 JSCanvasTextDrawingStyles.cpp
 JSCanvasTransform.cpp
 JSCanvasUserInterface.cpp
+JSChannelCountMode.cpp
+JSChannelInterpretation.cpp
 JSChannelMergerNode.cpp
 JSChannelSplitterNode.cpp
 JSCharacterData.cpp
@@ -3127,6 +3129,7 @@ JSPageTransitionEvent.cpp
 JSPaintRenderingContext2D.cpp
 JSPaintWorkletGlobalScope.cpp
 JSPannerNode.cpp
+JSPannerOptions.cpp
 JSPanningModelType.cpp
 JSParentNode.cpp
 JSPath2D.cpp

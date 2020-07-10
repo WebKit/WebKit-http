@@ -32,6 +32,7 @@
 #include "AudioContext.h"
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
+#include "ChannelCountMode.h"
 #include "HRTFDatabaseLoader.h"
 #include "HRTFPanner.h"
 #include "ScriptExecutionContext.h"
@@ -48,22 +49,22 @@ static void fixNANs(double &x)
         x = 0.0;
 }
 
+// FIXME: Remove once dependencies on old constructor are removed.
 PannerNodeBase::PannerNodeBase(BaseAudioContext& context, float sampleRate)
     : AudioNode(context, sampleRate)
 {
 }
 
+// FIXME: Remove once dependencies on old constructor are removed.
 PannerNode::PannerNode(BaseAudioContext& context, float sampleRate)
     : PannerNodeBase(context, sampleRate)
     , m_panningModel(PanningModelType::HRTF)
-    , m_lastGain(-1.0)
     , m_positionX(AudioParam::create(context, "positionX"_s, 0, -FLT_MAX, FLT_MAX))
     , m_positionY(AudioParam::create(context, "positionY"_s, 0, -FLT_MAX, FLT_MAX))
     , m_positionZ(AudioParam::create(context, "positionZ"_s, 0, -FLT_MAX, FLT_MAX))
     , m_orientationX(AudioParam::create(context, "orientationX"_s, 1, -FLT_MAX, FLT_MAX))
     , m_orientationY(AudioParam::create(context, "orientationY"_s, 0, -FLT_MAX, FLT_MAX))
     , m_orientationZ(AudioParam::create(context, "orientationZ"_s, 0, -FLT_MAX, FLT_MAX))
-    , m_connectionCount(0)
 {
     setNodeType(NodeTypePanner);
     
@@ -75,12 +76,79 @@ PannerNode::PannerNode(BaseAudioContext& context, float sampleRate)
 
     // Node-specific default mixing rules.
     m_channelCount = 2;
-    m_channelCountMode = ClampedMax;
-    m_channelInterpretation = AudioBus::Speakers;
+    m_channelCountMode = ChannelCountMode::ClampedMax;
+    m_channelInterpretation = ChannelInterpretation::Speakers;
 
     m_distanceGain = AudioParam::create(context, "distanceGain", 1.0, 0.0, 1.0);
     m_coneGain = AudioParam::create(context, "coneGain", 1.0, 0.0, 1.0);
 
+    initialize();
+}
+
+PannerNodeBase::PannerNodeBase(BaseAudioContext& context)
+    : AudioNode(context)
+{
+}
+
+ExceptionOr<Ref<PannerNode>> PannerNode::create(BaseAudioContext& context, const PannerOptions& options)
+{
+    auto panner = adoptRef(*new PannerNode(context, options));
+
+    auto result = panner->setMaxDistance(options.maxDistance);
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setRefDistance(options.refDistance);
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setRolloffFactor(options.rolloffFactor);
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setConeOuterGain(options.coneOuterGain);
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setChannelCount(options.channelCount.valueOr(2));
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setChannelCountMode(options.channelCountMode.valueOr(ChannelCountMode::ClampedMax));
+    if (result.hasException())
+        return result.releaseException();
+    
+    result = panner->setChannelInterpretation(options.channelInterpretation.valueOr(ChannelInterpretation::Speakers));
+    if (result.hasException())
+        return result.releaseException();
+    
+    return WTFMove(panner);
+}
+
+PannerNode::PannerNode(BaseAudioContext& context, const PannerOptions& options)
+    : PannerNodeBase(context)
+    , m_panningModel(options.panningModel)
+    , m_distanceGain(AudioParam::create(context, "distanceGain", 1.0, 0.0, 1.0))
+    , m_coneGain(AudioParam::create(context, "coneGain", 1.0, 0.0, 1.0))
+    , m_positionX(AudioParam::create(context, "positionX"_s, options.positionX, -FLT_MAX, FLT_MAX))
+    , m_positionY(AudioParam::create(context, "positionY"_s, options.positionY, -FLT_MAX, FLT_MAX))
+    , m_positionZ(AudioParam::create(context, "positionZ"_s, options.positionZ, -FLT_MAX, FLT_MAX))
+    , m_orientationX(AudioParam::create(context, "orientationX"_s, options.orientationX, -FLT_MAX, FLT_MAX))
+    , m_orientationY(AudioParam::create(context, "orientationY"_s, options.orientationY, -FLT_MAX, FLT_MAX))
+    , m_orientationZ(AudioParam::create(context, "orientationZ"_s, options.orientationZ, -FLT_MAX, FLT_MAX))
+    // Load the HRTF database asynchronously so we don't block the Javascript thread while creating the HRTF database.
+    , m_hrtfDatabaseLoader(HRTFDatabaseLoader::createAndLoadAsynchronouslyIfNecessary(context.sampleRate()))
+{
+    setDistanceModel(options.distanceModel);
+    setConeInnerAngle(options.coneInnerAngle);
+    setConeOuterAngle(options.coneOuterAngle);
+    setNodeType(NodeTypePanner);
+    
+    addInput(makeUnique<AudioNodeInput>(this));
+    addOutput(makeUnique<AudioNodeOutput>(this, 2));
+    
+    // FIXME: Set PannerNode specific channelCount, channelCountMode, channelInterpretation here.
+    
     initialize();
 }
 
@@ -266,6 +334,22 @@ ExceptionOr<void> PannerNode::setConeOuterGain(double gain)
     
     m_coneEffect.setOuterGain(gain);
     return { };
+}
+
+ExceptionOr<void> PannerNode::setChannelCount(unsigned channelCount)
+{
+    if (channelCount > 2)
+        return Exception { NotSupportedError, "PannerNode's channelCount cannot be greater than 2"_s };
+    
+    return AudioNode::setChannelCount(channelCount);
+}
+
+ExceptionOr<void> PannerNode::setChannelCountMode(ChannelCountMode mode)
+{
+    if (mode == ChannelCountMode::Max)
+        return Exception { NotSupportedError, "PannerNode's channelCountMode cannot be max"_s };
+    
+    return AudioNode::setChannelCountMode(mode);
 }
 
 void PannerNode::getAzimuthElevation(double* outAzimuth, double* outElevation)

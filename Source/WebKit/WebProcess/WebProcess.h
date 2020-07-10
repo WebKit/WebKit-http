@@ -84,6 +84,9 @@ class PageGroup;
 class RegistrableDomain;
 class ResourceRequest;
 class UserGestureToken;
+
+enum class EventMakesGamepadsVisible : bool;
+
 struct BackForwardItemIdentifier;
 struct MessagePortIdentifier;
 struct MessageWithMessagePorts;
@@ -401,7 +404,7 @@ private:
 
 #if ENABLE(GAMEPAD)
     void setInitialGamepads(const Vector<GamepadData>&);
-    void gamepadConnected(const GamepadData&);
+    void gamepadConnected(const GamepadData&, WebCore::EventMakesGamepadsVisible);
     void gamepadDisconnected(unsigned index);
 #endif
 
@@ -511,6 +514,10 @@ private:
 #endif
 
     bool isAlwaysOnLoggingAllowed() { return m_sessionID ? m_sessionID->isAlwaysOnLoggingAllowed() : true; }
+
+#if PLATFORM(COCOA)
+    void handleXPCEndpointMessages() const;
+#endif
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 

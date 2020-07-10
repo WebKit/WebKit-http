@@ -31,6 +31,7 @@
 #import "UserInterfaceIdiom.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
+#import "WKWebViewPrivateForTesting.h"
 #import "WebPageProxy.h"
 #import <UIKit/UIBarButtonItem.h>
 #import <UIKit/UIDatePicker.h>
@@ -164,7 +165,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction configurationForMenuAtLocation:(CGPoint)location
 {
     return [UIContextMenuConfiguration configurationWithIdentifier:@"_UIDatePickerCompactEditor" previewProvider:^{
-
+        [_viewController setView:nil];
         _viewController = adoptNS([[WKDateTimeContextMenuViewController alloc] init]);
         RetainPtr<UINavigationController> navigationController = adoptNS([[UINavigationController alloc] initWithRootViewController:_viewController.get()]);
         NSString *resetString = WEB_UI_STRING_KEY("Reset", "Reset Button Date/Time Context Menu", "Reset button in date input context menu");
@@ -197,10 +198,20 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     } actionProvider:nil];
 }
 
-- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willEndForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id <UIContextMenuInteractionAnimating>)animator
 {
-    [animator addCompletion:^{
-        [_view accessoryDone];
+    [animator addCompletion:[weakSelf = WeakObjCPtr<WKDateTimePicker>(self)] {
+        auto strongSelf = weakSelf.get();
+        [strongSelf->_view.webView _didShowContextMenu];
+    }];
+}
+
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willEndForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id <UIContextMenuInteractionAnimating>)animator
+{
+    [animator addCompletion:[weakSelf = WeakObjCPtr<WKDateTimePicker>(self)] {
+        auto strongSelf = weakSelf.get();
+        [strongSelf->_view accessoryDone];
+        [strongSelf->_view.webView _didDismissContextMenu];
     }];
 }
 
@@ -210,6 +221,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
         [_view removeInteraction:_dateTimeContextMenuInteraction.get()];
         _dateTimeContextMenuInteraction = nil;
         [_view _removeContextMenuViewIfPossible];
+        [_view.webView _didDismissContextMenu];
     }
 }
 
@@ -358,16 +370,15 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 
 - (void)controlBeginEditing
 {
-    
     if (_presenting)
         return;
+
     _presenting = YES;
 
-    if (!_preservingFocus && (_view.focusedElementInformation.elementType == InputType::Time || _view.focusedElementInformation.elementType == InputType::DateTimeLocal)) {
-        [_view preserveFocus];
-        _preservingFocus = YES;
-    }
-    
+    auto elementType = _view.focusedElementInformation.elementType;
+    if (elementType == InputType::Time || elementType == InputType::DateTimeLocal)
+        [_view startRelinquishingFirstResponderToFocusedElement];
+
     // Set the time zone in case it changed.
     _datePicker.get().timeZone = [NSTimeZone localTimeZone];
 
@@ -401,10 +412,9 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 - (void)controlEndEditing
 {
     _presenting = NO;
-    if (_preservingFocus) {
-        [_view releaseFocus];
-        _preservingFocus = NO;
-    }
+
+    [_view stopRelinquishingFirstResponderToFocusedElement];
+
 #if USE(UICONTEXTMENU)
     [self removeContextMenuInteraction];
 #endif

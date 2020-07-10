@@ -36,7 +36,6 @@ class EventListener;
 class EventTarget;
 class HTMLElement;
 class LayoutUnit;
-class SpaceSplitString;
 
 class Quirks {
     WTF_MAKE_NONCOPYABLE(Quirks); WTF_MAKE_FAST_ALLOCATED;
@@ -107,7 +106,7 @@ public:
     bool shouldAvoidPastingImagesAsWebContent() const;
 
     enum StorageAccessResult : bool { ShouldNotCancelEvent, ShouldCancelEvent };
-    StorageAccessResult triggerOptionalStorageAccessQuirk(const AtomString& eventType, const SpaceSplitString& classNames) const;
+    StorageAccessResult triggerOptionalStorageAccessQuirk(const Element&, const AtomString& eventType) const;
 
 private:
     bool needsQuirks() const;

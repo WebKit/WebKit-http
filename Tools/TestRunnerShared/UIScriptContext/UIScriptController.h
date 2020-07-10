@@ -188,6 +188,9 @@ public:
     virtual void replaceTextAtRange(JSStringRef, int location, int length) { notImplemented(); }
     virtual void removeAllDynamicDictionaries() { notImplemented(); }
 
+    virtual bool windowIsKey() const;
+    virtual void setWindowIsKey(bool);
+
     // Stylus
 
     virtual void stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback) { notImplemented(); }
@@ -250,6 +253,7 @@ public:
     virtual bool isShowingMenu() const { notImplemented(); return false; }
     virtual JSObjectRef rectForMenuAction(JSStringRef action) const { notImplemented(); return nullptr; }
     virtual JSObjectRef menuRect() const { notImplemented(); return nullptr; }
+    virtual bool isShowingContextMenu() const { notImplemented(); return false; }
 
     // Selection
 
