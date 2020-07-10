@@ -1030,6 +1030,21 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/audio/PlatformMediaSession.h
     platform/audio/PlatformMediaSessionManager.h
 
+    platform/encryptedmedia/CDMEncryptionScheme.h
+    platform/encryptedmedia/CDMFactory.h
+    platform/encryptedmedia/CDMInstance.h
+    platform/encryptedmedia/CDMInstanceSession.h
+    platform/encryptedmedia/CDMKeyStatus.h
+    platform/encryptedmedia/CDMKeySystemConfiguration.h
+    platform/encryptedmedia/CDMMediaCapability.h
+    platform/encryptedmedia/CDMMessageType.h
+    platform/encryptedmedia/CDMPrivate.h
+    platform/encryptedmedia/CDMProxy.h
+    platform/encryptedmedia/CDMRequirement.h
+    platform/encryptedmedia/CDMRestrictions.h
+    platform/encryptedmedia/CDMSessionType.h
+    platform/encryptedmedia/CDMUtilities.h
+
     platform/gamepad/GamepadProvider.h
     platform/gamepad/GamepadProviderClient.h
     platform/gamepad/PlatformGamepad.h
@@ -1538,3 +1553,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     ${WebCore_DERIVED_SOURCES_DIR}/WebKitFontFamilyNames.h
     ${WebCore_DERIVED_SOURCES_DIR}/WritableStreamInternalsBuiltins.h
 )
+
+if (ENABLE_OPENCDM)
+    list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS platform/encryptedmedia/CDMOpenCDMTypes.h)
+endif ()

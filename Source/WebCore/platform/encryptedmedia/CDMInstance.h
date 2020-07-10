@@ -52,6 +52,9 @@ public:
         Mock,
         ClearKey,
         FairPlayStreaming,
+#if ENABLE(THUNDER)
+        Thunder,
+#endif
     };
     virtual ImplementationType implementationType() const = 0;
 

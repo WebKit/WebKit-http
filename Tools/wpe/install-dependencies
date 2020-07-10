@@ -115,6 +115,7 @@ function installDependenciesWithApt {
     packages="$packages \
         git \
         gsettings-desktop-schemas-dev \
+        gyp \
         libegl1-mesa-dev \
         libexpat1-dev \
         libfdk-aac-dev \
@@ -219,6 +220,7 @@ function installDependenciesWithPacman {
         expat \
         git \
         gsettings-desktop-schemas \
+        gyp \
         libfdk-aac \
         libproxy \
         libpsl \
@@ -332,6 +334,7 @@ function installDependenciesWithDnf {
         fdk-aac-devel \
         git \
         gsettings-desktop-schemas-devel \
+        gyp \
         libmount-devel \
         libproxy-devel \
         libpsl-devel \
