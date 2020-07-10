@@ -759,14 +759,24 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
         return;
     }
 
+    if (!m_presentationSize.isEmpty()) {
+        GstCaps* caps = gst_sample_get_caps(sample.get());
+        std::optional<FloatSize> size = getVideoResolutionFromCaps(caps);
+        if (size.has_value() && size.value() != m_presentationSize)
+            m_presentationSize = size.value();
+    }
+
     RefPtr<MediaSampleGStreamer> mediaSample = WebCore::MediaSampleGStreamer::create(WTFMove(sample), m_presentationSize, trackId());
 
-    GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f",
+    GST_TRACE("append: MediaSample %p trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f %s%s",
+        dynamic_cast<MediaSample*>(mediaSample.get()),
         mediaSample->trackID().string().utf8().data(),
         mediaSample->presentationTime().toString().utf8().data(),
         mediaSample->decodeTime().toString().utf8().data(),
         mediaSample->duration().toString().utf8().data(),
-        mediaSample->presentationSize().width(), mediaSample->presentationSize().height());
+        mediaSample->presentationSize().width(), mediaSample->presentationSize().height(),
+        mediaSample->isSync() ? "[SYNC]" : "",
+        mediaSample->isNonDisplaying() ? "[NON-DISPLAYING]" : "");
 
     // If we're beyond the duration, ignore this sample and the remaining ones.
     MediaTime duration = m_mediaSourceClient->duration();

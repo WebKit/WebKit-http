@@ -351,11 +351,15 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
 
     AtomicString trackId = mediaSample->trackID();
 
-    GST_TRACE("enqueing sample trackId=%s PTS=%s presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT,
-        trackId.string().utf8().data(), mediaSample->presentationTime().toString().utf8().data(),
+    GST_TRACE("enqueing MediaSample %p trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f %s%s",
+        &(mediaSample.get()),
+        mediaSample->trackID().string().utf8().data(),
+        mediaSample->presentationTime().toString().utf8().data(),
+        mediaSample->decodeTime().toString().utf8().data(),
+        mediaSample->duration().toString().utf8().data(),
         mediaSample->presentationSize().width(), mediaSample->presentationSize().height(),
-        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->presentationTime())),
-        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->duration())));
+        mediaSample->isSync() ? "[SYNC]" : "",
+        mediaSample->isNonDisplaying() ? "[NON-DISPLAYING]" : "");
 
     // No need to lock to access the Stream here because the only chance of conflict with this read and with the usage
     // of the sample fields done in this method would be the deletion of the stream. However, that operation can only
