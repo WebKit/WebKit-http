@@ -144,8 +144,6 @@ private:
 	void standardShortcut(const BMessage* message);
 
     void internalPaint(BView* offscree, WebCore::FrameView*, BRegion*);
-    void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
-        const BRect& clipRect);
 
 private:
     // The following methods are only supposed to be called by the

@@ -731,39 +731,51 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     if (paintingDisabled())
         return;
 
-    drawing_mode mode = B_OP_COPY;
+    drawing_mode mode = B_OP_ALPHA;
+    alpha_function blending_mode = B_ALPHA_COMPOSITE;
     switch (op) {
-	case CompositeOperator::Clear:
-	case CompositeOperator::Copy:
-        // Use the default above
+    case CompositeOperator::SourceOver:
+        blending_mode = B_ALPHA_COMPOSITE_SOURCE_OVER;
         break;
-	case CompositeOperator::SourceOver:
-        mode = B_OP_ALPHA;
+    case CompositeOperator::PlusLighter:
+        blending_mode = B_ALPHA_COMPOSITE_LIGHTEN;
         break;
-	case CompositeOperator::PlusLighter:
-        mode = B_OP_ADD;
+    case CompositeOperator::Difference:
+        blending_mode = B_ALPHA_COMPOSITE_DIFFERENCE;
         break;
-	case CompositeOperator::Difference:
-	case CompositeOperator::PlusDarker:
-        mode = B_OP_SUBTRACT;
+    case CompositeOperator::PlusDarker:
+        blending_mode = B_ALPHA_COMPOSITE_DARKEN;
         break;
-	case CompositeOperator::DestinationOut:
-        mode = B_OP_ERASE;
+    case CompositeOperator::Clear:
+        blending_mode = B_ALPHA_COMPOSITE_CLEAR;
         break;
-	case CompositeOperator::SourceAtop:
-        // Draw source only where destination isn't transparent
-	case CompositeOperator::SourceIn:
-        // Like B_OP_ALPHA, but don't touch destination alpha channel
-	case CompositeOperator::SourceOut:
-        // Erase everything, draw source only where destination was transparent
-	case CompositeOperator::DestinationOver:
-        // Draw source only where destination is transparent
-	case CompositeOperator::DestinationAtop:
-        // Draw source only where destination is transparent, erase where source is transparent
-	case CompositeOperator::DestinationIn:
-        // Mask destination with source alpha channel. Don't use source colors.
-	case CompositeOperator::XOR:
-        // Draw source where destination is transparent, erase intersection of source and dest.
+    case CompositeOperator::DestinationOut:
+        blending_mode = B_ALPHA_COMPOSITE_DESTINATION_OUT;
+        break;
+    case CompositeOperator::SourceAtop:
+        blending_mode = B_ALPHA_COMPOSITE_SOURCE_ATOP;
+        break;
+    case CompositeOperator::SourceIn:
+        blending_mode = B_ALPHA_COMPOSITE_SOURCE_IN;
+        break;
+    case CompositeOperator::SourceOut:
+        blending_mode = B_ALPHA_COMPOSITE_SOURCE_OUT;
+        break;
+    case CompositeOperator::DestinationOver:
+        blending_mode = B_ALPHA_COMPOSITE_DESTINATION_OVER;
+        break;
+    case CompositeOperator::DestinationAtop:
+        blending_mode = B_ALPHA_COMPOSITE_DESTINATION_ATOP;
+        break;
+    case CompositeOperator::DestinationIn:
+        blending_mode = B_ALPHA_COMPOSITE_DESTINATION_IN;
+        break;
+    case CompositeOperator::XOR:
+        blending_mode = B_ALPHA_COMPOSITE_XOR;
+        break;
+    case CompositeOperator::Copy:
+        mode = B_OP_COPY;
+        break;
     default:
         fprintf(stderr, "GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
                 compositeOperatorName(op, blend).utf8().data());
@@ -771,7 +783,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     m_data->view()->SetDrawingMode(mode);
 
     if (mode == B_OP_ALPHA)
-        m_data->view()->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+        m_data->view()->SetBlendingMode(B_PIXEL_ALPHA, blending_mode);
 }
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const

@@ -812,66 +812,6 @@ void BWebPage::internalPaint(BView* offscreenView,
 }
 
 
-void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
-       const BRect& clipRect)
-{
-    if (!rectToScroll.IsValid() || !clipRect.IsValid()
-        || (xOffset == 0 && yOffset == 0) || !fWebView->LockLooper()) {
-        return;
-    }
-
-    BBitmap* bitmap = fWebView->OffscreenBitmap();
-    BView* offscreenView = fWebView->OffscreenView();
-
-    // Lock the offscreen bitmap while we still have the
-    // window locked. This cannot deadlock and makes sure
-    // the window is not deleting the offscreen view right
-    // after we unlock it and before locking the bitmap.
-    if (!bitmap->Lock()) {
-       fWebView->UnlockLooper();
-       return;
-    }
-    fWebView->UnlockLooper();
-
-    BRect clip = offscreenView->Bounds();
-    if (clipRect.IsValid())
-        clip = clip & clipRect;
-
-    BRect rectAtSrc = rectToScroll;
-    BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
-
-    // remember the part that will be clean
-    BRegion repaintRegion(rectAtSrc);
-    repaintRegion.Exclude(rectAtDst);
-    BRegion clipRegion(clip);
-    repaintRegion.IntersectWith(&clipRegion);
-
-    if (clip.Intersects(rectAtSrc) && clip.Intersects(rectAtDst)) {
-        // clip source rect
-        rectAtSrc = rectAtSrc & clip;
-        // clip dest rect
-        rectAtDst = rectAtDst & clip;
-
-        // move dest back over source and clip source to dest
-        rectAtDst.OffsetBy(-xOffset, -yOffset);
-        rectAtSrc = rectAtSrc & rectAtDst;
-        rectAtDst.OffsetBy(xOffset, yOffset);
-
-        offscreenView->CopyBits(rectAtSrc, rectAtDst);
-    }
-
-    if (repaintRegion.Frame().IsValid()) {
-        WebCore::Frame* frame = fMainFrame->Frame();
-        WebCore::FrameView* view = frame->view();
-
-        internalPaint(offscreenView, view, &repaintRegion);
-    }
-
-    offscreenView->Sync();
-    bitmap->Unlock();
-}
-
-
 void BWebPage::setLoadingProgress(float progress)
 {
 	fLoadingProgress = progress;

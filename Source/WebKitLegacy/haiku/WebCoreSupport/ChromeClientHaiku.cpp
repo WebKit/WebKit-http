@@ -307,19 +307,15 @@ void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
     m_webPage->draw(BRect(rect));
 }
 
-void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect&)
+void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
 {
-	// We can ignore this, since we implement fast scrolling.
+	m_webPage->draw(BRect(rect));
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
                                const IntRect& rectToScroll,
                                const IntRect& clipRect)
 {
-    if (!m_webView->IsComposited()) {
-        m_webPage->scroll(scrollDelta.width(), scrollDelta.height(),
-            rectToScroll, clipRect);
-    }
 }
 
 #if USE(TILED_BACKING_STORE)
