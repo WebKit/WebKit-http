@@ -398,7 +398,6 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::computedInt
 {
     auto& formattingState = this->formattingState();
     ASSERT(!formattingState.intrinsicWidthConstraints());
-
     // Visit the in-flow descendants and compute their min/max intrinsic width if needed.
     // 1. Go all the way down to the leaf node
     // 2. Check if actually need to visit all the boxes as we traverse down (already computed, container's min/max does not depend on descendants etc)
@@ -409,25 +408,53 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::computedInt
         queue.append(root().firstInFlowOrFloatingChild());
 
     IntrinsicWidthConstraints constraints;
+    auto maximumHorizontalStackingWidth = LayoutUnit { };
+    auto currentHorizontalStackingWidth = LayoutUnit { };
     while (!queue.isEmpty()) {
         while (true) {
+            // Check if we have to deal with descendant content.
             auto& layoutBox = *queue.last();
-            auto hasInFlowOrFloatingChild = is<ContainerBox>(layoutBox) && downcast<ContainerBox>(layoutBox).hasInFlowOrFloatingChild();
-            auto skipDescendants = formattingState.intrinsicWidthConstraintsForBox(layoutBox) || !hasInFlowOrFloatingChild || layoutBox.establishesFormattingContext() || layoutBox.style().width().isFixed();
-            if (skipDescendants)
+            // Float avoiders are all establish a new formatting context. No need to look inside them.
+            if (layoutBox.isFloatAvoider() && !layoutBox.hasFloatClear())
+                break;
+            // Non-floating block level boxes reset the current horizontal float stacking.
+            // SPEC: This is a bit odd as floating positioning is a formatting context level concept:
+            // e.g.
+            // <div style="float: left; width: 10px;"></div>
+            // <div></div>
+            // <div style="float: left; width: 40px;"></div>
+            // ...will produce a max width of 40px which makes the floats vertically stacked.
+            // Vertically stacked floats makes me think we haven't managed to provide the maximum preferred width for the content.
+            maximumHorizontalStackingWidth = std::max(currentHorizontalStackingWidth, maximumHorizontalStackingWidth);
+            currentHorizontalStackingWidth = { };
+            // Already has computed intrinsic constraints.
+            if (formattingState.intrinsicWidthConstraintsForBox(layoutBox))
+                break;
+            // Box with fixed width defines their descendant content intrinsic width.
+            if (layoutBox.style().width().isFixed())
+                break;
+            // Non-float avoider formatting context roots are opaque to intrinsic width computation.
+            if (layoutBox.establishesFormattingContext())
+                break;
+            // No relevant child content.
+            if (!is<ContainerBox>(layoutBox) || !downcast<ContainerBox>(layoutBox).hasInFlowOrFloatingChild())
                 break;
             queue.append(downcast<ContainerBox>(layoutBox).firstInFlowOrFloatingChild());
         }
         // Compute min/max intrinsic width bottom up if needed.
         while (!queue.isEmpty()) {
             auto& layoutBox = *queue.takeLast();
-            auto desdendantConstraints = formattingState.intrinsicWidthConstraintsForBox(layoutBox); 
+            auto desdendantConstraints = formattingState.intrinsicWidthConstraintsForBox(layoutBox);
             if (!desdendantConstraints) {
                 desdendantConstraints = geometry().intrinsicWidthConstraints(layoutBox);
                 formattingState.setIntrinsicWidthConstraintsForBox(layoutBox, *desdendantConstraints);
             }
             constraints.minimum = std::max(constraints.minimum, desdendantConstraints->minimum);
-            constraints.maximum = std::max(constraints.maximum, desdendantConstraints->maximum);
+            auto willStackHorizontally = layoutBox.isFloatAvoider() && !layoutBox.hasFloatClear();
+            if (willStackHorizontally)
+                currentHorizontalStackingWidth += desdendantConstraints->maximum;
+            else
+                constraints.maximum = std::max(constraints.maximum, desdendantConstraints->maximum);
             // Move over to the next sibling or take the next box in the queue.
             if (auto* nextSibling = layoutBox.nextInFlowOrFloatingSibling()) {
                 queue.append(nextSibling);
@@ -435,6 +462,8 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::computedInt
             }
         }
     }
+    maximumHorizontalStackingWidth = std::max(currentHorizontalStackingWidth, maximumHorizontalStackingWidth);
+    constraints.maximum = std::max(constraints.maximum, maximumHorizontalStackingWidth);
     formattingState.setIntrinsicWidthConstraints(constraints);
     return constraints;
 }

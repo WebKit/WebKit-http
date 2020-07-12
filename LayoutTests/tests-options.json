@@ -1361,6 +1361,12 @@
     "imported/w3c/web-platform-tests/eventsource/eventsource-constructor-non-same-origin.htm": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/eventsource/format-field-retry-bogus.htm": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/eventsource/format-field-retry.htm": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/eventsource/shared-worker/eventsource-constructor-non-same-origin.htm": [
         "slow"
     ],
@@ -2456,7 +2462,16 @@
     "imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest-timing.https.sub.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/payment-request/payment-is-showing.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/payment-request/payment-request-constructor-crash.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/payment-request/payment-request-constructor-thcrash.https.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/picture-in-picture/leave-picture-in-picture.html": [

@@ -1,3 +1,124 @@
+2020-07-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Min-Max width] Regular block level box resets the horizontal stacking
+        https://bugs.webkit.org/show_bug.cgi?id=214225
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/min-max-content-width-with-nested-floats-simple-expected.html: Added.
+        * fast/layoutformattingcontext/min-max-content-width-with-nested-floats-simple.html: Added.
+
+2020-07-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Conic gradients support
+        https://bugs.webkit.org/show_bug.cgi?id=214216
+
+        Reviewed by Sam Weinig.
+
+        * platform/wincairo/TestExpectations: Marked some conic-gradient tests Pass.
+
+2020-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION(r260276): Overflow scrolling layers misplaced inside SVG foreign object
+        https://bugs.webkit.org/show_bug.cgi?id=213788
+        <rdar://problem/65039637>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/scrolling/overflow-inside-foreignobject-expected.html: Added.
+        * fast/scrolling/overflow-inside-foreignobject.html: Added.
+
+2020-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark imported/w3c/web-platform-tests/websockets/cookies/third-party-cookie-accepted.https.html as crashing on iOS WK2 Debug.
+
+        This test has been crashing consistently since import in r264145.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Min-Max width] Add support for float avoiders
+        https://bugs.webkit.org/show_bug.cgi?id=214220
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/min-max-content-width-with-floats-simple-expected.html: Added.
+        * fast/layoutformattingcontext/min-max-content-width-with-floats-simple.html: Added.
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark a couple of user-timing WPT tests as flaky since their import in r264255.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, silence console logging in a couple of payment request WPT tests to address flakiness
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-10  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Unreviewed, garden failure and new passes
+
+        Payment request is not supported and a single test was being executed
+
+        Also pass 4 css-writing-modes tests that are passing since r263855.
+
+        * platform/glib/TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark imported/w3c/web-platform-tests/user-timing/measure_associated_with_navigation_timing.html as flaky.
+
+        This has been flaky since import in r264255.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark img-aspect-ratio-lazy.tentative.html WPT test as flaky since import in r264117.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed gardening after WPT resync in r264239.
+
+        Mark one payment-request test as flaky and silence console logging for another one
+        to try and address flakiness.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/eventsource from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214203
+
+        Reviewed by Geoffrey Garen.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, Mark WebRTC WPT test as flaky.
+
+        It has been flaky since import in r264202.
+
+        * TestExpectations:
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/payment-request from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214167
+
+        Reviewed by Sam Weinig.
+
+        * tests-options.json:
+
 2020-07-10  Chris Fleizach  <cfleizach@apple.com>
 
         AX: iOS VoiceOver should support definition lists

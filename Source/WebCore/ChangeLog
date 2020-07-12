@@ -1,3 +1,581 @@
+2020-07-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Min-Max width] Regular block level box resets the horizontal stacking
+        https://bugs.webkit.org/show_bug.cgi?id=214225
+
+        Reviewed by Antti Koivisto.
+
+        Non-floating block level boxes reset the current horizontal float stacking.
+        e.g. with a shrink-to-fit width container:
+        <div style="float: left; width: 10px;"></div>
+        <div></div>
+        <div style="float: left; width: 40px;"></div>
+        will produce a max width of 40px which makes the floats vertically stacked.
+
+        Test: fast/layoutformattingcontext/min-max-content-width-with-nested-floats-simple.html
+
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computedIntrinsicWidthConstraints):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::intrinsicWidthConstraints):
+
+2020-07-12  Darin Adler  <darin@apple.com>
+
+        Simplify and improve Gradient, some other small color-related removals
+        https://bugs.webkit.org/show_bug.cgi?id=214221
+
+        Reviewed by Sam Weinig.
+
+        * css/CSSGradientValue.cpp: Removed some unneeded includes.
+
+        * html/ColorInputType.cpp:
+        (WebCore::ColorInputType::currentColor): Deleted.
+        (WebCore::ColorInputType::shouldShowSuggestions const): Deleted.
+        * html/ColorInputType.h: Updated for the above.
+
+        * html/HTMLDocument.cpp: Removed unneeded include of HashTools.h.
+
+        * html/canvas/CanvasGradient.cpp:
+        (WebCore::CanvasGradient::create): Moved these functions out of the
+        header since inlining should be the same or better with them here.
+        (WebCore::CanvasGradient::~CanvasGradient): Moved this out of the
+        header so we don't need to include Gradient.h in the header.
+        (WebCore::CanvasGradient::addColorStop): Updated for change to
+        Gradient::addColorStop and move Color rather than copying it.
+
+        * html/canvas/CanvasGradient.h: Removed include of Gradient.h.
+        Moved things out of the header to make that work.
+
+        * inspector/InspectorCanvas.cpp:
+        (WebCore::InspectorCanvas::buildArrayForCanvasGradient): Removed
+        use of Gradient::type and instead unify the type string code with
+        the code that interprets the data for the different types.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::recalculateScrollbarOverlayStyle): Refactored
+        to eliminate the multiple redundant code paths, otherwising leaving
+        the logic unchanged.
+
+        * platform/ColorChooserClient.h: Remove unneeded includes and unused
+        currentColor and shouldShowSuggestions functions.
+
+        * platform/graphics/Gradient.cpp:
+        (WebCore::Gradient::create): Replaced create functions that take
+        type-specific data structure with one that takes the variant Data.
+        (WebCore::Gradient::Gradient): Ditto. Also removed platformInit.
+        (WebCore::Gradient::~Gradient): Removed platformDestroy.
+        (WebCore::Gradient::type const): Deleted.
+        (WebCore::Gradient::addColorStop): Take an rvalue reference to cut down
+        a little bit on reference count churn. Replaced the platformDestroy
+        function with a new stopsChanged function. Removed an unneeded overload
+        that takes the two parts of a ColorStop separately.
+        (WebCore::Gradient::setSortedColorStops): Use stopsChanged.
+        (WebCore::Gradient::sortStops const): Simplify a bit, using a lambda.
+        Also gave this a shorter name; it still optimizes by not sorting if
+        the vector is already sorted.
+        (WebCore::Gradient::hasAlpha const): Deleted.
+        (WebCore::Gradient::setSpreadMethod): Removed some slightly overzealous
+        code checking this isn't used after creating the platform-specific gradient.
+        Decided not to bother with this for now.
+        (WebCore::Gradient::setGradientSpaceTransform): Tweaked formatting.
+        (WebCore::add): Added overloads to add(Hasher&) so we can use computeHash.
+        (WebCore::Gradient::hash const): Use computeHash instead of hashMemory.
+
+        * platform/graphics/Gradient.h: Use RetainPtr, COMPtr, and RefPtr instead
+        of manually managing the lifetimes of the platform-specific underlying
+        gradient objects. Also removed the unhelpful PlatformGradient type. This
+        pattern, all too common in our platform library, provides no useful
+        abstraction here. Removed unneeded constructors from ColorStop.
+        Updated for changes above. Added platform-specific functions createBrush,
+        createPattern, and createCGGradient. Simplify encoding and decoding by
+        taking advantage of the support for encoding/decoding variants.
+        Remove the enum Gradient::Type entirely. Removed the invalidateHash
+        function because it's only used in a few setters and setting the hash
+        to 0 is a fine way to write it there.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContextState::GraphicsContextState): Moved here from
+        the header so we don't need to include Gradient.h in the header.
+        (WebCore::GraphicsContextState::~GraphicsContextState): Ditto.
+        (WebCore::GraphicsContextState::operator=): Ditto.
+
+        * platform/graphics/GraphicsContext.h: Removed include of Gradient.h.
+        Moved things out of the header to make that work.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::FillSource::FillSource): Use createPattern instead of
+        createPlatformGradient.
+        (WebCore::Cairo::StrokeSource::StrokeSource): Ditto.
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::stopsChanged): Renamed from platformDestroy.
+        (WebCore::interpolateColorStop): Rewrote to use existing blend functions.
+        (WebCore::createConic): Changed return type to RefPtr. Tweaked to match
+        WebKit coding style a bit better, use auto, use Vector::first/last, and
+        updated for removal of the Gradient::ColorStop constructor.
+        (WebCore::Gradient::createPattern): Renamed from createPlatformGradient.
+        Changed to return a RefPtr instead of a raw pointer the caller needs to
+        adopt at each call site. Refactored so it no longer uses Gradient::type.
+        (WebCore::Gradient::fill): Use createPattern.
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::fillRect): Ditto.
+
+        * platform/graphics/cg/GradientCG.cpp:
+        (WebCore::Gradient::stopsChanged): Renamed from platformDestroy, and
+        simplified implementation now that we use RetainPtr.
+        (WebCore::Gradient::createCGGradient): Renamed from platformGradient,
+        got rid of the return value, and made it caller responsibility to only
+        call this when a gradeitn needs to be allocated.
+        (WebCore::Gradient::paint): Updated to use the above.
+
+        * platform/graphics/cg/GraphicsContextCG.cpp: Add include of Gradient.h.
+
+        * platform/graphics/displaylists/DisplayListItems.h:
+        Added include of Gradient.h since the function templates in this file
+        encode and decode gradients.
+
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp:
+        (Nicosia::CairoOperationRecorder::fillRect): Use createPattern.
+
+        * platform/graphics/win/Direct2DOperations.cpp:
+        (WebCore::Direct2D::FillSource::FillSource): Use createBrush
+        (WebCore::Direct2D::StrokeSource::StrokeSource): Ditto.
+
+        * platform/graphics/win/GradientDirect2D.cpp:
+        (WebCore::Gradient::stopsChanged): Renamed from platformDestroy and
+        simplified implementation now that we use COMPtr.
+        (WebCore::Gradient::platformGradient): Deleted.
+        (WebCore::Gradient::createPlatformGradientIfNecessary): Deleted.
+        (WebCore::Gradient::createBrush): Renamed from generateGradient and
+        added a return value. Simplified now that we use COMPtr, optimized
+        the code a bit, and added some FIXME about mistakes I noticed.
+        (WebCore::Gradient::fill): Use createBrush and m_brush.
+        * platform/graphics/win/GraphicsContextImplDirect2D.cpp:
+        (WebCore::GraphicsContextImplDirect2D::fillRect): Use createBrush.
+
+        * platform/mac/ScrollAnimatorMac.mm: Added include of Gradient.h.
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeIOS::paintProgressBar): Updated for changes to
+        addColorStop. Also remove a lot of unnecessary conversion from float
+        to double and back to float.
+
+        * rendering/svg/RenderSVGResourceGradient.cpp:
+        (WebCore::RenderSVGResourceGradient::addStops): Update to make
+        and move a new color stop instead of copying it, modifying it in
+        place, and then copying it again.
+        * rendering/svg/RenderSVGResourceGradient.cpp: Removed include of
+        Gradient.h.
+
+        * svg/SVGGradientElement.cpp:
+        (WebCore::SVGGradientElement::buildStops): Use std::clamp to convert
+        the offsets into monotonically increasing ones in a more direct way,
+        using variable names instead of comments to clarify what we are doing.
+
+2020-07-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix GTK debian builds
+
+        Include <functional> in ExtendedColor.h since it uses std::invoke.
+
+        * platform/graphics/ExtendedColor.h:
+
+2020-07-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Conic gradients support
+        https://bugs.webkit.org/show_bug.cgi?id=214216
+
+        Reviewed by Sam Weinig.
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::addConicSector): Replaced M_PI with piDouble of WTF.
+        (WebCore::Gradient::createPlatformGradient): Don't use C++20 designated initializers.
+
+2020-07-11  Sam Weinig  <weinig@apple.com>
+
+        Reduce surface area of the ExtendedColor class to a bare minimum
+        https://bugs.webkit.org/show_bug.cgi?id=214204
+
+        Reviewed by Darin Adler.
+
+        - Add helper function to Color to operate on the underlying color type
+          and reimplement a bunch of functionality using it, reducing the need
+          for duplicate implementations in ExtendedColor.
+        - Add constructors to Color that take extended color types, replacing
+          the makeExtendedColor helper function. 
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        Remove ExtenedColor.cpp
+
+        * css/parser/CSSPropertyParserHelpers.cpp:
+        (WebCore::CSSPropertyParserHelpers::parseColorFunctionParameters):
+        Use new Color constructor taking ColorComponents and ColorSpace.
+
+        * platform/graphics/Color.cpp:
+        (WebCore::Color::colorWithAlpha const): Reimpliment using callOnUnderlyingType.
+        (WebCore::Color::invertedColorWithAlpha const): Reimpliment using callOnUnderlyingType.
+        * platform/graphics/Color.h:
+        (WebCore::Color::Color):  
+        (WebCore::Color::hash const):
+        (WebCore::Color::callOnUnderlyingType const):
+        (WebCore::Color::toSRGBALossy const):
+        (WebCore::Color::setColor):
+        (WebCore::Color::isBlackColor):
+        (WebCore::Color::isWhiteColor):
+        - Add new constructors taking extended color types: SRGBA<float>, LinearSRGBA<float> and DiplayP3<float>.
+        - Add new function, callOnUnderlyingType, to make working with any underlying type more streamlined.
+
+        * platform/graphics/ColorConversion.h:
+        (WebCore::toSRGBA):
+        (WebCore::toLinearSRGBA):
+        (WebCore::toDisplayP3):
+        (WebCore::toLinearDisplayP3):
+        (WebCore::toHSLA):
+        Add identity conversion functions to make implementing generic functions like Color::toSRGBALossy more
+        straigtforward.
+
+        * platform/graphics/ColorSerialization.cpp:
+        (WebCore::serialization):
+        (WebCore::serializationForCSS):
+        (WebCore::serializationForHTML):
+        (WebCore::serializationForRenderTreeAsText):
+        * platform/graphics/ColorSerialization.h:
+        Replace serialization of the ExtendedColor type itself, with serialization for the underlying color
+        types. Use callOnUnderlyingType to dispatch to the right one.
+
+        * platform/graphics/ColorTypes.h:
+        - Adds ComponentTraits struct to get information like min/max value of the component types.
+        - Adds `using ComponentType = T;` to each color type, to allow easy access to the type in
+          deduced contexts.
+        - Adds static constexpr ColorSpace to each color type that currently has a ColorSpace mapping. 
+
+        * platform/graphics/ColorUtilities.h:
+        (WebCore::isBlack):
+        (WebCore::isWhite):
+        Add helpers to implement Color::isBlack/Color::isWhiteColor for each color type.
+
+        * platform/graphics/ExtendedColor.cpp: Removed.
+        * platform/graphics/ExtendedColor.h:
+        (WebCore::ExtendedColor::create):
+        (WebCore::ExtendedColor::ExtendedColor):
+        (WebCore::ExtendedColor::callOnUnderlyingType const):
+        (WebCore::ExtendedColor::toSRGBALossy const): Deleted.
+        Reduce down to just construction, member access and the callOnUnderlyingType helper.
+        In future revisions, ExtendedColor should be converted to an internal class of Color.
+
+        * platform/graphics/gtk/ColorGtk.cpp:
+        (WebCore::Color::Color):
+        * platform/graphics/win/ColorDirect2D.cpp:
+        (WebCore::Color::Color):
+        Update to use constructor delegation.
+
+2020-07-11  Darin Adler  <darin@apple.com>
+
+        Remove live ranges from AccessibilityObject.h, AccessibilityObjectInterface.h, AccessibilityRenderObject.h, AXIsolatedObject.h
+        https://bugs.webkit.org/show_bug.cgi?id=214215
+
+        Reviewed by Sam Weinig.
+
+        Also use the IntPoint and LayoutPoint center() functions instead of rolling our own.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::misspellingRange const): Return SimpleRange. Also
+        renamed from getMisspellingRange.
+        (WebCore::rangeClosestToRange): Take and return SimpleRange.
+        (WebCore::AccessibilityObject::rangeOfStringClosestToRangeInDirection const): Ditto.
+        (WebCore::AccessibilityObject::elementRange const): Return SimpleRange.
+        (WebCore::AccessibilityObject::findTextRange const): Take and return SimpleRange.
+        (WebCore::AccessibilityObject::findTextRanges const): Ditto.
+        (WebCore::AccessibilityObject::performTextOperation): Use SimpleRange.
+        (WebCore::AccessibilityObject::clickPoint): Use center().
+        (WebCore::AccessibilityObject::rangeForPlainTextRange const): Return SimpleRange.
+        (WebCore::AccessibilityObject::stringForRange const): Take SimpleRange.
+        (WebCore::AccessibilityObject::stringForVisiblePositionRange): Use SimpleRange.
+        (WebCore::AccessibilityObject::lengthForVisiblePositionRange const): Ditto.
+        (WebCore::AccessibilityObject::replaceTextInRange): Use SimpleRange.
+        * accessibility/AccessibilityObject.h: Update for above.
+
+        * accessibility/AccessibilityObjectInterface.h: Take and return SimpleRange.
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::linkClickPoint): Use SimpleRange.
+        (WebCore::AccessibilityRenderObject::clickPoint): Ditto.
+        (WebCore::AccessibilityRenderObject::setSelectedTextRange): Ditto.
+        (WebCore::AccessibilityRenderObject::boundsForRange const): Take SimpleRange.
+        (WebCore::AccessibilityRenderObject::setSelectedVisiblePositionRange const):
+        Use SimpleRange.
+        (WebCore::AccessibilityRenderObject::doAXBoundsForRangeUsingCharacterOffset const):
+        Use SimpleRange.
+        * accessibility/AccessibilityRenderObject.h: Update for above.
+
+        * accessibility/atk/WebKitAccessibleInterfaceText.cpp: Include Range.h.
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper stringForTextMarkers:]): Use SimpleRange.
+        (-[WebAccessibilityObjectWrapper textMarkerRange]): Ditto.
+        (-[WebAccessibilityObjectWrapper stringForRange:]): Ditto.
+        (-[WebAccessibilityObjectWrapper misspellingTextMarkerRange:forward:]): Ditto.
+        (-[WebAccessibilityObjectWrapper frameForTextMarkers:]): Ditto.
+
+        * accessibility/isolatedtree/AXIsolatedObject.cpp:
+        (WebCore::AXIsolatedObject::stringForRange const): Take SimpleRange.
+        (WebCore::AXIsolatedObject::findTextRanges const): Return SimpleRange.
+        * accessibility/isolatedtree/AXIsolatedObject.h: Update for above.
+
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (accessibilityTextOperationForParameterizedAttribute): Use SimpleRange.
+        (-[WebAccessibilityObjectWrapper doAXAttributedStringForRange:]): Ditto.
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:forParameter:]): Ditto.
+
+        * dom/Range.cpp:
+        (WebCore::makeSimpleRange): Added.
+        * dom/Range.h: Added makeSimpleRange so we can explicitly convert from
+        live ranges to simple ranges.
+
+        * editing/Editing.cpp:
+        (WebCore::indexForVisiblePosition): Use separate returns for start and end.
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::TextCheckingParagraph::offsetTo const): Ditto.
+        (WebCore::TextCheckingParagraph::automaticReplacementStart const): Ditto.
+
+        * page/FocusController.cpp:
+        (WebCore::updateFocusCandidateIfNeeded): Use center().
+
+2020-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION(r260276): Overflow scrolling layers misplaced inside SVG foreign object
+        https://bugs.webkit.org/show_bug.cgi?id=213788
+        <rdar://problem/65039637>
+
+        Reviewed by Zalan Bujtas.
+        
+        RenderLayers inside SVG <foreignObject> don't display correctly, so don't use
+        accelerated overflow scroll (which requires layers) inside <foreignObject>.
+
+        This reverts behavior to macOS Catalina behavior (i.e. as soon as the overflow
+        becomes scrollable, rendering problems appear), and to pre-iOS 13 behavior.
+
+        Test: fast/scrolling/overflow-inside-foreignobject.html
+
+        * dom/Document.h:
+        (WebCore::Document::mayHaveRenderedSVGForeignObjects const):
+        (WebCore::Document::setMayHaveRenderedSVGForeignObjects):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::addChild):
+        (WebCore::RenderLayer::updateAncestorDependentState):
+        (WebCore::RenderLayer::canUseCompositedScrolling const):
+        * rendering/RenderLayer.h:
+        * rendering/svg/RenderSVGForeignObject.h:
+        * svg/SVGForeignObjectElement.cpp:
+        (WebCore::SVGForeignObjectElement::createElementRenderer):
+
+2020-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Min-Max width] Add support for float avoiders
+        https://bugs.webkit.org/show_bug.cgi?id=214220
+
+        Reviewed by Antti Koivisto.
+
+        Test: fast/layoutformattingcontext/min-max-content-width-with-floats-simple.html
+
+        Float avoiders (including the float boxes) with infinite constraint form a horizontal float stack.
+        (This does not yet support clear property/non-direct children.)
+
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computedIntrinsicWidthConstraints):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::intrinsicWidthConstraints):
+
+2020-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, reverting r264242.
+
+        Caused many crashes on iOS bots
+
+        Reverted changeset:
+
+        "JSRunLoopTimer should use WTF::RunLoop rather than custom CF
+        code"
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+        https://trac.webkit.org/changeset/264242
+
+2020-07-10  Brady Eidson  <beidson@apple.com>
+
+        Cleanup GameController framework button binding with some constants
+        https://bugs.webkit.org/show_bug.cgi?id=214210
+
+        Reviewed by Darin Adler.
+
+        No new tests (No behavior change)
+
+        * platform/gamepad/cocoa/GameControllerGamepad.mm:
+        (WebCore::GameControllerGamepad::setupAsExtendedGamepad): Use named constants instead of magic numbers.
+
+2020-07-10  Darin Adler  <darin@apple.com>
+
+        Fix build for PLATFORM(IOS_FAMILY) && !ENABLE(REVEAL), for example, tvOS
+
+        * editing/cocoa/DictionaryLookup.mm: Added include of "SimpleRange.h".
+
+2020-07-10  Darin Adler  <darin@apple.com>
+
+        Fix build for PLATFORM(IOS_FAMILY) && !ENABLE(REVEAL), for example, tvOS
+
+        * editing/cocoa/DictionaryLookup.mm:
+        (WebCore::DictionaryLookup::rangeForSelection): Update to return SimpleRange.
+        (WebCore::DictionaryLookup::rangeAtHitTestResult): Ditto.
+
+2020-07-08  Darin Adler  <darin@apple.com>
+
+        Remove live ranges from Document.h, AlternativeTextController.h, DictionaryLookup.h, and WebPage.h
+        https://bugs.webkit.org/show_bug.cgi?id=214109
+
+        Reviewed by Sam Weinig.
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::characterOffsetForPoint): Updated to call
+        caretPositionFromPoint, internal function, instead of caretRangeFromPoint,
+        public DOM function.
+
+        * dom/Document.cpp:
+        (WebCore::Document::Document): Changed documentClasses argument to DocumentClassFlags.
+        (WebCore::Document::caretRangeFromPoint): Refactored so this calls createLiveRange,
+        since it's a DOM function that returns a live range.
+        (WebCore::Document::caretPositionFromPoint): Renamed so this is not just an overload
+        and changed to return a BoundaryPoint rather than a live range.
+
+        * dom/Document.h: Simplified forward declarations by getting rid of all the conditionals.
+        Tweaked a few typedef things. Updated for the changes above.
+
+        * editing/AlternativeTextController.cpp:
+        (WebCore::AlternativeTextController::startAlternativeTextUITimer): Updated since
+        m_rangeWithAlternative is an Optional<SimpleRange>.
+        (WebCore::AlternativeTextController::stopAlternativeTextUITimer): Ditto.
+        (WebCore::AlternativeTextController::applyPendingCorrection): Ditto.
+        (WebCore::AlternativeTextController::hasPendingCorrection const): Ditto.
+        (WebCore::AlternativeTextController::isSpellingMarkerAllowed const): Take SimpleRange.
+        (WebCore::AlternativeTextController::show): Ditto.
+        (WebCore::AlternativeTextController::applyAutocorrectionBeforeTypingIfAppropriate):
+        Updated since m_rangeWithAlternative is an Optional<SimpleRange>.
+        (WebCore::AlternativeTextController::timerFired): Ditto.
+        (WebCore::AlternativeTextController::handleAlternativeTextUIResult): Ditto.
+        (WebCore::AlternativeTextController::markReversed): Take SimpleRange.
+        (WebCore::AlternativeTextController::markCorrection): Ditto.
+        (WebCore::AlternativeTextController::recordSpellcheckerResponseForModifiedCorrection): Ditto.
+        (WebCore::AlternativeTextController::processMarkersOnTextToBeReplacedByResult): Ditto.
+        (WebCore::AlternativeTextController::respondToMarkerAtEndOfWord): Use SimpleRange
+        instead of a live range.
+        (WebCore::AlternativeTextController::applyAlternativeTextToRange): Take SimpleRange.
+        * editing/AlternativeTextController.h: Use SimpleRange instead of live ranges.
+
+        * editing/cocoa/DictionaryLookup.mm:
+        (WebCore::DictionaryLookup::rangeForSelection): Return SimpleRange.
+        (WebCore::DictionaryLookup::rangeAtHitTestResult): Ditto.
+        (WebCore::showPopupOrCreateAnimationController): Renamed type from RevealView to CocoaView.
+        (WebCore::DictionaryLookup::showPopup): Ditto.
+        * editing/mac/DictionaryLookup.h: Simplified header since it is included only from
+        Objective-C files. Use SimpleRange instead of live ranges.
+
+        * editing/mac/DictionaryLookupLegacy.mm:
+        (WebCore::DictionaryLookup::rangeForSelection): Return SimpleRange.
+        (WebCore::DictionaryLookup::rangeAtHitTestResult): Ditto.
+
+        * page/mac/EventHandlerMac.mm:
+        (WebCore::EventHandler::selectClosestWordFromHitTestResultBasedOnLookup): Updated
+        since DictionaryLookup::rangeAtHitTestResult returns SimpleRange.
+        (WebCore::autoscrollAdjustmentFactorForScreenBoundaries): Use constexpr instead of
+        macros for constants.
+
+        * testing/Internals.mm:
+        (WebCore::Internals::rangeForDictionaryLookupAtLocation): Updated
+        since DictionaryLookup::rangeAtHitTestResult returns SimpleRange.
+        (WebCore::Internals::encodedPreferenceValue): Removed unneeded error local, and
+        fixed formatting.
+
+2020-07-10  Brady Eidson  <beidson@apple.com>
+
+        GameController.framework gamepads should support Home buttons.
+        <rdar://problem/63500696> and https://bugs.webkit.org/show_bug.cgi?id=212933
+
+        Reviewed by Tim Horton.
+
+        No new tests (Cannot yet drive GameController framework directly in tests)
+
+        * platform/gamepad/cocoa/GameControllerGamepad.mm:
+        (WebCore::homeButtonFromExtendedGamepad): Try a few different techniques of extracting the home button
+          from a GCExtendedGamepad.
+        (WebCore::GameControllerGamepad::setupAsExtendedGamepad): If there's a home button, put it at button index 16,
+          defined by the spec as "Center button in center cluster"
+        * platform/gamepad/cocoa/GameControllerSoftLink.h:
+        * platform/gamepad/cocoa/GameControllerSoftLink.mm:
+
+2020-07-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Build failure for catalyst
+        https://bugs.webkit.org/show_bug.cgi?id=214202
+        <rdar://problem/65366125>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityIsInDescriptionListTerm]):
+        (-[WebAccessibilityObjectWrapper accessibilityIsInDescriptionListDefinition]):
+
+2020-07-10  Geoffrey Garen  <ggaren@apple.com>
+
+        JSRunLoopTimer should use WTF::RunLoop rather than custom CF code
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+
+        Reviewed by Darin Adler.
+
+        * bindings/js/CommonVM.cpp:
+        (WebCore::commonVMSlow): Supply a RunLoop at construction time since
+        JSC requires that now.
+
+2020-07-10  Guowei Yang  <guowei_yang@apple.com>
+
+        Removing usage of "using namespace WebCore" from TextTrackRepresentationCocoa.mm
+        https://bugs.webkit.org/show_bug.cgi?id=214196
+
+        Reviewed by Tim Horton.
+
+        The line "using namespace WebCore" will cause problems 
+        when compiling unified source. Removing this line and 
+        replace it with WebCore::prefix and namespace WebCore{ }
+        to enclose C++ calls.
+
+        No new tests are requied as this is a code style fix
+
+        * platform/graphics/cocoa/TextTrackRepresentationCocoa.mm: removed usage 
+          of "using namespace WebCore" to avoid future errors while compiling
+        (-[WebCoreTextTrackRepresentationCocoaHelper initWithParent:]): added "WebCore::" prefix
+        (-[WebCoreTextTrackRepresentationCocoaHelper setParent:]): ditto
+        (-[WebCoreTextTrackRepresentationCocoaHelper parent]): ditto
+        (TextTrackRepresentation::create): enclosed inside namespace WebCore{ }
+        (TextTrackRepresentationCocoa::TextTrackRepresentationCocoa): Deleted. 
+          enclosed inside namespace WebCore{ }
+        (TextTrackRepresentationCocoa::~TextTrackRepresentationCocoa): ditto
+        (TextTrackRepresentationCocoa::update): ditto
+        (TextTrackRepresentationCocoa::setContentScale): ditto
+        (TextTrackRepresentationCocoa::setHidden const): ditto
+        (TextTrackRepresentationCocoa::bounds const): ditto
+        (TextTrackRepresentationCocoa::boundsChanged): ditto
+
+2020-07-10  Peng Liu  <peng.liu6@apple.com>
+
+        MobileSafari rotates its scene to portrait upside down if it has a PiP on screen
+        https://bugs.webkit.org/show_bug.cgi?id=214169
+
+        Reviewed by Jer Noble.
+
+        The UIViewController for video fullscreen/picture-in-picture should not ignore
+        the App's supported orientations when the video element is in picture-in-picture.
+
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::doSetup):
+
 2020-07-10  Don Olmstead  <don.olmstead@sony.com> and Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [WinCairo] WOFF2 font support
