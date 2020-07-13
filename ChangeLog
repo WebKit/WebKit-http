@@ -1,3 +1,9 @@
+2020-07-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed. Fixed copy&paste typos of gcrypt -> Thunder
+
+        * Source/cmake/FindThunder.cmake:
+
 2020-07-10  Xabier Rodriguez Calvar  <calvaris@igalia.com>
 
         [GStreamer][EME][OpenCDM] Implement OpenCDM support
