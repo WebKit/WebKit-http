@@ -1,3 +1,732 @@
+2020-07-14  James Darpinian  <jdarpinian@chromium.org>
+
+        Implement uniform* and getUniform for WebGL 2 types
+        https://bugs.webkit.org/show_bug.cgi?id=214116
+
+        Reviewed by Dean Jackson.
+
+        Passes all relevant WebGL conformance tests.
+
+        * html/canvas/WebGL2RenderingContext.cpp:
+        (WebCore::WebGL2RenderingContext::getFragDataLocation):
+        (WebCore::WebGL2RenderingContext::uniform1ui):
+        (WebCore::WebGL2RenderingContext::uniform2ui):
+        (WebCore::WebGL2RenderingContext::uniform3ui):
+        (WebCore::WebGL2RenderingContext::uniform4ui):
+        (WebCore::WebGL2RenderingContext::uniform1uiv):
+        (WebCore::WebGL2RenderingContext::uniform2uiv):
+        (WebCore::WebGL2RenderingContext::uniform3uiv):
+        (WebCore::WebGL2RenderingContext::uniform4uiv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix2x3fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix3x2fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix2x4fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix4x2fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix3x4fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix4x3fv):
+        (WebCore::WebGL2RenderingContext::uniform1fv):
+        (WebCore::WebGL2RenderingContext::uniform2fv):
+        (WebCore::WebGL2RenderingContext::uniform3fv):
+        (WebCore::WebGL2RenderingContext::uniform4fv):
+        (WebCore::WebGL2RenderingContext::uniform1iv):
+        (WebCore::WebGL2RenderingContext::uniform2iv):
+        (WebCore::WebGL2RenderingContext::uniform3iv):
+        (WebCore::WebGL2RenderingContext::uniform4iv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix2fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix3fv):
+        (WebCore::WebGL2RenderingContext::uniformMatrix4fv):
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::getUniform):
+        (WebCore::WebGLRenderingContextBase::uniform1fv):
+        (WebCore::WebGLRenderingContextBase::uniform2fv):
+        (WebCore::WebGLRenderingContextBase::uniform3fv):
+        (WebCore::WebGLRenderingContextBase::uniform4fv):
+        (WebCore::WebGLRenderingContextBase::uniform1iv):
+        (WebCore::WebGLRenderingContextBase::uniform2iv):
+        (WebCore::WebGLRenderingContextBase::uniform3iv):
+        (WebCore::WebGLRenderingContextBase::uniform4iv):
+        (WebCore::WebGLRenderingContextBase::uniformMatrix2fv):
+        (WebCore::WebGLRenderingContextBase::uniformMatrix3fv):
+        (WebCore::WebGLRenderingContextBase::uniformMatrix4fv):
+        (WebCore::WebGLRenderingContextBase::validateUniformParameters):
+        (WebCore::WebGLRenderingContextBase::validateUniformMatrixParameters):
+        * html/canvas/WebGLRenderingContextBase.h:
+        * platform/graphics/GraphicsContextGL.h:
+        * platform/graphics/angle/GraphicsContextGLANGLE.cpp:
+        (WebCore::GraphicsContextGLOpenGL::getUniformuiv):
+        (WebCore::GraphicsContextGLOpenGL::getFragDataLocation):
+        (WebCore::GraphicsContextGLOpenGL::uniform1ui):
+        (WebCore::GraphicsContextGLOpenGL::uniform2ui):
+        (WebCore::GraphicsContextGLOpenGL::uniform3ui):
+        (WebCore::GraphicsContextGLOpenGL::uniform4ui):
+        (WebCore::GraphicsContextGLOpenGL::uniform1uiv):
+        (WebCore::GraphicsContextGLOpenGL::uniform2uiv):
+        (WebCore::GraphicsContextGLOpenGL::uniform3uiv):
+        (WebCore::GraphicsContextGLOpenGL::uniform4uiv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix2x3fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix3x2fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix2x4fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix4x2fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix3x4fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix4x3fv):
+        (WebCore::GraphicsContextGLOpenGL::uniform1fv):
+        (WebCore::GraphicsContextGLOpenGL::uniform2fv):
+        (WebCore::GraphicsContextGLOpenGL::uniform3fv):
+        (WebCore::GraphicsContextGLOpenGL::uniform4fv):
+        (WebCore::GraphicsContextGLOpenGL::uniform1iv):
+        (WebCore::GraphicsContextGLOpenGL::uniform2iv):
+        (WebCore::GraphicsContextGLOpenGL::uniform3iv):
+        (WebCore::GraphicsContextGLOpenGL::uniform4iv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix2fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix3fv):
+        (WebCore::GraphicsContextGLOpenGL::uniformMatrix4fv):
+        * platform/graphics/opengl/GraphicsContextGLOpenGL.h:
+        * platform/graphics/opengl/GraphicsContextGLOpenGLCommon.cpp:
+        (WebCore::GraphicsContextGLOpenGL::getUniformuiv):
+
+2020-07-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Avoid loading media libraries in Document::visibilityStateChanged() if not needed
+        https://bugs.webkit.org/show_bug.cgi?id=214304
+        <rdar://problem/65005038>
+
+        Unreviewed, address additional review comments.
+
+        * dom/Document.cpp:
+        (WebCore::Document::visibilityStateChanged):
+
+2020-07-14  Jer Noble  <jer.noble@apple.com>
+
+        Add support for parsing VP-style codec strings.
+        https://bugs.webkit.org/show_bug.cgi?id=214270
+
+        Reviewed by Eric Carlson.
+
+        Test: media/vp-codec-parameters.html
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/VP9Utilities.cpp: Added.
+        (WebCore::validVPLevels):
+        (WebCore::validColorPrimaries):
+        (WebCore::parseVPCodecParameters):
+        * platform/graphics/VP9Utilities.h: Added.
+        * testing/Internals.cpp:
+        (WebCore::Internals::parseVPCodecParameters):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2020-07-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        When invalidating the clients of an SVG resource we should not go beyond the RenderSVGRoot
+        https://bugs.webkit.org/show_bug.cgi?id=211804
+        <rdar://problem/60308199>
+
+        Reviewed by Zalan Bujtas.
+
+        ComplexLineLayout::layoutLineBoxes() walks through the renderers of a line.
+        The order of this walk may include a node and its children. For example 
+        the layout of a RenderInline may be run first, then it is followed by the
+        layout for a RenderSVGRoot which happens to be a child of the RenderInline.
+
+        If the RenderSVGRoot has a dirty RenderSVGResource, e.g. RenderSVGResourceClipper,
+        this resource will call RenderSVGResource::markForLayoutAndParentResourceInvalidation() 
+        which will invalidate its ancestors including RenderSVGRoot and RenderInline
+        by setting the normalChildNeedsLayoutBit() for each of them.
+
+        The layout of SVG is hierarchical which means RenderSVGRoot will finish
+        its layout after finishing the layout of all its descendants including
+        this RenderSVGResource. So dirtying the RenderSVGRoot is this scenario
+        is okay since RenderSVGRoot will do another SVGRenderSupport::layoutChildren()
+        and will clear its needsLayout bits before it returns.
+
+        The problem happens because we set normalChildNeedsLayoutBit for the containing
+        RenderInline and this leaves the render tree dirty. Later Document::resolveStyle()
+        may called to invalidate an SVG element e.g. RenderSVGPath. So setNeedsLayout()
+        is called for this object. Because the normalChildNeedsLayoutBit() is set
+        for the RenderInline, RenderObject::markContainingBlocksForLayout() stops
+        in the middle and do not mark the containing RenderBlock. So we end up 
+        with a render tree like this:
+
+            +  RenderView
+            +    HTML RenderBlock
+            +      BODY RenderBody
+            -        RenderBlock
+            +          ANY-ELEMENT RenderInline
+            +           svg RenderSVGRoot
+            -              clipPath RenderSVGResourceClipper
+            +              polygon RenderSVGPath
+
+        where the '+' means needsLayout() is true and '-' means needsLayout() is
+        false.
+
+        So the layout will not run for RenderBlock with '-' sign. And we end up
+        with dirty RenderSVGPath or even worse RenderSVGPath with uninitialized 
+        m_path. So a null pointer deref may happen.
+
+        The fix is to prevent mutating the render tree while running the layout
+        of the SVG resource. This can be done by making the RenderSVGResource not
+        dirtying any renderer beyond the RenderSVGRoot when it finishes its layout.
+        The SVG resource layout should not affect the intrinsic size of the SVG
+        if it is embedded in an HTML document.
+
+        In RenderObject::markContainingBlocksForLayout(), we do something similar
+        when we break if the ancestor is objectIsRelayoutBoundary().
+
+        Test: svg/in-html/inline-svg-resource-dynamic-update.html
+
+        * rendering/svg/RenderSVGResource.cpp:
+        (WebCore::RenderSVGResource::markForLayoutAndParentResourceInvalidation):
+        * rendering/svg/RenderSVGRoot.cpp:
+        (WebCore::RenderSVGRoot::layout):
+        * rendering/svg/RenderSVGRoot.h:
+
+2020-07-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Avoid loading media libraries in Document::visibilityStateChanged() if not needed
+        https://bugs.webkit.org/show_bug.cgi?id=214304
+        <rdar://problem/65005038>
+
+        Reviewed by Darin Adler.
+
+        When the shared PlatformMediaSessionManager is created and accessed for the first time, some media libraries are loaded. There should be
+        no need to access the shared PlatformMediaSessionManager if no manager has been created in Document::visibilityStateChanged().
+
+        No new tests, since this patch does not change behavior.
+
+        * dom/Document.cpp:
+        (WebCore::Document::visibilityStateChanged):
+
+2020-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        [watchOS] Support armv7k build
+        https://bugs.webkit.org/show_bug.cgi?id=214306
+        <rdar://problem/65549901>
+
+        Reviewed by Aakash Jain.
+
+        No new tests, build fix.
+
+        * Configurations/Base.xcconfig: Disable 64 to 32 bit conversion warning for armv7k.
+
+2020-07-14  Eric Carlson  <eric.carlson@apple.com>
+
+        [macOS] Do not update ScreenTime when in private browsing mode
+        https://bugs.webkit.org/show_bug.cgi?id=214288
+        <rdar://problem/63735067>
+
+        Reviewed by Jer Noble.
+
+        Test: media/media-usage-state-private-browsing.html
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::updateMediaUsageIfChanged): Return early if the
+        page is in private mode.
+
+2020-07-14  Clark Wang  <clark_wang@apple.com>
+
+        Updated AudioContext constructor according to spec
+        https://bugs.webkit.org/show_bug.cgi?id=214267
+
+        Reviewed by Chris Dumez.
+
+        Updated AudioContext constructor according to spec: https://www.w3.org/TR/webaudio/#AudioContext-constructors.
+        Added in files accordingly to support AudioContextOptions.
+
+        Re-baselined existing tests. One new test case passes, and one fails due to current accepted range for sampleRate.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::create):
+        (WebCore::AudioContext::AudioContext):
+        * Modules/webaudio/AudioContext.h:
+        (WebCore::AudioContext::create):
+        * Modules/webaudio/AudioContext.idl:
+        * Modules/webaudio/AudioContextLatencyCategory.h: Added.
+        * Modules/webaudio/AudioContextLatencyCategory.idl: Added.
+        * Modules/webaudio/AudioContextOptions.h: Added.
+        * Modules/webaudio/AudioContextOptions.idl: Added.
+        * Modules/webaudio/BaseAudioContext.cpp:
+        (WebCore::BaseAudioContext::BaseAudioContext):
+        * Modules/webaudio/BaseAudioContext.h:
+        * Modules/webaudio/DefaultAudioDestinationNode.cpp:
+        (WebCore::DefaultAudioDestinationNode::DefaultAudioDestinationNode):
+        * Modules/webaudio/DefaultAudioDestinationNode.h:
+        * Modules/webaudio/PannerNode.cpp:
+        (WebCore::PannerNode::PannerNode):
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2020-07-14  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] REGRESSION (r262366): Google search photos do not render, black images
+        https://bugs.webkit.org/show_bug.cgi?id=214156
+        <rdar://problem/64964922>
+
+        Reviewed by Dean Jackson.
+
+        http://trac.webkit.org/changeset/262366 separated WebGL canvas contents swapping and presentation
+        into two steps. This Google search page was only running the presentation code without the swapping
+        step, as it removes canvases from the observer Document before the Document is able to swap its canvas'
+        contents. Ensure that re-inserted canvas elements properly register their new Documents as observers.
+
+        Covered by existing tests.
+
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::insertedIntoAncestor): 
+        * html/HTMLCanvasElement.h:
+
+2020-07-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed non-unified build fixes
+
+        * bindings/js/CommonVM.cpp:
+        * html/canvas/CanvasRenderingContext2DBase.cpp:
+        * html/canvas/CanvasStyle.cpp:
+        * platform/graphics/GradientImage.cpp:
+        * rendering/svg/RenderSVGPath.cpp:
+
+2020-07-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed non-unified build fixes
+
+        * animation/CSSTransition.cpp:
+        * html/HTMLFormControlElement.cpp:
+        * html/ImageData.cpp:
+        * inspector/InspectorInstrumentationWebKit.h:
+        * layout/FormattingContextGeometry.cpp:
+        * layout/floats/FloatingContext.cpp:
+        * layout/floats/FloatingState.cpp:
+        * layout/tableformatting/TableFormattingContext.cpp:
+        * loader/MediaResourceLoader.cpp:
+        * platform/FrameRateMonitor.h:
+        * platform/graphics/ColorSerialization.cpp:
+        * platform/graphics/ColorSerialization.h:
+        * svg/SVGNumber.h:
+        * svg/SVGParserUtilities.h:
+        * svg/SVGTransformList.cpp:
+        * svg/SVGZoomAndPan.cpp:
+
+2020-07-13  Peng Liu  <peng.liu6@apple.com>
+
+        Keyboard remains on full screen video view after back from PiP
+        https://bugs.webkit.org/show_bug.cgi?id=214287
+
+        Reviewed by Daniel Bates.
+
+        Make the window for video fullscreen and picture-in-picture support the key window
+        after the video returns to fullscreen from the picture-in-picture mode. Otherwise,
+        the WebAVPlayerViewController cannot become the first responder.
+
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::didStopPictureInPicture):
+
+2020-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeNeedsLayoutChecker] imported/w3c/web-platform-tests/html/rendering/replaced-elements/embedded-content/video-controls-vertical-writing-mode.html asserts
+        https://bugs.webkit.org/show_bug.cgi?id=214281
+        <rdar://problem/56740133>
+
+        Reviewed by Simon Fraser.
+
+        While percentage height descendant computation runs on the containing block chain, when
+        we mark the ancestors for layout, we need to traverse the parent (container) chain rather than the containing block chain.
+        Containing block traversal skips certain non-block renderers which leaves gap between dirty renderers.
+
+        Renderer[A] + dirty
+          Renderer[B] - not dirty
+            Renderer[C] + dirty
+
+        During layout this gap (Renderer[B]) makes us exit early, resulting dirty leftover renderers (Renderer[C]).
+
+        This is similar to what we do in RenderObject::markContainingBlocksForLayout.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::dirtyForLayoutFromPercentageHeightDescendants):
+
+2020-07-13  Andres Gonzalez  <andresg_22@apple.com>
+
+        REGRESSION: (r257915?) [ Mac ] accessibility/accessibility-node-memory-management.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208930
+
+        Reviewed by Chris Fleizach.
+
+        Test: accessibility/accessibility-node-memory-management.html
+
+        In some cases, such as the empty canvas in this test, the algorithm in
+        AXIsolatedTree::updateChildren to only update the children that are
+        added or removed does not work. In those cases, fallback to updating
+        the entire subtree.
+
+        * accessibility/isolatedtree/AXIsolatedTree.cpp:
+        (WebCore::AXIsolatedTree::updateChildren):
+
+2020-07-13  Keith Miller  <keith_miller@apple.com>
+
+        ScriptController needs to SetForScope m_sourceURL after Refing its Frame
+        https://bugs.webkit.org/show_bug.cgi?id=214276
+
+        Reviewed by Chris Dumez.
+
+        The SetForScopes in ScriptController need to be constructed after the
+        Frame is retained otherwise the Ref to the frame may be destroyed
+        before m_sourceURL is restored. Since the Frame owns the ScriptController
+        we end up writing the SourceURL after the ScriptController has been freed.
+
+        No new tests because my recent code change already caused ASAN failures.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::evaluateInWorld):
+        (WebCore::ScriptController::evaluateModule):
+        (WebCore::ScriptController::callInWorld):
+
+2020-07-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, re-landing r264242 with crash fixed.
+
+        Re-landed changeset:
+
+        "JSRunLoopTimer should use WTF::RunLoop rather than custom CF
+        code"
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+        https://trac.webkit.org/changeset/264242
+
+        * bindings/js/CommonVM.cpp:
+        (WebCore::commonVMSlow):
+
+2020-07-13  Eric Carlson  <eric.carlson@apple.com>
+
+        Impossible to pause playback of MediaStream video track
+        https://bugs.webkit.org/show_bug.cgi?id=214262
+        <rdar://problem/65483729>
+
+        Reviewed by Jer Noble.
+
+        These changes were tested manually because they don't change the behavior when
+        snapshotting or rendering to canvas.
+
+        * platform/graphics/avfoundation/SampleBufferDisplayLayer.h: Add pure virtual play
+        and pause methods.
+
+        * platform/graphics/avfoundation/objc/LocalSampleBufferDisplayLayer.h:
+        (WebCore::LocalSampleBufferDisplayLayer::play): New, toggle m_paused.
+        (WebCore::LocalSampleBufferDisplayLayer::pause): Ditto.
+        * platform/graphics/avfoundation/objc/LocalSampleBufferDisplayLayer.mm:
+        (WebCore::LocalSampleBufferDisplayLayer::enqueueSample): Return early if paused.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::ensureLayers): Pause the display
+        layer if necessary.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::play): Start display layer.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::pause): Pause display layer.
+
+2020-07-13  Sam Weinig  <weinig@apple.com>
+
+        Replace single argument makeSimpleColor uses with their implementation
+        https://bugs.webkit.org/show_bug.cgi?id=214240
+
+        Reviewed by Darin Adler.
+
+        Remove makeSimpleColor overloads that took SRGBA<uint8_t> and SRGBA<float>:
+        - makeSimpleColor(SRGBA<uint8_t>) was a no-op, so is replaced with nothing.
+        - makeSimpleColor(SRGBA<float>) is replaced by the function it called, convertToComponentBytes().
+
+        * css/StyleColor.cpp:
+        (WebCore::StyleColor::colorFromKeyword):
+        * css/parser/CSSPropertyParserHelpers.cpp:
+        (WebCore::CSSPropertyParserHelpers::parseHSLParameters):
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::detectContentInRange):
+        * html/canvas/CanvasRenderingContext2DBase.cpp:
+        (WebCore::CanvasRenderingContext2DBase::setShadow):
+        * html/canvas/CanvasStyle.cpp:
+        (WebCore::CanvasStyle::CanvasStyle):
+        (WebCore::CanvasStyle::isEquivalent const):
+        * platform/graphics/Color.cpp:
+        (WebCore::Color::lightened const):
+        (WebCore::Color::darkened const):
+        * platform/graphics/SimpleColor.h:
+        * platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp:
+        (WebCore::makeSimpleColorFromARGBCFArray):
+        * platform/graphics/filters/FilterOperations.cpp:
+        (WebCore::FilterOperations::transformColor const):
+        (WebCore::FilterOperations::inverseTransformColor const):
+        * platform/graphics/mac/ColorMac.mm:
+        (WebCore::makeSimpleColorFromNSColor):
+        (WebCore::colorFromNSColor):
+        (WebCore::semanticColorFromNSColor):
+        * platform/graphics/win/PlatformContextDirect2D.cpp:
+        (WebCore::PlatformContextDirect2D::brushWithColor):
+        * platform/ios/ColorIOS.mm:
+        (WebCore::colorFromUIColor):
+
+2020-07-13  Sihui Liu  <sihui_liu@appe.com>
+
+        Text manipulation does not observe manipulated text after update
+        https://bugs.webkit.org/show_bug.cgi?id=213318
+        <rdar://problem/63766703>
+
+        Reviewed by Geoffrey Garen.
+
+        Make TextManipulationController be aware of content replacement on Text and extract the new content.
+
+        Test: TextManipulation.CompleteTextManipulationForManipulatedTextWithNewContent
+
+        * dom/CharacterData.h:
+        * dom/Text.cpp:
+        (WebCore::Text::setDataAndUpdate):
+        * dom/Text.h:
+        * editing/TextManipulationController.cpp:
+        (WebCore::TextManipulationController::didCreateRendererForElement):
+        (WebCore::TextManipulationController::didUpdateContentForText):
+        (WebCore::TextManipulationController::scheduleObservationUpdate):
+        * editing/TextManipulationController.h:
+        * editing/markup.cpp:
+
+2020-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Clean up SourceProvider and add caller relative load script to jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=214205
+
+        Reviewed by Yusuke Suzuki.
+
+        Refactor WebCore <-> JSC binding layer now that JSC uses WTF::URLs
+        for SourceOrigins.
+
+        Also, improve module loading error messages to include the
+        specifier and referrer when producing errors around bare-name
+        specifiers.
+
+        New error message behavior is already tested so existing tests
+        have been updated.
+
+        * bindings/js/CachedScriptSourceProvider.h:
+        (WebCore::CachedScriptSourceProvider::CachedScriptSourceProvider):
+        * bindings/js/JSEventListener.cpp:
+        (WebCore::JSEventListener::handleEvent):
+        * bindings/js/JSEventListener.h:
+        (WebCore::JSEventListener::sourceURL const):
+        * bindings/js/JSLazyEventListener.cpp:
+        (WebCore::JSLazyEventListener::JSLazyEventListener):
+        (WebCore::JSLazyEventListener::initializeJSFunction const):
+        (WebCore::JSLazyEventListener::create):
+        * bindings/js/JSLazyEventListener.h:
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::evaluateInWorld):
+        (WebCore::ScriptController::evaluateModule):
+        (WebCore::ScriptController::callInWorld):
+        * bindings/js/ScriptController.h:
+        (WebCore::ScriptController::sourceURL const):
+        * bindings/js/ScriptModuleLoader.cpp:
+        (WebCore::resolveModuleSpecifier):
+        (WebCore::rejectPromise):
+        * bindings/js/ScriptSourceCode.h:
+        (WebCore::ScriptSourceCode::ScriptSourceCode):
+        (WebCore::ScriptSourceCode::url const):
+
+2020-07-13  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Discard PTS-less samples
+        https://bugs.webkit.org/show_bug.cgi?id=214252
+
+        Reviewed by Philippe Normand.
+
+        In some cases GStreamer demuxers emit PTS-less samples with metadata
+        at the beginning of the container. These are fortunately not necessary
+        for playback, and in fact incompatible with the way MSE works, where
+        you should be able to start playing a stream from the middle.
+
+        This patch skips these frames in the AppendPipeline so they don't
+        pollute other parts of the MSE codebase.
+
+        Since these frames were not necessary and were later overwritten,
+        this patch is just a cleanup introducing no notable behavior changes.
+
+        * platform/graphics/gstreamer/mse/AppendPipeline.cpp:
+        (WebCore::AppendPipeline::appsinkNewSample):
+
+2020-07-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE][GTK4] Form controls are not painted when using threaded rendering
+        https://bugs.webkit.org/show_bug.cgi?id=214178
+
+        Reviewed by Žan Doberšek.
+
+        Which is the default for GTK4 since r263888. The problem is that RenderTheme::paint() returns early if the given
+        GraphicsContext doesn't have a platform context, assuming all RenderTheme implementations paint directly to the
+        platform context. This patch adds a pure virtual canPaint() to RenderTheme to be used as the early return.
+
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paint):
+        * rendering/RenderTheme.h:
+        * rendering/RenderThemeAdwaita.h:
+        * rendering/RenderThemeCocoa.h:
+        * rendering/RenderThemeCocoa.mm:
+        (WebCore::RenderThemeCocoa::canPaint const):
+        * rendering/RenderThemePlayStation.h:
+        * rendering/RenderThemeWin.h:
+
+2020-07-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Unreviewed, remove private debug code
+
+        When I landed the OpenCDM code I accidentally landed a couple of
+        things that were internal debug that is not useful upstream.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::handleSyncMessage):
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage):
+
+2020-07-12  Darin Adler  <darin@apple.com>
+
+        Some further streamlining of Gradient handling code
+        https://bugs.webkit.org/show_bug.cgi?id=214239
+
+        Reviewed by Sam Weinig.
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::interpolateColorStop): Deleted.
+        (WebCore::createConic): Rewrite the interpolation code to create a new
+        vector rather than edit the existing one and to use a more straightforward
+        idiom, and a lambda rather than a helper function. Also removed an explicit
+        conversion to Gradient::ColorStop, no longer needed because of the overload
+        added to Vector::insert.
+
+        * rendering/svg/RenderSVGResourceGradient.cpp:
+        (WebCore::RenderSVGResourceGradient::applyResource): Use ensure rather
+        than add to initialize gradient data in the gradient map. Change the #if
+        for USE(CG) so it doesn't confuse brace matching from the syntax handling
+        of text editors like the one in Xcode. Update for the changes to the
+        buildGradient and gradientTransform functions. Use auto a bit more.
+        (WebCore::RenderSVGResourceGradient::postApplyResource): Update since the
+        map now contains GradientData rather than unique_ptr<GradientData>. Use
+        std::exchange when fetching m_savedContext and a local variable to make
+        the gradient-related code a bit less wordy.
+        (WebCore::RenderSVGResourceGradient::addStops): Updated to take Gradient&
+        rather than GradientData* and made this a static member function.
+        (WebCore::RenderSVGResourceGradient::platformSpreadMethodFromSVGType):
+        Made this a static member function.
+
+        * rendering/svg/RenderSVGResourceGradient.h: Made more functions private.
+        Converted addStops and platformSpreadMethodFromSVGType to static member
+        functions. Made GradientData a member class, and put directly into the
+        HashMap rather than putting unique_ptr into the map. Changed
+        calculateGradientTransform to gradientTransform, which uses a return
+        value rather than an out argument. Changed buildGradient to return
+        Ref<Gradient> rather than taking a GradientData* to store it in.
+
+        * rendering/svg/RenderSVGResourceLinearGradient.cpp:
+        (WebCore::RenderSVGResourceLinearGradient::buildGradient const):
+        Changed to return the gradient instead of modifying an argument and
+        updated for the change to addStops.
+
+        * rendering/svg/RenderSVGResourceLinearGradient.h: Made more functions
+        private and updated for changes to gradientTransform and buildGradient.
+
+        * rendering/svg/RenderSVGResourceRadialGradient.cpp:
+        (WebCore::RenderSVGResourceRadialGradient::buildGradient const):
+        Changed to return the gradient instead of modifying an argument and
+        updated for the change to addStops.
+
+        * rendering/svg/RenderSVGResourceRadialGradient.h: Made more functions
+        private and updated for changes to gradientTransform and buildGradient.
+
+        * svg/GradientAttributes.h: Removed the stopsSet boolean since
+        the stops vector is empty if and only if it's not set. Made the setStops
+        function take an rvalue reference so it doesn't always copy a vector.
+        Also use the ColorStopVector type, sharing the same inline capacity
+        policy with the Gradient class; both are optimizing the same thing.
+
+        * svg/SVGGradientElement.cpp:
+        (WebCore::SVGGradientElement::buildStops): Use the ColorStopVector type.
+        * svg/SVGGradientElement.h: Update for the above.
+
+        * svg/SVGLinearGradientElement.cpp:
+        (WebCore::setGradientAttributes): Update for changes to buildStops and
+        removed an unnecessary check for an empty vector now that an empty
+        vector has the same semantics as "no stops".
+        * svg/SVGRadialGradientElement.cpp:
+        (WebCore::setGradientAttributes): Ditto.
+
+2020-07-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][Clang] Unreviewed build fix for r264272
+        https://bugs.webkit.org/show_bug.cgi?id=214204
+        <rdar://problem/65414170>
+
+        clang-cl reported:
+
+        > ..\..\Source\WebCore\platform\graphics/ColorUtilities.h(200,26): error: no template named 'ComponentTraits'
+        >     constexpr auto min = ComponentTraits<typename ColorType::ComponentType>::minValue;
+        >                          ^
+
+        * platform/graphics/ColorUtilities.cpp: Removed #include "ColorTypes.h".
+        * platform/graphics/ColorUtilities.h: Added #include "ColorTypes.h".
+
+2020-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS]: A HEIF image, selected from the OpenPanel, should be converted to an accepted MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=213347
+        <rdar://problem/57258464>
+
+        Reviewed by Darin Adler.
+
+        Tests: fast/forms/file/entries-api/image-no-transcode-open-panel.html
+               fast/forms/file/entries-api/image-transcode-open-panel.html
+
+        * platform/MIMETypeRegistry.cpp:
+        (WebCore::MIMETypeRegistry::allowedMIMETypes):
+        Make sure this function returns lowercase MIME types.
+
+        * platform/MIMETypeRegistry.h:
+        * platform/graphics/NativeImage.h:
+        * platform/graphics/cg/NativeImageCG.cpp:
+        (WebCore::drawNativeImage):
+
+2020-07-12  Sam Weinig  <weinig@apple.com>
+
+        Tidy up color usage in accessibility code
+        https://bugs.webkit.org/show_bug.cgi?id=214226
+
+        Reviewed by Darin Adler.
+
+        Rather than passing around r, g, b components as out-parameters,
+        use SRGBA<uint8_t> return values.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::colorValue const):
+        * accessibility/AccessibilityNodeObject.h:
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityObjectInterface.h:
+        * accessibility/atk/WebKitAccessibleInterfaceText.cpp:
+        (webkitAccessibleTextGetText):
+        * accessibility/isolatedtree/AXIsolatedObject.cpp:
+        (WebCore::AXIsolatedObject::initializeAttributeData):
+        (WebCore::AXIsolatedObject::colorValue const):
+        * accessibility/isolatedtree/AXIsolatedObject.h:
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+
+2020-07-12  Rob Buis  <rbuis@igalia.com>
+
+        Improve IPv6 detection when setting host/hostname
+        https://bugs.webkit.org/show_bug.cgi?id=214218
+
+        Reviewed by Darin Adler.
+
+        Improve IPv6 detection when setting host/hostname by checking for '[' and ']' as
+        well as using reverse find for ':' separators, to ensure we are not finding a
+        separator within the IPv6 section of the url.
+
+        Behavior matches Chrome and Firefox.
+
+        Test: imported/w3c/web-platform-tests/url/url-setters.html
+
+        * html/URLDecomposition.cpp:
+        (WebCore::URLDecomposition::setHost):
+
 2020-07-12  Zalan Bujtas  <zalan@apple.com>
 
         [LFC][BFC][Min-Max width] Regular block level box resets the horizontal stacking

@@ -1,3 +1,90 @@
+2020-07-14  Jer Noble  <jer.noble@apple.com>
+
+        Add support for parsing VP-style codec strings.
+        https://bugs.webkit.org/show_bug.cgi?id=214270
+        <rdar://problem/65500048>
+
+        Reviewed by Eric Carlson.
+
+        Add a variant of toIntegralType<> which returns an Optional. Since no existing callers of the
+        original toIntegralType fail to pass in the optional bool* parameter, make that parameter
+        non-optional, as it causes a conflict with the new Optional-returning version.
+
+        * wtf/text/StringToIntegerConversion.h:
+        (WTF::toIntegralType):
+
+2020-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Clean up SourceProvider and add caller relative load script to jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=214205
+
+        Reviewed by Yusuke Suzuki.
+
+        Using a URL as a boolean in a conditional should be a compile
+        error.  Currently, it "works" because it actually calls `operator
+        NSURL*()`... which is likely NOT what you wanted. Until we decide
+        what it means to have a URL in a conditional it will be a compile
+        error.
+
+        * wtf/URL.cpp:
+        (WTF::URL::fileSystemPath const):
+        * wtf/URL.h:
+
+2020-07-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] String.protoytpe.toLocaleLowerCase's availableLocales HashSet is inefficient
+        https://bugs.webkit.org/show_bug.cgi?id=213158
+
+        Reviewed by Darin Adler.
+
+        Add characterAt method to ASCIILiteral.
+
+        * wtf/text/ASCIILiteral.h:
+
+2020-07-12  Darin Adler  <darin@apple.com>
+
+        Some further streamlining of Gradient handling code
+        https://bugs.webkit.org/show_bug.cgi?id=214239
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Vector.h: Added an overload for insert analogous to the ones we already have
+        for append and uncheckedAppend, helpful for type deduction.
+
+2020-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS]: A HEIF image, selected from the OpenPanel, should be converted to an accepted MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=213347
+        <rdar://problem/57258464>
+
+        Reviewed by Darin Adler.
+
+        Allow a suffix to be included in the temporary file name. The goal is to
+        make it possible to create temporary image files with valid extensions.
+
+        * wtf/FileSystem.h:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        * wtf/cocoa/FileSystemCocoa.mm:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        * wtf/glib/FileSystemGlib.cpp:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        * wtf/win/FileSystemWin.cpp:
+        (WTF::FileSystemImpl::openTemporaryFile):
+
+2020-07-12  Rob Buis  <rbuis@igalia.com>
+
+        Improve IPv6 detection when setting host/hostname
+        https://bugs.webkit.org/show_bug.cgi?id=214218
+
+        Reviewed by Darin Adler.
+
+        * wtf/URL.cpp:
+        (WTF::URL::setHost): do not bail out if ':' was found but we start
+        with a '[', since the host may be IPv6.
+        (WTF::URL::setHostAndPort): multiple colons are acceptable only in case of IPv6.
+
 2020-07-11  Sam Weinig  <weinig@apple.com> and Yusuke Suzuki  <ysuzuki@apple.com>
 
         Relanding "Make hasher work with tuple-like classes"

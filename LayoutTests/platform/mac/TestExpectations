@@ -860,9 +860,7 @@ webkit.org/b/161725 imported/w3c/web-platform-tests/media-source/mediasource-see
 webkit.org/b/161725 imported/w3c/web-platform-tests/media-source/mediasource-sequencemode-append-buffer.html [ Skip ]
 webkit.org/b/161725 imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode-timestamps.html [ Skip ]
 webkit.org/b/161725 imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode.html [ Skip ]
-
-# Passes, but will need rebaselining once <https://github.com/w3c/web-platform-tests/pull/3758> is merged
-imported/w3c/web-platform-tests/media-source/interfaces.html [ Pass ]
+webkit.org/b/214166 imported/w3c/web-platform-tests/media-source/idlharness.window.html [ Skip ]
 
 # Requires WebM
 imported/w3c/web-platform-tests/media-source/mediasource-config-change-webm-a-bitrate.html [ Skip ]
@@ -1613,6 +1611,34 @@ imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-auto-css
 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_highest-parent-none_touch.html [ Skip ]
 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch.html [ Skip ]
 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerout_pen.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/compat/pointerevent_touch-action_two-finger_interaction.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_attributes_nohover_pointers.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_boundary_events_in_capturing.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_coalesced_events_attributes.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_disabled_form_control.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_pointercapture_in_frame.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_releasepointercapture_events_to_original_target.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_drag.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-button-none-test_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-auto-child-none_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-none_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-x_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-y_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_parent-none_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-none-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-none-on-body-when-style-propagates-to-viewport_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-down-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-left-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-right-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-up-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y-pan-y_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-y-css_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-span-none-test_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-svg-none-test_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-table-none-test_touch.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy.html [ Skip ]
+imported/w3c/web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_click.html [ Skip ]
 
 webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
 
@@ -1638,9 +1664,6 @@ webkit.org/b/212172 [ Catalina ] fast/text/font-collection.html [ ImageOnlyFailu
 # <rdar://problem/45056204>
 [ Catalina+ ] http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Failure ]
 [ Catalina+ ] http/wpt/beacon/cors/cors-preflight-cookie.html [ Failure ]
-
-# <rdar://problem/50383285>
-[ Catalina+ ] imported/w3c/web-platform-tests/css/css-text/writing-system/writing-system-line-break-001.html [ ImageOnlyFailure ]
 
 # <rdar://problem/51762717>
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.html [ Pass Failure ]
@@ -1836,8 +1859,6 @@ webkit.org/b/208592 svg/custom/object-sizing-explicit-height.xhtml [ Pass Failur
 
 webkit.org/b/209257 svg/as-object/object-box-sizing-no-width-height.html [ Pass Failure ]
 
-webkit.org/b/208930 accessibility/accessibility-node-memory-management.html [ Pass Failure ]
-
 webkit.org/b/209056 webgpu/whlsl/uint-bitwise.html [ Pass Crash ]
 
 webkit.org/b/209072 [ Debug ] http/tests/css/shared-stylesheet-mutation-preconstruct.html [ Pass Crash Failure ]
@@ -1845,8 +1866,10 @@ webkit.org/b/209072 [ Debug ] http/tests/css/shared-stylesheet-mutation-preconst
 webkit.org/b/207150 platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html [ Pass Failure ]
 
 # The line breaking rules changed in ICU 66. We've updated the tests to match, but old platforms won't get updated line breaking rules.
-webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-normal-015.xht [ ImageOnlyFailure ]
-webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-strict-015.xht [ ImageOnlyFailure ]
+webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-normal-015a.xht [ ImageOnlyFailure ]
+webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-normal-015b.xht [ ImageOnlyFailure ]
+webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-strict-015a.xht [ ImageOnlyFailure ]
+webkit.org/b/209250 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-strict-015b.xht [ ImageOnlyFailure ]
 
 webkit.org/b/207858 fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Skip ]
 
@@ -1880,8 +1903,6 @@ media/controls-styling.html [ Skip ]
 http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html [ Pass Failure ]
 
 webkit.org/b/211891 imported/w3c/web-platform-tests/css/css-flexbox/flexbox_direction-row-reverse.html [ ImageOnlyFailure ]
-
-webkit.org/b/212165 http/tests/resourceLoadStatistics/telemetry-generation-basic-functionality-database.html [ Pass Failure ]
 
 webkit.org/b/212215 media/video-isplayingtoautomotiveheadunit.html [ Pass Failure ]
 

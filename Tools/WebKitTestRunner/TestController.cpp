@@ -223,12 +223,14 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
     }
 #endif
 
+    WKArrayRef allowedMimeTypes = WKOpenPanelParametersCopyAllowedMIMETypes(parameters);
+
     if (WKOpenPanelParametersGetAllowsMultipleFiles(parameters)) {
-        WKOpenPanelResultListenerChooseFiles(resultListenerRef, fileURLs);
+        WKOpenPanelResultListenerChooseFiles(resultListenerRef, fileURLs, allowedMimeTypes);
         return;
     }
 
-    WKOpenPanelResultListenerChooseFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get());
+    WKOpenPanelResultListenerChooseFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get(), allowedMimeTypes);
 }
 
 void TestController::runModal(WKPageRef page, const void* clientInfo)
@@ -3751,11 +3753,6 @@ void TestController::setStatisticsIsRunningTest(bool value)
 void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
 {
     WKWebsiteDataStoreSetStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(websiteDataStore(), value);
-}
-
-void TestController::setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value)
-{
-    WKWebsiteDataStoreSetStatisticsNotifyPagesWhenTelemetryWasCaptured(websiteDataStore(), value);
 }
 
 void TestController::setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds)

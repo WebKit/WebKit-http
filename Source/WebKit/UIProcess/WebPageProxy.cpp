@@ -215,6 +215,11 @@
 #include <wtf/cocoa/Entitlements.h>
 #endif
 
+#if PLATFORM(MAC)
+#include "ImageUtilities.h"
+#include <WebCore/UTIUtilities.h>
+#endif
+
 #if HAVE(TOUCH_BAR)
 #include "TouchBarMenuData.h"
 #include "TouchBarMenuItemData.h"
@@ -487,6 +492,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
 #if PLATFORM(COCOA)
     , m_ignoresAppBoundDomains(m_configuration->ignoresAppBoundDomains())
     , m_limitsNavigationsToAppBoundDomains(m_configuration->limitsNavigationsToAppBoundDomains())
+#endif
+#if PLATFORM(MAC)
+    , m_transcodingQueue(WorkQueue::create("com.apple.WebKit.ImageTranscoding"))
 #endif
 {
     RELEASE_LOG_IF_ALLOWED(Loading, "constructor:");
@@ -1185,7 +1193,7 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
     if (!url.isLocalFile())
         return;
 
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
+#if HAVE(AUDIT_TOKEN)
     // If the process is still launching then it does not have a PID yet. We will take care of creating the sandbox extension
     // once the process has finished launching.
     if (process.isLaunching() || process.wasTerminated())
@@ -1196,24 +1204,19 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
         if (checkAssumedReadAccessToResourceURL && process.hasAssumedReadAccessToURL(resourceDirectoryURL))
             return;
 
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
-        ASSERT(process.connection() && process.connection()->getAuditToken());
         bool createdExtension = false;
+#if HAVE(AUDIT_TOKEN)
+        ASSERT(process.connection() && process.connection()->getAuditToken());
         if (process.connection() && process.connection()->getAuditToken())
             createdExtension = SandboxExtension::createHandleForReadByAuditToken(resourceDirectoryURL.fileSystemPath(), *(process.connection()->getAuditToken()), sandboxExtensionHandle);
         else
+#endif
             createdExtension = SandboxExtension::createHandle(resourceDirectoryURL.fileSystemPath(), SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
 
         if (createdExtension) {
             process.assumeReadAccessToBaseURL(*this, resourceDirectoryURL.string());
             return;
         }
-#else
-        if (SandboxExtension::createHandle(resourceDirectoryURL.fileSystemPath(), SandboxExtension::Type::ReadOnly, sandboxExtensionHandle)) {
-            process.assumeReadAccessToBaseURL(*this, resourceDirectoryURL.string());
-            return;
-        }
-#endif
     }
 
     if (process.hasAssumedReadAccessToURL(url))
@@ -1222,24 +1225,19 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
     // Inspector resources are in a directory with assumed access.
     RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!WebKit::isInspectorPage(*this));
 
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
-    ASSERT(process.connection() && process.connection()->getAuditToken());
     bool createdExtension = false;
+#if HAVE(AUDIT_TOKEN)
+    ASSERT(process.connection() && process.connection()->getAuditToken());
     if (process.connection() && process.connection()->getAuditToken())
         createdExtension = SandboxExtension::createHandleForReadByAuditToken("/", *(process.connection()->getAuditToken()), sandboxExtensionHandle);
     else
+#endif
         createdExtension = SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
 
     if (createdExtension) {
         willAcquireUniversalFileReadSandboxExtension(process);
         return;
     }
-#else
-    if (SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle)) {
-        willAcquireUniversalFileReadSandboxExtension(process);
-        return;
-    }
-#endif
 
 #if PLATFORM(COCOA)
     if (!linkedOnOrAfter(SDKVersion::FirstWithoutUnconditionalUniversalSandboxExtension))
@@ -1251,24 +1249,23 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
     auto basePath = baseURL.fileSystemPath();
     if (basePath.isNull())
         return;
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
+#if HAVE(AUDIT_TOKEN)
     if (process.connection() && process.connection()->getAuditToken())
         createdExtension = SandboxExtension::createHandleForReadByAuditToken(basePath, *(process.connection()->getAuditToken()), sandboxExtensionHandle);
     else
+#endif
         createdExtension = SandboxExtension::createHandle(basePath, SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
-    
+
     if (createdExtension)
         process.assumeReadAccessToBaseURL(*this, baseURL.string());
-#else
-    if (SandboxExtension::createHandle(basePath, SandboxExtension::Type::ReadOnly, sandboxExtensionHandle))
-        process.assumeReadAccessToBaseURL(*this, baseURL.string());
-#endif
 }
 
 #if !PLATFORM(COCOA)
+
 void WebPageProxy::addPlatformLoadParameters(WebProcessProxy&, LoadParameters&)
 {
 }
+
 #endif
 
 WebProcessProxy& WebPageProxy::ensureRunningProcess()
@@ -1329,14 +1326,10 @@ void WebPageProxy::loadRequestWithNavigationShared(Ref<WebProcessProxy>&& proces
 
     navigation.setIsLoadedWithNavigationShared(true);
 
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
     if (!process->isLaunching() || !url.isLocalFile())
         process->send(Messages::WebPage::LoadRequest(loadParameters), webPageID);
     else
         process->send(Messages::WebPage::LoadRequestWaitingForProcessLaunch(loadParameters, m_pageLoadState.resourceDirectoryURL(), m_identifier, true), webPageID);
-#else
-    process->send(Messages::WebPage::LoadRequest(loadParameters), webPageID);
-#endif
     process->startResponsivenessTimer();
 }
 
@@ -1387,14 +1380,10 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
     maybeInitializeSandboxExtensionHandle(m_process, fileURL, resourceDirectoryURL, loadParameters.sandboxExtensionHandle, checkAssumedReadAccessToResourceURL);
     addPlatformLoadParameters(m_process, loadParameters);
 
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
     if (m_process->isLaunching())
         send(Messages::WebPage::LoadRequestWaitingForProcessLaunch(loadParameters, resourceDirectoryURL, m_identifier, checkAssumedReadAccessToResourceURL));
     else
         send(Messages::WebPage::LoadRequest(loadParameters));
-#else
-    send(Messages::WebPage::LoadRequest(loadParameters));
-#endif
     m_process->startResponsivenessTimer();
 
     return navigation;
@@ -3220,6 +3209,8 @@ void WebPageProxy::clearServiceWorkerEntitlementOverride(CompletionHandler<void(
 
 void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, API::Navigation* navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, WebFrameProxy& frame, RefPtr<API::WebsitePolicies>&& policies, Ref<PolicyDecisionSender>&& sender)
 {
+    RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "receivedNavigationPolicyDecision: frameID: %llu, navigationID: %llu, policyAction: %u", frame.frameID().toUInt64(), navigation ? navigation->navigationID() : 0, (unsigned)policyAction);
+
     Ref<WebsiteDataStore> websiteDataStore = m_websiteDataStore.copyRef();
     if (policies) {
         if (policies->websiteDataStore() && policies->websiteDataStore() != websiteDataStore.ptr()) {
@@ -5108,6 +5099,8 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
     NavigationActionData&& navigationActionData, FrameInfoData&& originatingFrameInfoData, Optional<WebPageProxyIdentifier> originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request,
     IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, Ref<PolicyDecisionSender>&& sender)
 {
+    RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "decidePolicyForNavigationAction: frameID: %llu, navigationID: %llu", frame.frameID().toUInt64(), navigationID);
+
     LOG(Loading, "WebPageProxy::decidePolicyForNavigationAction - Original URL %s, current target URL %s", originalRequest.url().string().utf8().data(), request.url().string().utf8().data());
 
     PageClientProtector protector(pageClient());
@@ -5182,6 +5175,7 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
 #endif
     
     auto listener = makeRef(frame.setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frame = makeRef(frame), sender = WTFMove(sender), navigation, frameInfo, userDataObject = process->transformHandlesToObjects(userData.object()).get()] (PolicyAction policyAction, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, RefPtr<SafeBrowsingWarning>&& safeBrowsingWarning, Optional<NavigatingToAppBoundDomain> isAppBoundDomain) mutable {
+        RELEASE_LOG_ERROR_IF_ALLOWED(Loading, "decidePolicyForNavigationAction: listener called: frameID: %llu, navigationID: %llu, policyAction: %u, safeBrowsingWarning: %d, isAppBoundDomain: %d", frame->frameID().toUInt64(), navigation ? navigation->navigationID() : 0, (unsigned)policyAction, !!safeBrowsingWarning, !!isAppBoundDomain);
 
         auto completionHandler = [this, protectedThis, frame, sender = WTFMove(sender), navigation, processSwapRequestedByClient, policies = makeRefPtr(policies)] (PolicyAction policyAction) mutable {
             if (frame->isMainFrame()) {
@@ -6669,17 +6663,58 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
 }
 #endif
 
-void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs, const Vector<String>&)
+bool WebPageProxy::didChooseFilesForOpenPanelWithImageTranscoding(const Vector<String>& fileURLs, const Vector<String>& allowedMIMETypes)
+{
+#if PLATFORM(MAC)
+    auto transcodingMIMEType = WebCore::MIMETypeRegistry::preferredImageMIMETypeForEncoding(allowedMIMETypes, { });
+    if (transcodingMIMEType.isNull())
+        return false;
+
+    auto transcodingURLs = findImagesForTranscoding(fileURLs, allowedMIMETypes);
+    if (transcodingURLs.isEmpty())
+        return false;
+
+    auto transcodingUTI = WebCore::UTIFromMIMEType(transcodingMIMEType);
+    auto transcodingExtension = WebCore::MIMETypeRegistry::preferredExtensionForMIMEType(transcodingMIMEType);
+
+    m_transcodingQueue->dispatch([this, protectedThis = makeRef(*this), fileURLs = fileURLs.isolatedCopy(), transcodingURLs = transcodingURLs.isolatedCopy(), transcodingUTI = transcodingUTI.isolatedCopy(), transcodingExtension = transcodingExtension.isolatedCopy()]() mutable {
+        ASSERT(!RunLoop::isMain());
+
+        auto transcodedURLs = transcodeImages(transcodingURLs, transcodingUTI, transcodingExtension);
+        ASSERT(transcodingURLs.size() == transcodedURLs.size());
+
+        RunLoop::main().dispatch([this, protectedThis = WTFMove(protectedThis), fileURLs = fileURLs.isolatedCopy(), transcodedURLs = transcodedURLs.isolatedCopy()]() {
+#if ENABLE(SANDBOX_EXTENSIONS)
+            Vector<String> sandboxExtensionFiles;
+            for (size_t i = 0, size = fileURLs.size(); i < size; ++i)
+                sandboxExtensionFiles.append(!transcodedURLs[i].isNull() ? transcodedURLs[i] : fileURLs[i]);
+            auto sandboxExtensionHandles = SandboxExtension::createReadOnlyHandlesForFiles("WebPageProxy::didChooseFilesForOpenPanel"_s, sandboxExtensionFiles);
+            send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(WTFMove(sandboxExtensionHandles)));
+#endif
+            send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs, transcodedURLs));
+        });
+    });
+
+    return true;
+#else
+    UNUSED_PARAM(fileURLs);
+    UNUSED_PARAM(allowedMIMETypes);
+    return false;
+#endif
+}
+
+void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs, const Vector<String>& allowedMIMETypes)
 {
     if (!hasRunningProcess())
         return;
 
+    if (!didChooseFilesForOpenPanelWithImageTranscoding(fileURLs, allowedMIMETypes)) {
 #if ENABLE(SANDBOX_EXTENSIONS)
-    auto sandboxExtensionHandles = SandboxExtension::createReadOnlyHandlesForFiles("WebPageProxy::didChooseFilesForOpenPanel"_s, fileURLs);
-    send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(WTFMove(sandboxExtensionHandles)));
+        auto sandboxExtensionHandles = SandboxExtension::createReadOnlyHandlesForFiles("WebPageProxy::didChooseFilesForOpenPanel"_s, fileURLs);
+        send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(WTFMove(sandboxExtensionHandles)));
 #endif
-
-    send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs, { }));
+        send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs, { }));
+    }
 
     m_openPanelResultListener->invalidate();
     m_openPanelResultListener = nullptr;

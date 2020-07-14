@@ -1,3 +1,299 @@
+2020-07-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] fixup LLInt fast path in op_get_private_name
+        https://bugs.webkit.org/show_bug.cgi?id=214311
+
+        Reviewed by Tadeu Zagallo.
+
+        The LLInt slow path would previously always be taken in op_get_private_name,
+        due to not comparing the operand field name's JSValue payload with the cached
+        field name, but the register index itself.
+
+        This fixup can't really be verified by tests, as it is primarily a
+        minor performance improvement.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2020-07-14  Xan Lopez  <xan@igalia.com>
+
+        [JSC] Remove compiler warning in JSBigInt
+        https://bugs.webkit.org/show_bug.cgi?id=214298
+
+        Reviewed by Sam Weinig.
+
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::parseInt): no need to ASSERT >= 0 with an unsigned int.
+
+2020-07-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed non-unified build fixes
+
+        * runtime/IntlObject.cpp:
+
+2020-07-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed non-unified build fixes
+
+        * dfg/DFGCodeOriginPool.h:
+
+2020-07-13  Saam Barati  <sbarati@apple.com>
+
+        returnEarlyFromInfiniteLoopsForFuzzing and validateDoesGC may fail when used together in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=214289
+        <rdar://problem/65272138>
+
+        Reviewed by Keith Miller.
+
+        Because the patchpoint we use for returnEarlyFromInfiniteLoopsForFuzzing doesn't
+        read or write any heap ranges, B3 move memory ops around it. In particular, it
+        might move the validate DoesGC store above it. In the FTL, we should make returnEarlyFromInfiniteLoopsForFuzzing
+        mimic what Return does for validating DoesGC.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileLoopHint):
+
+2020-07-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] IntlLocale::initializeLocale should have scope.release
+        https://bugs.webkit.org/show_bug.cgi?id=214271
+        <rdar://problem/65467314>
+
+        Reviewed by Darin Adler.
+
+        Add missing scope.release() to suppress validateExceptionChecks crash.
+
+        * runtime/IntlLocale.cpp:
+        (JSC::IntlLocale::initializeLocale):
+
+2020-07-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] FTL isCellOrMisc should be isCellOrMiscOrBigInt32
+        https://bugs.webkit.org/show_bug.cgi?id=214269
+        <rdar://problem/65475129>
+
+        Reviewed by Mark Lam.
+
+        FTL isCellOrMisc's check can accept BigInt32 too. So it should be isCellOrMiscOrBigInt32.
+        Since our proven type filter does not include SpecBigInt32, isCellOrMisc can be folded into
+        false for BigInt32 AbstractValue. This patch fixes that filter. And we also reviewed places
+        using isCellOrMisc / isNotCellOrMisc.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileSwitch):
+        (JSC::FTL::DFG::LowerDFGToB3::numberOrNotCellNorBigIntToInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::isCellOrMiscOrBigInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotCellOrMiscOrBigInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::isNumber):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotNumber):
+        (JSC::FTL::DFG::LowerDFGToB3::isCellOrMisc): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::isNotCellOrMisc): Deleted.
+
+2020-07-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, re-landing r264242 with crash fixed.
+
+        Re-landed changeset:
+
+        "JSRunLoopTimer should use WTF::RunLoop rather than custom CF
+        code"
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+        https://trac.webkit.org/changeset/264242
+
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::epochTime):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFireCallback):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::~PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFire):
+        (JSC::JSRunLoopTimer::Manager::registerVM):
+        (JSC::JSRunLoopTimer::Manager::scheduleTimer):
+        (JSC::JSRunLoopTimer::Manager::cancelTimer):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::setRunLoop): Deleted.
+        (JSC::JSRunLoopTimer::Manager::didChangeRunLoop): Deleted.
+        * runtime/JSRunLoopTimer.h:
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData): Deleted.
+        * runtime/PromiseTimer.cpp:
+        (JSC::PromiseTimer::doWork):
+        (JSC::PromiseTimer::runRunLoop):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::create):
+        (JSC::VM::setRunLoop): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::runLoop const):
+
+2020-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Clean up SourceProvider and add caller relative load script to jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=214205
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch originally was just to add an optional parameter to our
+        load function so that any relative path is computed with respect
+        to calling script.  Rather than computing the path relative to the
+        current working directory. The main advantage of this is now you
+        can run all the JSTests/stress scripts from anywhere rather than
+        only from the stress directory. This also matches jsc.cpp's module
+        loader implementation.
+
+        To make this possible a surprising number of changes were
+        needed. Specifically, it was much easier to get this to work if we
+        converted SourceOrigin's url to a WTF::URL rather than just a
+        WTF::String. At the same time it became clear that
+        SourceProvider's m_sourceURL is really not a URL but more of a
+        file name, which can sometimes be a URL. It's possible that we
+        don't need m_sourceURL at all but we should do that in a different
+        patch.
+
+        Additionally, jsc.cpp now uses WTF::URL for handling file
+        paths. This is cleaner than managing trying to do it ourselves and
+        should work across all the ports.
+
+        Lastly, the JSC CLI no longer accepts "bare-name"
+        specifiers. i.e. all specifiers must start with "/", "./", or
+        "../". This matches what we do in our Obj-C API and in
+        WebCore. While fixing tests I also noticed that the error message
+        was almost useless since it didn't tell you what the specifier or
+        referrer in question so that information is now part of the user
+        visible error.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::computeValidImportSpecifier):
+        (JSC::JSAPIGlobalObject::moduleLoaderImportModule):
+        * API/JSBase.cpp:
+        (JSEvaluateScript):
+        (JSCheckScriptSyntax):
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeFunction):
+        * API/JSScript.mm:
+        (-[JSScript sourceCode]):
+        * API/JSScriptRef.cpp:
+        * API/glib/JSCContext.cpp:
+        (jsc_context_check_syntax):
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::BuiltinExecutables):
+        * debugger/DebuggerLocation.cpp:
+        (JSC::DebuggerLocation::DebuggerLocation):
+        * debugger/DebuggerLocation.h:
+        (JSC::DebuggerLocation::DebuggerLocation):
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::sourceParsed):
+        * jsc.cpp:
+        (currentWorkingDirectory):
+        (absolutePath):
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderResolve):
+        (jscSource):
+        (fetchModuleFromLocalFileSystem):
+        (GlobalObject::moduleLoaderFetch):
+        (functionLoad):
+        (functionCallerSourceOrigin):
+        (functionDollarAgentStart):
+        (functionCheckModuleSyntax):
+        (runWithOptions):
+        (runInteractive):
+        (ModuleName::startsWithRoot const): Deleted.
+        (ModuleName::ModuleName): Deleted.
+        (extractDirectoryName): Deleted.
+        (resolvePath): Deleted.
+        * parser/Nodes.h:
+        (JSC::ScopeNode::source const):
+        (JSC::ScopeNode::sourceURL const): Deleted.
+        * parser/SourceCode.h:
+        (JSC::makeSource):
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::host const):
+        * parser/SourceProvider.cpp:
+        (JSC::SourceProvider::SourceProvider):
+        * parser/SourceProvider.h:
+        (JSC::SourceProvider::sourceURL const):
+        (JSC::StringSourceProvider::create):
+        (JSC::StringSourceProvider::StringSourceProvider):
+        (JSC::SourceProvider::url const): Deleted.
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedSourceOrigin::encode):
+        (JSC::CachedSourceOrigin::decode const):
+        (JSC::CachedSourceProviderShape::encode):
+        (JSC::CachedStringSourceProvider::decode const):
+        (JSC::CachedWebAssemblySourceProvider::decode const):
+        * runtime/Error.cpp:
+        (JSC::addErrorInfo):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/ScriptExecutable.h:
+        (JSC::ScriptExecutable::sourceURL const):
+        * runtime/SourceOrigin.h:
+        (JSC::SourceOrigin::SourceOrigin):
+        (JSC::SourceOrigin::url const):
+        (JSC::SourceOrigin::string const):
+        (JSC::SourceOrigin::isNull const):
+        * runtime/ThrowScope.cpp:
+        (JSC::ThrowScope::throwException):
+        * runtime/ThrowScope.h:
+        (JSC::ThrowScope::throwException):
+        (JSC::throwVMException):
+        * tools/FunctionOverrides.cpp:
+        (JSC::initializeOverrideInfo):
+        * tools/JSDollarVM.cpp:
+        (JSC::doPrint):
+        (JSC::functionCrash):
+
+2020-07-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] String.protoytpe.toLocaleLowerCase's availableLocales HashSet is inefficient
+        https://bugs.webkit.org/show_bug.cgi?id=213158
+
+        Reviewed by Darin Adler.
+
+        Currently, we are always creating the same HashSet every time String.protoytpe.toLocaleLowerCase is called.
+        We changed bestAvailableLocale to take predicate function. And we pass a predicate which returns true for
+        case-sensitive locales.
+
+        * runtime/IntlObject.cpp:
+        (JSC::bestAvailableLocale):
+        * runtime/IntlObject.h:
+        * runtime/IntlObjectInlines.h:
+        (JSC::bestAvailableLocale):
+        * runtime/StringPrototype.cpp:
+        (JSC::computeTwoCharacters16Code):
+        (JSC::toLocaleCase):
+
+2020-07-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] We should keep unaligned access feature in certain architectures in macro-assembler
+        https://bugs.webkit.org/show_bug.cgi?id=214243
+
+        Reviewed by Darin Adler.
+
+        We introduced the assertion in r263049, but this assertion crashes in testb3 Debug build.
+        testb3 actually tests unaligned access feature since ARM64 and x64 allow it. And unaligned access is useful
+        for Yarr etc., so we want to keep unaligned access feature if architecture allows it. We should make this
+        assertion effective only if CPU(NEEDS_ALIGNED_ACCESS) is true.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::loadPtr):
+
+2020-07-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Avoid JSString creation in Intl.Locale#{minimize,maximize}
+        https://bugs.webkit.org/show_bug.cgi?id=214231
+
+        Reviewed by Darin Adler.
+
+        Add initializeLocale function taking String to avoid unnecessary JSString creation
+        in Intl.Locale#{maximize,minimize}.
+
+        * runtime/IntlLocale.cpp:
+        (JSC::IntlLocale::initializeLocale):
+        * runtime/IntlLocale.h:
+        * runtime/IntlLocalePrototype.cpp:
+        (JSC::IntlLocalePrototypeFuncMaximize):
+        (JSC::IntlLocalePrototypeFuncMinimize):
+
 2020-07-11  Yusuke Suzuki  <ysuzuki@apple.com>
 
         Intl.Locale maximize, minimize should return Intl.Locale instead of String

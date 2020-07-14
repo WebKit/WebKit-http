@@ -1163,6 +1163,7 @@ media/track/track-in-band-cues-added-once.html [ Skip ] # Timeout
 
 # Currently enabled on Mac only
 media/media-usage-state.html [ Skip ]
+media/media-usage-state-private-browsing.html [ Skip ]
 media/now-playing-status-without-media.html [ Skip ]
 
 ################################################################################
@@ -4516,9 +4517,6 @@ webkit.org/b/211860 fast/text/multiple-codeunit-vertical-upright.html [ Pass Ima
 webkit.org/b/211860 fast/text/multiple-codeunit-vertical-upright-2.html [ Pass ImageOnlyFailure ]
 webkit.org/b/212172 fast/text/font-collection.html [ ImageOnlyFailure ]
 webkit.org/b/212172 fast/text/font-collection-2.html [ ImageOnlyFailure ]
-
-fast/layoutformattingcontext/table-min-max-flex-distribution-simple.html [ ImageOnlyFailure ]
-fast/layoutformattingcontext/table-with-margin-content-simple.html [ ImageOnlyFailure ]
 
 webanimations/accelerated-animation-single-keyframe.html [ Skip ]
 

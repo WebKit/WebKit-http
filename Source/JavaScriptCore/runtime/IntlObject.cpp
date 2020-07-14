@@ -40,6 +40,7 @@
 #include "IntlLocalePrototype.h"
 #include "IntlNumberFormatConstructor.h"
 #include "IntlNumberFormatPrototype.h"
+#include "IntlObjectInlines.h"
 #include "IntlPluralRulesConstructor.h"
 #include "IntlPluralRulesPrototype.h"
 #include "IntlRelativeTimeFormatConstructor.h"
@@ -476,25 +477,9 @@ Vector<String> canonicalizeLocaleList(JSGlobalObject* globalObject, JSValue loca
 
 String bestAvailableLocale(const HashSet<String>& availableLocales, const String& locale)
 {
-    // BestAvailableLocale (availableLocales, locale)
-    // https://tc39.github.io/ecma402/#sec-bestavailablelocale
-
-    String candidate = locale;
-    while (!candidate.isEmpty()) {
-        if (availableLocales.contains(candidate))
-            return candidate;
-
-        size_t pos = candidate.reverseFind('-');
-        if (pos == notFound)
-            return String();
-
-        if (pos >= 2 && candidate[pos - 2] == '-')
-            pos -= 2;
-
-        candidate = candidate.substring(0, pos);
-    }
-
-    return String();
+    return bestAvailableLocale(locale, [&](const String& candidate) {
+        return availableLocales.contains(candidate);
+    });
 }
 
 String defaultLocale(JSGlobalObject* globalObject)

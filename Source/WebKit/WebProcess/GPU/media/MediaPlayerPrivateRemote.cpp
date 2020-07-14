@@ -144,7 +144,7 @@ void MediaPlayerPrivateRemote::MediaPlayerPrivateRemote::load(const URL& url, co
         auto fileSystemPath = url.fileSystemPath();
 
         auto createExtension = [&] {
-#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
+#if HAVE(AUDIT_TOKEN)
             if (auto auditToken = m_manager.gpuProcessConnection().auditToken())
                 return SandboxExtension::createHandleForReadByAuditToken(fileSystemPath, auditToken.value(), handle);
 #endif

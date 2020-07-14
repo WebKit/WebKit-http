@@ -2,8 +2,16 @@
 PASS .grid 1 
 PASS .grid 2 
 PASS .grid 3 
-PASS .grid 4 
-PASS .grid 5 
+FAIL .grid 4 assert_equals: 
+<div class="grid gridMaxMinAutoRepeat">
+    <div class="item" style="grid-column: 1 / -1" data-offset-x="0" data-offset-y="0" data-expected-width="180" data-expected-height="25"></div>
+</div>
+width expected 180 but got 450
+FAIL .grid 5 assert_equals: 
+<div class="grid gridMaxMinPercentAutoRepeat">
+    <div class="item" style="grid-column: 1 / -1" data-offset-x="0" data-offset-y="0" data-expected-width="180" data-expected-height="25"></div>
+</div>
+width expected 180 but got 450
 PASS .grid 6 
 PASS .grid 7 
 PASS .grid 8 
@@ -30,6 +38,10 @@ PASS .grid 28
 PASS .grid 29 
 PASS .grid 30 
 PASS .grid 31 
+PASS .grid 32 
+PASS .grid 33 
+PASS .grid 34 
+PASS .grid 35 
 This test checks that repeat(auto-fit, ) syntax works as expected.
 
 

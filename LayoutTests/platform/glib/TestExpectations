@@ -126,6 +126,12 @@ webkit.org/b/212300 fast/text/font-collection-2.html [ ImageOnlyFailure ]
 
 webkit.org/b/213114 fast/flexbox/line-clamp-with-anchor-content-only.html [ ImageOnlyFailure ]
 
+# fast/gradients are Skip in the top level Expectation. When fixing, change this to
+# Pass instead of removing this line.
+webkit.org/b/214259 fast/gradients/conic-gradient-alpha.html [ ImageOnlyFailure ]
+
+webkit.org/b/214260 css3/color/composited-solid-backgrounds.html [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of CSS-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -328,6 +334,17 @@ webkit.org/b/213921 fast/visual-viewport/scroll-event-fired-during-scroll-alone.
 
 
 #////////////////////////////////////////////////////////////////////////////////////////
+# SOUP-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/214293 http/tests/websocket/tests/hybi/closed-port-delay.html [ Failure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of SOUP-related bugs
+#////////////////////////////////////////////////////////////////////////////////////////
+
+
+#////////////////////////////////////////////////////////////////////////////////////////
 # SVG-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
 
@@ -484,6 +501,46 @@ webkit.org/b/178583 imported/w3c/web-platform-tests/html/interaction/focus/proce
 
 webkit.org/b/214125 imported/w3c/web-platform-tests/html/rendering/widgets/select-wrap-no-spill.optional.html [ Failure ]
 webkit.org/b/214173 imported/w3c/web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-aspect-ratio-lazy.tentative.html [ Failure Pass ]
+
+# Passes for GTK/WPE (but not for Mac/iOS) after WPT update of css-writing-modes tests
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-004.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-006.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-008.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-009.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-013.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-015.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-016.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-018.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/available-size-019.html [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/baseline-with-orthogonal-flow-001.html  [ Pass ]
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/inline-box-border-vlr-001.html [ Pass ]
+
+# Overrides over general expectations that are shared between GTK and WPE after updating css-text WPT tests
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/hyphens/hyphens-none-011.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/hyphens/hyphens-none-012.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/hyphens/hyphens-none-013.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-overrides-uax-behavior-008.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-overrides-uax-behavior-009.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-overrides-uax-behavior-010.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-loose-hyphens-002.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-breaking/line-breaking-replaced-002.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/shaping/shaping-023.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/shaping/shaping-024.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/shaping/shaping-025.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/text-encoding/shaping-no-join-001.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/text-encoding/shaping-no-join-002.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/text-encoding/shaping-no-join-003.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-align-start.tentative.html [ Pass ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-overrides-uax-behavior-013.html [ ImageOnlyFailure ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-overrides-uax-behavior-014.html [ ImageOnlyFailure ]
+webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-cluster-001.html [ ImageOnlyFailure ]
+
+webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-028.html [ ImageOnlyFailure ]
+webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-with-padding-001.html [ ImageOnlyFailure ]
+
+webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-synthesis-05.html [ Pass ]
+webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-variant-position-01.html [ Pass ]
+webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/variations/font-slant-2a.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of WPT-related bugs
@@ -670,12 +727,6 @@ webkit.org/b/172056 fast/text/multiglyph-characters.html [ Pass ]
 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ DumpJSConsoleLogInStdErr ]
 
 imported/w3c/web-platform-tests/css/css-text/hyphens/hyphens-auto-001.html [ Pass ]
-
-# These css-writing-modes tests have been passing consistently since r263855
-imported/w3c/web-platform-tests/css/css-writing-modes/border-conflict-element-vlr-003.xht [ Pass ]
-imported/w3c/web-platform-tests/css/css-writing-modes/border-conflict-element-vlr-005.xht [ Pass ]
-imported/w3c/web-platform-tests/css/css-writing-modes/border-conflict-element-vrl-002.xht [ Pass ]
-imported/w3c/web-platform-tests/css/css-writing-modes/border-conflict-element-vrl-004.xht [ Pass ]
 
 # Should be DumpJSConsoleLogInStdErr, but WPE keeps reporting error despite the difference is a console Log message.
 imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-serializable.html [ Failure Pass ]

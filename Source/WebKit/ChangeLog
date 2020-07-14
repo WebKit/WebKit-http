@@ -1,3 +1,369 @@
+2020-07-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Flashes of incorrect scroll position when zooming on quip
+        https://bugs.webkit.org/show_bug.cgi?id=214273
+        <rdar://problem/59385421>
+
+        Reviewed by Tim Horton.
+        
+        Quip uses a non-scrollable "body { overflow:hidden }")" page, but aggressively scrolls to 0,0 if it
+        gets a scroll event and top/left are non-zero. Panning is necessarily allowed on overflow:hidden pages,
+        so to avoid programmatic scrolls yanking the content to 0,0 during interaction, ignore them if
+        the page is non-scrollable yet zoomed.
+        
+        When refusing such a scroll, we have to inform the web process to avoid mismatched ui/web process state,
+        and work around the fact that WebPageProxy::updateVisibleContentRects() would bail if the update
+        appeared to be the same as the last one.
+
+        Test: fast/scrolling/ios/programmatic-scroll-while-zoomed.html
+
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/ios/WKWebViewIOS.h:
+        * UIProcess/API/ios/WKWebViewIOS.mm:
+        (-[WKWebView _updateScrollViewForTransaction:]):
+        (-[WKWebView _scrollToContentScrollPosition:scrollOrigin:]):
+        (-[WKWebView _scheduleForcedVisibleContentRectUpdate]):
+        (-[WKWebView _updateVisibleContentRects]):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::hasScrollableMainFrame const):
+        (WebKit::RemoteScrollingCoordinatorProxy::hasScrollableOrZoomedMainFrame const):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:contentInsets:unobscuredRectInScrollViewCoordinates:obscuredInsets:unobscuredSafeAreaInsets:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:sendEvenIfUnchanged:]):
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:contentInsets:unobscuredRectInScrollViewCoordinates:obscuredInsets:unobscuredSafeAreaInsets:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::updateVisibleContentRects):
+
+2020-07-14  Kate Cheney  <katherine_cheney@apple.com>
+
+        [ macOS iOS ] http/tests/resourceLoadStatistics/telemetry-generation-basic-functionality-database.html is a rare flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212165
+        <rdar://problem/63462045>
+
+        Reviewed by Brent Fulgham.
+
+        Test was flaking because of multiple async calls to submit telemetry,
+        which happen when a new ITP store is created and again when the test
+        makes an SPI call. If the first telemetry call is reported after the test
+        sets notifyPagesWhenTelemetryWasCaptured but before the SPI call to capture
+        telemetry is submitted, the test will receive the wrong data.
+        To fix this, we should simplify by removing the separate function to
+        tell ITP to report telemetry, and instead always report when the testing
+        SPI call is made. 
+
+        No new tests, will fix flaky tests.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.cpp:
+        (WebKit::ResourceLoadStatisticsDatabaseStore::calculateAndSubmitTelemetry const):
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.h:
+        * NetworkProcess/Classifier/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::calculateAndSubmitTelemetry const):
+        * NetworkProcess/Classifier/ResourceLoadStatisticsMemoryStore.h:
+        * NetworkProcess/Classifier/ResourceLoadStatisticsStore.h:
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::submitTelemetry):
+        Pass in new enum value to indicate when the telemetry call is coming
+        from the testing SPI.
+
+        (WebKit::WebResourceLoadStatisticsStore::setNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.h:
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+        (WebKit::WebResourceLoadStatisticsTelemetry::submitTelemetry):
+        (WebKit::WebResourceLoadStatisticsTelemetry::setNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsTelemetry.h:
+        Remove static bool variable notifyPagesWhenTelemetryWasCaptured and
+        rely on the submitTelemetry function call to let us know when to report telemetry.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::setNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreSetStatisticsNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::setNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::setNotifyPagesWhenTelemetryWasCaptured): Deleted.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        Remove setNotifyPagesWhenTelemetryWasCaptured function.
+
+2020-07-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Sometimes unable to type Japanese on docs.google.com
+        https://bugs.webkit.org/show_bug.cgi?id=214272
+        <rdar://problem/59449972>
+
+        Reviewed by Wenson Hsieh.
+
+        Tell the web process to restore the selection of the focused element when re-focusing it
+        on page activation.
+
+        When resigning first responder the text interaction assistant is deactivated and calls
+        back into WKContentView's -clearSelection, which clears the focused element and tells
+        the web process to clear the selection. Keep in mind that the focused element in the web
+        process is not changed. When the WKContentView subsequently becomes first responder the
+        web process messages the UI process to tell it to start assistance (aka focus) for focused
+        element. However the selection is not restored and thus the editor state the UI process
+        has, and is even sent up until there is a selection change, mismatches with the focused
+        element information it also has. To match Mac, key events are only passed to the input
+        manager if an editable element is focused (see <https://bugs.webkit.org/show_bug.cgi?id=199122>).
+        So, key events are not passed to the input manager when in this state. To prevent this,
+        restore the selection of the focused element when the element is re-focused because the
+        page became active again.
+
+        Selection restoration is driven by the UI process (not the web process) because element re-
+        focusing may be denied by the embedding client. In this case, selection should not be restored
+        because UI assistance was not started. For the same reason, I do not restore it in -becomeFirstResponderForWebView.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cleanUpInteraction]):
+        (-[WKContentView _didCommitLoadForMainFrame]):
+        Clear out the flag. See below for more details.
+
+        (-[WKContentView handleKeyWebEvent:withCompletionHandler:]): Pass the key to the input manager
+        if the _treatAsContentEditableUntilNextEditorStateUpdate is YES.
+        (-[WKContentView _elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:]):
+        If this request is a result of the page activating (aka focus activity change) into an editable field
+        (i.e. mayContainSelectableText() resturns YES) and assistance is not being suppressed then tell the web
+        process to restore the selection. As part of this I tell the text interaction assistant to activate even
+        though -becomeFirstResponderForWebView was called beforehand because -becomeFirstResponderForWebView only
+        activates it if there is a non-empty selection. (Note the page having an empty selection could have been
+        a result of -clearSelection having been called though the page could have done it programmatically as well).
+        I also set a new flag to YES and schedule a full editor state update to ensure this flag is cleared.
+        The flag is so that key events that come in between now and the next editor state update are passed to the
+        input manager.
+        (-[WKContentView _didUpdateEditorState]): Clear out the flag. See above for more details.
+
+2020-07-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed non-unified build fixes
+
+        * NetworkProcess/NetworkSocketStream.cpp:
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreGetAllStorageAccessEntries):
+        * UIProcess/WebContextMenuProxy.cpp:
+        * UIProcess/WebOpenPanelResultListenerProxy.h:
+
+2020-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Add more logging for navigation policy decisions on UIProcess side
+        https://bugs.webkit.org/show_bug.cgi?id=214277
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedNavigationPolicyDecision):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+
+2020-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove live ranges from Document.h, AlternativeTextController.h, DictionaryLookup.h, and WebPage.h
+        https://bugs.webkit.org/show_bug.cgi?id=214109
+
+        Unreviewed Catalyst build fix.
+
+        * WebProcess/WebPage/Cocoa/WebPageCocoa.mm:
+        (WebKit::WebPage::dictionaryPopupInfoForRange):
+
+2020-07-13  Kate Cheney  <katherine_cheney@apple.com>
+
+        Followup to bug 213143: Add artificial delay to WebSocket connections to mitigate port scanning attacks
+        https://bugs.webkit.org/show_bug.cgi?id=213143
+
+        Reviewed by Darin Adler.
+
+        Convert min and max millisecond values from double/int to Seconds.
+
+        No new tests, behavior should not change.
+
+        * NetworkProcess/NetworkSocketStream.cpp:
+        (WebKit::randomDelay):
+
+2020-07-13  Eric Carlson  <eric.carlson@apple.com>
+
+        Impossible to pause playback of MediaStream video track
+        https://bugs.webkit.org/show_bug.cgi?id=214262
+        <rdar://problem/65483729>
+
+        Reviewed by Jer Noble.
+
+        * GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.cpp:
+        (WebKit::RemoteSampleBufferDisplayLayer::play):
+        (WebKit::RemoteSampleBufferDisplayLayer::pause):
+        * GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.h:
+        * GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.messages.in:
+        * WebProcess/GPU/webrtc/SampleBufferDisplayLayer.cpp:
+        (WebKit::SampleBufferDisplayLayer::play):
+        (WebKit::SampleBufferDisplayLayer::pause):
+        * WebProcess/GPU/webrtc/SampleBufferDisplayLayer.h:
+
+2020-07-13  Sam Weinig  <weinig@apple.com>
+
+        Replace single argument makeSimpleColor uses with their implementation
+        https://bugs.webkit.org/show_bug.cgi?id=214240
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/wpe/WebKitColor.cpp:
+        (webkitColorToWebCoreColor):
+        Replace makeSimpleColor with convertToComponentBytes.
+
+2020-07-13  Per Arne Vollan  <pvollan@apple.com>
+
+        Crash under WebKit::LaunchServicesDatabaseManager::didConnect()
+        https://bugs.webkit.org/show_bug.cgi?id=214263
+
+        Reviewed by Darin Adler.
+
+        There is a crash under WebKit::LaunchServicesDatabaseManager::didConnect() when trying to send a message to an invalid connection.
+
+        No new tests, since I have not been able to reproduce.
+
+        * WebProcess/cocoa/LaunchServicesDatabaseManager.mm:
+        (WebKit::LaunchServicesDatabaseManager::didConnect):
+
+2020-07-13  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r262538): Nullptr Deref in WTF::Detail::CallableWrapper<WebKit::WebResourceLoadStatisticsStore::performDailyTasks()::$_66, void>::call
+        https://bugs.webkit.org/show_bug.cgi?id=214264
+        <rdar://problem/65093949>
+
+        Reviewed by Darin Adler.
+
+        A new type check was added outside of the protecting nullptr check. This introduced
+        a new nullptr dereference bug.
+
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+
+2020-07-13  Kate Cheney  <katherine_cheney@apple.com>
+
+        Add artificial delay to WebSocket connections to mitigate port scanning attacks
+        https://bugs.webkit.org/show_bug.cgi?id=213143
+        <rdar://problem/64308927>
+
+        Reviewed by Alex Christensen.
+
+        When establishing web socket connections, closed ports typically
+        return an error more quickly than open ports due to the additional
+        time it takes open ports to perform a TLS handshake. This patch
+        adds a delay to the closed-port case to prevent distinguishing these
+        cases.
+
+        Test: http/tests/websocket/tests/hybi/closed-port-delay.html
+
+        * NetworkProcess/NetworkSocketStream.cpp:
+        (WebKit::NetworkSocketStream::NetworkSocketStream):
+        (WebKit::randomDelay):
+        Add a random delay between 10 and 100ms before sending IPC.
+
+        (WebKit::NetworkSocketStream::sendDelayedFailMessage):
+        (WebKit::NetworkSocketStream::didFailSocketStream):
+        Only delay for the proper error code indicating the connection
+        was refused for a closed port.
+
+        * NetworkProcess/NetworkSocketStream.h:
+
+2020-07-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] WTR and API-tests timing out after r264283
+        https://bugs.webkit.org/show_bug.cgi?id=214244
+
+        Reviewed by Carlos Garcia Campos.
+
+        r264283 broke local file loads at least for GTK and WPE ports due to
+        additionally-introduced ENABLE(SANDBOX_EXTENSIONS) build guards.
+
+        This patch reverts to using the sandboxing code without these guards,
+        relying instead on no-op SandboxExtension implementations for ports not
+        yet providing the system-specific sandboxing functionality. Uses of the
+        audit token functionality (only available on Cocoa platforms) gain
+        HAVE(AUDIT_TOKEN) guards. Overall the changes keep the r264283-enabled
+        code running where viable while unbreaking local file loading for other
+        ports.
+
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::encode const):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::maybeInitializeSandboxExtensionHandle):
+        * WebProcess/GPU/media/MediaPlayerPrivateRemote.cpp:
+        (WebKit::MediaPlayerPrivateRemote::MediaPlayerPrivateRemote::load):
+
+2020-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS]: A HEIF image, selected from the OpenPanel, should be converted to an accepted MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=213347
+        <rdar://problem/57258464>
+
+        Reviewed by Darin Adler.
+
+        Transcode the images given the list of the selected file and the allowed
+        MIME types. Only selected files whose MIME types do not exist in the allowed
+        MIME types will be transcoded. Right now, this only will apply to the HEIF
+        images on macOS.
+
+        * Platform/ImageUtilities.h: Renamed from Source/WebKit/Platform/cg/CGUtilities.h.
+        * Platform/Logging.h:
+        * Platform/cg/CGUtilities.cpp: Removed.
+        * Platform/cg/ImageUtilitiesCG.cpp: Added.
+        (WebKit::transcodeImage):
+        (WebKit::findImagesForTranscoding):
+        (WebKit::transcodeImages):
+        Implement a function that transcodes images among a set of files given
+        the allowedMIMETypes. The destination MIME type of these images is the
+        first MIME type in the allowedMIMETypes which CG supports encoding to.
+
+        * Shared/cg/ShareableBitmapCG.cpp:
+        (WebKit::ShareableBitmap::paint):
+        Call drawNativeImage() after renaming paintImage() to drawNativeImage().
+
+        * SourcesCocoa.txt:
+
+        * UIProcess/API/C/WKOpenPanelParametersRef.cpp:
+        (WKOpenPanelParametersCopyAllowedMIMETypes):
+        * UIProcess/API/C/WKOpenPanelParametersRef.h:
+        * UIProcess/API/C/WKOpenPanelResultListener.cpp:
+        (WKOpenPanelResultListenerChooseFiles):
+        * UIProcess/API/C/WKOpenPanelResultListener.h:
+        Transfer the list of the allowed MIME types from the OpenPanel to the
+        file chooser listener.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::m_transcodingQueue):
+        (WebKit::WebPageProxy::didChooseFilesForOpenPanelWithImageTranscoding):
+        Transcode the images in a work queue so the UI process is not blocked. 
+        Once the transcoding finishes, the message will be sent to the WebPage.
+
+        (WebKit::WebPageProxy::didChooseFilesForOpenPanel):
+        * UIProcess/WebPageProxy.h:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2020-07-12  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r261152): 9 blocks of critical sandboxing code disabled because they are guarded with HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
+        https://bugs.webkit.org/show_bug.cgi?id=214233
+
+        Reviewed by Per Arne Vollan.
+
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::encode const): Remove #if HAVE.
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::createSandboxExtensionsIfNeeded): Ditto.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::maybeInitializeSandboxExtensionHandle): Ditto.
+        (WebKit::WebPageProxy::loadRequestWithNavigationShared): Ditto.
+        (WebKit::WebPageProxy::loadFile): Ditto.
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::shouldSendPendingMessage): Ditto.
+        * WebProcess/GPU/media/MediaPlayerPrivateRemote.cpp:
+        (WebKit::MediaPlayerPrivateRemote::MediaPlayerPrivateRemote::load): Ditto.
+
 2020-07-11  Darin Adler  <darin@apple.com>
 
         Remove live ranges from AccessibilityObject.h, AccessibilityObjectInterface.h, AccessibilityRenderObject.h, AXIsolatedObject.h

@@ -1,3 +1,478 @@
+2020-07-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Flashes of incorrect scroll position when zooming on quip
+        https://bugs.webkit.org/show_bug.cgi?id=214273
+        <rdar://problem/59385421>
+
+        Reviewed by Tim Horton.
+
+        * fast/scrolling/ios/autoscroll-input-when-very-zoomed-expected.txt: Typo fixes.
+        * fast/scrolling/ios/autoscroll-input-when-very-zoomed.html: Typo fixes.
+        * fast/scrolling/ios/programmatic-scroll-while-zoomed-expected.txt: Added.
+        * fast/scrolling/ios/programmatic-scroll-while-zoomed.html: Added.
+
+2020-07-14  Jer Noble  <jer.noble@apple.com>
+
+        Add support for parsing VP-style codec strings.
+        https://bugs.webkit.org/show_bug.cgi?id=214270
+
+        Reviewed by Eric Carlson.
+
+        * media/vp-codec-parameters-expected.txt: Added.
+        * media/vp-codec-parameters.html: Added.
+
+2020-07-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        When invalidating the clients of an SVG resource we should not go beyond the RenderSVGRoot
+        https://bugs.webkit.org/show_bug.cgi?id=211804
+        <rdar://problem/60308199>
+
+        Reviewed by Zalan Bujtas.
+
+        * svg/in-html/inline-svg-resource-dynamic-update-expected.txt: Added.
+        * svg/in-html/inline-svg-resource-dynamic-update.html: Added.
+
+2020-07-14  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ WK1 Mac ] http/tests/xmlhttprequest/access-control-basic-allow-preflight-cache.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214308
+
+        Unreviewed Test Gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-07-14  Kate Cheney  <katherine_cheney@apple.com>
+
+        [ macOS iOS ] http/tests/resourceLoadStatistics/telemetry-generation-basic-functionality-database.html is a rare flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212165
+        <rdar://problem/63462045>
+
+        Reviewed by Brent Fulgham.
+
+        Remove unnecessary call to
+        testRunner.setStatisticsNotifyPagesWhenTelemetryWasCaptured now that
+        telemetry reports from the testing SPI will always notify the test
+        runner. Updated expectations now that test is not expected to flake.
+
+        * http/tests/resourceLoadStatistics/telemetry-generation-advanced-functionality-database.html:
+        * http/tests/resourceLoadStatistics/telemetry-generation-basic-functionality-database.html:
+        * http/tests/resourceLoadStatistics/telemetry-generation.html:
+        * platform/mac/TestExpectations:
+
+2020-07-14  Eric Carlson  <eric.carlson@apple.com>
+
+        [macOS] Do not update ScreenTime when in private browsing mode
+        https://bugs.webkit.org/show_bug.cgi?id=214288
+        <rdar://problem/63735067>
+
+        Reviewed by Jer Noble.
+
+        * media/media-usage-state-private-browsing-expected.txt: Added.
+        * media/media-usage-state-private-browsing.html: Added.
+        * platform/gtk/TestExpectations: Skip new test.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wpe/TestExpectations: Ditto.
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Gardening after r264345
+
+        Unreviewed gardening.
+
+        Add GTK baselines for new tests added.
+
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-implicit-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-negative-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-without-codecs-parameter-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-getvideoplaybackquality-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-is-type-supported-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode-expected.txt: Added.
+
+2020-07-14  Zalan Bujtas  <zalan@apple.com>
+
+        Use "font-family: Ahem" to improve coverage.
+
+        Unreviewed.
+
+        * fast/layoutformattingcontext/table-min-max-flex-distribution-simple-expected.html:
+        * fast/layoutformattingcontext/table-min-max-flex-distribution-simple.html:
+        * fast/layoutformattingcontext/table-with-margin-content-simple-expected.html:
+        * fast/layoutformattingcontext/table-with-margin-content-simple.html:
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/media-source from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214164
+
+        Reviewed by Geoff Garen.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2020-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/pointerevents from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214283
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac/TestExpectations:
+        * tests-options.json:
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-fonts and css-font-loading
+        https://bugs.webkit.org/show_bug.cgi?id=214285
+
+        Reviewed by Chris Dumez.
+
+        Update expectations for new failures and new passes.
+
+        * TestExpectations:
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-002-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-002-expected.txt: Added.
+        * platform/wpe/TestExpectations:
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-ui
+        https://bugs.webkit.org/show_bug.cgi?id=214280
+
+        Reviewed by Chris Dumez.
+
+        Update expectations for new failures and new passes.
+
+        * TestExpectations:
+        * platform/glib/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-ui/appearance-cssom-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-ui/appearance-cssom-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-ui/parsing/outline-width-computed-expected.txt: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-ui/appearance-cssom-001-expected.txt: Added.
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        WPT test css/css-grid/grid-definition/grid-auto-fit-columns-001.html broken after r264335
+        https://bugs.webkit.org/show_bug.cgi?id=214301
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Remove platform-specific expectations not longer needed.
+
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Removed.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Removed.
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-text
+        https://bugs.webkit.org/show_bug.cgi?id=214275
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Update expectations for new failures and new passes.
+
+        * TestExpectations:
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-keep-all-001-expected.txt: Added.
+        * platform/glib/imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-position-001-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-before-br-001-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-before-br-001-expected.txt.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-before-br-001-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/white-space/trailing-space-before-br-001-expected.txt.
+
+2020-07-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-writing-modes
+        https://bugs.webkit.org/show_bug.cgi?id=214278
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Update expectations for new failures and new passes.
+
+        * TestExpectations:
+        * platform/glib/TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-writing-modes/wm-propagation-svg-root-scrollbar-expected.txt: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-grid and css-flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=214284
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Update expectations for new failures and new passes.
+
+        * TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/align-self-006-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/align-self-010-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-001-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-001-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-002-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-001-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-002-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-001-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-002-visual-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flex-shrink-large-value-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/flexbox-order-from-lowest-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-with-updating-text-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_center-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-end-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-start-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-around-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-between-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-margins-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-rounding-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-002-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/order-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-flexbox/position-relative-with-scrollable-with-abspos-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/align-self-006-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/align-self-010-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-001-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-001-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-002-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-001-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-002-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-001-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-002-visual-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flex-shrink-large-value-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/flexbox-order-from-lowest-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-with-updating-text-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_center-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-end-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-start-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-around-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-between-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-margins-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-rounding-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-002-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/order-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/orthogonal-flex-item-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/position-absolute-013-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/position-relative-with-scrollable-with-abspos-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-flexbox/remove-out-of-flow-child-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/align-self-006-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/align-self-010-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-001-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-001-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-column-reverse-002-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-001-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-002-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-001-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-direction-row-reverse-002-visual-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flex-shrink-large-value-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/flexbox-order-from-lowest-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/inline-flex-editing-with-updating-text-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_center-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-end-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_flex-start-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-around-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/justify-content_space-between-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-margins-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/negative-flex-rounding-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-002-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/negative-item-margins-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/order-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-flexbox/position-relative-with-scrollable-with-abspos-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/grid-definition/grid-auto-fit-columns-001-expected.txt: Added.
+
+2020-07-13  Lauro Moura  <lmoura@igalia.com>
+
+        [SOUP] Garden failure on delay after connect to closed port.
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+
+2020-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeNeedsLayoutChecker] imported/w3c/web-platform-tests/html/rendering/replaced-elements/embedded-content/video-controls-vertical-writing-mode.html asserts
+        https://bugs.webkit.org/show_bug.cgi?id=214281
+        <rdar://problem/56740133>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+
+2020-07-13  Truitt Savell  <tsavell@apple.com>
+
+        (r264202) [ Mac WK2 ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-connectionState.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=214286
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-13  Andres Gonzalez  <andresg_22@apple.com>
+
+        REGRESSION: (r257915?) [ Mac ] accessibility/accessibility-node-memory-management.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208930
+        <rdar://problem/60173203>
+
+        Reviewed by Chris Fleizach.
+
+        Using setTimeout and waitFor/Promises to make this test work in both
+        isolated tree mode on and off.
+
+        * accessibility/accessibility-node-memory-management-expected.txt:
+        * accessibility/accessibility-node-memory-management.html:
+        * platform/mac/TestExpectations:
+
+2020-07-13  Lauro Moura  <lmoura@igalia.com>
+
+        Unreviewed. Update baseline after r264304 with new message.
+
+        * inspector/controller/runtime-controller-import-expected.txt:
+
+2020-07-13  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Remove child expectations last commit.
+
+        They were overrinding the glib one. Also added a note to remember to
+        set the expectation to Pass instead of removing the line as the
+        testcase is Skipped in the root expectation file.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-13  Kate Cheney  <katherine_cheney@apple.com>
+
+        Add artificial delay to WebSocket connections to mitigate port scanning attacks
+        https://bugs.webkit.org/show_bug.cgi?id=213143
+        <rdar://problem/64308927>
+
+        Reviewed by Alex Christensen.
+
+        Added layout test coverage, making sure closed ports always experience
+        a delay of at least 10ms.
+
+        * TestExpectations:
+        The added delay code is only present in WebKit, not WebKitLegacy.
+        Additionally, web sockets behave differently on Windows, so this test
+        should be skipped on all platforms and only enabled for mac and ios wk2.
+
+        * http/tests/websocket/connection-refusal-in-frame-resource-load-statistics-expected.txt:
+        With the added delay, this test will only receive one console message.
+        To confirm there will be no flakiness, I ran this test for 500
+        iterations and ensured they passed.
+        * http/tests/websocket/tests/hybi/closed-port-delay-expected.txt: 
+        * http/tests/websocket/tests/hybi/closed-port-delay.html: Added.
+        * platform/wk2/TestExpectations:
+
+2020-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Clean up SourceProvider and add caller relative load script to jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=214205
+
+        Reviewed by Yusuke Suzuki.
+
+        js-test-pre needs to strip the parts of file urls between file:///
+        and LayoutTests because that is dependent on the system running
+        the tests. Tests using these harnesses may not be using a server
+        to host the test files.
+
+        Rebaseline module loader error messages against the new string.
+
+        * http/tests/resources/js-test-pre.js:
+        (escapeHTMLAndStripFileURLs):
+        (testFailed):
+        (escapeHTML): Deleted.
+        (testPassed): Deleted.
+        * js/dom/modules/import-incorrect-relative-specifier-expected.txt:
+        * js/dom/modules/module-incorrect-relative-specifier-expected.txt:
+        * resources/js-test-pre.js:
+        (escapeHTMLAndStripFileURLs):
+        (testFailed):
+        (escapeHTML): Deleted.
+        (testPassed): Deleted.
+
+2020-07-13  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden two color/gradient failures.
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+
+2020-07-13  Karl Rackler  <rackler@apple.com>
+
+        [ iOS WK2 Release ] fast/scrolling/ios/non-invertible-transformed-scroller-ancestor.html is flaky failing. 
+        https://bugs.webkit.org/show_bug.cgi?id=214133
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Unreviewed test gardening
+
+        Windows WebKit1 doesn't check lines with "EDITING DELEGATE:" (Bug 64471).
+        Rebasedlined with WinCairo WebKit2's results.
+
+        * platform/wincairo/editing/execCommand/findString-2-expected.txt:
+        * platform/wincairo/editing/selection/6476-expected.txt:
+        * platform/wincairo/editing/selection/click-start-of-line-expected.txt:
+        * platform/wincairo/editing/selection/contenteditable-click-inside-expected.txt:
+        * platform/wincairo/editing/selection/doubleclick-crash-expected.txt:
+        * platform/wincairo/editing/selection/editable-html-element-expected.txt:
+        * platform/wincairo/editing/selection/editable-links-expected.txt:
+        * platform/wincairo/editing/selection/expanding-selections-expected.txt:
+        * platform/wincairo/editing/selection/expanding-selections2-expected.txt:
+        * platform/wincairo/editing/selection/fake-doubleclick-expected.txt:
+        * platform/wincairo/editing/selection/focus-body-expected.txt:
+        * platform/wincairo/editing/selection/focus_editable_html-expected.txt:
+        * platform/wincairo/editing/selection/mixed-editability-1-expected.txt:
+        * platform/wincairo/editing/selection/paragraph-granularity-expected.txt:
+        * platform/wincairo/editing/selection/select-all-006-expected.txt:
+        * platform/wincairo/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/wincairo/editing/selection/selection-actions-expected.txt:
+        * platform/wincairo/editing/selection/triple-click-in-pre-expected.txt:
+        * platform/wincairo/editing/selection/word-granularity-expected.txt:
+        * platform/wincairo/editing/style/apple-style-editable-mix-expected.txt:
+
+2020-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [macOS]: A HEIF image, selected from the OpenPanel, should be converted to an accepted MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=213347
+        <rdar://problem/57258464>
+
+        Reviewed by Darin Adler.
+
+        Ensure the HEIF image is converted to an accepted MIME type when it is 
+        selected from the OpenPanel and the 'accept' attribute of the <input>
+        does allow the HEIF MIME type.
+
+        No need to test this functionality on WK1 since the image transcoding 
+        should happen in the UI process.
+
+        * TestExpectations:
+        * fast/forms/file/entries-api/image-no-transcode-open-panel-expected.txt: Added.
+        * fast/forms/file/entries-api/image-no-transcode-open-panel.html: Added.
+        * fast/forms/file/entries-api/image-transcode-open-panel-expected.txt: Added.
+        * fast/forms/file/entries-api/image-transcode-open-panel.html: Added.
+        * fast/forms/file/entries-api/resources/images/green-400x400.heic: Added.
+        * platform/mac-wk2/TestExpectations:
+
 2020-07-12  Zalan Bujtas  <zalan@apple.com>
 
         [LFC][BFC][Min-Max width] Regular block level box resets the horizontal stacking

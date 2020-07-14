@@ -10655,7 +10655,7 @@ private:
                 
                 m_out.appendTo(isNotInt, isDouble);
                 m_out.branch(
-                    isCellOrMisc(boxedValue, provenType(m_node->child1())),
+                    isCellOrMiscOrBigInt32(boxedValue, provenType(m_node->child1())),
                     usually(lowBlock(data->fallThrough.block)), rarely(isDouble));
                 
                 m_out.appendTo(isDouble, innerLastNext);
@@ -13318,13 +13318,12 @@ private:
         
         if (edge.useKind() == NumberUse) {
             m_out.appendTo(notIntCase, continuation);
-            FTL_TYPE_CHECK(jsValueValue(value), edge, SpecBytecodeNumber, isCellOrMisc(value));
+            FTL_TYPE_CHECK(jsValueValue(value), edge, SpecBytecodeNumber, isCellOrMiscOrBigInt32(value));
             results.append(m_out.anchor(doubleToInt32(unboxDouble(value))));
             m_out.jump(continuation);
         } else {
             m_out.appendTo(notIntCase, doubleCase);
-            m_out.branch(
-                isCellOrMisc(value, provenType(edge)), unsure(notNumberCase), unsure(doubleCase));
+            m_out.branch(isCellOrMiscOrBigInt32(value, provenType(edge)), unsure(notNumberCase), unsure(doubleCase));
             
             m_out.appendTo(doubleCase, notNumberCase);
             results.append(m_out.anchor(doubleToInt32(unboxDouble(value))));
@@ -14713,13 +14712,14 @@ private:
 
         BytecodeIndex bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
         const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex.offset()).ptr();
-        uint64_t* ptr = vm().getLoopHintExecutionCounter(instruction);
+        VM* vm = &this->vm();
+        uint64_t* ptr = vm->getLoopHintExecutionCounter(instruction);
 
         PatchpointValue* patchpoint = m_out.patchpoint(Void);
         patchpoint->effects = Effects::none();
         patchpoint->effects.exitsSideways = true;
         patchpoint->effects.writesLocalState = true;
-        patchpoint->setGenerator([ptr] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+        patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
             auto restore = [&] {
                 jit.popToRestore(GPRInfo::regT2);
                 jit.popToRestore(GPRInfo::regT1);
@@ -14735,6 +14735,13 @@ private:
             jit.load64(CCallHelpers::Address(GPRInfo::regT0), GPRInfo::regT1);
             auto skipEarlyReturn = jit.branch64(CCallHelpers::Below, GPRInfo::regT1, GPRInfo::regT2);
 
+            if constexpr (validateDFGDoesGC) {
+                if (Options::validateDoesGC()) {
+                    // We need to mock what a Return does: claims to GC.
+                    jit.move(CCallHelpers::TrustedImmPtr(vm->heap.addressOfDoesGC()), GPRInfo::regT0);
+                    jit.store32(CCallHelpers::TrustedImm32(DoesGCCheck::encode(true, DoesGCCheck::Special::Uninitialized)), CCallHelpers::Address(GPRInfo::regT0));
+                }
+            }
             restore();
             jit.move(CCallHelpers::TrustedImm64(JSValue::encode(jsUndefined())), GPRInfo::returnValueGPR);
             params.code().emitEpilogue(jit); 
@@ -17453,15 +17460,23 @@ private:
     }
 #endif // USE(BIGINT32)
 
-    LValue isCellOrMisc(LValue jsValue, SpeculatedType type = SpecFullTop)
+    LValue isCellOrMiscOrBigInt32(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, SpecCellCheck | SpecMisc))
+        SpeculatedType filter = SpecCellCheck | SpecMisc;
+#if USE(BIGINT32)
+        filter |= SpecBigInt32;
+#endif // USE(BIGINT32)
+        if (LValue proven = isProvenValue(type, filter))
             return proven;
         return m_out.testIsZero64(jsValue, m_numberTag);
     }
-    LValue isNotCellOrMisc(LValue jsValue, SpeculatedType type = SpecFullTop)
+    LValue isNotCellOrMiscOrBigInt32(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, ~(SpecCellCheck | SpecMisc)))
+        SpeculatedType filter = SpecCellCheck | SpecMisc;
+#if USE(BIGINT32)
+        filter |= SpecBigInt32;
+#endif // USE(BIGINT32)
+        if (LValue proven = isProvenValue(type, ~filter))
             return proven;
         return m_out.testNonZero64(jsValue, m_numberTag);
     }
@@ -17570,13 +17585,13 @@ private:
     {
         if (LValue proven = isProvenValue(type, SpecFullNumber))
             return proven;
-        return isNotCellOrMisc(jsValue);
+        return isNotCellOrMiscOrBigInt32(jsValue);
     }
     LValue isNotNumber(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
         if (LValue proven = isProvenValue(type, ~SpecFullNumber))
             return proven;
-        return isCellOrMisc(jsValue);
+        return isCellOrMiscOrBigInt32(jsValue);
     }
     
     LValue isNotCell(LValue jsValue, SpeculatedType type = SpecFullTop)
