@@ -1,3 +1,122 @@
+2020-07-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=214503
+        <rdar://problem/65746594>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitPrivateFrameworkStubs/Mac/101600: Added.
+        * WebKitPrivateFrameworkStubs/Mac/101600/AuthKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/Mac/101600/AuthKit.framework/AuthKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/Mac/110000: Added.
+        * WebKitPrivateFrameworkStubs/Mac/110000/AuthKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/Mac/110000/AuthKit.framework/AuthKit.tbd: Added.
+
+2020-07-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for watchOS 7
+        https://bugs.webkit.org/show_bug.cgi?id=214479
+        <rdar://problem/65727787>
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/watchos/7: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AppSupport.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AppSupport.framework/AppSupport.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AssertionServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AssertionServices.framework/AssertionServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AuthKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/AuthKit.framework/AuthKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/CorePrediction.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/CorePrediction.framework/CorePrediction.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/DeviceIdentity.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/DeviceIdentity.framework/DeviceIdentity.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/FileProvider.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/FileProvider.framework/FileProvider.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/GraphicsServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/GraphicsServices.framework/GraphicsServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/IOKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/IOKit.framework/IOKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/IOSurfaceAccelerator.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/IOSurfaceAccelerator.framework/IOSurfaceAccelerator.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/LocalAuthentication.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/LocalAuthentication.framework/LocalAuthentication.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/PepperUICore.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/PepperUICore.framework/PepperUICore.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/RunningBoardServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/RunningBoardServices.framework/RunningBoardServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/SafariSafeBrowsing.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/SafariSafeBrowsing.framework/SafariSafeBrowsing.tbd: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/URLFormatting.framework: Added.
+        * WebKitPrivateFrameworkStubs/watchos/7/URLFormatting.framework/URLFormatting.tbd: Added.
+
+2020-07-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for tvOS 14
+        https://bugs.webkit.org/show_bug.cgi?id=214476
+        <rdar://problem/65725761>
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/appletvos/14: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AppSupport.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AppSupport.framework/AppSupport.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AssertionServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AssertionServices.framework/AssertionServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AuthKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/AuthKit.framework/AuthKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/CorePrediction.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/CorePrediction.framework/CorePrediction.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/DeviceIdentity.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/DeviceIdentity.framework/DeviceIdentity.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/FileProvider.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/FileProvider.framework/FileProvider.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/GraphicsServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/GraphicsServices.framework/GraphicsServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/IOKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/IOKit.framework/IOKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/IOSurfaceAccelerator.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/IOSurfaceAccelerator.framework/IOSurfaceAccelerator.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/LocalAuthentication.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/LocalAuthentication.framework/LocalAuthentication.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/RunningBoardServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/RunningBoardServices.framework/RunningBoardServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/SafariSafeBrowsing.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/SafariSafeBrowsing.framework/SafariSafeBrowsing.tbd: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/URLFormatting.framework: Added.
+        * WebKitPrivateFrameworkStubs/appletvos/14/URLFormatting.framework/URLFormatting.tbd: Added.
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 14
+        https://bugs.webkit.org/show_bug.cgi?id=214432
+        <rdar://problem/65695714>
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/iOS/14: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AppSupport.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AppSupport.framework/AppSupport.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AssertionServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AssertionServices.framework/AssertionServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AuthKit.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/AuthKit.framework/AuthKit.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/CorePrediction.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/CorePrediction.framework/CorePrediction.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/DeviceIdentity.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/DeviceIdentity.framework/DeviceIdentity.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/GraphicsServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/GraphicsServices.framework/GraphicsServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/IOSurfaceAccelerator.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/IOSurfaceAccelerator.framework/IOSurfaceAccelerator.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/RunningBoardServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/RunningBoardServices.framework/RunningBoardServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/SafariSafeBrowsing.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/SafariSafeBrowsing.framework/SafariSafeBrowsing.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/URLFormatting.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/14/URLFormatting.framework/URLFormatting.tbd: Added.
+
 2020-07-14  Jonathan Bedard  <jbedard@apple.com>
 
         [watchOS] Support armv7k build

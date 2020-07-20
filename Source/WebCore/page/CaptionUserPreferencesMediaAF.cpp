@@ -271,7 +271,7 @@ String CaptionUserPreferencesMediaAF::captionsWindowCSS() const
 
     Color windowColor(color.get());
     if (!windowColor.isValid())
-        windowColor = Color::transparent;
+        windowColor = Color::transparentBlack;
 
     bool important = behavior == kMACaptionAppearanceBehaviorUseValue;
     CGFloat opacity = MACaptionAppearanceGetWindowOpacity(kMACaptionAppearanceDomainUser, &behavior);
@@ -289,7 +289,7 @@ String CaptionUserPreferencesMediaAF::captionsBackgroundCSS() const
 {
     // This default value must be the same as the one specified in mediaControls.css for -webkit-media-text-track-past-nodes
     // and webkit-media-text-track-future-nodes.
-    constexpr auto defaultBackgroundColor = makeSimpleColor(0, 0, 0, 0.8 * 255);
+    constexpr auto defaultBackgroundColor = Color::black.colorWithAlphaByte(204);
 
     MACaptionAppearanceBehavior behavior;
 

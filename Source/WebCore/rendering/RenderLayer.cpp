@@ -2248,7 +2248,7 @@ void RenderLayer::beginTransparencyLayers(GraphicsContext& context, const LayerP
 #endif
 
 #ifdef REVEAL_TRANSPARENCY_LAYERS
-        context.setFillColor(makeSimpleColor(0, 0, 128, 51));
+        context.setFillColor(SRGBA<uint8_t> { 0, 0, 128, 51 });
         context.fillRect(pixelSnappedClipRect);
 #endif
     }
@@ -3477,7 +3477,7 @@ Ref<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientation)
     if (hasCustomScrollbarStyle)
         widget = RenderScrollbar::createCustomScrollbar(*this, orientation, downcast<RenderBox>(actualRenderer).element());
     else {
-        widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
+        widget = Scrollbar::createNativeScrollbar(*this, orientation, ScrollbarControlSize::Regular);
         didAddScrollbar(widget.get(), orientation);
         if (page().isMonitoringWheelEvents())
             scrollAnimator().setWheelEventTestMonitor(page().wheelEventTestMonitor());
@@ -4123,9 +4123,9 @@ void RenderLayer::paintResizer(GraphicsContext& context, const LayoutPoint& pain
         context.clip(resizerAbsRect);
         LayoutRect largerCorner = resizerAbsRect;
         largerCorner.setSize(LayoutSize(largerCorner.width() + 1_lu, largerCorner.height() + 1_lu));
-        context.setStrokeColor(makeSimpleColor(217, 217, 217));
+        context.setStrokeColor(SRGBA<uint8_t> { 217, 217, 217 });
         context.setStrokeThickness(1.0f);
-        context.setFillColor(Color::transparent);
+        context.setFillColor(Color::transparentBlack);
         context.drawRect(snappedIntRect(largerCorner));
     }
 }

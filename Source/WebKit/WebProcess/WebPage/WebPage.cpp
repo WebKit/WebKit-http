@@ -2412,7 +2412,7 @@ void WebPage::paintSnapshotAtSize(const IntRect& rect, const IntSize& bitmapSize
 
     if (options & SnapshotOptionsPaintSelectionRectangle) {
         FloatRect selectionRectangle = frame.selection().selectionBounds();
-        graphicsContext.setStrokeColor(makeSimpleColor(255, 0, 0));
+        graphicsContext.setStrokeColor(Color::red);
         graphicsContext.strokeRect(selectionRectangle, 1);
     }
 }
@@ -2492,7 +2492,7 @@ RefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions opti
     graphicsContext->translate(-snapshotRect.location());
 
     Color savedBackgroundColor = frameView->baseBackgroundColor();
-    frameView->setBaseBackgroundColor(Color::transparent);
+    frameView->setBaseBackgroundColor(Color::transparentBlack);
     frameView->setNodeToDraw(&node);
 
     frameView->paintContentsForSnapshot(*graphicsContext, snapshotRect, FrameView::ExcludeSelection, FrameView::DocumentCoordinates);
@@ -3291,6 +3291,8 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
 void WebPage::didReceivePolicyDecision(FrameIdentifier frameID, uint64_t listenerID, PolicyDecision&& policyDecision)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
+    RELEASE_LOG_IF_ALLOWED(Loading, "didReceivePolicyDecision: policyAction: %u - frameID: %llu - webFrame: %p - mainFrame: %d", (unsigned)policyDecision.policyAction, frameID.toUInt64(), frame, frame ? frame->isMainFrame() : 0);
+
     if (!frame)
         return;
 

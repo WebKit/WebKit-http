@@ -330,10 +330,10 @@ FloatRect RenderThemeIOS::addRoundedBorderClip(const RenderObject& box, Graphics
         context.clip(border.rect());
 
     if (isChecked(box)) {
-        ASSERT(style.visitedDependentColor(CSSPropertyBorderTopColor).alpha() % 255 == 0);
-        ASSERT(style.visitedDependentColor(CSSPropertyBorderRightColor).alpha() % 255 == 0);
-        ASSERT(style.visitedDependentColor(CSSPropertyBorderBottomColor).alpha() % 255 == 0);
-        ASSERT(style.visitedDependentColor(CSSPropertyBorderLeftColor).alpha() % 255 == 0);
+        ASSERT(style.visitedDependentColor(CSSPropertyBorderTopColor).alphaByte() % 255 == 0);
+        ASSERT(style.visitedDependentColor(CSSPropertyBorderRightColor).alphaByte() % 255 == 0);
+        ASSERT(style.visitedDependentColor(CSSPropertyBorderBottomColor).alphaByte() % 255 == 0);
+        ASSERT(style.visitedDependentColor(CSSPropertyBorderLeftColor).alphaByte() % 255 == 0);
     }
 
     return border.rect();
@@ -381,7 +381,7 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
 
     if (checked || indeterminate) {
         auto border = box.style().getRoundedBorderFor(rect);
-        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color::black.colorWithAlpha(204));
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color::black.colorWithAlphaByte(204));
 
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         auto width = clip.width();
@@ -417,10 +417,10 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
         }
 
         lineWidth = std::max<float>(lineWidth, 1);
-        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, Color::black.colorWithAlpha(179));
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, Color::black.colorWithAlphaByte(179));
 
         lineWidth = std::max<float>(std::min(width, height) * thicknessRatio, 1);
-        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, Color::white.colorWithAlpha(240));
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, Color::white.colorWithAlphaByte(240));
     } else {
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         auto width = clip.width();
@@ -478,7 +478,7 @@ bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintI
 
     if (isChecked(box)) {
         auto border = box.style().getRoundedBorderFor(rect);
-        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color::black.colorWithAlpha(204));
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color::black.colorWithAlphaByte(204));
 
         auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
@@ -491,7 +491,7 @@ bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintI
         clip.inflateX(-clip.width() * InnerInverseRatio);
         clip.inflateY(-clip.height() * InnerInverseRatio);
         
-        constexpr auto shadowColor = Color::black.colorWithAlpha(179);
+        constexpr auto shadowColor = Color::black.colorWithAlphaByte(179);
         paintInfo.context().drawRaisedEllipse(clip, Color::white, shadowColor);
 
         FloatSize radius(clip.width() / 2.0f, clip.height() / 2.0f);
@@ -739,7 +739,7 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         FloatRect ellipse(buttonClip.x() + (buttonClip.width() - count * (size + padding) + padding) / 2.0, buttonClip.maxY() - 10.0, size, size);
 
         for (int i = 0; i < count; ++i) {
-            paintInfo.context().drawRaisedEllipse(ellipse, Color::white, Color::black.colorWithAlpha(128));
+            paintInfo.context().drawRaisedEllipse(ellipse, Color::white, Color::black.colorWithAlphaByte(128));
             ellipse.move(size + padding, 0);
         }
     }  else {
@@ -759,8 +759,8 @@ bool RenderThemeIOS::paintMenuListButtonDecorations(const RenderBox& box, const 
         };
 
         uint8_t opacity = isReadOnlyControl(box) ? 51 : 128;
-        paintInfo.context().setStrokeColor(Color::black.colorWithAlpha(opacity));
-        paintInfo.context().setFillColor(Color::black.colorWithAlpha(opacity));
+        paintInfo.context().setStrokeColor(Color::black.colorWithAlphaByte(opacity));
+        paintInfo.context().setFillColor(Color::black.colorWithAlphaByte(opacity));
         paintInfo.context().drawPath(Path::polygonPathFromPoints(shadow));
 
         paintInfo.context().setStrokeColor(Color::white);
@@ -848,9 +848,9 @@ bool RenderThemeIOS::paintSliderTrack(const RenderObject& box, const PaintInfo& 
 
         CGContextRef cgContext = paintInfo.context().platformContext();
         if (readonly)
-            paintInfo.context().setStrokeColor(makeSimpleColor(178, 178, 178));
+            paintInfo.context().setStrokeColor(SRGBA<uint8_t> { 178, 178, 178 });
         else
-            paintInfo.context().setStrokeColor(makeSimpleColor(76, 76, 76));
+            paintInfo.context().setStrokeColor(SRGBA<uint8_t> { 76, 76, 76 });
 
         RetainPtr<CGMutablePathRef> roundedRectPath = adoptCF(CGPathCreateMutable());
         CGPathAddRoundedRect(roundedRectPath.get(), 0, trackClip, cornerWidth, cornerHeight);
@@ -917,10 +917,10 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     const float verticalRenderingPosition = rect.y() + verticalOffset;
     auto strokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-    strokeGradient->addColorStop({ 0.0f, makeSimpleColor(141, 141, 141) });
-    strokeGradient->addColorStop({ 0.45f, makeSimpleColor(238, 238, 238) });
-    strokeGradient->addColorStop({ 0.55f, makeSimpleColor(238, 238, 238) });
-    strokeGradient->addColorStop({ 1.0f, makeSimpleColor(141, 141, 141) });
+    strokeGradient->addColorStop({ 0.0f, SRGBA<uint8_t> { 141, 141, 141 } });
+    strokeGradient->addColorStop({ 0.45f, SRGBA<uint8_t> { 238, 238, 238 } });
+    strokeGradient->addColorStop({ 0.55f, SRGBA<uint8_t> { 238, 238, 238 } });
+    strokeGradient->addColorStop({ 1.0f, SRGBA<uint8_t> { 141, 141, 141 } });
     context.setStrokeGradient(WTFMove(strokeGradient));
 
     context.setFillColor(Color::black);
@@ -937,8 +937,8 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     float upperGradientHeight = progressBarHeight / 2.;
     auto upperGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5f), FloatPoint(rect.x(), verticalRenderingPosition + upperGradientHeight - 1.5) });
-    upperGradient->addColorStop({ 0.0f, makeSimpleColor(133, 133, 133, 188) });
-    upperGradient->addColorStop({ 1.0f, makeSimpleColor(18, 18, 18, 51) });
+    upperGradient->addColorStop({ 0.0f, SRGBA<uint8_t> { 133, 133, 133, 188 } });
+    upperGradient->addColorStop({ 1.0f, SRGBA<uint8_t> { 18, 18, 18, 51 } });
     context.setFillGradient(WTFMove(upperGradient));
 
     context.fillRect(FloatRect(rect.x(), verticalRenderingPosition, rect.width(), upperGradientHeight));
@@ -949,18 +949,18 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
         double position = clampTo(renderProgress.position(), 0.0, 1.0);
         float barWidth = position * rect.width();
         auto barGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5f), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-        barGradient->addColorStop({ 0.0f, makeSimpleColor(195, 217, 247) });
-        barGradient->addColorStop({ 0.45f, makeSimpleColor(118, 164, 228) });
-        barGradient->addColorStop({ 0.49f, makeSimpleColor(118, 164, 228) });
-        barGradient->addColorStop({ 0.51f, makeSimpleColor(36, 114, 210) });
-        barGradient->addColorStop({ 0.55f, makeSimpleColor(36, 114, 210) });
-        barGradient->addColorStop({ 1.0f, makeSimpleColor(57, 142, 244) });
+        barGradient->addColorStop({ 0.0f, SRGBA<uint8_t> { 195, 217, 247 } });
+        barGradient->addColorStop({ 0.45f, SRGBA<uint8_t> { 118, 164, 228 } });
+        barGradient->addColorStop({ 0.49f, SRGBA<uint8_t> { 118, 164, 228 } });
+        barGradient->addColorStop({ 0.51f, SRGBA<uint8_t> { 36, 114, 210 } });
+        barGradient->addColorStop({ 0.55f, SRGBA<uint8_t> { 36, 114, 210 } });
+        barGradient->addColorStop({ 1.0f, SRGBA<uint8_t> { 57, 142, 244 } });
         context.setFillGradient(WTFMove(barGradient));
 
         auto barStrokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
-        barStrokeGradient->addColorStop({ 0.0f, makeSimpleColor(95, 107, 183) });
-        barStrokeGradient->addColorStop({ 0.5f, makeSimpleColor(66, 106, 174, 240) });
-        barStrokeGradient->addColorStop({ 1.0f, makeSimpleColor(38, 104, 166) });
+        barStrokeGradient->addColorStop({ 0.0f, SRGBA<uint8_t> { 95, 107, 183 } });
+        barStrokeGradient->addColorStop({ 0.5f, SRGBA<uint8_t> { 66, 106, 174, 240 } });
+        barStrokeGradient->addColorStop({ 1.0f, SRGBA<uint8_t> { 38, 104, 166 } });
         context.setStrokeGradient(WTFMove(barStrokeGradient));
 
         Path barPath;
@@ -1129,12 +1129,12 @@ bool RenderThemeIOS::paintFileUploadIconDecorations(const RenderObject&, const R
 
 Color RenderThemeIOS::platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const
 {
-    return Color::transparent;
+    return Color::transparentBlack;
 }
 
 Color RenderThemeIOS::platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const
 {
-    return Color::transparent;
+    return Color::transparentBlack;
 }
 
 static Optional<Color>& cachedFocusRingColor()
@@ -1383,10 +1383,10 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
 const CGSize attachmentSize = { 160, 119 };
 
 const CGFloat attachmentBorderRadius = 16;
-constexpr auto attachmentBorderColor = makeSimpleColor(204, 204, 204);
+constexpr auto attachmentBorderColor = SRGBA<uint8_t> { 204, 204, 204 };
 static CGFloat attachmentBorderThickness = 1;
 
-constexpr auto attachmentProgressColor = makeSimpleColor(222, 222, 222);
+constexpr auto attachmentProgressColor = SRGBA<uint8_t> { 222, 222, 222 };
 const CGFloat attachmentProgressBorderThickness = 3;
 
 const CGFloat attachmentProgressSize = 36;
@@ -1856,7 +1856,7 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
     // Draw a drop shadow around the circle.
     // Use the GraphicsContext function, because it calculates the blur radius in context space,
     // rather than screen space.
-    constexpr auto shadowColor = Color::black.colorWithAlpha(26);
+    constexpr auto shadowColor = Color::black.colorWithAlphaByte(26);
     graphicsContext.setShadow(FloatSize { }, 16, shadowColor);
 
     // The circle must have an alpha channel value of 1 for the shadow color to appear.

@@ -62,6 +62,7 @@
 #include "ScopedEventQueue.h"
 #include "SearchInputType.h"
 #include "Settings.h"
+#include "StepRange.h"
 #include "StyleGeneratedImage.h"
 #include "TextControlInnerElements.h"
 #include <wtf/IsoMallocInlines.h>
@@ -2056,7 +2057,7 @@ static Ref<CSSLinearGradientValue> autoFillStrongPasswordMaskImage()
     firstStop.position = CSSValuePool::singleton().createValue(50, CSSUnitType::CSS_PERCENTAGE);
 
     CSSGradientColorStop secondStop;
-    secondStop.color = CSSValuePool::singleton().createColorValue(Color::transparent);
+    secondStop.color = CSSValuePool::singleton().createColorValue(Color::transparentBlack);
     secondStop.position = CSSValuePool::singleton().createValue(100, CSSUnitType::CSS_PERCENTAGE);
 
     auto gradient = CSSLinearGradientValue::create(CSSGradientRepeat::NonRepeating, CSSGradientType::CSSLinearGradient);
@@ -2085,7 +2086,7 @@ RenderStyle HTMLInputElement::createInnerTextStyle(const RenderStyle& style)
     if (hasAutoFillStrongPasswordButton() && !isDisabledOrReadOnly()) {
         textBlockStyle.setDisplay(DisplayType::InlineBlock);
         textBlockStyle.setMaxWidth(Length { 100, Percent });
-        textBlockStyle.setColor(makeSimpleColor(0, 0, 0, 153));
+        textBlockStyle.setColor(Color::black.colorWithAlphaByte(153));
         textBlockStyle.setTextOverflow(TextOverflow::Clip);
         textBlockStyle.setMaskImage(StyleGeneratedImage::create(autoFillStrongPasswordMaskImage()));
         // A stacking context is needed for the mask.
@@ -2119,7 +2120,7 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
         parameters.locale = computedLocale.isEmpty() ? AtomString(defaultLanguage()) : computedLocale;
     }
 
-    StepRange stepRange = createStepRange(RejectAny);
+    auto stepRange = createStepRange(AnyStepHandling::Reject);
     if (stepRange.hasStep()) {
         parameters.step = stepRange.step().toDouble();
         parameters.stepBase = stepRange.stepBase().toDouble();

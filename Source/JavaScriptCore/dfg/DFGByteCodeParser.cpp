@@ -1144,7 +1144,7 @@ private:
     FrozenValue* m_constantOne;
     Vector<Node*, 16> m_constants;
 
-    HashMap<InlineCallFrame*, Vector<ArgumentPosition*>, WTF::DefaultHash<InlineCallFrame*>::Hash, WTF::NullableHashTraits<InlineCallFrame*>> m_inlineCallFrameToArgumentPositions;
+    HashMap<InlineCallFrame*, Vector<ArgumentPosition*>, WTF::DefaultHash<InlineCallFrame*>, WTF::NullableHashTraits<InlineCallFrame*>> m_inlineCallFrameToArgumentPositions;
 
     // The number of arguments passed to the function.
     unsigned m_numArguments;
@@ -5736,10 +5736,10 @@ void ByteCodeParser::parseBlock(unsigned limit)
             set(bytecode.m_dst, addToGraph(IsEmpty, value));
             NEXT_OPCODE(op_is_empty);
         }
-        case op_is_undefined: {
-            auto bytecode = currentInstruction->as<OpIsUndefined>();
+        case op_typeof_is_undefined: {
+            auto bytecode = currentInstruction->as<OpTypeofIsUndefined>();
             Node* value = get(bytecode.m_operand);
-            set(bytecode.m_dst, addToGraph(IsUndefined, value));
+            set(bytecode.m_dst, addToGraph(TypeOfIsUndefined, value));
             NEXT_OPCODE(op_is_undefined);
         }
         case op_is_undefined_or_null: {

@@ -1,3 +1,1205 @@
+2020-07-20  Kate Cheney  <katherine_cheney@apple.com>
+
+        [ iOS macOS ] http/tests/resourceLoadStatistics/grandfathering-database.html is a rare flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=213553
+        <rdar://problem/64696432>
+
+        Reviewed by Darin Adler.
+
+        Remove unnecessary calls to register for a statistics processing
+        callback, now that it is done synchronously as a part of the installing function.
+
+        * http/tests/resourceLoadStatistics/count-third-party-script-import-in-worker-database.html:
+        * http/tests/resourceLoadStatistics/count-third-party-script-import-in-worker.html:
+        * http/tests/resourceLoadStatistics/count-third-party-script-loads-database.html:
+        * http/tests/resourceLoadStatistics/count-third-party-script-loads.html:
+        * http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations-database.html:
+        * http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations.html:
+        * http/tests/resourceLoadStatistics/dont-count-third-party-image-as-third-party-script-database.html:
+        * http/tests/resourceLoadStatistics/dont-count-third-party-image-as-third-party-script.html:
+        * http/tests/resourceLoadStatistics/many-inserts-only-insert-once.html:
+
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown-database.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown-database.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html:
+        The testing contents should be part of the callback for setEnableFeature
+        to ensure setup finishes before the test is run.
+
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-database.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout-database.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction-database.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/remove-website-data-for-origin-deletes-third-party-script-loads-database.html:
+        * http/tests/resourceLoadStatistics/remove-website-data-for-origin-deletes-third-party-script-loads.html:
+        * http/tests/resourceLoadStatistics/resources/util.js:
+        (setEnableFeature):
+        This call is unnecessary as the parameters are cleared in
+        WKWebsiteDataStoreStatisticsResetToConsistentState.
+
+        * http/tests/webAPIStatistics/canvas-read-and-write-data-collection.html:
+        * http/tests/webAPIStatistics/font-load-data-collection.html:
+        * http/tests/webAPIStatistics/navigator-functions-accessed-data-collection.html:
+        * http/tests/webAPIStatistics/screen-functions-accessed-data-collection.html:
+        * http/tests/websocket/connection-refusal-in-frame-resource-load-statistics.html:
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Add support for canvas captureStream, tests failing since they were added in r213598
+        https://bugs.webkit.org/show_bug.cgi?id=169811
+
+        Reviewed by Darin Adler.
+
+        Unflag passing tests and rebaseline one platform-specific WPT test expectation which differs
+        from the default by only one line.
+
+        * platform/glib/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+
+2020-07-20  Youenn Fablet  <youenn@apple.com>
+
+        Fix buggy assert in h265_vps_sps_pps_tracker.cc
+        https://bugs.webkit.org/show_bug.cgi?id=214545
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-20  Youenn Fablet  <youenn@apple.com>
+
+        GenerateCertificateAsync should be called on signaling thread
+        https://bugs.webkit.org/show_bug.cgi?id=214447
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r264596.
+        https://bugs.webkit.org/show_bug.cgi?id=214551
+
+        hits Debug asserts
+
+        Reverted changeset:
+
+        "[GStreamer] Add support for canvas captureStream, tests
+        failing since they were added in r213598"
+        https://bugs.webkit.org/show_bug.cgi?id=169811
+        https://trac.webkit.org/changeset/264596
+
+2020-07-20  Rob Buis  <rbuis@igalia.com>
+
+        Setting URL.hash to '#' should preserve '#'
+        https://bugs.webkit.org/show_bug.cgi?id=214318
+
+        Reviewed by Youenn Fablet.
+
+        Update test expectations to new behavior.
+
+        * fast/dom/DOMURL/set-href-attribute-hash-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-hash.html:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-hash-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-hash.html:
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Add support for canvas captureStream, tests failing since they were added in r213598
+        https://bugs.webkit.org/show_bug.cgi?id=169811
+
+        Reviewed by Darin Adler.
+
+        Unflag passing tests and rebaseline one platform-specific WPT test expectation which differs
+        from the default by only one line.
+
+        * platform/glib/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] ImageDecoder hits more Debug ASSERTs
+        https://bugs.webkit.org/show_bug.cgi?id=214191
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/glib/TestExpectations: Unflag no-longer-crashing tests.
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK gardening
+
+        * platform/gtk/TestExpectations: Unflag now-stable webrtc tests, no longer flaky since r263836.
+
+2020-07-19  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Remove some deprecated expectation files and garden failures
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-implicit-track-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-implicit-track-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-implicit-track-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-implicit-track-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Removed.
+
+2020-07-18  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Redefining a property should not change its insertion index (Object.keys order)
+        https://bugs.webkit.org/show_bug.cgi?id=142933
+
+        Reviewed by Saam Barati.
+
+        * js/object-literal-duplicate-properties-expected.txt:
+        * js/script-tests/object-literal-duplicate-properties.js:
+
+2020-07-18  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip a few css WPT tests that are crashing in Debug since the recent WPT resync.
+
+        * TestExpectations:
+
+2020-07-18  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-timing.https.html as flaky.
+
+        * TestExpectations:
+
+2020-07-18  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark imported/w3c/web-platform-tests/web-share/share-url-invalid.https.html as timing out on iOS.
+
+        It has been timing out since import in r264564.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/web-share from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214507
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/web-share/share-url-invalid.https-expected.txt:
+
+2020-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/encoding from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214502
+
+        Reviewed by Geoff Garen.
+
+        * TestExpectations:
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        [ Mac iOS ] imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup.html is failing as of the re-sync in r 264522
+        https://bugs.webkit.org/show_bug.cgi?id=214512
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-07-17  Sihui Liu  <sihui_liu@appe.com>
+
+        REGRESSION(r264486): storage/indexeddb/structured-clone.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=214481
+        <rdar://problem/65735839>
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2020-07-17  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK] fast/events/context-activated-by-key-event.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=199444
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Remove fixed test entry.
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Rebase compositing/repaint/iframes/compositing-iframe-scroll-repaint.html back to previous state after ​r264522
+        https://bugs.webkit.org/show_bug.cgi?id=214414
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264549.
+
+        Expectation made in the wrong folder
+
+        Reverted changeset:
+
+        "Rebase compositing/repaint/iframes/compositing-iframe-scroll-
+        repaint.html back to previous state after
+        https://trac.webkit.org/changeset/264522/webkit"
+        https://bugs.webkit.org/show_bug.cgi?id=214414
+        https://trac.webkit.org/changeset/264549
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Rebase compositing/repaint/iframes/compositing-iframe-scroll-repaint.html back to previous state after https://trac.webkit.org/changeset/264522/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=214414
+
+        Unreviewed test gardening.
+
+        * compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+
+2020-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/clipboard-apis from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214496
+
+        Reviewed by Geoffrey Garen.
+
+        * tests-options.json:
+
+2020-07-17  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ macOS iOS ] imported/w3c/web-platform-tests/cors/remote-origin.htm is passing need to add passing expectation for macOS and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=214498
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Stop using promise_rejects() under LayoutTests/http/wpt
+        https://bugs.webkit.org/show_bug.cgi?id=214494
+
+        Reviewed by Geoffrey Garen.
+
+        Stop using promise_rejects() under LayoutTests/http/wpt as it has been dropped from upstream
+        testharness.js in favor of promise_rejects_js() / promise_reject_dom().
+
+        * http/wpt/2dcontext/imagebitmap/createImageBitmap-sizing.html:
+        * http/wpt/2dcontext/imagebitmap/createImageBitmap.html:
+        * http/wpt/cache-storage/cache-quota-add.any.js:
+        (promise_test.async test):
+        * http/wpt/cache-storage/cache-quota-after-restart.any.js:
+        (promise_test.async test):
+        * http/wpt/cache-storage/cache-storage-networkprocess-crash.html:
+        * http/wpt/credential-management/credentialscontainer-create-basics.https.html:
+        * http/wpt/credential-management/credentialscontainer-get-basics.https.html:
+        * http/wpt/credential-management/credentialscontainer-preventSilentAccess-basics.https.html:
+        * http/wpt/credential-management/credentialscontainer-store-basics.https.html:
+        * http/wpt/fetch/request-stream-disturbed-2.html:
+        * http/wpt/fetch/request-stream-disturbed-3.html:
+        * http/wpt/fetch/request-stream-empty.html:
+        * http/wpt/fetch/request-stream-error.html:
+        * http/wpt/fetch/response-status-text.html:
+        * http/wpt/service-workers/cors-preflight-star.any.js:
+        (origin.location.origin.preflightTest):
+        * http/wpt/service-workers/service-worker-spinning-install.https.html:
+        * http/wpt/webaudio/audiocontext-stopped.html:
+        * http/wpt/webauthn/public-key-credential-create-with-invalid-parameters.https.html:
+        * http/wpt/webauthn/public-key-credential-get-with-invalid-parameters.https.html:
+        * http/wpt/webrtc/generateCertificate.html:
+
+2020-07-17  Clark Wang  <clark_wang@apple.com>
+
+        Added Fixes for AudioScheduledSourceNode
+        https://bugs.webkit.org/show_bug.cgi?id=214381
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests.
+
+        * webaudio/oscillator-custom-expected.wav:
+        * webaudio/oscillator-sawtooth-expected.wav:
+        * webaudio/oscillator-square-expected.wav:
+        * webaudio/oscillator-triangle-expected.wav:
+
+2020-07-17  Kenneth Russell  <kbr@chromium.org>
+
+        [WebGL2] ReadPixels updates
+        https://bugs.webkit.org/show_bug.cgi?id=209516
+
+        Reviewed by Dean Jackson.
+
+        Rebaseline three tests under conformance2/reading/, which are now
+        fully passing. One more driver bug workaround is needed in ANGLE
+        in order to make the remaining tests in this directory fully pass.
+
+        Rebaseline two other layout tests which progress with these
+        changes. (One gets farther and signals more errors than before.)
+
+        * webgl/2.0.0/conformance2/misc/views-with-offsets-expected.txt:
+        * webgl/2.0.0/conformance2/reading/read-pixels-from-rgb8-into-pbo-bug-expected.txt:
+        * webgl/2.0.0/conformance2/reading/read-pixels-into-pixel-pack-buffer-expected.txt:
+        * webgl/2.0.0/conformance2/reading/read-pixels-pack-parameters-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-unpack-params-expected.txt:
+
+2020-07-17  James Darpinian  <jdarpinian@chromium.org>
+
+        [WebGL2] Sync objects
+        https://bugs.webkit.org/show_bug.cgi?id=126942
+
+        Reviewed by Dean Jackson.
+
+        * webgl/TestExpectations:
+        webgl/2.0.0/deqp/functional/gles3/sync.html times out in the layout test harness, though it passes in MiniBrowser.
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Add Failing expectations for Windows and GTK after r264483
+        https://bugs.webkit.org/show_bug.cgi?id=214428
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2020-07-17  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden svg failures and unify some svg expectations
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-17  Sihui Liu  <sihui_liu@appe.com>
+
+        REGRESSION(r264486): storage/indexeddb/structured-clone.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=214481
+
+        Reviewed by Yusuke Suzuki.
+ 
+        r264486 added a new type RTCCertificate in structured-clone.html to test as many types in IDB as possible. 
+        However, RTCCertificate is not supported before the fix because of a crash in web process. Given that this is a 
+        separate issue, track it in https://bugs.webkit.org/show_bug.cgi?id=214447 and remove this type from test to 
+        make sure it runs to the end on the bots. 
+
+        * storage/indexeddb/resources/structured-clone.js:
+        (testRTCCertificate.promise.then): Deleted.
+        (testRTCCertificate): Deleted.
+        * storage/indexeddb/structured-clone-expected.txt:
+        * storage/indexeddb/structured-clone-private-expected.txt:
+
+2020-07-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT css directory
+        https://bugs.webkit.org/show_bug.cgi?id=214414
+
+        Reviewed by Chris Dumez.
+
+        Rebaseline expectations for testharness tests and update expectations for ref-tests.
+
+        * TestExpectations:
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-color-adjust/rendering/dark-color-scheme/color-scheme-color-property-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-implicit-track-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-implicit-track-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-from-image-computed-style-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-none-computed-style-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-multicol/change-abspos-width-in-second-column-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-multicol/change-out-of-flow-type-and-remove-inner-multicol-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/at-property-non-matching-media-crash-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-pseudo/file-chooser-button-display-toggle-crash.tentative-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-pseudo/marker-intrinsic-contribution-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-sizing/percentage-height-in-flexbox-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-transitions/transition-base-response-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-angle-computed-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/css/cssom/css-style-attr-decl-block-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/cssom/cssstyledeclaration-csstext-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup-expected.txt: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-box/animation/padding-bottom-composition-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-box/animation/padding-top-composition-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-color-adjust/rendering/dark-color-scheme/svg-as-image-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-multicol/change-abspos-width-in-second-column-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-multicol/change-out-of-flow-type-and-remove-inner-multicol-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-properties-values-api/at-property-non-matching-media-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-pseudo/file-chooser-button-display-toggle-crash.tentative-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-pseudo/marker-hit-testing-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-sizing/frameset-intrinsic-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-sizing/min-content-negative-margin-crash-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-transitions/transition-base-response-001-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/cssom/css-style-attr-decl-block-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/cssom/cssstyledeclaration-csstext-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup-expected.txt: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup-expected.txt: Added.
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/inheritance-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-attribute-changes-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-empty-content-value-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-first-valid-applies-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-insert-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-no-content-value-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-presentational-hint-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-remove-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-remove-head-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-single-value-in-body-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-single-value-in-head-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/meta/meta-color-scheme-single-value-in-shadow-tree-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/parsing/color-scheme-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/parsing/color-scheme-invalid-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/parsing/color-scheme-valid-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-color-adjust/rendering/dark-color-scheme/color-scheme-color-property-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-implicit-track-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-implicit-track-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-from-image-computed-style-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-none-computed-style-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/at-property-non-matching-media-crash-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-pseudo/file-chooser-button-display-toggle-crash.tentative-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-pseudo/marker-intrinsic-contribution-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-sizing/percentage-height-in-flexbox-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-transitions/transition-base-response-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-angle-computed-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/cssom/css-style-attr-decl-block-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/cssom/cssstyledeclaration-csstext-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/mediaqueries/prefers-color-scheme-expected.txt: Added.
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Changing expectations to Skip from r264519
+        https://bugs.webkit.org/show_bug.cgi?id=214478
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: (r264492) Broke 9 WebRTC tests and 4 indexeddb tests
+        https://bugs.webkit.org/show_bug.cgi?id=214478
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-17  Rob Buis  <rbuis@igalia.com>
+
+        Changing URL.host should not override port
+        https://bugs.webkit.org/show_bug.cgi?id=151613
+
+        Reviewed by Alex Christensen.
+
+        Adjust tests to expect the new behavior.
+
+        * fast/dom/DOMURL/set-href-attribute-host-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-host.html:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-host-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-host.html:
+
+2020-07-17  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden imported html failures
+
+        Unreviewed test gardening.
+
+        Updated idlharness expectations and marked the 2dpattern one as flaky
+        due to those unhandled promise rejection message.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeat.coord1-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+
+2020-07-17  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden imagebitmap-rendering context failures after r264459
+
+        Unreviewed test gardening.
+
+        GLib ports fail not due to missing OffscreenCanvas, but missing
+        bitmaprender support there, already tracked in another bug.
+
+        * platform/glib/TestExpectations:
+
+2020-07-17  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Remove deprecated baselines after latest WPT css update.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Removed.
+
+2020-07-16  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Garden two resource timing failures after WPT update
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/imported/w3c/web-platform-tests/resource-timing/resource_connection_reuse_mixed_content_redirect-expected.txt: Added.
+
+2020-07-16  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK] Garden some debug crashes
+
+        Unreviewed test gardening.
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2020-07-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Add a console message: "User gesture is required to use the platform authenticator."
+        https://bugs.webkit.org/show_bug.cgi?id=214380
+        <rdar://problem/65300587>
+
+        Reviewed by Devin Rousso.
+
+        * http/wpt/credential-management/credentialscontainer-store-basics.https-expected.txt:
+        * http/wpt/webauthn/ctap-hid-failure.https-expected.txt:
+        * http/wpt/webauthn/ctap-hid-success.https-expected.txt:
+        * http/wpt/webauthn/ctap-nfc-failure.https-expected.txt:
+        * http/wpt/webauthn/idl.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-local-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-nfc.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-nfc.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-local-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-nfc.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f-silent.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-nfc.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https-expected.txt:
+
+2020-07-16  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ macOS iOS ] imported/mozilla/svg/linearGradient-basic-03.svg is passing and expectations need to be removed
+        https://bugs.webkit.org/show_bug.cgi?id=214430
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2020-07-16  Sihui Liu  <sihui_liu@appe.com>
+
+        IDB serialization of some DOM object types crashes the Networking process due to incorrect global object type (WPT IndexedDB/structured-clone.any tests fail)
+        https://bugs.webkit.org/show_bug.cgi?id=210735
+        <rdar://problem/62045703>
+
+        Reviewed by Yusuke Suzuki.
+
+        * platform/ios/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * storage/indexeddb/resources/structured-clone.js:
+        (testPrimitiveValue):
+        (testBoolean):
+        (testBooleanObject):
+        (testString):
+        (testStringObject):
+        (testNumber):
+        (testNumberObject):
+        (testBigInt):
+        (testBigIntObject.testOneBigIntObject):
+        (testBigIntObject):
+        (testDateObject):
+        (testTypedArray.testTypedArrayValue):
+        (testArrays):
+        (testGeometryTypes.testOneGeometryType):
+        (testRTCCertificate.promise.then):
+        (testRTCCertificate):
+        (testCryptoKey.promise.then):
+        (testBadTypes): Deleted.
+        * storage/indexeddb/structured-clone-expected.txt:
+        * storage/indexeddb/structured-clone-private-expected.txt:
+
+2020-07-16  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ macOS iOS ] imported/mozilla/svg/blend-saturation.svg is passing and need expectations removed 
+        https://bugs.webkit.org/show_bug.cgi?id=214428
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2020-07-16  Megan Gardner  <megan_gardner@apple.com>
+
+        Selection is not always clearing when tapping.
+        https://bugs.webkit.org/show_bug.cgi?id=214326
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/selection/ios/hide-selection-after-tap-on-prevent-default-element-expected.txt: Added.
+        * editing/selection/ios/hide-selection-after-tap-on-prevent-default-element.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.tapElement):
+
+2020-07-16  Truitt Savell  <tsavell@apple.com>
+
+        (r264469) [ Mac ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/suspend-after-construct.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214422
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-07-16  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/interfaces from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214413
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+
+2020-07-16  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add MediaCapabilities support for SW VP9 decoder.
+        https://bugs.webkit.org/show_bug.cgi?id=214316
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/media/mediacapabilities/vp9-decodingInfo-sw-expected.txt: Added.
+        * platform/mac/media/mediacapabilities/vp9-decodingInfo-sw.html: Added.
+
+2020-07-16  Hector Lopez  <hector_i_lopez@apple.com>
+
+        Regression tests cannot load video over HTTPS with self-signed certificate
+        https://bugs.webkit.org/show_bug.cgi?id=155132
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2020-07-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for css-writing-modes (follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=214278
+
+        Unreviewed follow-up to r264337.
+
+        * TestExpectations: Update expectation for test passing now.
+
+2020-07-16  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ macOS wk2 ] REGRESSION(r263485): fast/scrolling/mac/scroll-snapping-in-progress.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=213804
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-07-16  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/resource-timing from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214377
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/resource-timing/crossorigin-sandwich-no-TAO.sub-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/resource-timing/nextHopProtocol-tao-protected.https-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/resource-timing/redirects.sub-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/resource-timing/resource-reload-TAO.sub-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/resource-timing/workerStart-tao-protected.https-expected.txt: Added.
+        * tests-options.json:
+
+2020-07-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT css/support directory
+        https://bugs.webkit.org/show_bug.cgi?id=214350
+
+        Reviewed by Chris Dumez.
+
+        Update expectations.
+
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/masonry.tentative/masonry-grid-template-columns-computed-withcontent-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/subgrid/grid-template-computed-nogrid-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-angle-computed-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/interact/parsing/pointer-events-computed-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-ui/parsing/outline-width-computed-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-actual.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-actual.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-dashoffset-computed-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-linecap-computed-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-linejoin-computed-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-dashoffset-computed-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-linecap-computed-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-linejoin-computed-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-miterlimit-computed-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/svg/painting/parsing/stroke-opacity-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/masonry.tentative/masonry-grid-template-columns-computed-withcontent-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-grid/subgrid/grid-template-computed-nogrid-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-angle-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-length-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-values/minmax-length-percent-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/interact/parsing/pointer-events-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/text/reftests/dominant-baseline-hanging-small-font-size-expected.txt:
+
+2020-07-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r264272) [GTK][WPE] css3/color/composited-solid-backgrounds.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=214260
+
+        Reviewed by Darin Adler.
+
+        Remove expectations of css3/color/composited-solid-backgrounds.html.
+
+        * platform/glib/TestExpectations:
+
+2020-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Should clear exception after microtask draining
+        https://bugs.webkit.org/show_bug.cgi?id=214391
+        <rdar://problem/65536227>
+
+        Reviewed by Mark Lam.
+
+        * js/dom/microtask-drain-should-clear-exceptions-expected.txt: Added.
+        * js/dom/microtask-drain-should-clear-exceptions.html: Added.
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, add iOS baseliens for tests re-synced in r264427 and r264432.
+
+        * platform/ios/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/resize-observer/svg-expected.txt: Added.
+
+2020-07-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [ iOS WK2 Release ] fast/scrolling/ios/non-invertible-transformed-scroller-ancestor.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214133
+
+        Unreviewed test fixing.
+
+        Test needs to wait for the visible content rect update to trigger scroll updates in the web process.
+
+        * fast/scrolling/ios/non-invertible-transformed-scroller-ancestor.html:
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-15  Mark Lam  <mark.lam@apple.com>
+
+        Speculative fix for flaky fast/css-custom-paint/out-of-memory-while-adding-worklet-module.html.
+        https://bugs.webkit.org/show_bug.cgi?id=214386
+
+        Unreviewed gardening.
+
+        * fast/css-custom-paint/script-tests/out-of-memory-while-adding-worklet-module.js:
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, move the Mojave baseline to the correct folder since I really messed up in r264373.
+
+        * platform/mac-mojave/imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-001-expected.txt: Renamed from LayoutTests/platform/mac-mojave/imported/w3c/web-platform-tests/css-fonts/generic-family-keywords-001-expected.txt.
+
+2020-07-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Gardening after r264424 and r264427
+
+        Unreviewed gardening.
+
+        Merge common expectations for svg/ when they are the same.
+
+        * platform/gtk/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/resize-observer/svg-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/animations/seeking-events-4-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/embedded/image-fractional-width-vertical-fidelity-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/embedded/image-fractional-width-vertical-fidelity-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-002-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-002-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-003-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-003-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-002-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-002-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-003-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-003-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-002-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-002-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-003-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-003-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-invalid-base-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-invalid-base-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-002-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-002-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-003-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-003-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/url-reference-local-textpath-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/use-descendant-combinator-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/use-descendant-combinator-002-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/use-hidden-attr-change-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/use-nested-symbol-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/linking/reftests/use-symbol-rendered-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/marker-009-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/marker-009-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/marker-orient-001-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-002-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-003-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-003-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-011-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-011-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-012-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-012-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-013-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-013-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-021-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-022-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-023-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-strokewidth-non-scaling-stroke-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-strokewidth-non-scaling-stroke-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-userspaceonuse-non-scaling-stroke-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-userspaceonuse-non-scaling-stroke-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/painting/reftests/mask-print-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/painting/reftests/mask-print-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-expected.txt: Copied from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-mutating-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-mutating-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-mutating-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-mutating-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-01.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-01.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-02.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-02.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-01.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-01.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-02.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-02.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/shapes/scripted/stroke-dashes-hit-at-high-scale-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-empty-string-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-empty-string-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-xhtml.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-xhtml.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/struct/reftests/use-adopted-with-external-resource.tentative-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/struct/reftests/use-adopted-with-external-resource.tentative-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/struct/reftests/use-inheritance-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/svg/struct/reftests/use-inheritance-001-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/text/reftests/dominant-baseline-hanging-small-font-size-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/text/reftests/tspan-opacity-mixed-direction-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/svg/types/scripted/SVGGeometryElement.isPointInStroke-02-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-keep-all-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeat.coord1-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/blob.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/rendering/widgets/baseline-alignment-and-overflow.tentative-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/rendering/widgets/button-layout/flex-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-list-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/forms/the-textarea-element/wrap-enumerated-ascii-case-insensitive-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_getCoalescedEvents_when_pointerlocked-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy_with_pointerlock-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_after_pointercapture-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_supercedes_capture-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_in_pointerlock-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_on_chorded_mouse_button_when_locked-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/resize-observer/svg-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/embedded/image-fractional-width-vertical-fidelity-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/embedded/image-fractional-width-vertical-fidelity-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-002-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-002-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-003-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/circle-003-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-002-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-002-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-003-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/ellipse-003-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-002-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-002-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-003-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/geometry/reftests/rect-003-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-invalid-base-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-invalid-base-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-002-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-002-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-003-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/linking/reftests/url-processing-whitespace-003-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/url-reference-local-textpath-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/use-descendant-combinator-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/use-descendant-combinator-002-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/use-hidden-attr-change-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/use-nested-symbol-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/linking/reftests/use-symbol-rendered-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/marker-009-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/marker-009-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/marker-orient-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-002-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-003-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-003-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-011-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-011-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-012-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-012-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-013-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-013-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-021-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-022-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-path-023-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-strokewidth-non-scaling-stroke-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-strokewidth-non-scaling-stroke-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-userspaceonuse-non-scaling-stroke-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/marker-units-userspaceonuse-non-scaling-stroke-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/painting/reftests/mask-print-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/painting/reftests/mask-print-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-expected.txt: Copied from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-mutating-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-mutating-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-zero-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-mutating-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/path/distance/pathlength-rect-mutating-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-01.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-01.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-02.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/pservers/reftests/gradient-inheritance-not-in-rendertree-02.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-01.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-01.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-02.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/pservers/reftests/pattern-inheritance-not-in-rendertree-02.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/scripted/stroke-dashes-hit-at-high-scale-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-empty-string-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-empty-string-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-xhtml.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/struct/reftests/requiredextensions-xhtml.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/struct/reftests/use-adopted-with-external-resource.tentative-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/struct/reftests/use-adopted-with-external-resource.tentative-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/struct/reftests/use-inheritance-001-expected.txt: Renamed from LayoutTests/platform/ios-simulator/imported/w3c/web-platform-tests/svg/struct/reftests/use-inheritance-001-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/text/reftests/dominant-baseline-hanging-small-font-size-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/text/reftests/tspan-opacity-mixed-direction-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/types/scripted/SVGGeometryElement.isPointInStroke-02-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/touch-events/historical-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/touch-events/idlharness.window-expected.txt: Added.
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS WK1 EWS] compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214388
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations: Mark test as flaky to speed up EWS and reduce false positives.
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS iOS] imported/w3c/web-platform-tests/svg/animations/seeking-events-4.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214387
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Mark test as flaky.
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, move a test baseline to the correct subdirectory.
+
+        * platform/mac/imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-001-expected.txt: Renamed from LayoutTests/platform/mac/imported/w3c/web-platform-tests/css-fonts/generic-family-keywords-001-expected.txt.
+
+2020-07-15  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ iOS ] canvas/philip/tests/2d.pattern.animated.gif.html is passing and needs expectations removed
+        https://bugs.webkit.org/show_bug.cgi?id=214384
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2020-07-15  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ iOS  Release ] imported/w3c/web-platform-tests/websockets/remove-own-iframe-during-onerror.window.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=214382
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-15  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ iOS ] http/tests/security/stylesheet-href-redirect.html is flaky timing out
+        https://bugs.webkit.org/show_bug.cgi?id=209352
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/resize-observer from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214375
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2020-07-15  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ macOS wk1 ] http/tests/media/reload-after-dialog.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=212828
+
+        Unreviewed test gardening
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-07-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [ iOS ] fast/scrolling/ios/programm atic-scroll-while-zoomed.ht ml and fast/scrolling/ios/autoscro ll-input-when-very-zoomed.h tml are failing on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=214358
+        <rdar://problem/65609413>
+
+        Unreviewed test gardening. These tests need iPad results.
+
+        * platform/ipad/fast/scrolling/ios/autoscroll-input-when-very-zoomed-expected.txt:
+        * platform/ipad/fast/scrolling/ios/programmatic-scroll-while-zoomed-expected.txt: Added.
+
+2020-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Resync web-platform-tests/svg from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=214323
+
+        Reviewed by Alex Christensen.
+
+        Resync web-platform-tests/svg from upstream b2a666d93581a71e9338b2.
+
+        * platform/mac/imported/w3c/web-platform-tests/svg/*: Updated.
+
+2020-07-15  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Caret should be before text placeholder instead of after it
+        https://bugs.webkit.org/show_bug.cgi?id=214319
+        <rdar://problem/65295523>
+
+        Reviewed by Wenson Hsieh and Simon Fraser (1).
+
+        Add some tests.
+
+        [1] Simon only reviewed editing/text-placeholder/insert-into-content-editable-and-remove-via-mutation-event.html.
+
+        * editing/text-placeholder/caret-before-zero-width-placeholder-in-content-editable-end-of-word-expected.txt: Added.
+        * editing/text-placeholder/caret-before-zero-width-placeholder-in-content-editable-end-of-word.html: Added.
+        * editing/text-placeholder/caret-before-zero-width-placeholder-in-content-editable-start-of-word-expected.txt: Added.
+        * editing/text-placeholder/caret-before-zero-width-placeholder-in-content-editable-start-of-word.html: Added.
+        * editing/text-placeholder/insert-into-content-editable-and-remove-via-mutation-event-expected.txt: Added.
+        * editing/text-placeholder/insert-into-content-editable-and-remove-via-mutation-event.html: Added.
+        * resources/js-test.js:
+        (shouldBeLessThanOrEqual): Added. Just like shouldBeGreaterThanOrEqual, but for <=.
+
+2020-07-15  Simon Fraser  <simon.fraser@apple.com>
+
+        itsnicethat.com page is sometimes non-scrollable
+        https://bugs.webkit.org/show_bug.cgi?id=214362
+        <rdar://problem/65431127>
+
+        Reviewed by Tim Horton.
+
+        * fast/scrolling/ios/clip-path-hit-test-expected.txt: Added.
+        * fast/scrolling/ios/clip-path-hit-test.html: Added.
+        * fast/scrolling/mac/clip-path-hit-test-expected.txt: Added.
+        * fast/scrolling/mac/clip-path-hit-test.html: Added.
+
+2020-07-15  Mark Lam  <mark.lam@apple.com>
+
+        Add handling of out of memory handling while adding a worklet module.
+        https://bugs.webkit.org/show_bug.cgi?id=214354
+        <rdar://problem/65271931>
+
+        Reviewed by Yusuke Suzuki and Keith Miller.
+
+        We're skipping the new test on Debug builds because it will always run too slow.
+        The Release build is sufficient to test this OOME handling.
+
+        * TestExpectations:
+        * fast/css-custom-paint/out-of-memory-while-adding-worklet-module-expected.txt: Added.
+        * fast/css-custom-paint/out-of-memory-while-adding-worklet-module.html: Added.
+        * fast/css-custom-paint/script-tests: Added.
+        * fast/css-custom-paint/script-tests/out-of-memory-while-adding-worklet-module.js: Added.
+        (useAllMemory.try.get Object):
+        (useAllMemory.try.foo):
+        (useAllMemory):
+        (catch):
+
+2020-07-15  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ iOS Debug ] fast/text-indicator/text-indicator-empty-link.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=214363
+
+        Unreview test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-15  Lauro Moura  <lmoura@igalia.com>
+
+        [SOUP] Artificial delay to WebSocket connection to mitigate port scanning attacks
+        https://bugs.webkit.org/show_bug.cgi?id=214293
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add glib-specific baseline due to SOUP messages.
+
+        * platform/glib/TestExpectations:
+        * platform/glib/http/tests/websocket/tests/hybi/closed-port-delay-expected.txt: Added.
+
+2020-07-15  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Unreviewed micro gardening: imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-negative.html
+        https://bugs.webkit.org/show_bug.cgi?id=214349
+
+        New test
+        imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-negative.html
+        crashes on an assertion.
+
+        This is not surprising since changetype is not implemented in our port and we
+        already had a similar crash with that feature. Marking it as [ Failure Crash ].
+
+        * platform/gtk/TestExpectations:
+
+2020-07-14  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Depuplicate some accessibility expectations
+
+        Unreviewed test gardening
+
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-07-14  Hector Lopez  <hector_i_lopez@apple.com>
+
+        REGRESSION: (r263761) [ iOS ] webanimations/accelerated-animation-with-easing.html is still flaky
+        https://bugs.webkit.org/show_bug.cgi?id=214327
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-14  Kenneth Russell  <kbr@chromium.org>
+
+        [WebGL2] Implement compressedTex{Sub}Image*, copyTexSubImage3D
+        https://bugs.webkit.org/show_bug.cgi?id=126449
+
+        Reviewed by Dean Jackson.
+
+        Rebaseline layout tests that have progressed, or fully pass.
+
+        * webgl/2.0.0/conformance2/misc/views-with-offsets-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format-expected.txt:
+
+2020-07-14  Hector Lopez  <hector_i_lopez@apple.com>
+
+        [ iOS Debug ] http/tests/workers/worker-importScripts-banned-mimetype.html is flakey crashing
+        https://bugs.webkit.org/show_bug.cgi?id=214322
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-07-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, add Catalina specific baseline for css/css-fonts/generic-family-keywords-001.html after r264343.
+
+        * platform/mac-mojave/imported/w3c/web-platform-tests/css-fonts/generic-family-keywords-001-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/css-fonts/generic-family-keywords-001-expected.txt: Added.
+
 2020-07-14  Simon Fraser  <simon.fraser@apple.com>
 
         Flashes of incorrect scroll position when zooming on quip

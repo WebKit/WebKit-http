@@ -216,9 +216,9 @@ PASS <area>: Setting <http://example.net>.host = 'example.com:8080'
 PASS URL: Setting <http://example.net:8080>.host = 'example.com' Port number is unchanged if not specified in the new value 
 PASS <a>: Setting <http://example.net:8080>.host = 'example.com' Port number is unchanged if not specified in the new value 
 PASS <area>: Setting <http://example.net:8080>.host = 'example.com' Port number is unchanged if not specified in the new value 
-FAIL URL: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified assert_equals: expected "http://example.com:8080/" but got "http://example.com:0/"
-FAIL <a>: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified assert_equals: expected "http://example.com:8080/" but got "http://example.com:0/"
-FAIL <area>: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified assert_equals: expected "http://example.com:8080/" but got "http://example.com:0/"
+PASS URL: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified 
+PASS <a>: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified 
+PASS <area>: Setting <http://example.net:8080>.host = 'example.com:' Port number is unchanged if not specified 
 PASS URL: Setting <http://example.net>.host = '' The empty host is not valid for special schemes 
 PASS <a>: Setting <http://example.net>.host = '' The empty host is not valid for special schemes 
 PASS <area>: Setting <http://example.net>.host = '' The empty host is not valid for special schemes 
@@ -582,9 +582,9 @@ PASS <area>: Setting <https://example.net?lang=en-US>.hash = '##nav'
 PASS URL: Setting <https://example.net?lang=en-US#nav>.hash = '#main' 
 PASS <a>: Setting <https://example.net?lang=en-US#nav>.hash = '#main' 
 PASS <area>: Setting <https://example.net?lang=en-US#nav>.hash = '#main' 
-FAIL URL: Setting <https://example.net?lang=en-US#nav>.hash = '#' assert_equals: expected "https://example.net/?lang=en-US#" but got "https://example.net/?lang=en-US"
-FAIL <a>: Setting <https://example.net?lang=en-US#nav>.hash = '#' assert_equals: expected "https://example.net/?lang=en-US#" but got "https://example.net/?lang=en-US"
-FAIL <area>: Setting <https://example.net?lang=en-US#nav>.hash = '#' assert_equals: expected "https://example.net/?lang=en-US#" but got "https://example.net/?lang=en-US"
+PASS URL: Setting <https://example.net?lang=en-US#nav>.hash = '#' 
+PASS <a>: Setting <https://example.net?lang=en-US#nav>.hash = '#' 
+PASS <area>: Setting <https://example.net?lang=en-US#nav>.hash = '#' 
 PASS URL: Setting <https://example.net?lang=en-US#nav>.hash = '' 
 PASS <a>: Setting <https://example.net?lang=en-US#nav>.hash = '' 
 PASS <area>: Setting <https://example.net?lang=en-US#nav>.hash = '' 

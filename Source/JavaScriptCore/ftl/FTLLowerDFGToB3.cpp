@@ -1364,8 +1364,8 @@ private:
         case IsEmpty:
             compileIsEmpty();
             break;
-        case IsUndefined:
-            compileIsUndefined();
+        case TypeOfIsUndefined:
+            compileTypeOfIsUndefined();
             break;
         case IsUndefinedOrNull:
             compileIsUndefinedOrNull();
@@ -2870,25 +2870,42 @@ private:
         case DoubleRepUse: {
             LValue left = lowDouble(m_node->child1());
             LValue right = lowDouble(m_node->child2());
-            
+
             LBasicBlock notLessThan = m_out.newBlock();
+            LBasicBlock isEqual = m_out.newBlock();
+            LBasicBlock notEqual = m_out.newBlock();
             LBasicBlock continuation = m_out.newBlock();
-            
+
             Vector<ValueFromBlock, 2> results;
-            
+
             results.append(m_out.anchor(left));
             m_out.branch(
                 m_node->op() == ArithMin
                     ? m_out.doubleLessThan(left, right)
                     : m_out.doubleGreaterThan(left, right),
                 unsure(continuation), unsure(notLessThan));
-            
-            LBasicBlock lastNext = m_out.appendTo(notLessThan, continuation);
-            results.append(m_out.anchor(m_out.select(
+
+            // The spec for Math.min and Math.max states that +0 is considered to be larger than -0.
+            LBasicBlock lastNext = m_out.appendTo(notLessThan, isEqual);
+            m_out.branch(
+                m_out.doubleEqual(left, right),
+                    rarely(isEqual), usually(notEqual));
+
+            lastNext = m_out.appendTo(isEqual, notEqual);
+            results.append(m_out.anchor(
                 m_node->op() == ArithMin
-                    ? m_out.doubleGreaterThanOrEqual(left, right)
-                    : m_out.doubleLessThanOrEqual(left, right),
-                right, m_out.constDouble(PNaN))));
+                    ? m_out.bitOr(left, right)
+                    : m_out.bitAnd(left, right)));
+            m_out.jump(continuation);
+
+            lastNext = m_out.appendTo(notEqual, continuation);
+            results.append(
+                m_out.anchor(
+                    m_out.select(
+                        m_node->op() == ArithMin
+                            ? m_out.doubleGreaterThan(left, right)
+                            : m_out.doubleLessThan(left, right),
+                        right, m_out.constDouble(PNaN))));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
@@ -6828,7 +6845,7 @@ private:
         if (m_graph.isWatchingHavingABadTimeWatchpoint(m_node)) {
             CheckedInt32 startLength = 0;
             BitVector* bitVector = m_node->bitVector();
-            HashMap<InlineCallFrame*, LValue, WTF::DefaultHash<InlineCallFrame*>::Hash, WTF::NullableHashTraits<InlineCallFrame*>> cachedSpreadLengths;
+            HashMap<InlineCallFrame*, LValue, WTF::DefaultHash<InlineCallFrame*>, WTF::NullableHashTraits<InlineCallFrame*>> cachedSpreadLengths;
 
             if (m_node->numChildren() == 1 && bitVector->get(0)) {
                 Edge use = m_graph.varArgChild(m_node, 0);
@@ -9701,7 +9718,7 @@ private:
         unsigned staticArgumentCount = 0;
         Vector<LValue, 2> spreadLengths;
         Vector<LValue, 8> patchpointArguments;
-        HashMap<InlineCallFrame*, LValue, WTF::DefaultHash<InlineCallFrame*>::Hash, WTF::NullableHashTraits<InlineCallFrame*>> cachedSpreadLengths;
+        HashMap<InlineCallFrame*, LValue, WTF::DefaultHash<InlineCallFrame*>, WTF::NullableHashTraits<InlineCallFrame*>> cachedSpreadLengths;
         auto pushAndCountArgumentsFromRightToLeft = recursableLambda([&](auto self, Node* target) -> void {
             if (target->op() == PhantomSpread) {
                 self(target->child1().node());
@@ -10998,7 +11015,7 @@ private:
         setBoolean(m_out.isZero64(lowJSValue(m_node->child1())));
     }
     
-    void compileIsUndefined()
+    void compileTypeOfIsUndefined()
     {
         setBoolean(equalNullOrUndefined(m_node->child1(), AllCellsAreFalse, EqualUndefined));
     }
@@ -12646,7 +12663,7 @@ private:
 
                 initializeArrayElements(m_out.constInt32(structure->indexingType()), m_out.int32Zero, vectorLength, butterfly);
 
-                HashMap<int32_t, LValue, DefaultHash<int32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<int32_t>> indexMap;
+                HashMap<int32_t, LValue, DefaultHash<int32_t>, WTF::UnsignedWithZeroKeyHashTraits<int32_t>> indexMap;
                 Vector<int32_t> indices;
                 for (unsigned i = data.m_properties.size(); i--;) {
                     PromotedLocationDescriptor descriptor = data.m_properties[i];

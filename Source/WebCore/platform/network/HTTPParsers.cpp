@@ -37,12 +37,9 @@
 #include "HTTPHeaderNames.h"
 #include "ParsedContentType.h"
 #include <wtf/DateMath.h>
-#include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Optional.h>
-#include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
-
 
 namespace WebCore {
 
@@ -400,38 +397,29 @@ String extractMIMETypeFromMediaType(const String& mediaType)
 
 String extractCharsetFromMediaType(const String& mediaType)
 {
-    unsigned int pos, len;
-    findCharsetInMediaType(mediaType, pos, len);
-    return mediaType.substring(pos, len);
-}
-
-void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, unsigned int& charsetLen, unsigned int start)
-{
-    charsetPos = start;
-    charsetLen = 0;
-
-    size_t pos = start;
+    unsigned charsetPos = 0, charsetLen = 0;
+    size_t pos = 0;
     unsigned length = mediaType.length();
-    
+
     while (pos < length) {
         pos = mediaType.findIgnoringASCIICase("charset", pos);
         if (pos == notFound || pos == 0) {
             charsetLen = 0;
-            return;
+            break;
         }
-        
+
         // is what we found a beginning of a word?
         if (mediaType[pos-1] > ' ' && mediaType[pos-1] != ';') {
             pos += 7;
             continue;
         }
-        
+
         pos += 7;
 
         // skip whitespace
         while (pos != length && mediaType[pos] <= ' ')
             ++pos;
-    
+
         if (mediaType[pos++] != '=') // this "charset" substring wasn't a parameter name, but there may be others
             continue;
 
@@ -445,8 +433,9 @@ void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, u
 
         charsetPos = pos;
         charsetLen = endpos - pos;
-        return;
+        break;
     }
+    return mediaType.substring(charsetPos, charsetLen);
 }
 
 XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL)
@@ -542,8 +531,8 @@ ContentTypeOptionsDisposition parseContentTypeOptionsHeader(StringView header)
 {
     StringView leftToken = header.left(header.find(','));
     if (equalLettersIgnoringASCIICase(stripLeadingAndTrailingHTTPSpaces(leftToken), "nosniff"))
-        return ContentTypeOptionsNosniff;
-    return ContentTypeOptionsNone;
+        return ContentTypeOptionsDisposition::Nosniff;
+    return ContentTypeOptionsDisposition::None;
 }
 
 // For example: "HTTP/1.1 200 OK" => "OK".
@@ -563,27 +552,27 @@ AtomString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
 
 XFrameOptionsDisposition parseXFrameOptionsHeader(const String& header)
 {
-    XFrameOptionsDisposition result = XFrameOptionsNone;
+    XFrameOptionsDisposition result = XFrameOptionsDisposition::None;
 
     if (header.isEmpty())
         return result;
 
     for (auto& currentHeader : header.split(',')) {
         currentHeader = currentHeader.stripWhiteSpace();
-        XFrameOptionsDisposition currentValue = XFrameOptionsNone;
+        XFrameOptionsDisposition currentValue = XFrameOptionsDisposition::None;
         if (equalLettersIgnoringASCIICase(currentHeader, "deny"))
-            currentValue = XFrameOptionsDeny;
+            currentValue = XFrameOptionsDisposition::Deny;
         else if (equalLettersIgnoringASCIICase(currentHeader, "sameorigin"))
-            currentValue = XFrameOptionsSameOrigin;
+            currentValue = XFrameOptionsDisposition::SameOrigin;
         else if (equalLettersIgnoringASCIICase(currentHeader, "allowall"))
-            currentValue = XFrameOptionsAllowAll;
+            currentValue = XFrameOptionsDisposition::AllowAll;
         else
-            currentValue = XFrameOptionsInvalid;
+            currentValue = XFrameOptionsDisposition::Invalid;
 
-        if (result == XFrameOptionsNone)
+        if (result == XFrameOptionsDisposition::None)
             result = currentValue;
         else if (result != currentValue)
-            return XFrameOptionsConflict;
+            return XFrameOptionsDisposition::Conflict;
     }
     return result;
 }
@@ -644,69 +633,6 @@ bool parseRange(const String& range, long long& rangeOffset, long long& rangeEnd
     rangeOffset = firstBytePos;
     rangeEnd = lastBytePos;
     return true;
-}
-
-// HTTP/1.1 - RFC 2616
-// http://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1
-// Request-Line = Method SP Request-URI SP HTTP-Version CRLF
-size_t parseHTTPRequestLine(const char* data, size_t length, String& failureReason, String& method, String& url, HTTPVersion& httpVersion)
-{
-    method = String();
-    url = String();
-    httpVersion = Unknown;
-
-    const char* space1 = 0;
-    const char* space2 = 0;
-    const char* p;
-    size_t consumedLength;
-
-    for (p = data, consumedLength = 0; consumedLength < length; p++, consumedLength++) {
-        if (*p == ' ') {
-            if (!space1)
-                space1 = p;
-            else if (!space2)
-                space2 = p;
-        } else if (*p == '\n')
-            break;
-    }
-
-    // Haven't finished header line.
-    if (consumedLength == length) {
-        failureReason = "Incomplete Request Line"_s;
-        return 0;
-    }
-
-    // RequestLine does not contain 3 parts.
-    if (!space1 || !space2) {
-        failureReason = "Request Line does not appear to contain: <Method> <Url> <HTTPVersion>."_s;
-        return 0;
-    }
-
-    // The line must end with "\r\n".
-    const char* end = p + 1;
-    if (*(end - 2) != '\r') {
-        failureReason = "Request line does not end with CRLF"_s;
-        return 0;
-    }
-
-    // Request Method.
-    method = String(data, space1 - data); // For length subtract 1 for space, but add 1 for data being the first character.
-
-    // Request URI.
-    url = String(space1 + 1, space2 - space1 - 1); // For length subtract 1 for space.
-
-    // HTTP Version.
-    String httpVersionString(space2 + 1, end - space2 - 3); // For length subtract 1 for space, and 2 for "\r\n".
-    if (httpVersionString.length() != 8 || !httpVersionString.startsWith("HTTP/1."))
-        httpVersion = Unknown;
-    else if (httpVersionString[7] == '0')
-        httpVersion = HTTP_1_0;
-    else if (httpVersionString[7] == '1')
-        httpVersion = HTTP_1_1;
-    else
-        httpVersion = Unknown;
-
-    return end - data;
 }
 
 static inline bool isValidHeaderNameCharacter(const char* character)

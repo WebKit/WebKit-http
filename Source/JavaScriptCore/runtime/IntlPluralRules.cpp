@@ -27,7 +27,7 @@
 #include "config.h"
 #include "IntlPluralRules.h"
 
-#include "IntlObject.h"
+#include "IntlObjectInlines.h"
 #include "JSCInlines.h"
 #include "ObjectConstructor.h"
 
@@ -86,7 +86,7 @@ void IntlPluralRules::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(thisObject, visitor);
 }
 
-Vector<String> IntlPluralRules::localeData(const String&, size_t)
+Vector<String> IntlPluralRules::localeData(const String&, RelevantExtensionKey)
 {
     return { };
 }
@@ -108,22 +108,20 @@ void IntlPluralRules::initializePluralRules(JSGlobalObject* globalObject, JSValu
         RETURN_IF_EXCEPTION(scope, void());
     }
 
-    HashMap<String, String> localeOpt;
-    String localeMatcher = intlStringOption(globalObject, options, vm.propertyNames->localeMatcher, { "lookup", "best fit" }, "localeMatcher must be either \"lookup\" or \"best fit\"", "best fit");
+    ResolveLocaleOptions localeOptions;
+    LocaleMatcher localeMatcher = intlOption<LocaleMatcher>(globalObject, options, vm.propertyNames->localeMatcher, { { "lookup"_s, LocaleMatcher::Lookup }, { "best fit"_s, LocaleMatcher::BestFit } }, "localeMatcher must be either \"lookup\" or \"best fit\""_s, LocaleMatcher::BestFit);
     RETURN_IF_EXCEPTION(scope, void());
-    localeOpt.add(vm.propertyNames->localeMatcher.string(), localeMatcher);
 
     const HashSet<String>& availableLocales = intlPluralRulesAvailableLocales();
-    HashMap<String, String> resolved = resolveLocale(globalObject, availableLocales, requestedLocales, localeOpt, nullptr, 0, localeData);
-    m_locale = resolved.get(vm.propertyNames->locale.string());
+    auto resolved = resolveLocale(globalObject, availableLocales, requestedLocales, localeMatcher, localeOptions, { }, localeData);
+    m_locale = resolved.locale;
     if (m_locale.isEmpty()) {
         throwTypeError(globalObject, scope, "failed to initialize PluralRules due to invalid locale"_s);
         return;
     }
 
-    String typeString = intlStringOption(globalObject, options, vm.propertyNames->type, { "cardinal", "ordinal" }, "type must be \"cardinal\" or \"ordinal\"", "cardinal");
+    m_type = intlOption<Type>(globalObject, options, vm.propertyNames->type, { { "cardinal"_s, Type::Cardinal }, { "ordinal"_s, Type::Ordinal } }, "type must be \"cardinal\" or \"ordinal\""_s, Type::Cardinal);
     RETURN_IF_EXCEPTION(scope, void());
-    m_type = typeString == "ordinal" ? Type::Ordinal : Type::Cardinal;
 
     unsigned minimumIntegerDigits = intlNumberOption(globalObject, options, Identifier::fromString(vm, "minimumIntegerDigits"), 1, 21, 1);
     RETURN_IF_EXCEPTION(scope, void());

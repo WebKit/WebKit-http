@@ -36,6 +36,9 @@
 
 #define kIOPSTypeKey "Type"
 #define kIOPSInternalBatteryType "InternalBattery"
+#define kIOPSPowerSourceStateKey "Power Source State"
+#define kIOPSACPowerValue "AC Power"
+#define kIOPSNotifyPowerSource "com.apple.system.powersources.source"
 
 #endif
 

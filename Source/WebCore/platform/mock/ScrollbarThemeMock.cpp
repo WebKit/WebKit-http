@@ -41,12 +41,12 @@ IntRect ScrollbarThemeMock::trackRect(Scrollbar& scrollbar, bool)
 
 int ScrollbarThemeMock::scrollbarThickness(ScrollbarControlSize controlSize, ScrollbarExpansionState)
 {
-    return cScrollbarThickness[controlSize];
+    return cScrollbarThickness[static_cast<uint8_t>(controlSize)];
 }
 
 void ScrollbarThemeMock::paintTrackBackground(GraphicsContext& context, Scrollbar& scrollbar, const IntRect& trackRect)
 {
-    context.fillRect(trackRect, scrollbar.enabled() ? Color::lightGray : makeSimpleColor(224, 224, 224));
+    context.fillRect(trackRect, scrollbar.enabled() ? Color::lightGray : SRGBA<uint8_t> { 224, 224, 224 });
 }
 
 void ScrollbarThemeMock::paintThumb(GraphicsContext& context, Scrollbar& scrollbar, const IntRect& thumbRect)

@@ -108,12 +108,9 @@ TEST(ExtendedColor, Equality)
         EXPECT_NE(c1, c2);
     }
 
-    int r = 255;
-    int g = 128;
-    int b = 63;
-    int a = 127;
-    Color rgb1 { SRGBA<float> { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f } };
-    Color rgb2 = makeSimpleColor(r, g, b, a);
+    auto componentBytes = SRGBA<uint8_t> { 255, 128, 63, 127 };
+    Color rgb1 { convertToComponentFloats(componentBytes) };
+    Color rgb2 { componentBytes };
     EXPECT_NE(rgb1, rgb2);
     EXPECT_NE(rgb2, rgb1);
 }
@@ -140,12 +137,9 @@ TEST(ExtendedColor, Hash)
         EXPECT_NE(c1.hash(), c2.hash());
     }
 
-    int r = 255;
-    int g = 128;
-    int b = 63;
-    int a = 127;
-    Color rgb1 { SRGBA<float> { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f } };
-    Color rgb2 = makeSimpleColor(r, g, b, a);
+    auto componentBytes = SRGBA<uint8_t> { 255, 128, 63, 127 };
+    Color rgb1 { convertToComponentFloats(componentBytes) };
+    Color rgb2 { componentBytes };
     EXPECT_NE(rgb1.hash(), rgb2.hash());
 }
 
@@ -259,6 +253,38 @@ TEST(ExtendedColor, LinearSRGBConversionToSRGB)
     EXPECT_TRUE(WTF::areEssentiallyEqual(sRGBAColor.green, 0.735356927f));
     EXPECT_TRUE(WTF::areEssentiallyEqual(sRGBAColor.blue, 0.537098706f));
     EXPECT_TRUE(WTF::areEssentiallyEqual(sRGBAColor.alpha, 0.75f));
+}
+
+TEST(ExtendedColor, ColorWithAlphaMultipliedBy)
+{
+    Color color { SRGBA<float> { 0., 0., 1., 0.6 } };
+    EXPECT_TRUE(color.isExtended());
+
+    {
+        Color colorWithAlphaMultipliedBy = color.colorWithAlphaMultipliedBy(1.);
+        EXPECT_TRUE(colorWithAlphaMultipliedBy.isExtended());
+        EXPECT_EQ(color, colorWithAlphaMultipliedBy);
+    }
+
+    {
+        Color colorWithAlphaMultipliedBy = color.colorWithAlphaMultipliedBy(0.5);
+        EXPECT_TRUE(colorWithAlphaMultipliedBy.isExtended());
+        auto [r, g, b, a] = colorWithAlphaMultipliedBy.asExtended().components();
+        EXPECT_FLOAT_EQ(r, 0.);
+        EXPECT_FLOAT_EQ(g, 0.);
+        EXPECT_FLOAT_EQ(b, 1.);
+        EXPECT_FLOAT_EQ(a, 0.3);
+    }
+
+    {
+        Color colorWithAlphaMultipliedBy = color.colorWithAlphaMultipliedBy(0.);
+        EXPECT_TRUE(colorWithAlphaMultipliedBy.isExtended());
+        auto [r, g, b, a] = colorWithAlphaMultipliedBy.asExtended().components();
+        EXPECT_FLOAT_EQ(r, 0.);
+        EXPECT_FLOAT_EQ(g, 0.);
+        EXPECT_FLOAT_EQ(b, 1.);
+        EXPECT_FLOAT_EQ(a, 0.);
+    }
 }
 
 } // namespace TestWebKitAPI

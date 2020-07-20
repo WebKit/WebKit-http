@@ -403,7 +403,7 @@ public:
     void elementsFromAttribute(Vector<Element*>&, const QualifiedName&) const override;
 
     // Only if isColorWell()
-    SRGBA<uint8_t> colorValue() const override { return Color::transparent; }
+    SRGBA<uint8_t> colorValue() const override { return Color::transparentBlack; }
 
     AccessibilityRole roleValue() const override { return m_role; }
     String rolePlatformString() const override;
@@ -819,7 +819,7 @@ AccessibilityObject* firstAccessibleObjectFromNode(const Node*, const WTF::Funct
 
 namespace Accessibility {
 
-using PlatformRoleMap = HashMap<AccessibilityRole, String, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>;
+using PlatformRoleMap = HashMap<AccessibilityRole, String, DefaultHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>;
 
 PlatformRoleMap createPlatformRoleMap();
 String roleToPlatformString(AccessibilityRole);

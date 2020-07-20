@@ -1,3 +1,111 @@
+2020-07-18  Mark Lam  <mark.lam@apple.com>
+
+        Fixed regression due to r264507: Math.{min|max} inequality test should use DoubleNotEqualOrUnordered instead DoubleNotEqualAndOrdered.
+        https://bugs.webkit.org/show_bug.cgi?id=214526
+        <rdar://problem/65778061>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/math-max-min.js: Added.
+        (isNegativeZero):
+        (numberAsString):
+        (testMax):
+        (testMin):
+        (assertEq):
+
+2020-07-18  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Redefining a property should not change its insertion index (Object.keys order)
+        https://bugs.webkit.org/show_bug.cgi?id=142933
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es5/EnumeratingWithES5.baseline-jsc: Removed.
+        * microbenchmarks/redefine-property-accessor-dictionary.js: Added.
+        * microbenchmarks/redefine-property-accessor.js: Added.
+        * microbenchmarks/redefine-property-data-dictionary.js: Added.
+        * microbenchmarks/redefine-property-data.js: Added.
+        * stress/define-own-indexed-property-fast-path.js:
+        * stress/redefine-property-enumerable.js: Added.
+        * stress/redefine-property-get.js: Added.
+        * stress/redefine-property-set.js: Added.
+        * stress/redefine-property-value.js: Added.
+        * stress/redefine-property-writable.js: Added.
+        * test262/expectations.yaml: Mark 12 test cases as passing.
+
+2020-07-17  Xan Lopez  <xan@igalia.com>
+
+        Math.max() can yield the wrong result for max(0, -0).
+        https://bugs.webkit.org/show_bug.cgi?id=204457
+
+        Reviewed by Mark Lam.
+
+        Add a test to make sure we follow the spec in Math.{max,min} and
+        -0.0 < 0.0.
+
+        * stress/math-max-min-negative-zero.js: Added.
+        (assert):
+        (test):
+
+2020-07-17  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        emitIsUndefined() should not special-case [[IsHTMLDDA]] objects
+        https://bugs.webkit.org/show_bug.cgi?id=214443
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/default-value-destructuring-array.js: Added.
+        * microbenchmarks/default-value-destructuring-object.js: Added.
+        * microbenchmarks/default-value-function-parameters.js: Added.
+        * stress/default-value-masquerader.js: Added.
+        * test262/expectations.yaml: Mark 10 test cases as passing.
+
+2020-07-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use unvalidatedGet instead of get to access UnlinkedCodeBlock from CodeBlock destructor
+        https://bugs.webkit.org/show_bug.cgi?id=214403
+        <rdar://problem/65527229>
+
+        Reviewed by Mark Lam.
+
+        * stress/codeblock-destructor-access-unlinkedcodeblock.js: Added.
+        (foo):
+
+2020-07-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Emit HasOwnPropertyFunctionCallDotNode for "Reflect" identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=214325
+
+        Reviewed by Darin Adler and Saam Barati.
+
+        * microbenchmarks/has-own-property-for-in-loop-reflect-name.js: Added.
+        * stress/reflect-has.js:
+        * stress/reflect.js:
+
+2020-07-14  Saam Barati  <sbarati@apple.com>
+
+        We must hold the CodeBlock lock when calling StructureStubInfo::reset
+        https://bugs.webkit.org/show_bug.cgi?id=214332
+        <rdar://problem/64940787>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/hold-lock-when-resetting-structure-stub-info.js: Added.
+        (foo.bar.C):
+        (foo.bar):
+        (foo):
+
+2020-07-14  Mark Lam  <mark.lam@apple.com>
+
+        Handle out of memory error while creating an error message in the literal parser.
+        https://bugs.webkit.org/show_bug.cgi?id=214313
+        <rdar://problem/65031745>
+
+        Reviewed by Saam Barati.
+
+        * stress/out-of-memory-making-error-string-in-literal-parser.js: Added.
+
 2020-07-14  Angelos Oikonomopoulos  <angelos@igalia.com>
 
         Skip intermittently failing type-check-hoisting-phase-hoist-check-structure-on-tdz-this-value on mips

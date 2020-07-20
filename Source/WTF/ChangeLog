@@ -1,3 +1,267 @@
+2020-07-19  Geoffrey Garen  <ggaren@apple.com>
+
+        There should be only one RunLoop Timer class
+        https://bugs.webkit.org/show_bug.cgi?id=214340
+
+        Reviewed by Darin Adler.
+
+        RunLoop::Timer wins. RunLoopTimer loses.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformHave.h:
+        * wtf/PlatformMac.cmake: Remove RunLoopTimer.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::dispatchAfter): While we're here. let's make dispatchAfter
+        available on all platforms. We had cross-platform code, but it was
+        factored to be needlessly platform-specific.
+
+        * wtf/RunLoop.h: Added a version of dispatch() that accepts a
+        SchedulePairHashSet for Cocoa. Removed some indirection from timer
+        stuff, since it was confusing me. Consistently named all time intervals
+        "interval".
+
+        * wtf/RunLoopTimer.h: Removed.
+
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::createTimer): Factored out a helper function for dispatch() to use.
+        (WTF::RunLoop::dispatch): This function is the meat of the patch. It's
+        the only unique functionality that RunLoopTimer used to provide.
+        (WTF::RunLoop::TimerBase::start): Adopted helper function.
+        (WTF::RunLoop::runForDuration): Deleted.
+        (WTF::RunLoop::TimerBase::timerFired): Deleted.
+
+        * wtf/cf/RunLoopTimerCF.cpp: Removed.
+
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::dispatchAfter): Deleted. Now cross-platform.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::DispatchAfterContext::DispatchAfterContext): Deleted.
+        (WTF::DispatchAfterContext::dispatch): Deleted.
+        (WTF::RunLoop::dispatchAfter): Deleted. Now cross-platform.
+
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::dispatchAfter): Deleted. Now cross-platform.
+
+2020-07-17  Sam Weinig  <weinig@apple.com>
+
+        Remove final vestigates of SimpleColor
+        https://bugs.webkit.org/show_bug.cgi?id=214439
+
+        Reviewed by Simon Fraser.
+
+        * wtf/KeyValuePair.h:
+        (WTF::KeyValuePair::KeyValuePair):
+        Add overload of constructor that is not a template function to aid deduction
+        when using std::initializer_lists to contruct a HashMap.
+
+2020-07-17  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Don't include <wtf/text/WTFString.h> in SVGParserUtilities.h
+        https://bugs.webkit.org/show_bug.cgi?id=214320
+
+        Reviewed by Darin Adler.
+
+        * wtf/Forward.h: Added foward declarations for template specializations of DefaultHash.
+
+2020-07-17  Keith Miller  <keith_miller@apple.com>
+
+        Fix 32-bit debug watchos build
+        https://bugs.webkit.org/show_bug.cgi?id=214480
+
+        Reviewed by Michael Saboff.
+
+        subtracting pointers produces a ptrdiff_t but on 32-bit that's the same
+        as an int. Since we were comparing that to an unsigned that triggered
+        the signed comparison warning, which broke the build.
+
+        * wtf/text/StringParsingBuffer.h:
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264482.
+
+        Part of an attempted fix for the build
+
+        Reverted changeset:
+
+        "Use AVRoutePickerView when available for choosing AirPlay
+        devices"
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        https://trac.webkit.org/changeset/264482
+
+2020-07-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Rename createBoxPtr into adoptBoxPtr
+        https://bugs.webkit.org/show_bug.cgi?id=214171
+
+        Reviewed by Darin Adler.
+
+        * wtf/BoxPtr.h:
+        (WTF::adoptInBoxPtr):
+
+2020-07-16  Per Arne Vollan  <pvollan@apple.com>
+
+        XPC connection should be suspended before setting target queue
+        https://bugs.webkit.org/show_bug.cgi?id=214427
+
+        Reviewed by Darin Adler.
+
+        Declare function to suspend XPC connection.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2020-07-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WTF] Remove the unnecessary inner class DefaultHash<T>::Hash
+        https://bugs.webkit.org/show_bug.cgi?id=214389
+
+        Reviewed by Darin Adler.
+
+        DefaultHash<T> doesn't need to have a inner struct Hash. This can
+        be a problem for forward declarations (Bug 214320 Comment 5).
+
+        * wtf/BitVector.h:
+        * wtf/Forward.h:
+        * wtf/HashFunctions.h:
+        (WTF::PairHash::hash):
+        (WTF::PairHash::equal):
+        (WTF::TupleHash::hash):
+        (WTF::TupleHash::equal):
+        * wtf/ListHashSet.h:
+        * wtf/LoggingHashMap.h:
+        * wtf/LoggingHashSet.h:
+        * wtf/MetaAllocatorPtr.h:
+        * wtf/ObjectIdentifier.h:
+        * wtf/OptionSetHash.h:
+        (WTF::DefaultHash<OptionSet<T>>::hash):
+        (WTF::DefaultHash<OptionSet<T>>::equal):
+        (WTF::DefaultHash<OptionSet<T>>::Hash::hash): Deleted.
+        (WTF::DefaultHash<OptionSet<T>>::Hash::equal): Deleted.
+        * wtf/Packed.h:
+        * wtf/RetainPtr.h:
+        * wtf/StackShot.h:
+        * wtf/URLHash.h:
+        * wtf/VectorHash.h:
+        (WTF::VectorHash::hash):
+        * wtf/text/AtomString.h:
+        * wtf/text/AtomStringHash.h:
+        * wtf/text/CString.h:
+        * wtf/text/StringHash.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolRegistry.h:
+        (WTF::DefaultHash<SymbolRegistryKey>::hash):
+        (WTF::DefaultHash<SymbolRegistryKey>::equal):
+        (WTF::DefaultHash<SymbolRegistryKey>::Hash::hash): Deleted.
+        (WTF::DefaultHash<SymbolRegistryKey>::Hash::equal): Deleted.
+        * wtf/text/WTFString.h:
+
+2020-07-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Unreviewed build fix.
+
+        * wtf/PlatformHave.h: Define HAVE_AVROUTEPICKERVIEW.
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] De-duplicate SPI
+        https://bugs.webkit.org/show_bug.cgi?id=214415
+        <rdar://problem/65678060>
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformHave.h:
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] Build on Seed 1
+        https://bugs.webkit.org/show_bug.cgi?id=214396
+        <rdar://problem/65644762>
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformHave.h: Add HAVE(LARGE_CONTROL_SIZE).
+
+2020-07-15  Saagar Jha  <saagar@saagarjha.com>
+
+        Add some missing boilerplate to help fix build on macOS Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=214338
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformHave.h: Add HAVE_LARGE_CONTROL_SIZE and enable it on Big Sur.
+
+2020-07-15  Darin Adler  <darin@apple.com>
+
+        Remove a few more uses of the terms black/white list
+        https://bugs.webkit.org/show_bug.cgi?id=214371
+
+        Reviewed by Alex Christensen.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::loadIDNAllowedScriptList): Renamed.
+        (WTF::URLHelpers::isLookalikeCharacter): Renamed.
+        (WTF::URLHelpers::addScriptToIDNAllowedScriptList): Renamed.
+        (WTF::URLHelpers::initializeDefaultIDNAllowedScriptList): Renamed.
+        (WTF::URLHelpers::allCharactersInAllowedIDNScriptList): Renamed.
+        (WTF::URLHelpers::mapHostName): Updated for name changes.
+        * wtf/URLHelpers.h: Renamed things.
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::readIDNAllowedScriptListFile): Renamed.
+        (WTF::URLHelpers::loadIDNAllowedScriptList): Renamed. Also use a modern for
+        loop to simplify the code.
+
+2020-07-15  Jim Mason  <jmason@ibinx.com>
+
+        [WTF] Fix PackedAlignedPtr for X86_64 canonical addresses
+        https://bugs.webkit.org/show_bug.cgi?id=214142
+
+        Reviewed by Mark Lam
+
+        * wtf/Packed.h:
+        (WTF::PackedAlignedPtr::get const):
+        (WTF::PackedAlignedPtr::set):
+
+2020-07-15  Brady Eidson  <beidson@apple.com>
+
+        Resolve race between IOHIDManager and GameController framework.
+        <rdar://problem/65554490> and https://bugs.webkit.org/show_bug.cgi?id=214245
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformHave.h:
+
+2020-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r262341) URL::createCFURL should produce a CFURL that uses UTF-8 to decode its percent-encoded sequences
+        https://bugs.webkit.org/show_bug.cgi?id=214314
+        <rdar://problem/65079249>
+
+        Reviewed by Darin Adler.
+
+        r262341 made it so we usually pass kCFStringEncodingISOLatin1 into CFURLCreateAbsoluteURLWithBytes when creating a CFURLRef from a WTF::URL.
+        This is correct for the interpretation of the bytes to create a CFStringRef, and that is a change we want to make.
+        The encoding, however, is also stored with the CFURL and used later when interpreting percent-encoded sequences.
+        We want to use kCFStringEncodingUTF8 to make the interpretation of percent-encoded sequences the same as it used to be.
+        To avoid making a separate CString most of the time, use characters8() only for ASCII-only URLs, where UTF-8 and Latin1 are the same.
+        For all other URLs, we have to make a CString containing the UTF-8 representation of the string to get the percent-encoded sequences interpreted the same.
+
+        * wtf/cf/URLCF.cpp:
+        (WTF::URL::createCFURL const):
+        * wtf/cocoa/URLCocoa.mm:
+        (WTF::URL::createCFURL const):
+
 2020-07-14  Jer Noble  <jer.noble@apple.com>
 
         Add support for parsing VP-style codec strings.

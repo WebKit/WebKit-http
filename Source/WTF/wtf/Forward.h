@@ -78,15 +78,22 @@ template<typename...> class Variant;
 template<typename, size_t = 0, typename = CrashOnOverflow, size_t = 16, typename Malloc = VectorMalloc> class Vector;
 template<typename, typename = EmptyCounter> class WeakPtr;
 
-template<typename> struct DefaultHash { using Hash = void; };
+template<typename> struct DefaultHash;
+template<> struct DefaultHash<AtomString>;
+template<typename T> struct DefaultHash<OptionSet<T>>;
+template<> struct DefaultHash<String>;
+template<> struct DefaultHash<StringImpl*>;
+template<> struct DefaultHash<URL>;
+template<typename T, size_t inlineCapacity> struct DefaultHash<Vector<T, inlineCapacity>>;
+
 template<typename> struct DumbValueTraits;
 template<typename> struct EnumTraits;
 template<typename E, E...> struct EnumValues;
 template<typename> struct HashTraits;
 
-template<typename Value, typename = typename DefaultHash<Value>::Hash, typename = HashTraits<Value>> class HashCountedSet;
-template<typename KeyArg, typename MappedArg, typename = typename DefaultHash<KeyArg>::Hash, typename = HashTraits<KeyArg>, typename = HashTraits<MappedArg>> class HashMap;
-template<typename ValueArg, typename = typename DefaultHash<ValueArg>::Hash, typename = HashTraits<ValueArg>> class HashSet;
+template<typename Value, typename = DefaultHash<Value>, typename = HashTraits<Value>> class HashCountedSet;
+template<typename KeyArg, typename MappedArg, typename = DefaultHash<KeyArg>, typename = HashTraits<KeyArg>, typename = HashTraits<MappedArg>> class HashMap;
+template<typename ValueArg, typename = DefaultHash<ValueArg>, typename = HashTraits<ValueArg>> class HashSet;
 
 }
 

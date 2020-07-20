@@ -55,6 +55,31 @@ webkit.org/b/newbug accessibility/keyevents-posted-for-increment-actions.html [ 
 
 webkit.org/b/214068 accessibility/textarea-selected-text-range.html [ Timeout ]
 
+webkit.org/b/199860 accessibility/button-with-aria-haspopup-role.html [ Failure ]
+webkit.org/b/199860 accessibility/datalist.html [ Failure ]
+
+webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
+
+webkit.org/b/135530 accessibility/parent-delete.html [ Failure ]
+
+webkit.org/b/137109 accessibility/legend-children-are-visible.html [ Failure ]
+
+webkit.org/b/139352 accessibility/inline-block-assertion.html [ Failure ]
+
+# Text marker tests are not supported
+webkit.org/b/153292 accessibility/text-marker [ Skip ]
+webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Skip ]
+
+webkit.org/b/143468 accessibility/plugin.html [ Failure ]
+
+webkit.org/b/182107 accessibility/aria-combobox-control-owns-elements.html [ Timeout ]
+
+webkit.org/b/98363 accessibility/canvas-fallback-content-2.html [ Failure ]
+webkit.org/b/98372 accessibility/onclick-handlers.html [ Failure ]
+webkit.org/b/98377 accessibility/textarea-insertion-point-line-number.html [ Failure ]
+webkit.org/b/98380 accessibility/th-as-title-ui.html [ Failure ]
+webkit.org/b/98382 accessibility/visible-elements.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Accessibility-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +98,23 @@ webkit.org/b/214192 [ Debug ] imported/blink/fast/gradients/large-vertical-gradi
 
 
 #////////////////////////////////////////////////////////////////////////////////////////
+# Clipboard API
+#////////////////////////////////////////////////////////////////////////////////////////
+
+webkit.org/b/206653 imported/w3c/web-platform-tests/clipboard-apis/async-navigator-clipboard-basics.https.html [ Failure ]
+webkit.org/b/211979 imported/w3c/web-platform-tests/clipboard-apis/async-raw-write-read.tentative.https.html [ Failure ]
+
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of Clipboard API
+#////////////////////////////////////////////////////////////////////////////////////////
+
+#////////////////////////////////////////////////////////////////////////////////////////
 # Compositing tests
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/214060 imported/blink/compositing/squashing/squashing-reflection-disallowed.html [ ImageOnlyFailure ]
+
+webkit.org/b/214417 css3/color/composited-solid-backgrounds.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Compositing tests
@@ -130,8 +168,6 @@ webkit.org/b/213114 fast/flexbox/line-clamp-with-anchor-content-only.html [ Imag
 # Pass instead of removing this line.
 webkit.org/b/214259 fast/gradients/conic-gradient-alpha.html [ ImageOnlyFailure ]
 
-webkit.org/b/214260 css3/color/composited-solid-backgrounds.html [ ImageOnlyFailure ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of CSS-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -179,10 +215,6 @@ webkit.org/b/214038 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 webkit.org/b/214031 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video-poster-shown-preload-auto.html [ ImageOnlyFailure ]
 
 webkit.org/b/207547 media/media-can-play-av1.html [ Failure ]
-
-webkit.org/b/214191 [ Debug ] fast/images/animated-png-loop-count.html [ Crash ]
-webkit.org/b/214191 [ Debug ] http/tests/images/jpeg-partial-load.html [ Crash ]
-webkit.org/b/214191 [ Debug ] http/tests/images/png-partial-load.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of GStreamer-related bugs
@@ -267,6 +299,14 @@ webkit.org/b/209144 imported/w3c/web-platform-tests/html/canvas/offscreen/shadow
 webkit.org/b/209144 imported/w3c/web-platform-tests/html/canvas/offscreen/shadows/2d.shadow.pattern.transparent.1.html [ DumpJSConsoleLogInStdErr ]
 webkit.org/b/209144 imported/w3c/web-platform-tests/html/canvas/offscreen/shadows/2d.shadow.pattern.transparent.2.html [ DumpJSConsoleLogInStdErr ]
 
+# Tests requiring bitmaprenderer context support in OffscreenCanvas.
+# Might need glib-specific baselines when actually fixed as the root expectations fail with missing OffscreenCanvas support.
+webkit.org/b/197421 imported/w3c/web-platform-tests/imagebitmap-renderingcontext/context-creation-offscreen-with-alpha.html [ Failure ]
+webkit.org/b/197421 imported/w3c/web-platform-tests/imagebitmap-renderingcontext/context-creation-offscreen.html [ Failure ]
+webkit.org/b/197421 imported/w3c/web-platform-tests/imagebitmap-renderingcontext/tranferFromImageBitmap-ToBlob-offscreen.html [ Failure ]
+webkit.org/b/197421 imported/w3c/web-platform-tests/imagebitmap-renderingcontext/tranferFromImageBitmap-TransferToImageBitmap-offscreen.html [ Failure ]
+webkit.org/b/197421 imported/w3c/web-platform-tests/imagebitmap-renderingcontext/tranferFromImageBitmap-null-offscreen.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of OffscreenCanvas-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -309,6 +349,8 @@ webkit.org/b/211837 perf/rel-list-remove.html [ Failure Pass ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
 webkit.org/b/168543 imported/w3c/web-platform-tests/service-workers/service-worker/next-hop-protocol.https.html [ Failure ]
+webkit.org/b/168543 imported/w3c/web-platform-tests/resource-timing/nextHopProtocol-tao-protected.https.html [ Failure ]
+webkit.org/b/214442 imported/w3c/web-platform-tests/resource-timing/resource_connection_reuse_mixed_content_redirect.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of ResourceTiming API bugs
@@ -337,8 +379,6 @@ webkit.org/b/213921 fast/visual-viewport/scroll-event-fired-during-scroll-alone.
 # SOUP-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
 
-webkit.org/b/214293 http/tests/websocket/tests/hybi/closed-port-delay.html [ Failure ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of SOUP-related bugs
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -352,6 +392,62 @@ webkit.org/b/213113 svg/filters/feConvolveMatrix-clipped.svg [ ImageOnlyFailure 
 webkit.org/b/213113 svg/filters/feGaussianBlur-clipped.svg [ ImageOnlyFailure ]
 
 webkit.org/b/213782 svg/custom/object-sizing-explicit-width.xhtml [ Failure Pass ]
+
+webkit.org/b/131354 imported/mozilla/svg/blend-saturation.svg [ ImageOnlyFailure ]
+
+webkit.org/b/189739 svg/gradients/spreadMethodClose2.svg [ ImageOnlyFailure ]
+webkit.org/b/189739 imported/mozilla/svg/linearGradient-basic-03.svg [ ImageOnlyFailure ]
+
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-006.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-007.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-008.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-009.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-010.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-objectboundingbox-content-clip-transform.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-objectboundingbox-content-clip.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-userspaceonuse-content-clip-transform.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-userspaceonuse-content-clip.svg [ ImageOnlyFailure ]
+
+webkit.org/b/135529 svg/animations/animate-css-xml-attributeType.html [ Failure ]
+webkit.org/b/135529 svg/css/parse-height.html [ Failure ]
+webkit.org/b/135529 svg/css/parse-length.html [ Failure ]
+
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-c.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure ]
+
+webkit.org/b/203676 svg/custom/pointer-events-image-css-transform.svg [ Failure ]
+webkit.org/b/203676 svg/custom/pointer-events-image.svg [ Failure ]
+webkit.org/b/203676 svg/custom/pointer-events-path.svg [ Failure ]
+webkit.org/b/203676 svg/custom/pointer-events-text-css-transform.svg [ Failure ]
+webkit.org/b/203676 svg/custom/pointer-events-text.svg [ Failure ]
+
+webkit.org/b/151267 imported/blink/svg/animations/no-attr-radialgradient-spreadmethod.svg [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/svg/as-image/default-sans-serif-font.html [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/svg/canvas/canvas-draw-pattern-size.html [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/svg/filters/feDropShadow-linearrgb-flood-color.svg [ ImageOnlyFailure ]
+
+webkit.org/b/186141 svg/dom/SVGGeometry-isPointInStroke.xhtml [ Failure ]
+webkit.org/b/186141 svg/dom/SVGGeometry-line.xhtml [ Failure ]
+
+webkit.org/b/203677 imported/w3c/web-platform-tests/svg/import/painting-fill-05-b-manual.svg [ Failure ]
+webkit.org/b/203677 imported/w3c/web-platform-tests/svg/import/painting-stroke-08-t-manual.svg [ Failure ]
+webkit.org/b/203677 svg/W3C-SVG-1.1/painting-fill-05-b.svg [ Failure ]
+
+webkit.org/b/208633 imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-manual.svg [ Failure ]
+webkit.org/b/208633 imported/w3c/web-platform-tests/svg/import/text-fonts-203-t-manual.svg [ Failure ]
+
+webkit.org/b/110446 svg/as-background-image/svg-transformed-background.html [ ImageOnlyFailure ]
+
+webkit.org/b/163831 svg/custom/acid3-test-77.html [ Failure ]
+
+webkit.org/b/112228 svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
+
+webkit.org/b/141831 svg/animations/animate-text-nested-transforms.html [ Failure ]
+
+webkit.org/b/98653  svg/text/lengthAdjust-text-metrics.html [ Failure ]
+
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of SVG-related bugs
@@ -392,6 +488,8 @@ webkit.org/b/211942 webgl/1.0.3/conformance/more/functions/copyTexImage2DBadArgs
 
 webkit.org/b/169917 fast/canvas/webgl/unprefixed-anisotropic-extension.html [ Failure ]
 webkit.org/b/169917 webgl/1.0.3/conformance/extensions/webgl-compressed-texture-size-limit.html [ Failure ]
+
+webkit.org/b/211887 [ Debug ] fast/canvas/webgl/tex-sub-image-2d-bad-args.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of WebGL-related bugs
@@ -538,9 +636,22 @@ webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/o
 webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-028.html [ ImageOnlyFailure ]
 webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-with-padding-001.html [ ImageOnlyFailure ]
 
-webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-synthesis-05.html [ Pass ]
-webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-variant-position-01.html [ Pass ]
 webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/variations/font-slant-2a.html [ Pass ]
+
+# Flaky Unhandled promise rejection messages
+webkit.org/b/171094 imported/w3c/web-platform-tests/html/canvas/offscreen/fill-and-stroke-styles/2d.pattern.paint.repeat.coord1.html [ Pass Failure ]
+
+webkit.org/b/214472 imported/w3c/web-platform-tests/css/css-images/normalization-conic-degenerate.html [ Timeout ]
+webkit.org/b/214472 imported/w3c/web-platform-tests/css/css-images/normalization-conic.html [ Timeout ]
+
+webkit.org/b/214473 imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-from-image-computed-style.html [ Failure Pass ]
+webkit.org/b/214473 imported/w3c/web-platform-tests/css/css-images/image-orientation/image-orientation-none-computed-style.html [ Failure Pass ]
+
+webkit.org/b/186485 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-002.html [ Failure ]
+webkit.org/b/186486 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-002.html [ Failure ]
+webkit.org/b/186488 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-002.html [ Failure ]
+
+webkit.org/b/214541 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of WPT-related bugs
@@ -676,7 +787,6 @@ crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
 http/wpt/crypto/rsa-pss-crash.any.html [ Pass ]
 http/wpt/crypto/rsa-pss-crash.any.worker.html [ Pass ]
 
-
 fast/text/emoji-gender-2-3.html [ Pass ]
 fast/text/emoji-gender-2-4.html [ Pass ]
 fast/text/emoji-gender-2-5.html [ Pass ]
@@ -724,12 +834,14 @@ webkit.org/b/208400 http/tests/storageAccess/has-storage-access-true-if-third-pa
 
 webkit.org/b/172056 fast/text/multiglyph-characters.html [ Pass ]
 
-imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ DumpJSConsoleLogInStdErr ]
-
 imported/w3c/web-platform-tests/css/css-text/hyphens/hyphens-auto-001.html [ Pass ]
 
 # Should be DumpJSConsoleLogInStdErr, but WPE keeps reporting error despite the difference is a console Log message.
 imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-serializable.html [ Failure Pass ]
+
+imported/mozilla/svg/blend-hard-light.svg [ Pass ]
+imported/mozilla/svg/dynamic-textPath-02.svg [ Pass ]
+imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of PASSING tests.
@@ -739,6 +851,18 @@ imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitma
 #////////////////////////////////////////////////////////////////////////////////////////
 # UNSUPPORTED tests. Things we must skip.
 #////////////////////////////////////////////////////////////////////////////////////////
+
+# Accessibility-related
+
+# Accessibility tests that should never be run for GTK/WPE due to being
+# written in a platform-specific way. They should either be moved to
+# the right platform or re-written in a more platform-agnostic way.
+webkit.org/b/98348 accessibility/internal-link-anchors2.html [ Skip ]
+# Things specific to AX API (at least at the moment)
+webkit.org/b/98348 accessibility/radio-button-group-members.html [ Skip ]
+webkit.org/b/141074 accessibility/auto-filled-value.html [ Skip ]
+webkit.org/b/156045 accessibility/attachment-element.html [ Skip ]
+webkit.org/b/193623 accessibility/set-selected-editable.html [ Skip ]
 
 # Payment Request
 imported/w3c/web-platform-tests/payment-request [ Skip ]

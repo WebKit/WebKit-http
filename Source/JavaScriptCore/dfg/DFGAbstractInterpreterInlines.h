@@ -1181,7 +1181,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (left && right && left.isNumber() && right.isNumber()) {
                 double a = left.asNumber();
                 double b = right.asNumber();
-                setConstant(node, jsDoubleNumber(a < b ? a : (b <= a ? b : a + b)));
+                // The spec for Math.min states that +0 is considered to be larger than -0.
+                double result = a < b || (!a && !b && std::signbit(a)) ? a : (b <= a ? b : a + b);
+                setConstant(node, jsDoubleNumber(result));
                 break;
             }
             setNonCellTypeForNode(node, 
@@ -1210,7 +1212,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (left && right && left.isNumber() && right.isNumber()) {
                 double a = left.asNumber();
                 double b = right.asNumber();
-                setConstant(node, jsDoubleNumber(a > b ? a : (b >= a ? b : a + b)));
+                // The spec for Math.max states that +0 is considered to be larger than -0.
+                double result = a > b || (!a && !b && !std::signbit(a)) ? a : (b >= a ? b : a + b);
+                setConstant(node, jsDoubleNumber(result));
                 break;
             }
             setNonCellTypeForNode(node, 
@@ -1449,7 +1453,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case IsEmpty:
-    case IsUndefined:
+    case TypeOfIsUndefined:
     case IsUndefinedOrNull:
     case IsBoolean:
     case IsNumber:
@@ -1468,7 +1472,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             case IsCellWithType:
                 setConstant(node, jsBoolean(child.value().isCell() && child.value().asCell()->type() == node->queriedType()));
                 break;
-            case IsUndefined:
+            case TypeOfIsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
                     ? child.value().asCell()->structure(m_vm)->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
@@ -1591,7 +1595,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
             break;
         }
-        case IsUndefined:
+        case TypeOfIsUndefined:
             // FIXME: Use the masquerades-as-undefined watchpoint thingy.
             // https://bugs.webkit.org/show_bug.cgi?id=144456
             

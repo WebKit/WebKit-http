@@ -2713,8 +2713,6 @@ void FrameLoader::closeAndRemoveChild(Frame& child)
     child.tree().detachFromParent();
 
     child.setView(nullptr);
-    if (child.ownerElement() && child.page())
-        child.page()->decrementSubframeCount();
     child.willDetachPage();
     child.detachFromPage();
 
@@ -3617,7 +3615,7 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
     XFrameOptionsDisposition disposition = parseXFrameOptionsHeader(content);
 
     switch (disposition) {
-    case XFrameOptionsSameOrigin: {
+    case XFrameOptionsDisposition::SameOrigin: {
         auto origin = SecurityOrigin::create(url);
         if (!origin->isSameSchemeHostPort(topFrame.document()->securityOrigin()))
             return true;
@@ -3627,17 +3625,17 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
         }
         return false;
     }
-    case XFrameOptionsDeny:
+    case XFrameOptionsDisposition::Deny:
         return true;
-    case XFrameOptionsAllowAll:
+    case XFrameOptionsDisposition::AllowAll:
         return false;
-    case XFrameOptionsConflict:
+    case XFrameOptionsDisposition::Conflict:
         m_frame.document()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Multiple 'X-Frame-Options' headers with conflicting values ('" + content + "') encountered when loading '" + url.stringCenterEllipsizedToLength() + "'. Falling back to 'DENY'.", requestIdentifier);
         return true;
-    case XFrameOptionsInvalid:
+    case XFrameOptionsDisposition::Invalid:
         m_frame.document()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Invalid 'X-Frame-Options' header encountered when loading '" + url.stringCenterEllipsizedToLength() + "': '" + content + "' is not a recognized directive. The header will be ignored.", requestIdentifier);
         return false;
-    case XFrameOptionsNone:
+    case XFrameOptionsDisposition::None:
         return false;
     }
     ASSERT_NOT_REACHED();

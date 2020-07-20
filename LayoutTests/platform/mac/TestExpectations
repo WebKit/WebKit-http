@@ -1920,3 +1920,12 @@ webkit.org/b/212565 [ Catalina Mojave ] imported/w3c/web-platform-tests/encoding
 fast/text/text-styles/-apple-system [ Pass ]
 
 webkit.org/b/214155 imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/blob.https.html [ Pass Failure ]
+
+# This test requires system platform support.
+platform/mac/media/mediacapabilities/vp9-decodingInfo-sw.html [ Skip ]
+
+webkit.org/b/214422 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/suspend-after-construct.html [ Pass Failure ]
+
+webkit.org/b/214498 imported/w3c/web-platform-tests/cors/remote-origin.htm [ Pass ]
+
+webkit.org/b/214512 imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Failure ]

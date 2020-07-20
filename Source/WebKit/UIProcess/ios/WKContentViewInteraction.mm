@@ -918,7 +918,7 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
     [_formInputSession invalidate];
     _formInputSession = nil;
     [_highlightView removeFromSuperview];
-    _outstandingPositionInformationRequest = WTF::nullopt;
+    _lastOutstandingPositionInformationRequest = WTF::nullopt;
     _isWaitingOnPositionInformation = NO;
 
     _focusRequiresStrongPasswordAssistance = NO;
@@ -1062,6 +1062,20 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 
     [self _resetPanningPreventionFlags];
     [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
+    [self _cancelPendingKeyEventHandler];
+}
+
+- (void)_cancelPendingKeyEventHandler
+{
+    if (!_page)
+        return;
+
+    ASSERT_IMPLIES(_keyWebEventHandler, _page->hasQueuedKeyEvent());
+    if (!_page->hasQueuedKeyEvent())
+        return;
+
+    if (auto keyEventHandler = std::exchange(_keyWebEventHandler, nil))
+        keyEventHandler(_page->firstQueuedKeyEvent().nativeEvent(), NO);
 }
 
 - (void)_removeDefaultGestureRecognizers
@@ -2270,7 +2284,7 @@ static Class tapAndAHalfRecognizerClass()
     if ([self _currentPositionInformationIsValidForRequest:request])
         return;
 
-    _outstandingPositionInformationRequest = request;
+    _lastOutstandingPositionInformationRequest = request;
 
     _page->requestPositionInformation(request);
 }
@@ -2282,7 +2296,7 @@ static Class tapAndAHalfRecognizerClass()
 
 - (BOOL)_hasValidOutstandingPositionInformationRequest:(const WebKit::InteractionInformationRequest&)request
 {
-    return _outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request);
+    return _lastOutstandingPositionInformationRequest && _lastOutstandingPositionInformationRequest->isValidForRequest(request);
 }
 
 - (BOOL)_currentPositionInformationIsApproximatelyValidForRequest:(const WebKit::InteractionInformationRequest&)request radiusForApproximation:(int)radius
@@ -2404,11 +2418,11 @@ static Class tapAndAHalfRecognizerClass()
     if (gestureRecognizer == _doubleTapGestureRecognizerForDoubleClick) {
         // Do not start the double-tap-for-double-click gesture recognizer unless we've got a dblclick event handler on the node at the tap location.
         WebKit::InteractionInformationRequest request(WebCore::roundedIntPoint(point));
-        if ([self _currentPositionInformationIsApproximatelyValidForRequest:request radiusForApproximation:[_doubleTapGestureRecognizerForDoubleClick allowableMovement]])
-            return _positionInformation.nodeAtPositionHasDoubleClickHandler;
-        if (![self ensurePositionInformationIsUpToDate:request])
-            return NO;
-        return _positionInformation.nodeAtPositionHasDoubleClickHandler;
+        if (![self _currentPositionInformationIsApproximatelyValidForRequest:request radiusForApproximation:[_doubleTapGestureRecognizerForDoubleClick allowableMovement]]) {
+            if (![self ensurePositionInformationIsUpToDate:request])
+                return NO;
+        }
+        return _positionInformation.nodeAtPositionHasDoubleClickHandler.valueOr(false);
     }
 
     if (gestureRecognizer == _highlightLongPressGestureRecognizer
@@ -2571,9 +2585,7 @@ static Class tapAndAHalfRecognizerClass()
                 return NO;
             }
             default:
-                if (!_page->editorState().selectionIsRange)
-                    return NO;
-                return [self _pointIsInsideSelectionRect:point outBoundingRect:nil];
+                return _page->editorState().selectionIsRange;
             }
         }
     }
@@ -2884,7 +2896,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_positionInformationDidChange:(const WebKit::InteractionInformationAtPosition&)info
 {
-    _outstandingPositionInformationRequest = WTF::nullopt;
+    if (_lastOutstandingPositionInformationRequest && info.request.isValidForRequest(*_lastOutstandingPositionInformationRequest))
+        _lastOutstandingPositionInformationRequest = WTF::nullopt;
+
     _isWaitingOnPositionInformation = NO;
 
     WebKit::InteractionInformationAtPosition newInfo = info;
@@ -4343,7 +4357,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (WebCore::Color)_tapHighlightColorForFastClick:(BOOL)forFastClick
 {
     ASSERT(_showDebugTapHighlightsForFastClicking);
-    return forFastClick ? WebCore::makeSimpleColor(0, 225, 0, 127) : WebCore::makeSimpleColor(225, 0, 0, 127);
+    return forFastClick ? WebCore::SRGBA<uint8_t> { 0, 225, 0, 127 } : WebCore::SRGBA<uint8_t> { 225, 0, 0, 127 };
 }
 
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled
@@ -5346,8 +5360,10 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         return;
     }
 #endif
-    _keyWebEventHandler = makeBlockPtr(completionHandler);
-    _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent, HandledByInputMethod::No));
+    if (_page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent, HandledByInputMethod::No)))
+        _keyWebEventHandler = makeBlockPtr(completionHandler);
+    else
+        completionHandler(theEvent, NO);
 }
 
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
@@ -7922,6 +7938,8 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     // FIXME: Implement support for willInsertText. See <https://bugs.webkit.org/show_bug.cgi?id=208747>.
     if (auto* wkTextPlaceholder = dynamic_objc_cast<WKTextPlaceholder>(placeholder))
         _page->removeTextPlaceholder(wkTextPlaceholder.elementContext, makeBlockPtr(completionHandler));
+    else
+        completionHandler();
 }
 
 static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingItems(NSArray<NSItemProvider *> *itemProviders)
@@ -8649,11 +8667,10 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
 
 - (void)_cursorInteraction:(_UICursorInteraction *)interaction regionForLocation:(CGPoint)location defaultRegion:(_UICursorRegion *)defaultRegion completion:(void(^)(_UICursorRegion *region))completion
 {
-    uint64_t interactionRequestID = ++_currentCursorInteractionRequestID;
-
     WebKit::InteractionInformationRequest interactionInformationRequest;
     interactionInformationRequest.point = WebCore::roundedIntPoint(location);
     interactionInformationRequest.includeCaretContext = true;
+    interactionInformationRequest.includeHasDoubleClickHandler = false;
 
     BOOL didSynchronouslyReplyWithApproximation = false;
     if (![self _currentPositionInformationIsValidForRequest:interactionInformationRequest] && self.webView._editable && !_positionInformation.shouldNotUseIBeamInEditableContent) {
@@ -8661,9 +8678,19 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
         completion([_UICursorRegion regionWithIdentifier:editableCursorRegionIdentifier rect:self.bounds]);
     }
 
-    [self doAfterPositionInformationUpdate:^(WebKit::InteractionInformationAtPosition interactionInformation) {
-        if (interactionRequestID < _currentCursorInteractionRequestID)
-            return;
+    // If we already have an outstanding interaction information request, defer this one until
+    // we hear back, so that requests don't pile up if the Web Content process is slow.
+    if (_hasOutstandingCursorInteractionRequest) {
+        _deferredCursorInteractionRequest = std::make_pair(interactionInformationRequest, makeBlockPtr(completion));
+        return;
+    }
+
+    _hasOutstandingCursorInteractionRequest = YES;
+
+    __block BlockPtr<void(WebKit::InteractionInformationAtPosition, void(^)(_UICursorRegion *))> replyHandler;
+    replyHandler = ^(WebKit::InteractionInformationAtPosition interactionInformation, void(^completion)(_UICursorRegion *region)) {
+        if (!_deferredCursorInteractionRequest)
+            _hasOutstandingCursorInteractionRequest = NO;
 
         if (didSynchronouslyReplyWithApproximation) {
             [interaction invalidate];
@@ -8671,6 +8698,18 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
         }
 
         completion([self cursorRegionForPositionInformation:interactionInformation point:location]);
+
+        if (_deferredCursorInteractionRequest) {
+            auto deferredRequest = std::exchange(_deferredCursorInteractionRequest, WTF::nullopt);
+            [self doAfterPositionInformationUpdate:^(WebKit::InteractionInformationAtPosition interactionInformation) {
+                replyHandler(interactionInformation, deferredRequest->second.get());
+            } forRequest:deferredRequest->first];
+            return;
+        }
+    };
+
+    [self doAfterPositionInformationUpdate:^(WebKit::InteractionInformationAtPosition interactionInformation) {
+        replyHandler(interactionInformation, completion);
     } forRequest:interactionInformationRequest];
 }
 

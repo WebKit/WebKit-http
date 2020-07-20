@@ -19,6 +19,7 @@ fast/visual-viewport/ios/ [ Pass ]
 scrollingcoordinator [ Pass ]
 scrollingcoordinator/mac [ Skip ]
 fast/web-share [ Pass ]
+imported/w3c/web-platform-tests/web-share [ Pass ]
 editing/caret/ios [ Pass ]
 editing/find [ Pass ]
 editing/input/ios [ Pass ]
@@ -1692,6 +1693,27 @@ webkit.org/b/209080 imported/w3c/web-platform-tests/css/css-writing-modes/text-i
 webkit.org/b/209080 imported/w3c/web-platform-tests/css/css-writing-modes/text-indent-vrl-014.xht [ ImageOnlyFailure ]
 webkit.org/b/209080 imported/w3c/web-platform-tests/css/css-writing-modes/text-indent-vrl-016.xht [ ImageOnlyFailure ]
 
+# Manual tests.
+imported/w3c/web-platform-tests/web-share/share-cancel-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-extra-argument-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-extra-field-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-files-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-image-manual.tentative.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-non-string-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-null-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-simple-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-unicode-strings-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-unicode-strings-nonutf8-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-data-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-empty-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-encoding-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-noscheme-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-pathonly-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/web-share/share-url-relative-manual.https.html [ Skip ]
+
+imported/w3c/web-platform-tests/web-share/share-sharePromise-internal-slot.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/web-share/share-url-invalid.https.html [ Skip ]
+
 # rdar://problem/59595496
 quicklook/keynote-09.html [ Failure ]
 quicklook/keynote.html [ ImageOnlyFailure ]
@@ -1704,8 +1726,6 @@ http/tests/quicklook/secure-document-with-subresources.html [ Skip ]
 
 # Newly imported canvas web-platform-tests that are failing on iOS only.
 imported/w3c/web-platform-tests/html/canvas/element/building-paths/canvas_complexshapes_beziercurveto_001.htm [ ImageOnlyFailure ]
-
-webkit.org/b/209352 http/tests/security/stylesheet-href-redirect.html [ Pass Timeout ]
 
 webkit.org/b/209446 imported/w3c/web-platform-tests/navigation-timing/test_timing_attributes_order.html [ Pass Failure ]
 
@@ -1748,10 +1768,32 @@ webkit.org/b/213511 fast/backgrounds/size/backgroundSize-in-background-shorthand
 
 webkit.org/b/213520 perf/htmlcollection-backwards-iteration.html [ Pass Failure ]
 
-webkit.org/b/213553 http/tests/resourceLoadStatistics/grandfathering-database.html [ Pass Timeout ]
-
 webkit.org/b/21365 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/intrinsic_sizes.htm [ Pass Failure ]
 
 webkit.org/b/214084 [ Release ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
 
-webkit.org/b/214133 [ Release ] fast/scrolling/ios/non-invertible-transformed-scroller-ancestor.html [ Pass Failure ]
+webkit.org/b/214322 [ Debug ] http/tests/workers/worker-importScripts-banned-mimetype.html [ Pass Crash ]
+
+webkit.org/b/214327 webanimations/accelerated-animation-with-easing.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/214363 [ Debug ] fast/text-indicator/text-indicator-empty-link.html [ Pass Crash ]
+
+webkit.org/b/214382 [ Release ] imported/w3c/web-platform-tests/websockets/remove-own-iframe-during-onerror.window.html [ Pass Failure ]
+
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-backgrounds/background-position-subpixel-at-border.tentative.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-fonts/font-language-override-02.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-images/image-set/image-set-rendering.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-multicol/equal-gap-and-rule.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-multicol/fixed-size-child-with-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-pseudo/selection-text-shadow-016.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-pseudo/textpath-selection-011.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-000.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-004.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-009.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-013.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-015.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-016.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-sizing/thin-element-render.html [ ImageOnlyFailure ]
+webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-values/ch-unit-002.html [ ImageOnlyFailure ]
+
+webkit.org/b/214512 imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Pass Failure ]

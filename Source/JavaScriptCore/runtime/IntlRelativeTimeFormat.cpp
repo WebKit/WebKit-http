@@ -27,7 +27,7 @@
 #include "IntlRelativeTimeFormat.h"
 
 #include "IntlNumberFormat.h"
-#include "IntlObject.h"
+#include "IntlObjectInlines.h"
 #include "JSCInlines.h"
 #include "ObjectConstructor.h"
 #include <wtf/unicode/icu/ICUHelpers.h>
@@ -37,7 +37,6 @@ namespace JSC {
 const ClassInfo IntlRelativeTimeFormat::s_info = { "Object", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(IntlRelativeTimeFormat) };
 
 namespace IntlRelativeTimeFormatInternal {
-constexpr const char* relevantExtensionKeys[1] = { "nu" };
 }
 
 void IntlRelativeTimeFormat::URelativeDateTimeFormatterDeleter::operator()(URelativeDateTimeFormatter* relativeDateTimeFormatter) const
@@ -83,10 +82,9 @@ void IntlRelativeTimeFormat::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(thisObject, visitor);
 }
 
-Vector<String> IntlRelativeTimeFormat::localeData(const String& locale, size_t keyIndex)
+Vector<String> IntlRelativeTimeFormat::localeData(const String& locale, RelevantExtensionKey key)
 {
-    // The index of the extension key "nu" in relevantExtensionKeys is 0.
-    ASSERT_UNUSED(keyIndex, !keyIndex);
+    ASSERT_UNUSED(key, key == RelevantExtensionKey::Nu);
     return numberingSystemsForLocale(locale);
 }
 
@@ -107,10 +105,9 @@ void IntlRelativeTimeFormat::initializeRelativeTimeFormat(JSGlobalObject* global
         RETURN_IF_EXCEPTION(scope, void());
     }
 
-    HashMap<String, String> opt;
-    String localeMatcher = intlStringOption(globalObject, options, vm.propertyNames->localeMatcher, { "lookup", "best fit" }, "localeMatcher must be either \"lookup\" or \"best fit\"", "best fit");
+    ResolveLocaleOptions localeOptions;
+    LocaleMatcher localeMatcher = intlOption<LocaleMatcher>(globalObject, options, vm.propertyNames->localeMatcher, { { "lookup"_s, LocaleMatcher::Lookup }, { "best fit"_s, LocaleMatcher::BestFit } }, "localeMatcher must be either \"lookup\" or \"best fit\""_s, LocaleMatcher::BestFit);
     RETURN_IF_EXCEPTION(scope, void());
-    opt.add(vm.propertyNames->localeMatcher.string(), localeMatcher);
 
     String numberingSystem = intlStringOption(globalObject, options, vm.propertyNames->numberingSystem, { }, nullptr, nullptr);
     RETURN_IF_EXCEPTION(scope, void());
@@ -119,38 +116,37 @@ void IntlRelativeTimeFormat::initializeRelativeTimeFormat(JSGlobalObject* global
             throwRangeError(globalObject, scope, "numberingSystem is not a well-formed numbering system value"_s);
             return;
         }
-        opt.add("nu"_s, numberingSystem);
+        localeOptions[static_cast<unsigned>(RelevantExtensionKey::Nu)] = numberingSystem;
     }
 
     const HashSet<String>& availableLocales = intlRelativeTimeFormatAvailableLocales();
-    HashMap<String, String> resolved = resolveLocale(globalObject, availableLocales, requestedLocales, opt, IntlRelativeTimeFormatInternal::relevantExtensionKeys, WTF_ARRAY_LENGTH(IntlRelativeTimeFormatInternal::relevantExtensionKeys), localeData);
-    m_locale = resolved.get(vm.propertyNames->locale.string());
+    auto resolved = resolveLocale(globalObject, availableLocales, requestedLocales, localeMatcher, localeOptions, { RelevantExtensionKey::Nu }, localeData);
+    m_locale = resolved.locale;
     if (m_locale.isEmpty()) {
         throwTypeError(globalObject, scope, "failed to initialize RelativeTimeFormat due to invalid locale"_s);
         return;
     }
 
-    m_numberingSystem = resolved.get("nu"_s);
-    CString dataLocaleWithExtensions = makeString(resolved.get("dataLocale"_s), "-u-nu-", m_numberingSystem).utf8();
+    m_numberingSystem = resolved.extensions[static_cast<unsigned>(RelevantExtensionKey::Nu)];
+    CString dataLocaleWithExtensions = makeString(resolved.dataLocale, "-u-nu-", m_numberingSystem).utf8();
 
-    String style = intlStringOption(globalObject, options, vm.propertyNames->style, { "long", "short", "narrow" }, "style must be either \"long\", \"short\", or \"narrow\"", "long");
+    m_style = intlOption<Style>(globalObject, options, vm.propertyNames->style, { { "long"_s, Style::Long }, { "short"_s, Style::Short }, { "narrow"_s, Style::Narrow } }, "style must be either \"long\", \"short\", or \"narrow\""_s, Style::Long);
     RETURN_IF_EXCEPTION(scope, void());
-    UDateRelativeDateTimeFormatterStyle icuStyle;
-    if (style == "long") {
+    UDateRelativeDateTimeFormatterStyle icuStyle = UDAT_STYLE_LONG;
+    switch (m_style) {
+    case Style::Long:
         icuStyle = UDAT_STYLE_LONG;
-        m_style = Style::Long;
-    } else if (style == "short") {
+        break;
+    case Style::Short:
         icuStyle = UDAT_STYLE_SHORT;
-        m_style = Style::Short;
-    } else {
-        ASSERT(style == "narrow");
+        break;
+    case Style::Narrow:
         icuStyle = UDAT_STYLE_NARROW;
-        m_style = Style::Narrow;
+        break;
     }
 
-    String numeric = intlStringOption(globalObject, options, vm.propertyNames->numeric, { "always", "auto" }, "numeric must be either \"always\" or \"auto\"", "always");
+    m_numeric = intlOption<bool>(globalObject, options, vm.propertyNames->numeric, { { "always"_s, true }, { "auto"_s, false } }, "numeric must be either \"always\" or \"auto\""_s, true);
     RETURN_IF_EXCEPTION(scope, void());
-    m_numeric = (numeric == "always");
 
     UErrorCode status = U_ZERO_ERROR;
     m_numberFormat = std::unique_ptr<UNumberFormat, UNumberFormatDeleter>(unum_open(UNUM_DECIMAL, nullptr, 0, dataLocaleWithExtensions.data(), nullptr, &status));

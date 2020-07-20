@@ -131,25 +131,18 @@ static const UChar ellipsisUChar[] = { 0x2026, 0 };
 static Color parseColor(const JSON::Object* colorObject)
 {
     if (!colorObject)
-        return Color::transparent;
+        return Color::transparentBlack;
 
     int r = 0;
     int g = 0;
     int b = 0;
     if (!colorObject->getInteger("r", r) || !colorObject->getInteger("g", g) || !colorObject->getInteger("b", b))
-        return Color::transparent;
+        return Color::transparentBlack;
 
     double a = 1.0;
     if (!colorObject->getDouble("a", a))
-        return makeSimpleColor(r, g, b);
-
-    // Clamp alpha to the [0..1] range.
-    if (a < 0)
-        a = 0;
-    else if (a > 1)
-        a = 1;
-
-    return makeSimpleColor(r, g, b, convertToComponentByte(a));
+        return clampToComponentBytes<SRGBA>(r, g, b);
+    return clampToComponentBytes<SRGBA>(r, g, b, convertToComponentByte(a));
 }
 
 static Color parseConfigColor(const String& fieldName, const JSON::Object* configObject)

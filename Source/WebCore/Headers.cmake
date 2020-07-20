@@ -1083,7 +1083,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/AudioTrackPrivate.h
     platform/graphics/BitmapImage.h
     platform/graphics/Color.h
-    platform/graphics/ColorBuilder.h
     platform/graphics/ColorComponents.h
     platform/graphics/ColorConversion.h
     platform/graphics/ColorHash.h
@@ -1194,7 +1193,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/RemoteVideoSample.h
     platform/graphics/RenderingMode.h
     platform/graphics/RoundedRect.h
-    platform/graphics/SimpleColor.h
     platform/graphics/StringTruncator.h
     platform/graphics/TabSize.h
     platform/graphics/TextRun.h

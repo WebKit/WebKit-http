@@ -240,7 +240,8 @@ public:
     bool isXRCompatible() const { return m_isXRCompatible; }
 #endif
     void polygonOffset(GCGLfloat factor, GCGLfloat units);
-    void readPixels(GCGLint x, GCGLint y, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ArrayBufferView& pixels);
+    // This must be virtual so more validation can be added in WebGL 2.0.
+    virtual void readPixels(GCGLint x, GCGLint y, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ArrayBufferView& pixels);
     void releaseShaderCompiler();
     virtual void renderbufferStorage(GCGLenum target, GCGLenum internalformat, GCGLsizei width, GCGLsizei height) = 0;
     void sampleCoverage(GCGLfloat value, GCGLboolean invert);
@@ -253,7 +254,8 @@ public:
     void stencilOp(GCGLenum fail, GCGLenum zfail, GCGLenum zpass);
     void stencilOpSeparate(GCGLenum face, GCGLenum fail, GCGLenum zfail, GCGLenum zpass);
 
-    void texImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, RefPtr<ArrayBufferView>&&);
+    // These must be virtual so more validation can be added in WebGL 2.0.
+    virtual void texImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, RefPtr<ArrayBufferView>&&);
 
 #if ENABLE(VIDEO)
     using TexImageSource = WTF::Variant<RefPtr<ImageBitmap>, RefPtr<ImageData>, RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>, RefPtr<HTMLVideoElement>>;
@@ -261,13 +263,14 @@ public:
     using TexImageSource = WTF::Variant<RefPtr<ImageBitmap>, RefPtr<ImageData>, RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>>;
 #endif
 
-    ExceptionOr<void> texImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, Optional<TexImageSource>);
+    virtual ExceptionOr<void> texImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, Optional<TexImageSource>);
 
     void texParameterf(GCGLenum target, GCGLenum pname, GCGLfloat param);
     void texParameteri(GCGLenum target, GCGLenum pname, GCGLint param);
 
-    void texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, RefPtr<ArrayBufferView>&&);
-    ExceptionOr<void> texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLenum format, GCGLenum type, Optional<TexImageSource>&&);
+    // These must be virtual so more validation can be added in WebGL 2.0.
+    virtual void texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, RefPtr<ArrayBufferView>&&);
+    virtual ExceptionOr<void> texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLenum format, GCGLenum type, Optional<TexImageSource>&&);
 
     template <class TypedArray, class DataType>
     class TypedList {
@@ -410,6 +413,7 @@ protected:
     friend class WebGLVertexArrayObjectOES;
     friend class WebGLVertexArrayObject;
     friend class WebGLVertexArrayObjectBase;
+    friend class WebGLSync;
 
     // Implementation helpers.
     friend class ScopedUnpackParametersResetRestore;
@@ -514,13 +518,19 @@ protected:
         
         void initValue()
         {
-            value[0] = 0.0f;
-            value[1] = 0.0f;
-            value[2] = 0.0f;
-            value[3] = 1.0f;
+            type = GraphicsContextGL::FLOAT;
+            fValue[0] = 0.0f;
+            fValue[1] = 0.0f;
+            fValue[2] = 0.0f;
+            fValue[3] = 1.0f;
         }
         
-        GCGLfloat value[4];
+        GCGLenum type;
+        union {
+            GCGLfloat fValue[4];
+            GCGLint iValue[4];
+            GCGLuint uiValue[4];
+        };
     };
     Vector<VertexAttribValue> m_vertexAttribValue;
     unsigned m_maxVertexAttribs;
@@ -543,7 +553,7 @@ protected:
     };
     Vector<TextureUnitState> m_textureUnits;
 #if !USE(ANGLE)
-    HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_unrenderableTextureUnits;
+    HashSet<unsigned, DefaultHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_unrenderableTextureUnits;
 #endif
     unsigned long m_activeTextureUnit;
 
@@ -1034,12 +1044,13 @@ protected:
     template <typename T> inline Optional<T> checkedAddAndMultiply(T value, T add, T multiply);
     template <typename T> unsigned getMaxIndex(const RefPtr<JSC::ArrayBuffer> elementArrayBuffer, GCGLintptr uoffset, GCGLsizei n);
 
+    bool validateArrayBufferType(const char* functionName, GCGLenum type, Optional<JSC::TypedArrayType>);
+
 private:
     void scheduleTaskToDispatchContextLostEvent();
     // Helper for restoration after context lost.
     void maybeRestoreContext();
 
-    bool validateArrayBufferType(const char* functionName, GCGLenum type, Optional<JSC::TypedArrayType>);
     void registerWithWebGLStateTracker();
     void checkForContextLossHandling();
 

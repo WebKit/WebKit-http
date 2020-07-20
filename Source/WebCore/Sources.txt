@@ -520,6 +520,7 @@ bindings/js/JSIDBIndexCustom.cpp
 bindings/js/JSIDBObjectStoreCustom.cpp
 bindings/js/JSIDBRequestCustom.cpp
 bindings/js/JSIDBTransactionCustom.cpp
+bindings/js/JSIDBSerializationGlobalObject.cpp
 bindings/js/JSImageDataCustom.cpp
 bindings/js/JSIntersectionObserverEntryCustom.cpp
 bindings/js/JSLazyEventListener.cpp
@@ -2637,6 +2638,7 @@ JSAudioNode.cpp
 JSAudioNodeOptions.cpp
 JSAudioParam.cpp
 JSAudioProcessingEvent.cpp
+JSAudioScheduledSourceNode.cpp
 JSAudioTrack.cpp
 JSAudioTrackList.cpp
 JSAudioTrackMediaSource.cpp

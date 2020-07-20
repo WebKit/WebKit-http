@@ -2026,7 +2026,7 @@ Color RenderStyle::colorResolvingCurrentColor(CSSPropertyID colorProperty, bool 
     if (isCurrentColor(result)) {
         auto borderStyle = computeBorderStyle();
         if (!visitedLink && (borderStyle == BorderStyle::Inset || borderStyle == BorderStyle::Outset || borderStyle == BorderStyle::Ridge || borderStyle == BorderStyle::Groove))
-            return makeSimpleColor(238, 238, 238);
+            return SRGBA<uint8_t> { 238, 238, 238 };
 
         return visitedLink ? visitedLinkColor() : color();
     }
@@ -2059,7 +2059,7 @@ Color RenderStyle::visitedDependentColor(CSSPropertyID colorProperty) const
     // we're returning unvisited info for a visited link, but given our restriction that the alpha values
     // have to match, it makes more sense to return the unvisited background color if specified than it
     // does to return black. This behavior matches what Firefox 4 does as well.
-    if (colorProperty == CSSPropertyBackgroundColor && visitedColor == Color::transparent)
+    if (colorProperty == CSSPropertyBackgroundColor && visitedColor == Color::transparentBlack)
         return unvisitedColor;
 
     // Take the alpha from the unvisited color, but get the RGB values from the visited color.

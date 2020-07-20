@@ -1238,9 +1238,9 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
     return [NSString stringWithCharacters:&attachmentChar length:1];
 }
 
-- (NSAttributedString*)doAXAttributedStringForTextMarkerRange:(id)textMarkerRange spellCheck:(BOOL)spellCheck
+- (NSAttributedString *)doAXAttributedStringForTextMarkerRange:(id)textMarkerRange spellCheck:(BOOL)spellCheck
 {
-    return Accessibility::retrieveValueFromMainThread<NSAttributedString *>([&textMarkerRange, &spellCheck, protectedSelf = retainPtr(self)] () -> NSAttributedString * {
+    return Accessibility::retrieveAutoreleasedValueFromMainThread<NSAttributedString *>([&textMarkerRange, &spellCheck, protectedSelf = retainPtr(self)] () -> RetainPtr<NSAttributedString> {
         auto* backingObject = protectedSelf.get().axBackingObject;
         if (!backingObject)
             return nil;
@@ -1280,7 +1280,7 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
             it.advance();
         }
 
-        return attrString.autorelease();
+        return attrString;
     });
 }
 
@@ -3825,7 +3825,7 @@ enum class TextUnit {
             break;
         }
 
-        return textMarkerRangeFromVisiblePositions(backingObject->axObjectCache(), visiblePositionRange.start, visiblePositionRange.end);
+        return textMarkerRangeFromVisiblePositions(cache, visiblePositionRange.start, visiblePositionRange.end);
     });
 }
 

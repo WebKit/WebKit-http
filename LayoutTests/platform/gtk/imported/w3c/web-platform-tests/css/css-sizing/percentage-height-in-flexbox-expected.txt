@@ -1,0 +1,5 @@
+
+
+FAIL #target offsetSize matches #container offsetSize assert_equals: expected 50 but got 0
+FAIL #target offsetSize matches #container offsetSize after resize assert_equals: expected 100 but got 0
+

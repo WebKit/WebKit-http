@@ -1,3 +1,651 @@
+2020-07-20  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Update reference to webkit-test-results in TestFailures
+        https://bugs.webkit.org/show_bug.cgi?id=214499
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/builders_unittests.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui/notifications_unittests.js:
+
+2020-07-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Reduce logging in ews django app
+        https://bugs.webkit.org/show_bug.cgi?id=214562
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/models/build.py:
+        (Build.update_build):
+        * BuildSlaveSupport/ews-app/ews/models/step.py:
+        (Step.save_step):
+        (Step.update_step):
+
+2020-07-20  Kate Cheney  <katherine_cheney@apple.com>
+
+        [ iOS macOS ] http/tests/resourceLoadStatistics/grandfathering-database.html is a rare flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=213553
+        <rdar://problem/64696432>
+
+        Reviewed by Darin Adler.
+
+        Registering to receive an ITP statistics processing callback should be
+        synchronous, otherwise processing could happen before ITP has
+        registered that it should be reported to the test runner.
+
+        To avoid this mistake in the future, this patch removes the
+        async version of this call from TestInvocation.cpp, because it should
+        never be used.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+       (WTR::TestRunner::installStatisticsDidModifyDataRecordsCallback):
+        Update this function to look like
+        installStatisticsDidScanDataRecordsCallback. It is simpler to let ITP
+        know to send the callback response when installing the callback
+        instead of requiring a separate function call.
+
+        (WTR::TestRunner::installStatisticsDidScanDataRecordsCallback):
+        Register for a callback synchronously.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        Remove setStatisticsNotifyPagesWhenDataRecordsWereScanned from the idl
+        file so it does not accidentally get called in a layout test in the
+        future.
+
+2020-07-20  Dean Jackson  <dino@apple.com>
+
+        Adding James Darpinian to contributors.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2020-07-20  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Build with arm64e when on Apple Internal
+        https://bugs.webkit.org/show_bug.cgi?id=214553
+        <rdar://problem/65745597>
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort._build_driver_flags): Use arm64e instead of arm64 for Internal builds.
+
+2020-07-20  Alex Christensen  <achristensen@webkit.org>
+
+        Add lock icon to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=214438
+
+        Reviewed by Darin Adler.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        * MiniBrowser/mac/BrowserWindow.xib:
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController dealloc]):
+        (-[WK2BrowserWindowController showCertificate:]):
+        (-[WK2BrowserWindowController observeValueForKeyPath:ofObject:change:context:]):
+        (-[WK2BrowserWindowController updateLockButtonIcon:]):
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak SDK] Update to FDO 19.08.12 release
+        https://bugs.webkit.org/show_bug.cgi?id=214184
+
+        Reviewed by Žan Doberšek.
+
+        Bump to the latest 19.08 release, which ships GCC 9.3.0. Hence we can remove the
+        corresponding downstream patch. And the Bluez patch which was left around but not longer
+        applied in the FDO junction. Also integrate a non-related WPEBackend-FDO git master ref bump.
+
+        * buildstream/elements/freedesktop-sdk.bst:
+        * buildstream/patches/fdo-0001-Update-gcc-to-9.3.0.patch: Removed.
+        * buildstream/patches/fdo/0003-Add-Bluez.patch: Removed.
+        * buildstream/elements/sdk/wpebackend-fdo.bst:
+
+2020-07-19  Sam Weinig  <weinig@apple.com>
+
+        Rename Color::transparent to Color::transparentBlack to more clearly state what it is
+        https://bugs.webkit.org/show_bug.cgi?id=214522
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/cocoa/TestPDFDocument.mm:
+        (TestWebKitAPI::TestPDFPage::colorAtPoint const):
+        Update for rename from Color::transparent to Color::transparentBlack.
+
+2020-07-19  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        cpp.py:3688: FutureWarning: Possible nested set at position 101
+        https://bugs.webkit.org/show_bug.cgi?id=214536
+
+        Reviewed by Darin Adler.
+
+        The warning was added in https://bugs.python.org/issue30349. We need to escape [ when used
+        inside a set. That is, we have to change "[[" to "[\[".
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_identifier_name_in_declaration):
+
+2020-07-19  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Fix -Wdeprecated-declarations under Tools
+        https://bugs.webkit.org/show_bug.cgi?id=214534
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit/ReloadPageAfterCrash.cpp:
+        (TestWebKitAPI::didCrashCheckFrames):
+        * TestWebKitAPI/Tests/WebKit/WKPreferences.cpp:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didCreatePage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+
+2020-07-19  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        pep8.py:110: FutureWarning: Possible nested set at position 1
+        https://bugs.webkit.org/show_bug.cgi?id=214531
+
+        Reviewed by Darin Adler.
+        
+        Update from pep8 to pycodestyle.
+
+        * Scripts/webkitpy/style/checkers/python.py:
+        (PythonChecker.check):
+        (PythonChecker._check_pycodestyle):
+        (PythonChecker._check_pycodestyle._pycodestyle_handle_error):
+        (PythonChecker._check_pep8): Deleted.
+        (PythonChecker._check_pep8._pep8_handle_error): Deleted.
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook._install_keyring):
+        (AutoinstallImportHook._install_pep8): Deleted.
+
+2020-07-17  Sam Weinig  <weinig@apple.com>
+
+        Remove final vestigates of SimpleColor
+        https://bugs.webkit.org/show_bug.cgi?id=214439
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebCore/ColorTests.cpp:
+        * TestWebKitAPI/Tests/WebCore/ExtendedColorTests.cpp:
+        * TestWebKitAPI/Tests/WebKitCocoa/PDFSnapshot.mm:
+        * TestWebKitAPI/cocoa/TestPDFDocument.mm:
+        Replace remaining makeSimpleColor() uses.
+
+2020-07-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Followup to r264531
+        https://bugs.webkit.org/show_bug.cgi?id=214488
+        <rdar://problem/64531754>
+
+        Reviewed by Darin Adler.
+
+        See WebCore ChangeLog for more details.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+
+2020-07-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Cache the PIN to improve NFC user experience
+        https://bugs.webkit.org/show_bug.cgi?id=213900
+        <rdar://problem/60073622>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-get-assertion-nfc-pin-disconnect.html: Added.
+
+2020-07-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Recommended article titles on csdn.net are clipped after translating to English
+        https://bugs.webkit.org/show_bug.cgi?id=214488
+        <rdar://problem/64531754>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+        (TestWebKitAPI::TEST):
+
+2020-07-17  Aakash Jain  <aakash_jain@apple.com>
+
+        Delete code for old flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=214492
+
+        Reviewed by Jonathan Bedard.
+
+        * TestResultServer: Removed.
+
+2020-07-17  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Simulators should opt out of emulation
+        https://bugs.webkit.org/show_bug.cgi?id=214486
+        <rdar://problem/65644439>
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__): Caller may request that emulation be disabled.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.__init__): Disable emulation.
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264477.
+
+        Broke the internal build
+
+        Reverted changeset:
+
+        "Use AVRoutePickerView when available for choosing AirPlay
+        devices"
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        https://trac.webkit.org/changeset/264477
+
+2020-07-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Rename createBoxPtr into adoptBoxPtr
+        https://bugs.webkit.org/show_bug.cgi?id=214171
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/BoxPtr.cpp:
+        (TestWebKitAPI::TEST): Used the renamed function.
+
+2020-07-15  Jer Noble  <jer.noble@apple.com>
+
+        Unreviwed test gardening; disable the SleepDisabler.NavigateBack
+        test, as it is flaky on the bots.
+
+        * TestWebKitAPI/Tests/WebKit/SleepDisabler.mm:
+        (TEST_F):
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [configure-xcode-for-embedded-development] Support TBD version 4
+        https://bugs.webkit.org/show_bug.cgi?id=214431
+        <rdar://problem/65695728>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/configure-xcode-for-embedded-development: Match both archs and targets.
+
+2020-07-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WTF] Remove the unnecessary inner class DefaultHash<T>::Hash
+        https://bugs.webkit.org/show_bug.cgi?id=214389
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/DeletedAddressOfOperator.h:
+        (WTF::DefaultHash<DeletedAddressOfOperator>::hash):
+        (WTF::DefaultHash<DeletedAddressOfOperator>::equal):
+        (WTF::DefaultHash<DeletedAddressOfOperator>::Hash::hash): Deleted.
+        (WTF::DefaultHash<DeletedAddressOfOperator>::Hash::equal): Deleted.
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp:
+        (TestWebKitAPI::bucketForKey):
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::bucketForKey):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::testInitialCapacity):
+        * TestWebKitAPI/Tests/WTF/MoveOnly.h:
+        (WTF::DefaultHash<MoveOnly>::hash):
+        (WTF::DefaultHash<MoveOnly>::equal):
+        (WTF::DefaultHash<MoveOnly>::Hash::hash): Deleted.
+        (WTF::DefaultHash<MoveOnly>::Hash::equal): Deleted.
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [configure-xcode-for-embedded-development] Support Xcode 12
+        https://bugs.webkit.org/show_bug.cgi?id=214420
+        <rdar://problem/65687153>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/configure-xcode-for-embedded-development: Mac xcspec files are in a different
+        spot in Xcode 12.
+
+2020-07-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/AVFoundationSoftLinkTest.mm:
+        (TestWebKitAPI::TEST): Test AVOutputContextOutputDevicesDidChangeNotification.
+        Don't check AVRouteDetectorMultipleRoutesDetectedDidChangeNotification on watchOS,
+        we don't use it there.
+
+2020-07-16  W.D. Xiong  <w_xiong@apple.com>
+
+        [webkitpy] Remove unused imports from benchmark_runner
+        https://bugs.webkit.org/show_bug.cgi?id=214395
+
+        Reviewed by Jonathan Bedard.
+
+        Removed a bunch of unused import statements in webkitpy.benchmark_runner
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver_factory.py:
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        * Scripts/webkitpy/benchmark_runner/generic_factory.py:
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver_factory.py:
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+
+2020-07-16  Aakash Jain  <aakash_jain@apple.com>
+
+        Improve handling of invalid ChangeLog by webkit-patch
+        https://bugs.webkit.org/show_bug.cgi?id=214365
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/tool/steps/preparechangelog.py:
+        (PrepareChangeLog._ensure_bug_url):
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitcorepy] Correct url in setup.py
+        https://bugs.webkit.org/show_bug.cgi?id=214399
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/libraries/webkitcorepy/setup.py:
+
+2020-07-16  Philippe Normand  <pnormand@igalia.com>
+
+        run-minibrowser --debug runs the release build on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=214397
+
+        Reviewed by Žan Doberšek.
+
+        Pass-through port configuration and platform options to old-run-minibrowser. GTK and WPE
+        ports are not affected by this because they build the path to MiniBrowser for the given
+        configuration already.
+
+        Also set ignore_errors to True when invoking the Executive, to prevent useless and confusing
+        tracebacks raised when old-run-minibrowser exits with a positive exit code, eg, when it's
+        being called with the --help argument.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.run_minibrowser):
+
+2020-07-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r264272) [GTK][WPE] css3/color/composited-solid-backgrounds.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=214260
+
+        Reviewed by Darin Adler.
+
+        Add a test case.
+
+        * TestWebKitAPI/Tests/WebCore/ExtendedColorTests.cpp:
+        (TestWebKitAPI::TEST):
+
+2020-07-15  Dean Jackson  <dino@apple.com>
+
+        MiniBrowser toolbar is ugly with default macOS Big Sur style
+        https://bugs.webkit.org/show_bug.cgi?id=214390
+        rdar://65637420
+
+        Reviewed by Tim Horton.
+
+        Rather than using the Big Sur default "unified" style, explicitly
+        ask for the "expanded" style.
+
+        While here, use symbols for the toolbar buttons, and move the
+        progress indicator to the end of the toolbar. I hope this
+        change to the xib file won't break the Catalina version.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController windowDidLoad]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController updateTitle:]):
+
+2020-07-15  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitcorepy] Spin off general webkitpy tools into a pip module
+        https://bugs.webkit.org/show_bug.cgi?id=214309
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/libraries: Added.
+        * Scripts/libraries/webkitcorepy: Added.
+        * Scripts/libraries/webkitcorepy/MANIFEST.in: Added.
+        * Scripts/libraries/webkitcorepy/README.md: Added.
+        * Scripts/libraries/webkitcorepy/setup.py: Added.
+        (readme):
+        * Scripts/libraries/webkitcorepy/webkitcorepy: Added.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/__init__.py: Added.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/tests: Added.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/tests/__init__.py: Added.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/tests/version_unittest.py: Moved from
+        webkitpy/common/version_unittest.py.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/version.py: Added.
+        (Version): Moved from webkitpy/common/version.py.
+        * Scripts/webkitpy/__init__.py: Include webkitcorepy on import path.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/common/checkout/scm/svn.py: Ditto.
+        * Scripts/webkitpy/common/system/platforminfo.py: Ditto.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py: Ditto.
+        * Scripts/webkitpy/common/version.py: Ditto.
+        (Version): Moved to webkitcorepy.
+        * Scripts/webkitpy/common/version_name_map.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/common/version_name_map_unittest.py: Ditto.
+        * Scripts/webkitpy/common/version_unittest.py: Moved to webkitcorepy.
+        * Scripts/webkitpy/port/factory_unittest.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/port/ios.py: Use Version from webkitcorepy, remove unneeded imports.
+        * Scripts/webkitpy/port/ios_device.py: se Version from webkitcorepy.
+        * Scripts/webkitpy/port/ios_device_unittest.py: Ditto.
+        * Scripts/webkitpy/port/ios_simulator.py: Ditto.
+        * Scripts/webkitpy/port/ios_simulator_unittest.py: Ditto.
+        * Scripts/webkitpy/port/ios_testcase.py: Ditto.
+        * Scripts/webkitpy/port/mac.py: Ditto.
+        * Scripts/webkitpy/port/mac_unittest.py: Ditto.
+        * Scripts/webkitpy/port/watch.py: Use Version from webkitcorepy, remove unneeded imports.
+        * Scripts/webkitpy/port/watch_device.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/port/watch_simulator.py: Ditto.
+        * Scripts/webkitpy/port/watch_simulator_unittest.py: Ditto.
+        * Scripts/webkitpy/port/watch_testcase.py: Ditto.
+        * Scripts/webkitpy/port/win.py: Use Version from webkitcorepy, remove unneeded imports.
+        * Scripts/webkitpy/port/win_unittest.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/test/main.py:
+        (main): Include webkitcorepy tests.
+        * Scripts/webkitpy/xcode/device_type_unittest.py: Use Version from webkitcorepy.
+        * Scripts/webkitpy/xcode/simulated_device.py: Ditto.
+        * Scripts/webkitpy/xcode/simulated_device_unittest.py: Use Version from webkitcorepy, fix style for imports.
+
+2020-07-15  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] clicking submit for EWS analysis button for patches on closed bug should display error
+        https://bugs.webkit.org/show_bug.cgi?id=214372
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/common/bugzilla.py:
+        (Bugzilla._get_bug_json): Method to get bug json.
+        (Bugzilla.is_bug_closed): Method to check if bug is closed.
+        * BuildSlaveSupport/ews-app/ews/config.py:
+        * BuildSlaveSupport/ews-app/ews/fetcher.py:
+        (BugzillaPatchFetcher.send_patches_to_buildbot):
+        * BuildSlaveSupport/ews-app/ews/views/submittoews.py:
+        (SubmitToEWS.post): Display error message on submit for EWS analysis button click for closed bugs.
+
+2020-07-15  Devin Rousso  <drousso@apple.com>
+
+        should represent `TextPlaceholderElement` as an `NSTextAttachmentCharacter` instead of a `\n`
+        https://bugs.webkit.org/show_bug.cgi?id=214331
+        <rdar://problem/64779558>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/ios/UIKitSPI.h:
+        Add missing SPI declarations.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        (-[TestWKWebView synchronouslyInsertTextPlaceholderWithSize:]): Added.
+        (-[TestWKWebView synchronouslyRemoveTextPlaceholder:willInsertText:]): Added.
+        (TEST.DocumentEditingContext.RequestBeforeInlinePlaceholder): Added.
+        (TEST.DocumentEditingContext.RequestAfterInlinePlaceholder): Added.
+        (TEST.DocumentEditingContext.RequestBeforeBlockPlaceholder): Added.
+        (TEST.DocumentEditingContext.RequestAfterBlockPlaceholder): Added.
+
+2020-07-15  Jonathan Bedard  <jbedard@apple.com>
+
+        [run-javascriptcore-tests] nativeArchitecture should never be arm64e
+        https://bugs.webkit.org/show_bug.cgi?id=214369
+        <rdar://problem/65364995>
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitdirs.pm:
+        (determineNativeArchitecture):
+        (determineArchitecture):
+
+2020-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Flaky API Test: TestWebKitAPI.SleepDisabler.NavigateBack
+        https://bugs.webkit.org/show_bug.cgi?id=213513#c9
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKit/SleepDisabler.mm:
+        (TEST_F): Disable the test to speed up EWS.
+
+2020-07-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        build-webkit script tries to execute command xcodebuild on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=214353
+
+        Reviewed by Jonathan Bedard.
+
+        Recently, when running the script build-webkit on Linux the following warning is printed:
+        Can't exec "xcodebuild": No such file or directory at Tools/Scripts/webkitdirs.pm line 602
+
+        To fix this, change the code to only call the function determineXcodeSDK() when
+        building for an Apple/Cocoa platform.
+
+        * Scripts/webkitdirs.pm:
+        (determineArchitecture):
+
+2020-07-15  Jim Mason  <jmason@ibinx.com>
+
+        [WTF] Fix PackedAlignedPtr for X86_64 canonical addresses
+        https://bugs.webkit.org/show_bug.cgi?id=214142
+
+        Reviewed by Mark Lam
+
+        Revised test cases in TEST(WTF_Packed, AssignAndGet)
+
+        * TestWebKitAPI/Tests/WTF/Packed.cpp:
+
+2020-07-15  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add timeout to network requests
+        https://bugs.webkit.org/show_bug.cgi?id=214355
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/common/util.py:
+        (fetch_data_from_url): Add tiemout as recommended in https://requests.readthedocs.io/en/master/user/quickstart/#timeouts
+
+2020-07-15  Aakash Jain  <aakash_jain@apple.com>
+
+        Make ews django app robust against network issues
+        https://bugs.webkit.org/show_bug.cgi?id=214351
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/common/buildbot.py:
+        (Buildbot.fetch_pending_and_inprogress_builds): Re-fetch builder_name_to_id_mapping if required.
+
+2020-07-15  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Support Rosetta testing
+        https://bugs.webkit.org/show_bug.cgi?id=214016
+        <rdar://problem/65153804>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__): Emulate architecture if native and specified architectures do not match.
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        (TrivialMockPort.architecture):
+
+2020-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Introduce JSCTEST_hardTimeout
+        https://bugs.webkit.org/show_bug.cgi?id=214343
+
+        Reviewed by Mark Lam.
+
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/webkitruby/jsc-stress-test-writer-default.rb:
+        * Scripts/webkitruby/jsc-stress-test-writer-ruby.rb:
+
+2020-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] API test /webkit/WebKitWebInspectorServer/test-page-list is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=188115
+
+        Reviewed by Michael Catanzaro.
+
+        Stop using DBus to connect to the remote inspector and reload the page until we see the inspectable target.
+
+        * TestWebKitAPI/Tests/WebKitGtk/TestInspectorServer.cpp:
+        (connectToInspectorServer):
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2020-07-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r264101): Sharing a link attaches an image instead of the URL
+        https://bugs.webkit.org/show_bug.cgi?id=214329
+        <rdar://problem/65513607>
+
+        Reviewed by Tim Horton and Devin Rousso.
+
+        Add a new API test to verify that the "share action" for a link shares the URL, rather than a snapshot of the
+        anchor element.
+
+        * TestWebKitAPI/Tests/ios/ShareSheetTests.mm:
+
+2020-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r262341) URL::createCFURL should produce a CFURL that uses UTF-8 to decode its percent-encoded sequences
+        https://bugs.webkit.org/show_bug.cgi?id=214314
+        <rdar://problem/65079249>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/cocoa/URLExtras.mm:
+        Add a direct test and update the Mojave test expectations for the test introduced in r262341 with the change that introduced this regression.
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadInvalidURLRequest.mm:
+        Update a test from r263475 which fixed another regression from r262341.
+        The test verified that nothing crashed or timed out, and that is still the case even with this intentional change in behavior.
+
+2020-07-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] The completion handler in -handleKeyWebEvent:withCompletionHandler: is sometimes never called
+        https://bugs.webkit.org/show_bug.cgi?id=214295
+        <rdar://problem/60539389>
+
+        Reviewed by Devin Rousso.
+
+        Add API tests to exercise the corner cases described in the WebKit ChangeLog.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+
 2020-07-14  Aakash Jain  <aakash_jain@apple.com>
 
         [build.webkit.org] watchos should build both arm64_32 and armv7k architectures

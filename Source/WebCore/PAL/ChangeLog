@@ -1,3 +1,172 @@
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264477.
+
+        Broke the internal build
+
+        Reverted changeset:
+
+        "Use AVRoutePickerView when available for choosing AirPlay
+        devices"
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        https://trac.webkit.org/changeset/264477
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264493.
+
+        Part of an attempted fix for the build
+
+        Reverted changeset:
+
+        "Use AVRoutePickerView when available for choosing AirPlay
+        devices"
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        https://trac.webkit.org/changeset/264493
+
+2020-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, reverting r264511.
+
+        Part of an attempted fix for the build
+
+        Reverted changeset:
+
+        "Unreviewed attempt to fix build on shipping macOS after
+        r264493."
+        https://trac.webkit.org/changeset/264511
+
+2020-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix build on shipping macOS after r264493.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2020-07-17  Jonathan Bedard  <jbedard@apple.com>
+
+        [iOS 14] Some PassKit SPI is now API
+        https://bugs.webkit.org/show_bug.cgi?id=214433
+        <rdar://problem/65695889>
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-07-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Unreviewed build fix.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2020-07-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WTF] Remove the unnecessary inner class DefaultHash<T>::Hash
+        https://bugs.webkit.org/show_bug.cgi?id=214389
+
+        Reviewed by Darin Adler.
+
+        * pal/SessionID.h:
+
+2020-07-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Reviewed by Jer Noble.
+
+        * pal/cocoa/AVFoundationSoftLink.h:
+        * pal/cocoa/AVFoundationSoftLink.mm: Soft link AVRoutePickerView.
+        * pal/spi/cocoa/AVKitSPI.h: Declare AVRoutePickerView.
+
+2020-07-16  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add MediaCapabilities support for SW VP9 decoder.
+        https://bugs.webkit.org/show_bug.cgi?id=214316
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/cocoa/IOPSLibSPI.h:
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] De-duplicate SPI
+        https://bugs.webkit.org/show_bug.cgi?id=214415
+        <rdar://problem/65678060>
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/mac/NSImageSPI.h:
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] Build on Seed 1 (Follow-up Fix)
+        https://bugs.webkit.org/show_bug.cgi?id=214396
+        <rdar://problem/65644762>
+
+        Unreviewed follow-up fix.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2020-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] Build on Seed 1
+        https://bugs.webkit.org/show_bug.cgi?id=214396
+        <rdar://problem/65644762>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cg/CoreGraphicsSPI.h: Add CoreGraphics SPI for PDFKIT_PLUGIN.
+        * pal/spi/mac/NSImageSPI.h:
+
+2020-07-15  Saagar Jha  <saagar@saagarjha.com>
+
+        Add some missing boilerplate to help fix build on macOS Big Sur
+        https://bugs.webkit.org/show_bug.cgi?id=214338
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/mac/NSAppearanceSPI.h: Add -[NSAppearance _usesMetricsAppearance] to the SPI header.
+        * pal/spi/mac/NSImageSPI.h: Add +[NSImage _imageWithSystemSymbolName:] to the SPI header.
+
+2020-07-15  Rob Buis  <rbuis@igalia.com>
+
+        Building AccessibilitySupportSPI with the macOS Big Sur public SDK fails
+        https://bugs.webkit.org/show_bug.cgi?id=214237
+
+        Reviewed by Alex Christensen.
+
+        We need to include CoreFoundation.h header here to use CF_ENUM, since
+        we can't rely on the call site that includes AccessibilitySupportSPI.h
+        doing it for us.
+        We also need to declare _AXSetClientIdentificationOverride since it
+        it is used by AccessibilityController.cpp.
+
+        * pal/spi/cocoa/AccessibilitySupportSPI.h:
+        * pal/spi/mac/HIServicesSPI.h:
+
+2020-07-15  Brady Eidson  <beidson@apple.com>
+
+        Fix some build configurations after r264389
+        https://bugs.webkit.org/show_bug.cgi?id=214245
+
+        Unreviewed.
+
+        * pal/spi/mac/IOKitSPIMac.h: Forward declare newly used stuff.
+
+2020-07-15  Brady Eidson  <beidson@apple.com>
+
+        Resolve race between IOHIDManager and GameController framework.
+        <rdar://problem/65554490> and https://bugs.webkit.org/show_bug.cgi?id=214245
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/mac/IOKitSPIMac.h:
+
 2020-07-12  Rob Buis  <rbuis@igalia.com>
 
         Building CFNetworkSPI with the macOS Big Sur public SDK fails

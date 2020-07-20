@@ -1408,8 +1408,6 @@ webkit.org/b/181752 storage/indexeddb/removed-private.html [ Failure ]
 webkit.org/b/181752 storage/indexeddb/removed.html [ Failure ]
 webkit.org/b/181752 storage/indexeddb/request-leak-private.html [ Failure ]
 webkit.org/b/181752 storage/indexeddb/request-leak.html [ Failure ]
-webkit.org/b/181752 storage/indexeddb/structured-clone-private.html [ Failure ]
-webkit.org/b/181752 storage/indexeddb/structured-clone.html [ Failure ]
 webkit.org/b/181752 storage/indexeddb/wasm-exceptions.html [ Failure ]
 webkit.org/b/181752 storage/indexeddb/database-quota-private.html [ Skip ]
 webkit.org/b/181752 storage/indexeddb/database-quota.html [ Skip ]
@@ -2804,7 +2802,6 @@ webkit.org/b/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/
 webkit.org/b/183441 mathml/presentation/multiscripts-equivalence.html [ ImageOnlyFailure ]
 
 # <rdar://problem/32632415> REGRESSION (ImageIO-1666): LayoutTests fast/images are failing together.
-canvas/philip/tests/2d.pattern.animated.gif.html [ Failure ]
 fast/images/slower-animation-than-decoding-image.html [ Failure ]
 fast/images/reset-image-animation.html [ Failure ]
 fast/images/animated-gif-loop-count.html [ ImageOnlyFailure ]
@@ -3479,3 +3476,5 @@ webkit.org/b/214290 imported/w3c/web-platform-tests/css/css-text/white-space/tex
 
 webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-022.html [ ImageOnlyFailure ]
 webkit.org/b/214299 imported/w3c/web-platform-tests/css/css-ui/outline-with-padding-001.html [ ImageOnlyFailure ]
+
+webkit.org/b/214498 imported/w3c/web-platform-tests/cors/remote-origin.htm [ Pass ]
