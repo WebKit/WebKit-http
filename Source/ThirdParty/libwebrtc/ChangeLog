@@ -1,3 +1,56 @@
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-07-21  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r264685; copy headers to the correct path during a DEPLOYMENT_LOCATION build.
+
+        * Configurations/libwebm.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-07-21  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add experimental MSE WebM parser
+        https://bugs.webkit.org/show_bug.cgi?id=214529
+        <rdar://problem/65782467>
+
+        Reviewed by Eric Carlson.
+
+        Add the vp9_header_parser from libwebrtc to the project, and add its
+        symbols to the list of exported symbols. Because this header wants to
+        be installed to a "common/vp9_header_parser.h" path, split up the default
+        CopyHeadersInstallPhase into two separate CopyFiles build phases that
+        put headers into different locations.
+
+        * Configurations/libwebm.xcconfig:
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+        * Source/third_party/libwebm/common/vp9_header_parser.h:
+        (vp9_parser::Vp9HeaderParser::color_range const):
+        (vp9_parser::Vp9HeaderParser::subsampling_x const):
+        (vp9_parser::Vp9HeaderParser::subsampling_y const):
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-07-21  Youenn Fablet  <youenn@apple.com>
+
+        Resync filter_analyzer.cc up to upstream libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=214592
+        <rdar://problem/65247051>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/modules/audio_processing/aec3/filter_analyzer.cc:
+
 2020-07-20  Youenn Fablet  <youenn@apple.com>
 
         Fix buggy assert in h265_vps_sps_pps_tracker.cc

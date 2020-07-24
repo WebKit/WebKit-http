@@ -91,9 +91,9 @@ void RunLoop::dispatch(const SchedulePairHashSet& schedulePairs, Function<void()
 
         CFRunLoopTimerInvalidate(timer);
 
-        Function<void()> function(static_cast<Function<void()>::Impl*>(context));
+        auto function = adopt(static_cast<Function<void()>::Impl*>(context));
         function();
-    }, function.leakImpl());
+    }, function.leak());
 
     for (auto& schedulePair : schedulePairs)
         CFRunLoopAddTimer(schedulePair->runLoop(), timer.get(), schedulePair->mode());
@@ -121,7 +121,7 @@ void RunLoop::TimerBase::start(Seconds interval, bool repeat)
 
         auto timer = static_cast<TimerBase*>(context);
         if (!CFRunLoopTimerDoesRepeat(cfTimer))
-            timer->stop();
+            CFRunLoopTimerInvalidate(cfTimer);
 
         timer->fired();
     }, this);

@@ -506,7 +506,7 @@ handleSpread:
 
 bool ArrayNode::isSimpleArray() const
 {
-    if (m_elision || m_optional)
+    if (m_elision)
         return false;
     for (ElementNode* ptr = m_element; ptr; ptr = ptr->next()) {
         if (ptr->elision())
@@ -519,7 +519,7 @@ bool ArrayNode::isSimpleArray() const
 
 ArgumentListNode* ArrayNode::toArgumentList(ParserArena& parserArena, int lineNumber, int startPosition) const
 {
-    ASSERT(!m_elision && !m_optional);
+    ASSERT(!m_elision);
     ElementNode* ptr = m_element;
     if (!ptr)
         return nullptr;
@@ -4892,15 +4892,11 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
 
         RefPtr<RegisterID> tempRegister = generator.newTemporary();
 
-        Ref<Label> superclassIsUndefinedLabel = generator.newLabel();
-        generator.emitJumpIfTrue(generator.emitIsUndefined(tempRegister.get(), superclass.get()), superclassIsUndefinedLabel.get());
-
         Ref<Label> superclassIsNullLabel = generator.newLabel();
         generator.emitJumpIfTrue(generator.emitIsNull(tempRegister.get(), superclass.get()), superclassIsNullLabel.get());
 
         Ref<Label> superclassIsConstructorLabel = generator.newLabel();
         generator.emitJumpIfTrue(generator.emitIsConstructor(tempRegister.get(), superclass.get()), superclassIsConstructorLabel.get());
-        generator.emitLabel(superclassIsUndefinedLabel.get());
         generator.emitThrowTypeError("The superclass is not a constructor."_s);
         generator.emitLabel(superclassIsConstructorLabel.get());
         generator.emitGetById(protoParent.get(), superclass.get(), generator.propertyNames().prototype);
@@ -5107,8 +5103,7 @@ RegisterID* ArrayPatternNode::emitDirectBinding(BytecodeGenerator& generator, Re
     Vector<ExpressionNode*> elements;
     for (; elementNodes; elementNodes = elementNodes->next()) {
         ExpressionNode* value = elementNodes->value();
-        if (value->isSpreadExpression())
-            return nullptr;
+        ASSERT(!value->isSpreadExpression());
         elements.append(value);
     }
 

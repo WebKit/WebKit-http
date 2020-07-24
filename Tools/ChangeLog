@@ -1,3 +1,438 @@
+2020-07-23  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Notify bot watchers about pre-existing and flaky test failures found on ews bots
+        https://bugs.webkit.org/show_bug.cgi?id=207475
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ReRunWebKitTests.evaluateCommand):
+        (ReRunWebKitTests.send_email_for_flaky_failure): Method to send email for flaky failure.
+        (AnalyzeLayoutTestsResults.report_pre_existing_failures):
+        (AnalyzeLayoutTestsResults.send_email_for_flaky_failure): Method to send email for flaky failure.
+        (AnalyzeLayoutTestsResults.send_email_for_pre_existing_failure): Method to send email for pre-existing failure.
+        * BuildSlaveSupport/ews-build/steps.py: Updated unit-tests accordingly.
+        * BuildSlaveSupport/ews-build/send_email.py: Added error handling.
+
+2020-07-23  Sihui Liu  <sihui_liu@appe.com>
+
+        Allow IndexedDB in third-party frames
+        https://bugs.webkit.org/show_bug.cgi?id=214583
+        <rdar://problem/61278487>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBPersistence.mm:
+        (postResult):
+        (catch):
+
+2020-07-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ews] Update bot watcher email address
+        https://bugs.webkit.org/show_bug.cgi?id=214693
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/ews-build/send_email.py:
+
+2020-07-23  Jonathan Bedard  <jbedard@apple.com>
+
+        [run-webkit-tests] Override suite name for results database reporting
+        https://bugs.webkit.org/show_bug.cgi?id=214686
+        <rdar://problem/65997324>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager.run): Allow options to override suite name.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Allow options to override suite name.
+        * Scripts/webkitpy/results/options.py:
+        (upload_options): Add --suite flag to override suite name.
+        * Scripts/webkitpy/test/main.py:
+        (Tester._run_tests): Allow options to override suite name.
+
+2020-07-23  Brady Eidson  <beidson@apple.com>
+
+        Add Gamepad tests that exercise the native frameworks
+        <rdar://problem/65343674> and https://bugs.webkit.org/show_bug.cgi?id=214188
+
+        Reviewed by Tim Horton.
+
+        For Internal builds, we can create HID devices that exercise the native gamepad providers.
+        E.g. Actually exercise the IOHID gamepad provider codepath.
+
+        Give the Internal TestWebKitAPI build some entitlements:        
+        * TestWebKitAPI/Configurations/TestWebKitAPI-macOS-internal.entitlements: Added.
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+        Add a very basic test that connects a device, presses a button, and verifies the web page sees it:
+        * TestWebKitAPI/Tests/mac/HIDGamepads.mm: Added.
+        (-[GamepadMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::handleGamepadConnect):
+
+        Add the beginnings of a VirtualGamepad device that reads in a HID descriptor (just like real gamepads):
+        * TestWebKitAPI/mac/VirtualGamepad.h: Added.
+        * TestWebKitAPI/mac/VirtualGamepad.mm: Added.
+        (TestWebKitAPI::VirtualGamepad::makeVirtualNimbus):
+        (TestWebKitAPI::VirtualGamepad::VirtualGamepad):
+        (TestWebKitAPI::VirtualGamepad::~VirtualGamepad):
+        (TestWebKitAPI::VirtualGamepad::setButtonValue):
+        (TestWebKitAPI::VirtualGamepad::setAxisValue):
+        (TestWebKitAPI::VirtualGamepad::publishReport):
+
+2020-07-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] gst_buffer_unmap: assertion 'GST_IS_BUFFER (buffer)' failed
+        https://bugs.webkit.org/show_bug.cgi?id=213364
+
+        Reviewed by Philippe Normand.
+
+        Reworked tests for GstMappedBuffer and added tests for
+        GstMappedOwnedBuffer.
+
+        * TestWebKitAPI/Tests/WebCore/gstreamer/GstMappedBuffer.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2020-07-23  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Add support to send emails in ews
+        https://bugs.webkit.org/show_bug.cgi?id=214670
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/ews-build/send_email.py: Added script to send emails.
+        (send_email):
+        (send_email_to_bot_watchers):
+
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * ContentExtensionTester/Configurations/Base.xcconfig:
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * ImageDiff/cg/Configurations/Base.xcconfig:
+        * ImageDiff/cg/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/WebKitTargetConditionals.xcconfig:
+        * WebEditingTester/Configurations/Base.xcconfig:
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * lldb/lldbWebKitTester/Configurations/Base.xcconfig:
+        * lldb/lldbWebKitTester/Configurations/DebugRelease.xcconfig:
+
+2020-07-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Article headlines are split across multiple lines after translating tagesschau.de
+        https://bugs.webkit.org/show_bug.cgi?id=214652
+        <rdar://problem/63995571>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test (a reduced version of article headlines from the front page of tagesschau.de).
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+
+2020-07-22  Alex Christensen  <achristensen@webkit.org>
+
+        Safari does not present CertificateInfo for service-worker served documents
+        https://bugs.webkit.org/show_bug.cgi?id=206403
+        <rdar://problem/65410875>
+
+        Reviewed by Darin Adler and Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2020-07-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        TestWTF.WTF_Packed.PackedAlignedPtr should be adjusted because ARM macOS is using 48 bits for effective address width
+        https://bugs.webkit.org/show_bug.cgi?id=214633
+
+        Reviewed by Mark Lam.
+
+        While PlatformOS.h's condition is updated, the test is not changed. This patch just aligns the condition used in this test
+        to the one in PlatformOS.h.
+
+        * TestWebKitAPI/Tests/WTF/Packed.cpp:
+        (TestWebKitAPI::TEST):
+
+2020-07-22  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitcorepy] Add string_utils (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=214405
+
+        Reviewed by Dewei Zhu.
+
+        Centralize handling of unicode encoding/decoding along with various tools
+        for printing strings.
+
+        * Scripts/libraries/webkitcorepy/webkitcorepy/__init__.py:
+        * Scripts/libraries/webkitcorepy/webkitcorepy/string_utils.py: Added.
+        (encode): Encode a string as bytes.
+        (decode): Decode a bytes as a string.
+        (ordinal): Convert a number to 1st, 2nd, 3rd, 4th, ect.
+        (pluralize): Convert a string to it's plurlarized version, if provided number indicates
+        it should be.
+        (join): Join a list of elements in a human-readable form.
+        (out_of): Create a fraction which takes up a constant amount of characters.
+        (elapsed): Describe the amount of time elapsed as a human-readable string.
+        * Scripts/libraries/webkitcorepy/webkitcorepy/tests/string_utils_unittest.py: Added.
+        (StringUtils): Test string_utils.
+        * Scripts/webkitpy/common/unicode_compatibility.py: Replaced with webkitcorepy.string_utils.
+
+2020-07-22  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Pass api key in more secure manner
+        https://bugs.webkit.org/show_bug.cgi?id=214639
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/common/bugzilla.py:
+        (Bugzilla.get_bugzilla_api_key): Method to read api key from file instead of environment variable.
+        (Bugzilla.fetch_data_from_bugzilla_with_authentication): Method to fetch data from bugzilla using api key.
+        (Bugzilla._fetch_attachment_json): Do not append api key in the url, use new method instead.
+        (Bugzilla._get_bug_json): Ditto.
+        (Bugzilla._get_commit_queue_patches_from_bug): Ditto.
+        * BuildSlaveSupport/ews-app/ews/common/util.py:
+        (fetch_data_from_url): Log the url to help in debugging any possible issues.
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        [macOS] Adopt AVPlayer.videoRangeOverride
+        https://bugs.webkit.org/show_bug.cgi?id=213902
+        <rdar://problem/63953509>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/AVFoundationSoftLinkTest.mm:
+        (TestWebKitAPI::TEST):
+
+2020-07-22  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Remove version.py
+        https://bugs.webkit.org/show_bug.cgi?id=214580
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/version.py: Removed.
+
+2020-07-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] ITP: use the database store unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=214590
+
+        Reviewed by Adrian Perez de Castro.
+
+        Update the unit test to monitor the database file instead of the old log file.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebsiteData.cpp:
+        (testWebsiteDataITP):
+
+2020-07-19  Darin Adler  <darin@apple.com>
+
+        Remove live ranges from Editor.h and EditorClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=214261
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Removed duplicate install of Ahem.ttf that was leading new versions
+        of Xcode to fail when trying to build this.
+
+2020-07-21  Alex Christensen  <achristensen@webkit.org>
+
+        Safari does not present CertificateInfo for service-worker served documents
+        https://bugs.webkit.org/show_bug.cgi?id=206403
+
+        Reviewed by Brady Eidson.
+
+        This is actually just a failing test that reproduces the issue 100% of the time.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+        * TestWebKitAPI/cocoa/HTTPServer.h:
+        * TestWebKitAPI/cocoa/HTTPServer.mm:
+        (TestWebKitAPI::HTTPServer::cancel):
+        (TestWebKitAPI::HTTPServer::HTTPServer):
+        (TestWebKitAPI::m_protocol):
+        (TestWebKitAPI::HTTPServer::totalRequests const):
+        (TestWebKitAPI::HTTPServer::respondToRequests):
+        (TestWebKitAPI::Connection::terminate):
+        (TestWebKitAPI::Connection::cancel):
+        (TestWebKitAPI::Connection::terminate const): Deleted.
+
+2020-07-21  Jonathan Bedard  <jbedard@apple.com>
+
+        ImageDiff: Set ALWAYS_SEARCH_USER_PATHS to NO
+        https://bugs.webkit.org/show_bug.cgi?id=214613
+        <rdar://problem/65883815>
+
+        Reviewed by Dan Bernstein.
+
+        * ImageDiff/cg/Configurations/Base.xcconfig:
+
+2020-07-21  Youenn Fablet  <youenn@apple.com>
+
+        Fetch/XHR loads done by extensions should opt out of response sanitisation done in network process
+        https://bugs.webkit.org/show_bug.cgi?id=214588
+
+        Reviewed by Alex Christensen.
+
+        Update test to check for header. Minor modernization of the JS script to impriove readability.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2020-07-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/AVFoundationSoftLinkTest.mm:
+        (TestWebKitAPI::TEST): Test AVOutputContextOutputDevicesDidChangeNotification.
+        Don't check AVRouteDetectorMultipleRoutesDetectedDidChangeNotification on watchOS,
+        we don't use it there.
+
+2020-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Fix ITP data summary when using the memory store and blocking all third-party cookies
+        https://bugs.webkit.org/show_bug.cgi?id=214401
+
+        Reviewed by Michael Catanzaro.
+
+        Fix GetResourceLoadStatisticsDataSummary test to actually use the memory store.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (TEST):
+
+2020-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Prepare unit tests for GTK4
+        https://bugs.webkit.org/show_bug.cgi?id=214251
+
+        Reviewed by Adrian Perez de Castro.
+
+        In GTK4 there isn't GTK_WINDOW_POPUP and we can't create GdkEvents, so we need to use toplevel windows
+        everywhere and use the new internal api to synthesize events.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestDownloads.cpp:
+        (testContextMenuDownloadActions):
+        (testBlobDownload):
+        * TestWebKitAPI/Tests/WebKitGLib/TestInputMethodContext.cpp:
+        * TestWebKitAPI/Tests/WebKitGLib/TestOptionMenu.cpp:
+        (testOptionMenuSimple):
+        (testOptionMenuGroups):
+        (testOptionMenuActivate):
+        (testOptionMenuSelect):
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewCreateNavigationData):
+        (testWebViewJavaScriptDialogs):
+        (testWebViewOpenWindowNoDefaultSize):
+        (testWebViewMouseTarget):
+        (testWebViewGeolocationPermissionRequests):
+        (testWebViewUserMediaEnumerateDevicesPermissionCheck):
+        (testWebViewUserMediaPermissionRequests):
+        (testWebViewAudioOnlyUserMediaPermissionRequests):
+        (testWebViewPointerLockPermissionRequest):
+        (testWebViewFileChooserRequest):
+        (testWebViewColorChooserRequest):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebExtensions.cpp:
+        (testWebExtensionInputElementIsUserEdited):
+        (testInstallMissingPluginsPermissionRequest):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitFindController.cpp:
+        (testFindControllerHide):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitPolicyClient.cpp:
+        (testAutoplayPolicy):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewFullScreen):
+        (testWebViewSubmitForm):
+        (testWebViewSnapshot):
+        (testWebViewIsPlayingAudio):
+        (testWebViewPreferredSize):
+        * TestWebKitAPI/Tests/WebKitGtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+        (testPopupEventSignal):
+        (testContextMenuKey):
+        (testContextMenuPopulateMenu):
+        (testContextMenuCustomMenu):
+        (testContextMenuSubMenu):
+        (testContextMenuDismissed):
+        (testContextMenuWebExtensionMenu):
+        (testContextMenuWebExtensionNode):
+        (testContextMenuLiveStream):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKitGtk/TestDOMDOMWindow.cpp:
+        (signalsNotifyCallback):
+        * TestWebKitAPI/Tests/WebKitGtk/TestInspector.cpp:
+        (testInspectorDefault):
+        (testInspectorManualAttachDetach):
+        (testInspectorCustomContainerDestroyed):
+        * TestWebKitAPI/Tests/WebKitGtk/TestInspectorServer.cpp:
+        (testInspectorServerPageList):
+        * TestWebKitAPI/Tests/WebKitGtk/TestPrinting.cpp:
+        (testPrintCustomWidget):
+        * TestWebKitAPI/Tests/WebKitGtk/TestWebViewEditor.cpp:
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.h:
+        * TestWebKitAPI/glib/WebKitGLib/gtk/WebViewTestGtk.cpp:
+        (WebViewTest::quitMainLoopAfterProcessingPendingEvents):
+        (WebViewTest::showInWindow):
+        (WebViewTest::mouseMoveTo):
+        (WebViewTest::clickMouseButton):
+        (WebViewTest::keyStroke):
+        * TestWebKitAPI/glib/WebKitGLib/wpe/WebViewTestWPE.cpp:
+        (WebViewTest::showInWindow):
+        * TestWebKitAPI/gtk/PlatformWebViewGtk.cpp:
+        (TestWebKitAPI::toWebKitGLibAPI):
+        (TestWebKitAPI::PlatformWebView::simulateSpacebarKeyPress):
+        (TestWebKitAPI::PlatformWebView::simulateAltKeyPress):
+        (TestWebKitAPI::PlatformWebView::simulateRightClick):
+        (TestWebKitAPI::PlatformWebView::simulateMouseMove):
+
+2020-07-20  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Use -q while unzipping layout-test-results.zip
+        https://bugs.webkit.org/show_bug.cgi?id=214571
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+
+2020-07-20  Keith Miller  <keith_miller@apple.com>
+
+        [JSC] update test262 (July 2020 edition)
+        https://bugs.webkit.org/show_bug.cgi?id=214575
+
+        Reviewed by Ross Kirsling.
+
+        test262 is now using 'main' as the default branch. Fix our import script to reflect that.
+
+        * Scripts/test262/Import.pm:
+        (processCLI):
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [jhbuild] GStreamer broken in minimal environment
+        https://bugs.webkit.org/show_bug.cgi?id=214552
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * jhbuild/jhbuildrc_common.py:
+        (init): Don't set GST_PLUGIN_SYSTEM_PATH when using the minimal moduleset, because in this
+        case we actually have to rely on the host GStreamer installation. GStreamer is not part of
+        the minimal moduleset.
+
 2020-07-20  Aakash Jain  <aakash_jain@apple.com>
 
         [build.webkit.org] Update reference to webkit-test-results in TestFailures

@@ -1499,7 +1499,7 @@ void WebGL2RenderingContext::compressedTexSubImage3D(GCGLenum target, GCGLint le
 
 GCGLint WebGL2RenderingContext::getFragDataLocation(WebGLProgram& program, const String& name)
 {
-    if (isContextLostOrPending() || !validateWebGLObject("getFragDataLocation", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getFragDataLocation", &program))
         return -1;
     return m_context->getFragDataLocation(program.object(), name);
 }
@@ -1759,7 +1759,7 @@ void WebGL2RenderingContext::drawBuffers(const Vector<GCGLenum>& buffers)
         }
         // Because the backbuffer is simulated on all current WebKit ports, we need to change BACK to COLOR_ATTACHMENT0.
         GCGLenum value = (bufs[0] == GraphicsContextGL::BACK) ? GraphicsContextGL::COLOR_ATTACHMENT0 : GraphicsContextGL::NONE;
-        graphicsContextGL()->getExtensions().drawBuffersEXT(1, &value);
+        m_context->drawBuffers(1, &value);
         setBackDrawBuffer(bufs[0]);
     } else {
         if (n > getMaxDrawBuffers()) {
@@ -1776,92 +1776,48 @@ void WebGL2RenderingContext::drawBuffers(const Vector<GCGLenum>& buffers)
     }
 }
 
-void WebGL2RenderingContext::clearBufferiv(GCGLenum buffer, GCGLint drawbuffer, Int32List&&, GCGLuint)
+void WebGL2RenderingContext::clearBufferiv(GCGLenum buffer, GCGLint drawbuffer, Int32List&& values, GCGLuint srcOffset)
 {
-    switch (buffer) {
-    case GraphicsContextGL::COLOR:
-        if (drawbuffer < 0 || drawbuffer >= getMaxDrawBuffers()) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferiv", "buffer index out of range");
-            return;
-        }
-        // TODO: Call clearBufferiv, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::STENCIL:
-        if (drawbuffer) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferiv", "buffer index must be 0");
-            return;
-        }
-        // TODO: Call clearBufferiv, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::DEPTH:
-    case GraphicsContextGL::DEPTH_STENCIL:
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "clearBufferiv", "buffer argument must be COLOR or STENCIL");
-        break;
-    }
+    if (isContextLostOrPending() || !validateClearBuffer("clearBufferiv", buffer, values.length(), srcOffset))
+        return;
+
+    m_context->clearBufferiv(buffer, drawbuffer, values.data(), srcOffset);
+    updateBuffersToAutoClear(ClearBufferCaller::ClearBufferiv, buffer, drawbuffer);
 }
 
-void WebGL2RenderingContext::clearBufferuiv(GCGLenum buffer, GCGLint drawbuffer, Uint32List&&, GCGLuint)
+void WebGL2RenderingContext::clearBufferuiv(GCGLenum buffer, GCGLint drawbuffer, Uint32List&& values, GCGLuint srcOffset)
 {
-    switch (buffer) {
-    case GraphicsContextGL::COLOR:
-        if (drawbuffer < 0 || drawbuffer >= getMaxDrawBuffers()) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferuiv", "buffer index out of range");
-            return;
-        }
-        // TODO: Call clearBufferuiv, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::DEPTH:
-    case GraphicsContextGL::STENCIL:
-    case GraphicsContextGL::DEPTH_STENCIL:
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "clearBufferuiv", "buffer argument must be COLOR");
-        break;
-    }
+    if (isContextLostOrPending() || !validateClearBuffer("clearBufferuiv", buffer, values.length(), srcOffset))
+        return;
+
+    m_context->clearBufferuiv(buffer, drawbuffer, values.data(), srcOffset);
+    updateBuffersToAutoClear(ClearBufferCaller::ClearBufferuiv, buffer, drawbuffer);
 }
 
-void WebGL2RenderingContext::clearBufferfv(GCGLenum buffer, GCGLint drawbuffer, Float32List&&, GCGLuint)
+void WebGL2RenderingContext::clearBufferfv(GCGLenum buffer, GCGLint drawbuffer, Float32List&& values, GCGLuint srcOffset)
 {
-    switch (buffer) {
-    case GraphicsContextGL::COLOR:
-        if (drawbuffer < 0 || drawbuffer >= getMaxDrawBuffers()) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferfv", "buffer index out of range");
-            return;
-        }
-        // TODO: Call clearBufferfv, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::DEPTH:
-        if (drawbuffer) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferfv", "buffer index must be 0");
-            return;
-        }
-        // TODO: Call clearBufferfv, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::STENCIL:
-    case GraphicsContextGL::DEPTH_STENCIL:
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "clearBufferfv", "buffer argument must be COLOR OR DEPTH");
-        break;
-    }
+    if (isContextLostOrPending() || !validateClearBuffer("clearBufferfv", buffer, values.length(), srcOffset))
+        return;
+
+    m_context->clearBufferfv(buffer, drawbuffer, values.data(), srcOffset);
+    // clearBufferiv and clearBufferuiv will currently generate an error
+    // if they're called against the default back buffer. If support for
+    // extended canvas color spaces is added, this call might need to be
+    // added to the other versions.
+    markContextChanged();
+    updateBuffersToAutoClear(ClearBufferCaller::ClearBufferfv, buffer, drawbuffer);
 }
 
-void WebGL2RenderingContext::clearBufferfi(GCGLenum buffer, GCGLint drawbuffer, GCGLfloat, GCGLint)
+void WebGL2RenderingContext::clearBufferfi(GCGLenum buffer, GCGLint drawbuffer, GCGLfloat depth, GCGLint stencil)
 {
-    switch (buffer) {
-    case GraphicsContextGL::DEPTH_STENCIL:
-        if (drawbuffer) {
-            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clearBufferfv", "buffer index must be 0");
-            return;
-        }
-        // TODO: Call clearBufferfi, requires gl3.h and ES3/gl.h
-        break;
-    case GraphicsContextGL::COLOR:
-    case GraphicsContextGL::DEPTH:
-    case GraphicsContextGL::STENCIL:
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "clearBufferfv", "buffer argument must be DEPTH_STENCIL");
-        break;
-    }
+    if (isContextLostOrPending())
+        return;
+
+    m_context->clearBufferfi(buffer, drawbuffer, depth, stencil);
+    // This might have been used to clear the depth and stencil buffers
+    // of the default back buffer.
+    markContextChanged();
+    updateBuffersToAutoClear(ClearBufferCaller::ClearBufferfi, buffer, drawbuffer);
 }
 
 RefPtr<WebGLQuery> WebGL2RenderingContext::createQuery()
@@ -2260,7 +2216,7 @@ void WebGL2RenderingContext::endTransformFeedback()
 
 void WebGL2RenderingContext::transformFeedbackVaryings(WebGLProgram& program, const Vector<String>& varyings, GCGLenum bufferMode)
 {
-    if (isContextLostOrPending() || !validateWebGLObject("transformFeedbackVaryings", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("transformFeedbackVaryings", &program))
         return;
     
     switch (bufferMode) {
@@ -2283,7 +2239,7 @@ void WebGL2RenderingContext::transformFeedbackVaryings(WebGLProgram& program, co
 
 RefPtr<WebGLActiveInfo> WebGL2RenderingContext::getTransformFeedbackVarying(WebGLProgram& program, GCGLuint index)
 {
-    if (isContextLostOrPending() || !validateWebGLObject("getTransformFeedbackVarying", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getTransformFeedbackVarying", &program))
         return nullptr;
 
     GraphicsContextGL::ActiveInfo info;
@@ -2433,7 +2389,7 @@ WebGLAny WebGL2RenderingContext::getIndexedParameter(GCGLenum target, GCGLuint i
 Optional<Vector<GCGLuint>> WebGL2RenderingContext::getUniformIndices(WebGLProgram& program, const Vector<String>& names)
 {
 #if USE(ANGLE)
-    if (isContextLostOrPending() || !validateWebGLObject("getUniformIndices", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getUniformIndices", &program))
         return WTF::nullopt;
     return m_context->getUniformIndices(program.object(), names);
 #else
@@ -2444,7 +2400,7 @@ Optional<Vector<GCGLuint>> WebGL2RenderingContext::getUniformIndices(WebGLProgra
 
 WebGLAny WebGL2RenderingContext::getActiveUniforms(WebGLProgram& program, const Vector<GCGLuint>& uniformIndices, GCGLenum pname)
 {
-    if (isContextLostOrPending() || !validateWebGLObject("getActiveUniforms", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getActiveUniforms", &program))
         return nullptr;
 
     Vector<GCGLint> result(uniformIndices.size(), 0);
@@ -2474,7 +2430,7 @@ WebGLAny WebGL2RenderingContext::getActiveUniforms(WebGLProgram& program, const 
 GCGLuint WebGL2RenderingContext::getUniformBlockIndex(WebGLProgram& program, const String& uniformBlockName)
 {
 #if USE(ANGLE)
-    if (isContextLostOrPending() || !validateWebGLObject("getUniformBlockIndex", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getUniformBlockIndex", &program))
         return 0;
     return m_context->getUniformBlockIndex(program.object(), uniformBlockName);
 #else
@@ -2488,7 +2444,7 @@ GCGLuint WebGL2RenderingContext::getUniformBlockIndex(WebGLProgram& program, con
 WebGLAny WebGL2RenderingContext::getActiveUniformBlockParameter(WebGLProgram& program, GCGLuint uniformBlockIndex, GCGLenum pname)
 {
 #if USE(ANGLE)
-    if (isContextLostOrPending() || !validateWebGLObject("getActiveUniformBlockParameter", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getActiveUniformBlockParameter", &program))
         return nullptr;
     GLint result = 0;
     switch (pname) {
@@ -2524,9 +2480,16 @@ WebGLAny WebGL2RenderingContext::getActiveUniformBlockParameter(WebGLProgram& pr
 WebGLAny WebGL2RenderingContext::getActiveUniformBlockName(WebGLProgram& program, GCGLuint index)
 {
 #if USE(ANGLE)
-    if (isContextLostOrPending() || !validateWebGLObject("getActiveUniformBlockName", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("getActiveUniformBlockName", &program))
         return String();
-    return m_context->getActiveUniformBlockName(program.object(), index);
+    if (!program.getLinkStatus()) {
+        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "getActiveUniformBlockName", "program not linked");
+        return nullptr;
+    }
+    String name = m_context->getActiveUniformBlockName(program.object(), index);
+    if (name.isNull())
+        return nullptr;
+    return name;
 #else
     UNUSED_PARAM(program);
     UNUSED_PARAM(index);
@@ -2538,7 +2501,7 @@ WebGLAny WebGL2RenderingContext::getActiveUniformBlockName(WebGLProgram& program
 void WebGL2RenderingContext::uniformBlockBinding(WebGLProgram& program, GCGLuint uniformBlockIndex, GCGLuint uniformBlockBinding)
 {
 #if USE(ANGLE)
-    if (isContextLostOrPending() || !validateWebGLObject("uniformBlockBinding", &program))
+    if (isContextLostOrPending() || !validateWebGLProgramOrShader("uniformBlockBinding", &program))
         return;
     m_context->uniformBlockBinding(program.object(), uniformBlockIndex, uniformBlockBinding);
 #else
@@ -3300,6 +3263,35 @@ bool WebGL2RenderingContext::validateCapability(const char* functionName, GCGLen
     }
 }
 
+bool WebGL2RenderingContext::validateClearBuffer(const char* functionName, GCGLenum buffer, size_t size, GCGLuint srcOffset)
+{
+    Checked<GLsizei, RecordOverflow> checkedSize(size);
+    checkedSize -= srcOffset;
+    if (checkedSize.hasOverflowed()) {
+        synthesizeGLError(GraphicsContextGL::INVALID_VALUE, functionName, "invalid array size / srcOffset");
+        return false;
+    }
+    switch (buffer) {
+    case GraphicsContextGL::COLOR:
+        if (checkedSize.unsafeGet() < 4) {
+            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, functionName, "invalid array size / srcOffset");
+            return false;
+        }
+        break;
+    case GraphicsContextGL::DEPTH:
+    case GraphicsContextGL::STENCIL:
+        if (checkedSize.unsafeGet() < 1) {
+            synthesizeGLError(GraphicsContextGL::INVALID_VALUE, functionName, "invalid array size / srcOffset");
+            return false;
+        }
+        break;
+    default:
+        synthesizeGLError(GraphicsContextGL::INVALID_ENUM, functionName, "invalid buffer");
+        return false;
+    }
+    return true;
+}
+
 void WebGL2RenderingContext::uniform1fv(WebGLUniformLocation* location, Float32List data, GLuint srcOffset, GLuint srcLength)
 {
     if (isContextLostOrPending() || !validateUniformParameters("uniform1fv", location, data, 1, srcOffset, srcLength))
@@ -3456,6 +3448,74 @@ void WebGL2RenderingContext::uncacheDeletedBuffer(WebGLBuffer* buffer)
 }
 
 #undef REMOVE_BUFFER_FROM_BINDING
+
+void WebGL2RenderingContext::updateBuffersToAutoClear(ClearBufferCaller caller, GCGLenum buffer, GCGLint drawbuffer)
+{
+    // This method makes sure that we don't auto-clear any buffers which the
+    // user has manually cleared using the new ES 3.0 clearBuffer* APIs.
+
+    // If the user has a framebuffer bound, don't update the auto-clear
+    // state of the built-in back buffer.
+    if (m_framebufferBinding)
+        return;
+
+    // If the scissor test is on, assume that we can't short-circuit
+    // these clears.
+    if (m_scissorEnabled)
+        return;
+
+    // The default back buffer only has one color attachment.
+    if (drawbuffer)
+        return;
+
+    // If the call to the driver generated an error, don't claim that
+    // we've auto-cleared these buffers. The early returns below are for
+    // cases where errors will be produced.
+
+    // The default back buffer is currently always RGB(A)8, which
+    // restricts the variants which can legally be used to clear the
+    // color buffer. TODO(crbug.com/829632): this needs to be
+    // generalized.
+    switch (caller) {
+    case ClearBufferCaller::ClearBufferiv:
+        if (buffer != GraphicsContextGL::STENCIL)
+            return;
+        break;
+    case ClearBufferCaller::ClearBufferfv:
+        if (buffer != GraphicsContextGL::COLOR && buffer != GraphicsContextGL::DEPTH)
+            return;
+        break;
+    case ClearBufferCaller::ClearBufferuiv:
+        return;
+    case ClearBufferCaller::ClearBufferfi:
+        if (buffer != GraphicsContextGL::DEPTH_STENCIL)
+            return;
+        break;
+    }
+
+    GCGLbitfield buffersToClear = 0;
+
+    // Turn it into a bitfield and mask it off.
+    switch (buffer) {
+    case GraphicsContextGL::COLOR:
+        buffersToClear = GraphicsContextGL::COLOR_BUFFER_BIT;
+        break;
+    case GraphicsContextGL::DEPTH:
+        buffersToClear = GraphicsContextGL::DEPTH_BUFFER_BIT;
+        break;
+    case GraphicsContextGL::STENCIL:
+        buffersToClear = GraphicsContextGL::STENCIL_BUFFER_BIT;
+        break;
+    case GraphicsContextGL::DEPTH_STENCIL:
+        buffersToClear = GraphicsContextGL::DEPTH_BUFFER_BIT | GraphicsContextGL::STENCIL_BUFFER_BIT;
+        break;
+    default:
+        // Illegal value.
+        return;
+    }
+
+    m_context->setBuffersToAutoClear(m_context->getBuffersToAutoClear() & (~buffersToClear));
+}
 
 } // namespace WebCore
 

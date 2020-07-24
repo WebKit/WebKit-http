@@ -61,6 +61,8 @@
 #include "DirectArguments.h"
 #include "ErrorConstructor.h"
 #include "ErrorPrototype.h"
+#include "FinalizationRegistryConstructor.h"
+#include "FinalizationRegistryPrototype.h"
 #include "FunctionConstructor.h"
 #include "FunctionPrototype.h"
 #include "GeneratorFunctionConstructor.h"
@@ -73,6 +75,8 @@
 #include "IntlCollatorPrototype.h"
 #include "IntlDateTimeFormat.h"
 #include "IntlDateTimeFormatPrototype.h"
+#include "IntlDisplayNames.h"
+#include "IntlDisplayNamesPrototype.h"
 #include "IntlLocale.h"
 #include "IntlLocalePrototype.h"
 #include "IntlNumberFormat.h"
@@ -99,6 +103,7 @@
 #include "JSDataView.h"
 #include "JSDataViewPrototype.h"
 #include "JSDollarVM.h"
+#include "JSFinalizationRegistry.h"
 #include "JSFunction.h"
 #include "JSGenerator.h"
 #include "JSGeneratorFunction.h"
@@ -387,6 +392,7 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = {
     nullptr, // moduleLoaderCreateImportMetaProperties
     nullptr, // moduleLoaderEvaluate
     nullptr, // promiseRejectionTracker
+    &reportUncaughtExceptionAtEventLoop,
     nullptr, // defaultLanguage
     nullptr, // compileStreaming
     nullptr, // instantiateStreaming
@@ -500,8 +506,9 @@ void JSGlobalObject::setGlobalThis(VM& vm, JSObject* globalThis)
 
 static GetterSetter* getGetterById(JSGlobalObject* globalObject, JSObject* base, const Identifier& ident)
 {
+    VM& vm = globalObject->vm();
     JSValue baseValue = JSValue(base);
-    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry, &vm);
     baseValue.getPropertySlot(globalObject, ident, slot);
     return jsCast<GetterSetter*>(slot.getPureResult());
 }
@@ -981,6 +988,12 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
             IntlDateTimeFormatPrototype* dateTimeFormatPrototype = IntlDateTimeFormatPrototype::create(init.vm, globalObject, IntlDateTimeFormatPrototype::createStructure(init.vm, globalObject, globalObject->objectPrototype()));
             init.set(IntlDateTimeFormat::createStructure(init.vm, globalObject, dateTimeFormatPrototype));
         });
+    m_displayNamesStructure.initLater(
+        [] (const Initializer<Structure>& init) {
+            JSGlobalObject* globalObject = jsCast<JSGlobalObject*>(init.owner);
+            IntlDisplayNamesPrototype* displayNamesPrototype = IntlDisplayNamesPrototype::create(init.vm, IntlDisplayNamesPrototype::createStructure(init.vm, globalObject, globalObject->objectPrototype()));
+            init.set(IntlDisplayNames::createStructure(init.vm, globalObject, displayNamesPrototype));
+        });
     m_localeStructure.initLater(
         [] (const Initializer<Structure>& init) {
             JSGlobalObject* globalObject = jsCast<JSGlobalObject*>(init.owner);
@@ -1382,11 +1395,13 @@ bool JSGlobalObject::put(JSCell* cell, JSGlobalObject* globalObject, PropertyNam
 
 bool JSGlobalObject::defineOwnProperty(JSObject* object, JSGlobalObject* globalObject, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
 {
+    VM& vm = globalObject->vm();
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
-    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry, &vm);
     // silently ignore attempts to add accessors aliasing vars.
     if (descriptor.isAccessorDescriptor() && symbolTableGet(thisObject, propertyName, slot))
         return false;
+    slot.disallowVMEntry.reset();
     return Base::defineOwnProperty(thisObject, globalObject, propertyName, descriptor, shouldThrow);
 }
 
@@ -1832,6 +1847,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_defaultCollator.visit(visitor);
     thisObject->m_collatorStructure.visit(visitor);
     thisObject->m_dateTimeFormatStructure.visit(visitor);
+    thisObject->m_displayNamesStructure.visit(visitor);
     thisObject->m_numberFormatStructure.visit(visitor);
     thisObject->m_localeStructure.visit(visitor);
     thisObject->m_pluralRulesStructure.visit(visitor);
@@ -2052,7 +2068,7 @@ void JSGlobalObject::tryInstallArraySpeciesWatchpoint()
         m_arraySpeciesWatchpointSet.invalidate(vm, StringFireDetail("Was not able to set up array species watchpoint."));
     };
 
-    PropertySlot constructorSlot(arrayPrototype, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot constructorSlot(arrayPrototype, PropertySlot::InternalMethodType::VMInquiry, &vm);
     arrayPrototype->getOwnPropertySlot(arrayPrototype, this, vm.propertyNames->constructor, constructorSlot);
     scope.assertNoException();
     if (constructorSlot.slotBase() != arrayPrototype
@@ -2066,7 +2082,7 @@ void JSGlobalObject::tryInstallArraySpeciesWatchpoint()
     if (constructorStructure->isDictionary())
         constructorStructure = constructorStructure->flattenDictionaryStructure(vm, arrayConstructor);
 
-    PropertySlot speciesSlot(arrayConstructor, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot speciesSlot(arrayConstructor, PropertySlot::InternalMethodType::VMInquiry, &vm);
     arrayConstructor->getOwnPropertySlot(arrayConstructor, this, vm.propertyNames->speciesSymbol, speciesSlot);
     scope.assertNoException();
     if (speciesSlot.slotBase() != arrayConstructor
@@ -2197,6 +2213,11 @@ void JSGlobalObject::queueMicrotask(Ref<Microtask>&& task)
     }
 
     vm().queueMicrotask(*this, WTFMove(task));
+}
+
+void JSGlobalObject::reportUncaughtExceptionAtEventLoop(JSGlobalObject*, Exception* exception)
+{
+    dataLogLn("Uncaught Exception at run loop: ", exception->value());
 }
 
 void JSGlobalObject::setDebugger(Debugger* debugger)

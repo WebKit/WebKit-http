@@ -56,10 +56,10 @@ JSC::VM& commonVMSlow()
     // Also, initializeMainThread() does nothing on iOS.
     ScriptController::initializeMainThread();
 
-    RunLoop* runLoop = nullptr;
 #if PLATFORM(IOS_FAMILY)
-    if (RunLoop* web = RunLoop::webIfExists())
-        runLoop = web;
+    RunLoop* runLoop = RunLoop::webIfExists();
+#else
+    RunLoop* runLoop = nullptr;
 #endif
 
     auto& vm = JSC::VM::create(JSC::LargeHeap, runLoop).leakRef();

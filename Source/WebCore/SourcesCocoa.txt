@@ -274,6 +274,8 @@ platform/graphics/avfoundation/SampleBufferDisplayLayer.cpp
 platform/graphics/avfoundation/WebMediaSessionManagerMac.cpp @no-unify
 platform/graphics/avfoundation/objc/AVAssetMIMETypeCache.mm @no-unify
 platform/graphics/avfoundation/objc/AVAssetTrackUtilities.mm @no-unify
+platform/graphics/avfoundation/objc/AVOutputDeviceMenuControllerTargetPicker.mm @no-unify
+platform/graphics/avfoundation/objc/AVRoutePickerViewTargetPicker.mm @no-unify
 platform/graphics/avfoundation/objc/AVStreamDataParserMIMETypeCache.mm @no-unify
 platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp @no-unify
@@ -291,6 +293,7 @@ platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm @no-
 platform/graphics/avfoundation/objc/MediaSampleAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm @no-unify
+platform/graphics/avfoundation/objc/SourceBufferParserAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/VideoLayerManagerObjC.mm @no-unify
 platform/graphics/avfoundation/objc/VideoTrackPrivateAVFObjC.cpp @no-unify
 platform/graphics/avfoundation/objc/VideoTrackPrivateMediaSourceAVFObjC.mm @no-unify
@@ -333,6 +336,7 @@ platform/graphics/cg/PatternCG.cpp
 platform/graphics/cg/SubimageCacheWithTimer.cpp
 platform/graphics/cg/TransformationMatrixCG.cpp
 platform/graphics/cg/UTIRegistry.cpp
+platform/graphics/cocoa/AudioTrackPrivateWebM.cpp
 platform/graphics/cocoa/ColorCocoa.mm
 platform/graphics/cocoa/FloatRectCocoa.mm
 platform/graphics/cocoa/FontCacheCoreText.cpp
@@ -348,6 +352,8 @@ platform/graphics/cocoa/IOSurface.mm
 platform/graphics/cocoa/IOSurfacePoolCocoa.mm
 platform/graphics/cocoa/IntRectCocoa.mm
 platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.cpp
+platform/graphics/cocoa/SourceBufferParser.cpp
+platform/graphics/cocoa/SourceBufferParserWebM.cpp
 platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp
 platform/graphics/cocoa/TextTrackRepresentationCocoa.mm
 platform/graphics/cocoa/VP9UtilitiesCocoa.mm
@@ -356,10 +362,12 @@ platform/graphics/cocoa/WebCoreCALayerExtras.mm
 platform/graphics/cocoa/WebCoreDecompressionSession.mm
 platform/graphics/cocoa/WebGLLayer.mm
 platform/graphics/cocoa/WebGPULayer.mm
+platform/graphics/cocoa/VideoTrackPrivateWebM.cpp
 platform/graphics/cv/ImageTransferSessionVT.mm
 platform/graphics/cv/PixelBufferConformerCV.cpp
 platform/graphics/cv/TextureCacheCV.mm
 platform/graphics/cv/VideoTextureCopierCV.cpp
+platform/graphics/coreimage/FilterEffectRendererCoreImage.mm
 platform/graphics/gpu/Texture.cpp
 platform/graphics/gpu/TilingData.cpp
 platform/graphics/gpu/cocoa/GPUBindGroupAllocatorMetal.mm

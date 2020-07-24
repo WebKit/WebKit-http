@@ -1,3 +1,719 @@
+2020-07-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] FTL OSR entry should store boxed |this|
+        https://bugs.webkit.org/show_bug.cgi?id=214675
+        <rdar://problem/65474072>
+
+        Reviewed by Michael Saboff and Mark Lam.
+
+        In this patch, after ensuring that we will go to FTL OSR entry, we store boxed |this| instead of the unboxed value
+        to agree to the FTL assumption that all arguments should be boxed.
+
+        * dfg/DFGOperations.cpp:
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+
+2020-07-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] BigInt can be `false` in boolean context in DFG AI
+        https://bugs.webkit.org/show_bug.cgi?id=214678
+        <rdar://problem/65894751>
+
+        Reviewed by Mark Lam.
+
+        DFG::AbstractInterpreter::booleanResult returns wrong result if finite structure includes HeapBigInt structure
+        since HeapBigInt 0n can be evaluated `false` in boolean context while this function does not care it. This patch
+        fixes it and cleans up code by using WTF/TriState.
+
+        * dfg/DFGAbstractInterpreter.h:
+        (): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::booleanResult):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2020-07-23  Caio Lima  <ticaiolima@gmail.com>
+
+        [32-bits] Fixing the return of doVMEntry into LowLevelInterpreter32_64.asm
+        https://bugs.webkit.org/show_bug.cgi?id=214641
+
+        Reviewed by Mark Lam.
+
+        Adjusting the return of `doVMEntry` for 32-bits LLInt to proper set
+        `EncodedJSValue` return in little-endian architectures. It is expected
+        that tag is stored in `r1` and payload is stored in `r0`.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+
+2020-07-23  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Remove ArrayNode::m_optional
+        https://bugs.webkit.org/show_bug.cgi?id=214294
+
+        Reviewed by Darin Adler.
+
+        m_optional, which dates back to KJS era, means "is this an array with optional trailing comma,
+        with elision, or an empty array". It was used by ArrayNode::streamTo() to preserve a trailing
+        comma when converting array node to source string, as well as in few other places,
+        before ECMA-262 clarified trailing comma in array literals [1].
+
+        Currently, m_optional is used only by ArrayNode::isSimpleArray(), along with m_elision.
+        Checking m_elision is enough since trailing comma doesn't add extra `undefined` element.
+
+        This patch completely removes m_optional, speeding up destructuring and function.apply()
+        with empty arrays and arrays with trailing commas by ~55% and a factor of 11 respectively.
+        Reflect.apply() optimization (https://webkit.org/b/190668) will also benefit from this change.
+
+        Also, this change converts isSpreadExpression() check to an ASSERT (was enabled by r196323).
+
+        [1]: https://tc39.es/ecma262/#sec-array-initializer
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayNode::isSimpleArray const):
+        (JSC::ArrayNode::toArgumentList const):
+        (JSC::ArrayNode::emitDirectBinding):
+        * parser/NodeConstructors.h:
+        (JSC::ArrayNode::ArrayNode):
+        * parser/Nodes.h:
+
+2020-07-23  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Remove emitIsUndefined() from ClassExprNode::emitBytecode()
+        https://bugs.webkit.org/show_bug.cgi?id=214645
+
+        Reviewed by Darin Adler.
+
+        This change removes `superclass === undefined` check because it's missing from
+        the spec [1] and isn't a common case. No behavior change: values except `null` are
+        passed to OpIsConstructor, resulting in the same error being thrown for `undefined`.
+
+        Test: LayoutTests/js/class-syntax-extends.html
+
+        [1]: https://tc39.es/ecma262/#sec-runtime-semantics-classdefinitionevaluation (step 5.e)
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-07-22  Geoffrey Garen  <ggaren@apple.com>
+
+        WTF::Function adoption should be explicit instead of implicit
+        https://bugs.webkit.org/show_bug.cgi?id=214654
+
+        Reviewed by Darin Adler.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::LambdaFinalizerOwner::finalize): Use new adopt function.
+
+2020-07-22  Mark Lam  <mark.lam@apple.com>
+
+        Disallow VM entry when doing a VMInquiry.
+        https://bugs.webkit.org/show_bug.cgi?id=214624
+        <rdar://problem/65915314>
+
+        Reviewed by Saam Barati.
+
+        1. In PropertySlot's constructor, automatically install a DisallowVMEntry scope
+           if the passed in internal method type is VMInquiry.  This ensures that we won't
+           be able to enter the VM to call JS code while doing the inquiry.  As a result,
+           the PropertySlot constructor will now take an optional VM pointer, which is 
+           must be passed in in when the internal method type is VMInquiry.
+
+           Note that the handling of attempts to enter the VM depends on
+           Options::crashOnDisallowedVMEntry().
+
+           On Debug build (due to ASSERT_ENABLED), Options::crashOnDisallowedVMEntry()
+           defaults to true and the VM will crash on disallowed entry.
+           On Release build, Options::crashOnDisallowedVMEntry() defaults to false and
+           disallow entry attempts into the VM will be treated like calling an empty
+           function that returns undefined.  This is not new behavior in this patch, but
+           I just want to have a reminder here of how DisallowVMEntry will be enforcing
+           no entry into the VM while doing a VMInquiry.
+
+        2. After VMInquiry gets, sometimes the client code wants to do other work that
+           do entails entering the VM.  In such cases, we need to reset the PropertySlot's
+           disallowVMEntry scope.  Fixed up a few places in client code to do this reset.
+
+        3. Make the DisableVMEntry scope copyable.  At least one place wants to copy 
+           PropertySlot, and as a result, will need to copy its embedded DisableVMEntry
+           scope as well if installed.
+
+           For DisableVMEntry, we'll handle copying semantics as follows: copying a
+           DisableVMEntry will ref the VM::disallowVMEntryCount.  The count will be
+           decremented when both instances are destructed.  As a result, VM entry will
+           be disallowed as long as one of the copies are still alive.
+
+        4. For the setObjectToStringValue() method of Structure and StructureRareData, we
+           were previously passing a PropertySlot by copy.  We don't really need to do
+           this.  Ultimately, only StructureRareData::setObjectToStringValue() needs to
+           access a few of the PropertySlot query methods.  So, we changed these methods
+           to pass a `const PropertySlot&` instead to void the needless copying.
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::put):
+        (JSC::JSCallbackObject<Parent>::staticFunctionGetter):
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::json):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::queryInstances):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/DisallowVMEntry.h:
+        (JSC::DisallowVMEntryImpl::DisallowVMEntryImpl):
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::sanitizedToString):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewWithArguments):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::getGetterById):
+        (JSC::JSGlobalObject::defineOwnProperty):
+        (JSC::JSGlobalObject::tryInstallArraySpeciesWatchpoint):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::getPrivateFieldSlot):
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::nameFromCallee):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setObjectToStringValue):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::setObjectToStringValue):
+        * runtime/StructureRareData.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGetGetterSetter):
+
+2020-07-22  Geoffrey Garen  <ggaren@apple.com>
+
+        JSRunLoopTimer should use WTF::RunLoop rather than custom CF code
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+
+        Unreviewed, re-landing r264242 with crash fixed.
+
+        We needed to synchronize timer destruction with timer firing.
+
+        * runtime/DeferredWorkTimer.cpp:
+        (JSC::DeferredWorkTimer::doWork):
+        (JSC::DeferredWorkTimer::runRunLoop):
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::epochTime):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFireCallback):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::~PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFire):
+        (JSC::JSRunLoopTimer::Manager::registerVM):
+        (JSC::JSRunLoopTimer::Manager::scheduleTimer):
+        (JSC::JSRunLoopTimer::Manager::cancelTimer):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::setRunLoop): Deleted.
+        (JSC::JSRunLoopTimer::Manager::didChangeRunLoop): Deleted.
+        * runtime/JSRunLoopTimer.h:
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::create):
+        (JSC::VM::tryCreate):
+        (JSC::VM::setRunLoop): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::runLoop const):
+
+2020-07-21  Mark Lam  <mark.lam@apple.com>
+
+        Simplify DisallowScope, DisallowGC, and DisallowVMReentry implementations.
+        https://bugs.webkit.org/show_bug.cgi?id=214539
+        <rdar://problem/65795729>
+
+        Reviewed by Keith Miller.
+
+        Previously, DisallowScope needed to support enabling and disabling.  This was
+        only needed to enable the implementation of ObjectInitializationScope.  Now, we
+        can make the DisallowGC and DisallowVMReentry inside ObjectInitializationScope
+        optional with WTF::Optional.  With that we can simplify these scopes and make
+        them true RAII scope objects.
+
+        This patch also does the following:
+
+        1. Renamed DisallowVMReentry to DisallowVMEntry.
+           The scope can be used to disable VM entry completely.  There's no need to
+           restrict it to only re-entries.
+
+        2. Enforcement of DisallowVMReentry is now done in the LLInt's doVMEntry() instead
+           of the VMEntryScope's constructor.  This is a stronger guarantee.
+
+           If Options::crashOnDisallowedVMEntry() is true, the VM will crash if it sees
+           an attempt to enter the VM while disallowed.
+
+           If Options::crashOnDisallowedVMEntry() is false, an attempt to call into the VM
+           while disallowed will return immediately with an undefined result without
+           invoking any script.
+
+           By default, Options::crashOnDisallowedVMEntry() is true if ASSERT_ENABLED is
+           true.
+
+        3. Change DisallowScope and DisallowGC to be based on ASSERT_ENABLED instead of NEBUG.
+
+        4. Make DisallowVMEntry always enforceable, not just when ASSERT_ENABLED.
+           It's enforcement action depends on Options::crashOnDisallowedVMEntry() as
+           described above.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * heap/DeferGC.cpp:
+        * heap/DeferGC.h:
+        (JSC::DisallowGC::DisallowGC):
+        (JSC::DisallowGC::initialize):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeModuleProgram):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_check_vm_entry_permission):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/DisallowScope.h:
+        (JSC::DisallowScope::DisallowScope):
+        (JSC::DisallowScope::~DisallowScope):
+        (JSC::DisallowScope::isInEffectOnCurrentThread):
+        (JSC::DisallowScope::enable): Deleted.
+        (JSC::DisallowScope::disable): Deleted.
+        (JSC::DisallowScope::enterScope): Deleted.
+        (JSC::DisallowScope::exitScope): Deleted.
+        * runtime/DisallowVMEntry.h: Copied from Source/JavaScriptCore/runtime/DisallowVMReentry.h.
+        (JSC::DisallowVMEntryImpl::DisallowVMEntryImpl):
+        (JSC::DisallowVMEntryImpl::~DisallowVMEntryImpl):
+        (JSC::DisallowVMEntryImpl::isEngaged const):
+        (JSC::DisallowVMEntryImpl::release):
+        (JSC::DisallowVMReentry::DisallowVMReentry): Deleted.
+        (JSC::DisallowVMReentry::initialize): Deleted.
+        (JSC::DisallowVMReentry::scopeReentryCount): Deleted.
+        (JSC::DisallowVMReentry::setScopeReentryCount): Deleted.
+        * runtime/DisallowVMReentry.cpp: Removed.
+        * runtime/DisallowVMReentry.h: Removed.
+        * runtime/InitializeThreading.cpp:
+        (JSC::initialize):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::tryCreateUninitializedRestricted):
+        * runtime/ObjectInitializationScope.cpp:
+        (JSC::ObjectInitializationScope::ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::notifyAllocated):
+        (JSC::ObjectInitializationScope::notifyInitialized):
+        * runtime/ObjectInitializationScope.h:
+        (JSC::ObjectInitializationScope::vm const):
+        (JSC::ObjectInitializationScope::ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::~ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::notifyAllocated):
+        (JSC::ObjectInitializationScope::notifyInitialized):
+        * runtime/OptionsList.h:
+        * runtime/RegExpMatchesArray.h:
+        (JSC::tryCreateUninitializedRegExpMatchesArray):
+        * runtime/VM.h:
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+
+2020-07-21  Mark Lam  <mark.lam@apple.com>
+
+        llint_slow_path_get_private_name() should not be using PropertySlot::InternalMethodType::VMInquiry.
+        https://bugs.webkit.org/show_bug.cgi?id=214603
+
+        Reviewed by Yusuke Suzuki.
+
+        VMInquiry means (1) the get operation should not call back into JS, (2) it should
+        not throw any exceptions (except for OutOfMemoryError or StackOverflowError which
+        can be thrown at any time), or have any side effects that is observable from JS
+        code.  In this case, llint_slow_path_get_private_name() is just implementating
+        PrivateFieldGet (https://tc39.es/proposal-class-fields/#sec-privatefieldget) and
+        should actually be using PropertySlot::InternalMethodType::GetOwnProperty
+        (according to https://tc39.es/proposal-class-fields/#sec-privatefieldfind).
+
+        This patch makes the above change, and also adds an assert in JSObject::getPrivateField
+        to ensure that no one calls it for a VMInquiry since it is not supported.
+
+        Also added a PropertySlot::isVMInquiry() convenience query method.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::getPrivateField):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::isVMInquiry const):
+
+2020-07-21  Keith Miller  <keith_miller@apple.com>
+
+        Fix FinalizationRegistry GC finalizer interation
+        https://bugs.webkit.org/show_bug.cgi?id=214586
+        <rdar://65854264>
+
+        Reviewed by Mark Lam and Yusuke Suzuki.
+
+        Turns out when you remove the ith element from a Vector and you
+        increment the index anyway you skip things...  Use the helper
+        functions instead. This fixes an ASAN crash on our
+        FinalizationRegistry tests.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        * runtime/DeferredWorkTimer.cpp:
+        (JSC::DeferredWorkTimer::addPendingWork):
+        (JSC::DeferredWorkTimer::hasPendingWork):
+        (JSC::DeferredWorkTimer::hasDependancyInPendingWork):
+        (JSC::DeferredWorkTimer::cancelPendingWork):
+        * runtime/JSFinalizationRegistry.cpp:
+        (JSC::JSFinalizationRegistry::finalizeUnconditionally):
+        (JSC::JSFinalizationRegistry::takeDeadHoldingsValue):
+
+2020-07-21  Saam Barati  <sbarati@apple.com>
+
+        Disable NO_SMT by default
+        https://bugs.webkit.org/show_bug.cgi?id=214607
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/OptionsList.h:
+
+2020-07-21  Caio Lima  <ticaiolima@gmail.com>
+
+        Debug build is failing after r264537 on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=214596
+
+        Reviewed by Yusuke Suzuki.
+
+        Removing `ASSERT_UNDER_CONTEXPR_CONTEXT(0)` to avoid compilation
+        failure of Debug builds on Linux.
+
+        * runtime/IntlObject.cpp:
+        (JSC::relevantExtensionKeyString):
+
+2020-07-21  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreview non-unified source build fix
+
+        * runtime/IntlDisplayNames.cpp: Add missing <unicode/ucurr.h> header.
+
+2020-07-20  Mark Lam  <mark.lam@apple.com>
+
+        TryGetById clobberize rules are wrong.
+        https://bugs.webkit.org/show_bug.cgi?id=163834
+        <rdar://problem/65625807>
+
+        Reviewed by Keith Miller.
+
+        Theoretically, TryGetById can do the same things GetById does i.e. reify lazy
+        properties, read the stack, etc.  Hence, its clobberize rule should be clobberTop
+        just like GetById.  However, in practice, we don't currently use @tryGetById to
+        access anything on the stack (and probably never will).  But as a conservative
+        measure, we'll just treat TryGetById like it can.  In clobberize terms, this
+        means we declare TryGetById as doing read(World) (just like GetById) instead of
+        read(Heap).
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGClobbersExitState.cpp:
+        (JSC::DFG::clobbersExitState):
+
+2020-07-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix duplicate forward declaration introduced by merge conflict
+        https://bugs.webkit.org/show_bug.cgi?id=209779
+
+        * runtime/IntlRelativeTimeFormat.h:
+
+2020-07-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [ECMA-402] Implement Intl.DisplayNames
+        https://bugs.webkit.org/show_bug.cgi?id=209779
+
+        Reviewed by Ross Kirsling.
+
+        This patch implements Intl.DisplayNames behind useIntlDisplayNames=1 flag.
+        Intl.DisplayNames can offer readable "display-name" for ICU language, script, region, currency codes.
+        For example, it can offer "United States" string for "US" region code.
+        We use ICU ULocaleDisplayNames to implement it, except for currency since ULocaleDisplayNames is not supporting
+        currency correctly: it ignores "long", "short", and "narrow" style configurations. We need to call ucurr_getName
+        directly.
+
+        This patch appropriately adds unicode-language-id parsing in IntlLocale.cpp so that we can validate language id
+        when it is passed to `Intl.DisplayNames#of` as defined in the spec.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * runtime/CommonIdentifiers.h:
+        * runtime/IntlDisplayNames.cpp: Added.
+        (JSC::IntlDisplayNames::create):
+        (JSC::IntlDisplayNames::createStructure):
+        (JSC::IntlDisplayNames::IntlDisplayNames):
+        (JSC::IntlDisplayNames::finishCreation):
+        (JSC::IntlDisplayNames::initializeDisplayNames):
+        (JSC::IntlDisplayNames::of const):
+        (JSC::IntlDisplayNames::resolvedOptions const):
+        (JSC::IntlDisplayNames::styleString):
+        (JSC::IntlDisplayNames::typeString):
+        (JSC::IntlDisplayNames::fallbackString):
+        * runtime/IntlDisplayNames.h: Copied from Source/JavaScriptCore/runtime/IntlRelativeTimeFormat.h.
+        * runtime/IntlDisplayNamesConstructor.cpp: Added.
+        (JSC::IntlDisplayNamesConstructor::create):
+        (JSC::IntlDisplayNamesConstructor::createStructure):
+        (JSC::IntlDisplayNamesConstructor::IntlDisplayNamesConstructor):
+        (JSC::IntlDisplayNamesConstructor::finishCreation):
+        (JSC::constructIntlDisplayNames):
+        (JSC::callIntlDisplayNames):
+        (JSC::IntlDisplayNamesConstructorSupportedLocalesOf):
+        * runtime/IntlDisplayNamesConstructor.h: Added.
+        * runtime/IntlDisplayNamesPrototype.cpp: Added.
+        (JSC::IntlDisplayNamesPrototype::create):
+        (JSC::IntlDisplayNamesPrototype::createStructure):
+        (JSC::IntlDisplayNamesPrototype::IntlDisplayNamesPrototype):
+        (JSC::IntlDisplayNamesPrototype::finishCreation):
+        (JSC::IntlDisplayNamesPrototypeFuncOf):
+        (JSC::IntlDisplayNamesPrototypeFuncResolvedOptions):
+        * runtime/IntlDisplayNamesPrototype.h: Added.
+        * runtime/IntlLocale.cpp:
+        (JSC::isUnicodeLanguageSubtag): Deleted.
+        (JSC::isUnicodeScriptSubtag): Deleted.
+        (JSC::isUnicodeRegionSubtag): Deleted.
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::initializeNumberFormat):
+        * runtime/IntlObject.cpp:
+        (JSC::createDisplayNamesConstructor):
+        (JSC::IntlObject::finishCreation):
+        (JSC::isUnicodeLanguageSubtag):
+        (JSC::isUnicodeScriptSubtag):
+        (JSC::isUnicodeRegionSubtag):
+        (JSC::isUnicodeVariantSubtag):
+        (JSC::isUnicodeLanguageId):
+        (JSC::isWellFormedCurrencyCode):
+        * runtime/IntlObject.h:
+        (JSC::intlDisplayNamesAvailableLocales):
+        * runtime/IntlRelativeTimeFormat.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::displayNamesStructure):
+        * runtime/OptionsList.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2020-07-20  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION (r264242): [ macOS ] imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate.any.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=214572
+
+        Unreviewed, reverting r264242.
+
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::epochTime):
+        (JSC::JSRunLoopTimer::Manager::timerDidFireCallback):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::setRunLoop):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::~PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFire):
+        (JSC::JSRunLoopTimer::Manager::registerVM):
+        (JSC::JSRunLoopTimer::Manager::scheduleTimer):
+        (JSC::JSRunLoopTimer::Manager::cancelTimer):
+        (JSC::JSRunLoopTimer::Manager::didChangeRunLoop):
+        * runtime/JSRunLoopTimer.h:
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        * runtime/PromiseTimer.cpp:
+        (JSC::PromiseTimer::doWork):
+        (JSC::PromiseTimer::runRunLoop):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::create):
+        (JSC::VM::tryCreate):
+        (JSC::VM::setRunLoop):
+        * runtime/VM.h:
+        (JSC::VM::runLoop const):
+
+2020-07-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] eval?.() should be indirect eval
+        https://bugs.webkit.org/show_bug.cgi?id=214568
+
+        Reviewed by Keith Miller.
+
+        eval?.() is specified as indirect eval, but (virtually) all implementations assumed it should be direct eval.
+        I raised this topic in today's TC39 meeting and we've decided to keep the spec as it is. 
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::makeFunctionCallNode):
+        Don't use EvalFunctionCallNode for optional call of eval.
+
+2020-07-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Non unified build fixes, midsummer 2020 edition
+        https://bugs.webkit.org/show_bug.cgi?id=213616
+
+        Unreviewed build fix.
+
+        * b3/air/AirTmpInlines.h:
+        (JSC::B3::Air::TmpWidth::widths): Moved from AirTmpWidth.h
+        * b3/air/AirTmpWidth.cpp: Included AirTmpInlines.h
+        * b3/air/AirTmpWidth.h: TmpWidth::widths() moved out from here.
+        * runtime/ExceptionFuzz.cpp: Add missing inclusion of JSCJSValueInlines.h
+        * runtime/StructureIDTable.cpp: Add missing inclusions of wtf/DataLog.h
+        and wtf/RawPointer.h
+        * runtime/VMTraps.cpp: Ditto.
+
+2020-07-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for FinalizationRegistries
+        https://bugs.webkit.org/show_bug.cgi?id=199888
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch adds support for FinalizationRegistries. There are two
+        main parts to this patch, the first is refactoring PromiseTimer a
+        more general into DeferredWorkTimer. This allows us to finally
+        have a "real" setTimeout on the jsc command line. The second part
+        is adding all the new classes needed for FinalizationRegistries.
+
+        The refactoring is mostly a rename but does two main new
+        things. The first is that it now notifies the VM we have finished
+        a synchronuous JS execution, so that WeakRefs can be
+        collected. The second is that it now catches any exceptions and
+        forwards the to a new method on the global object method
+        table. For WebCore, this reports the exception to the console. For
+        API users, this calls their exceptionHandler block. For the CLI,
+        it exits with exit status 3 (our general exception exit
+        status). Unfortunately, there's not currently an ergonomic way to
+        pass the expected exception from the CLI arguments to this handler
+        so that's not supported here.
+
+        In order to support FinalizationRegistry this patch adds a "new"
+        class JSDestructibleInternalFieldObjectImpl, which allows us to
+        have a destructible object with internal fields. Since the order
+        of collection doesn't matter we currently use C++ HashTables on
+        the FinalizationRegistry. Since users can unregister objects while
+        the callback is pending we have a hash table for the live entries
+        and a second hash table for the dead ones. Lastly, because users
+        are not requred to provide a token for unregistration we have two
+        extra Vectors containing the live/dead objects that are not
+        unregisterible.
+
+        * API/JSAPIGlobalObject.cpp:
+        * API/JSAPIGlobalObject.mm:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * heap/Heap.cpp:
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        * jsc.cpp:
+        (functionSetTimeout):
+        (functionFinalizationRegistryLiveCount):
+        (functionFinalizationRegistryDeadCount):
+        (main):
+        (checkUncaughtException):
+        (checkException):
+        (GlobalObject::reportUncaughtExceptionAtEventLoop):
+        (runJSC):
+        * runtime/ArrayIteratorPrototype.cpp:
+        * runtime/CommonIdentifiers.h:
+        * runtime/DeferredWorkTimer.cpp: Renamed from Source/JavaScriptCore/runtime/PromiseTimer.cpp.
+        (JSC::DeferredWorkTimer::DeferredWorkTimer):
+        (JSC::DeferredWorkTimer::doWork):
+        (JSC::DeferredWorkTimer::runRunLoop):
+        (JSC::DeferredWorkTimer::addPendingWork):
+        (JSC::DeferredWorkTimer::hasPendingWork):
+        (JSC::DeferredWorkTimer::hasDependancyInPendingWork):
+        (JSC::DeferredWorkTimer::cancelPendingWork):
+        (JSC::DeferredWorkTimer::scheduleWorkSoon):
+        * runtime/DeferredWorkTimer.h: Renamed from Source/JavaScriptCore/runtime/PromiseTimer.h.
+        * runtime/FinalizationRegistryConstructor.cpp: Added.
+        (JSC::FinalizationRegistryConstructor::finishCreation):
+        (JSC::FinalizationRegistryConstructor::FinalizationRegistryConstructor):
+        (JSC::callFinalizationRegistry):
+        (JSC::constructFinalizationRegistry):
+        * runtime/FinalizationRegistryConstructor.h: Copied from Source/JavaScriptCore/API/JSAPIGlobalObject.cpp.
+        * runtime/FinalizationRegistryPrototype.cpp: Added.
+        (JSC::FinalizationRegistryPrototype::finishCreation):
+        (JSC::getFinalizationRegistry):
+        (JSC::protoFuncFinalizationRegistryRegister):
+        (JSC::protoFuncFinalizationRegistryUnregister):
+        * runtime/FinalizationRegistryPrototype.h: Copied from Source/JavaScriptCore/API/JSAPIGlobalObject.cpp.
+        * runtime/IdentifierInlines.h:
+        (JSC::Identifier::Identifier):
+        * runtime/JSFinalizationRegistry.cpp: Added.
+        (JSC::JSFinalizationRegistry::createStructure):
+        (JSC::JSFinalizationRegistry::create):
+        (JSC::JSFinalizationRegistry::finishCreation):
+        (JSC::JSFinalizationRegistry::visitChildren):
+        (JSC::JSFinalizationRegistry::destroy):
+        (JSC::JSFinalizationRegistry::finalizeUnconditionally):
+        (JSC::JSFinalizationRegistry::runFinalizationCleanup):
+        (JSC::JSFinalizationRegistry::takeDeadHoldingsValue):
+        (JSC::JSFinalizationRegistry::registerTarget):
+        (JSC::JSFinalizationRegistry::unregister):
+        (JSC::JSFinalizationRegistry::liveCount):
+        (JSC::JSFinalizationRegistry::deadCount):
+        (JSC::JSFinalizationRegistry::toStringName):
+        * runtime/JSFinalizationRegistry.h: Added.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reportUncaughtExceptionAtEventLoop):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::stackOverflowFrameCallee const):
+        (JSC::JSGlobalObject::arrayIteratorProtocolWatchpointSet):
+        (JSC::JSGlobalObject::mapIteratorProtocolWatchpointSet):
+        (JSC::JSGlobalObject::setIteratorProtocolWatchpointSet):
+        (JSC::JSGlobalObject::stringIteratorProtocolWatchpointSet):
+        (JSC::JSGlobalObject::mapSetWatchpointSet):
+        (JSC::JSGlobalObject::setAddWatchpointSet):
+        (JSC::JSGlobalObject::arraySpeciesWatchpointSet):
+        (JSC::JSGlobalObject::arrayJoinWatchpointSet):
+        (JSC::JSGlobalObject::numberToStringWatchpointSet):
+        * runtime/JSInternalFieldObjectImpl.h:
+        * runtime/JSInternalFieldObjectImplInlines.h:
+        (JSC::Base>::visitChildren):
+        (JSC::JSInternalFieldObjectImpl<passedNumberOfInternalFields>::visitChildren): Deleted.
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::resolve):
+        (JSC::JSPromise::reject):
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::allocateID):
+        (JSC::StructureIDTable::deallocateID):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+
 2020-07-20  Michael Catanzaro  <mcatanzaro@gnome.org>
 
         JSC build scripts should be quiet by default

@@ -120,6 +120,9 @@ void WebInspectorProxy::connect()
     if (!m_inspectedPage)
         return;
 
+    if (!m_inspectedPage->preferences().developerExtrasEnabled())
+        return;
+
     if (m_showMessageSent)
         return;
 
@@ -414,6 +417,9 @@ void WebInspectorProxy::openLocalInspectorFrontend(bool canAttach, bool underTes
     if (!m_inspectedPage)
         return;
 
+    if (!m_inspectedPage->preferences().developerExtrasEnabled())
+        return;
+
     if (m_inspectedPage->inspectorController().hasLocalFrontend()) {
         show();
         return;
@@ -667,6 +673,9 @@ void WebInspectorProxy::browserExtensionsDisabled(HashSet<String>&& extensionIDs
 
 void WebInspectorProxy::save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs)
 {
+    if (!m_inspectedPage->preferences().developerExtrasEnabled())
+        return;
+
     ASSERT(!filename.isEmpty());
     if (filename.isEmpty())
         return;
@@ -676,6 +685,9 @@ void WebInspectorProxy::save(const String& filename, const String& content, bool
 
 void WebInspectorProxy::append(const String& filename, const String& content)
 {
+    if (!m_inspectedPage->preferences().developerExtrasEnabled())
+        return;
+
     ASSERT(!filename.isEmpty());
     if (filename.isEmpty())
         return;

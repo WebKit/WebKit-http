@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2006, 2008-2009, 2013, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2020 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
  *  Copyright (C) 2012 Ericsson AB. All rights reserved.
@@ -43,13 +43,13 @@ public:
             
             auto* thisObject = IDLOperation<JSClass>::cast(lexicalGlobalObject, callFrame);
             if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject))
-                return rejectPromiseWithThisTypeError(promise.get(), JSClass::info()->className, operationName);
+                RELEASE_AND_RETURN(throwScope, rejectPromiseWithThisTypeError(promise.get(), JSClass::info()->className, operationName));
             
             ASSERT(thisObject);
             ASSERT_GC_OBJECT_INHERITS(thisObject, JSClass::info());
             
             // FIXME: We should refactor the binding generated code to use references for lexicalGlobalObject and thisObject.
-            return operation(&lexicalGlobalObject, &callFrame, thisObject, WTFMove(promise), throwScope);
+            RELEASE_AND_RETURN(throwScope, operation(&lexicalGlobalObject, &callFrame, thisObject, WTFMove(promise), throwScope));
         }));
     }
 
@@ -62,13 +62,13 @@ public:
 
         auto* thisObject = IDLOperation<JSClass>::cast(lexicalGlobalObject, callFrame);
         if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject))
-            return rejectPromiseWithThisTypeError(lexicalGlobalObject, JSClass::info()->className, operationName);
+            RELEASE_AND_RETURN(throwScope, rejectPromiseWithThisTypeError(lexicalGlobalObject, JSClass::info()->className, operationName));
 
         ASSERT(thisObject);
         ASSERT_GC_OBJECT_INHERITS(thisObject, JSClass::info());
 
         // FIXME: We should refactor the binding generated code to use references for lexicalGlobalObject and thisObject.
-        return operation(&lexicalGlobalObject, &callFrame, thisObject, throwScope);
+        RELEASE_AND_RETURN(throwScope, operation(&lexicalGlobalObject, &callFrame, thisObject, throwScope));
     }
 
     template<StaticOperation operation, CastedThisErrorBehavior shouldThrow = CastedThisErrorBehavior::RejectPromise>
@@ -78,7 +78,7 @@ public:
             auto throwScope = DECLARE_THROW_SCOPE(JSC::getVM(&lexicalGlobalObject));
             
             // FIXME: We should refactor the binding generated code to use references for lexicalGlobalObject.
-            return operation(&lexicalGlobalObject, &callFrame, WTFMove(promise), throwScope);
+            RELEASE_AND_RETURN(throwScope, operation(&lexicalGlobalObject, &callFrame, WTFMove(promise), throwScope));
         }));
     }
 
@@ -90,7 +90,7 @@ public:
         auto throwScope = DECLARE_THROW_SCOPE(JSC::getVM(&lexicalGlobalObject));
 
         // FIXME: We should refactor the binding generated code to use references for lexicalGlobalObject.
-        return operation(&lexicalGlobalObject, &callFrame, throwScope);
+        RELEASE_AND_RETURN(throwScope, operation(&lexicalGlobalObject, &callFrame, throwScope));
     }
 };
 

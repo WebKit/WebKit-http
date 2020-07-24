@@ -1920,6 +1920,7 @@ platform/graphics/filters/FESpecularLighting.cpp
 platform/graphics/filters/FETile.cpp
 platform/graphics/filters/FETurbulence.cpp
 platform/graphics/filters/FilterEffect.cpp
+platform/graphics/filters/FilterEffectRenderer.cpp
 platform/graphics/filters/FilterOperation.cpp
 platform/graphics/filters/FilterOperations.cpp
 platform/graphics/filters/PointLightSource.cpp
@@ -3122,6 +3123,7 @@ JSOESTextureHalfFloatLinear.cpp
 JSOESVertexArrayObject.cpp
 JSOfflineAudioCompletionEvent.cpp
 JSOfflineAudioContext.cpp
+JSOfflineAudioContextOptions.cpp
 JSOffscreenCanvas.cpp
 JSOffscreenCanvasRenderingContext2D.cpp
 JSOptionalEffectTiming.cpp
@@ -3170,6 +3172,8 @@ JSPerformanceResourceTiming.cpp
 JSPerformanceServerTiming.cpp
 JSPerformanceTiming.cpp
 JSPeriodicWave.cpp
+JSPeriodicWaveConstraints.cpp
+JSPeriodicWaveOptions.cpp
 JSPictureInPictureWindow.cpp
 JSPlaybackDirection.cpp
 JSPointerEvent.cpp

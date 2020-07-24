@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -142,7 +142,7 @@ void DeferredPromise::reject(Exception exception, RejectAsHandled rejectAsHandle
         return;
     }
 
-    auto scope = DECLARE_THROW_SCOPE(lexicalGlobalObject.vm());
+    auto scope = DECLARE_CATCH_SCOPE(lexicalGlobalObject.vm());
     auto error = createDOMException(lexicalGlobalObject, WTFMove(exception));
     if (UNLIKELY(scope.exception())) {
         ASSERT(isTerminatedExecutionException(lexicalGlobalObject.vm(), scope.exception()));
@@ -150,6 +150,7 @@ void DeferredPromise::reject(Exception exception, RejectAsHandled rejectAsHandle
     }
 
     reject(lexicalGlobalObject, error, rejectAsHandled);
+    EXCEPTION_ASSERT(!scope.exception() || isTerminatedExecutionException(lexicalGlobalObject.vm(), scope.exception()));
 }
 
 void DeferredPromise::reject(ExceptionCode ec, const String& message, RejectAsHandled rejectAsHandled)
@@ -174,7 +175,7 @@ void DeferredPromise::reject(ExceptionCode ec, const String& message, RejectAsHa
         return;
     }
 
-    auto scope = DECLARE_THROW_SCOPE(lexicalGlobalObject.vm());
+    auto scope = DECLARE_CATCH_SCOPE(lexicalGlobalObject.vm());
     auto error = createDOMException(&lexicalGlobalObject, ec, message);
     if (UNLIKELY(scope.exception())) {
         ASSERT(isTerminatedExecutionException(lexicalGlobalObject.vm(), scope.exception()));
@@ -183,6 +184,7 @@ void DeferredPromise::reject(ExceptionCode ec, const String& message, RejectAsHa
 
 
     reject(lexicalGlobalObject, error, rejectAsHandled);
+    EXCEPTION_ASSERT(!scope.exception() || isTerminatedExecutionException(lexicalGlobalObject.vm(), scope.exception()));
 }
 
 void DeferredPromise::reject(const JSC::PrivateName& privateName, RejectAsHandled rejectAsHandled)
@@ -197,16 +199,14 @@ void DeferredPromise::reject(const JSC::PrivateName& privateName, RejectAsHandle
     reject(*lexicalGlobalObject, JSC::Symbol::create(lexicalGlobalObject->vm(), privateName.uid()), rejectAsHandled);
 }
 
-void rejectPromiseWithExceptionIfAny(JSC::JSGlobalObject& lexicalGlobalObject, JSDOMGlobalObject& globalObject, JSPromise& promise)
+void rejectPromiseWithExceptionIfAny(JSC::JSGlobalObject& lexicalGlobalObject, JSDOMGlobalObject& globalObject, JSPromise& promise, JSC::CatchScope& catchScope)
 {
-    VM& vm = lexicalGlobalObject.vm();
-    auto scope = DECLARE_CATCH_SCOPE(vm);
-
-    if (LIKELY(!scope.exception()))
+    UNUSED_PARAM(lexicalGlobalObject);
+    if (LIKELY(!catchScope.exception()))
         return;
 
-    JSValue error = scope.exception()->value();
-    scope.clearException();
+    JSValue error = catchScope.exception()->value();
+    catchScope.clearException();
 
     DeferredPromise::create(globalObject, promise)->reject<IDLAny>(error);
 }
@@ -221,21 +221,24 @@ Ref<DeferredPromise> createDeferredPromise(JSC::JSGlobalObject&, JSDOMWindow& do
 JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::JSGlobalObject& lexicalGlobalObject, const String& errorMessage, RejectedPromiseWithTypeErrorCause cause)
 {
     auto& globalObject = lexicalGlobalObject;
+    auto& vm = lexicalGlobalObject.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     auto promiseConstructor = globalObject.promiseConstructor();
-    auto rejectFunction = promiseConstructor->get(&lexicalGlobalObject, lexicalGlobalObject.vm().propertyNames->builtinNames().rejectPrivateName());
+    auto rejectFunction = promiseConstructor->get(&lexicalGlobalObject, vm.propertyNames->builtinNames().rejectPrivateName());
+    RETURN_IF_EXCEPTION(scope, { });
     auto* rejectionValue = static_cast<ErrorInstance*>(createTypeError(&lexicalGlobalObject, errorMessage));
     if (cause == RejectedPromiseWithTypeErrorCause::NativeGetter)
         rejectionValue->setNativeGetterTypeError();
 
-    auto callData = getCallData(lexicalGlobalObject.vm(), rejectFunction);
+    auto callData = getCallData(vm, rejectFunction);
     ASSERT(callData.type != CallData::Type::None);
 
     MarkedArgumentBuffer arguments;
     arguments.append(rejectionValue);
     ASSERT(!arguments.hasOverflowed());
 
-    return JSValue::encode(call(&lexicalGlobalObject, rejectFunction, callData, promiseConstructor, arguments));
+    RELEASE_AND_RETURN(scope, JSValue::encode(call(&lexicalGlobalObject, rejectFunction, callData, promiseConstructor, arguments)));
 }
 
 static inline JSC::JSValue parseAsJSON(JSC::JSGlobalObject* lexicalGlobalObject, const String& data)

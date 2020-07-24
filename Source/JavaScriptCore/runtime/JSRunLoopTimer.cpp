@@ -60,6 +60,11 @@ void JSRunLoopTimer::Manager::timerDidFireCallback()
 
 JSRunLoopTimer::Manager::PerVMData::~PerVMData()
 {
+    // Because RunLoop::Timer is not reference counted, we need to deallocate it
+    // on the same thread on which it fires; otherwise, we might deallocate it
+    // while it's firing.
+    runLoop->dispatch([timer = WTFMove(timer)] {
+    });
 }
 
 void JSRunLoopTimer::Manager::timerDidFire()

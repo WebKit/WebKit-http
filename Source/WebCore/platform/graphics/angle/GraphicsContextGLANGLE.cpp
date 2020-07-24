@@ -1899,6 +1899,7 @@ void GraphicsContextGLOpenGL::markContextChanged()
 void GraphicsContextGLOpenGL::markLayerComposited()
 {
     m_layerComposited = true;
+    resetBuffersToAutoClear();
 
     for (auto* client : copyToVector(m_clients))
         client->didComposite();
@@ -1985,9 +1986,16 @@ String GraphicsContextGLOpenGL::getActiveUniformBlockName(PlatformGLObject progr
     makeContextCurrent();
     GLint maxLength = 0;
     gl::GetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &maxLength);
+    if (maxLength <= 0) {
+        synthesizeGLError(INVALID_VALUE);
+        return String();
+    }
     Vector<GLchar> buffer(maxLength);
-    gl::GetActiveUniformBlockName(program, uniformBlockIndex, buffer.size(), nullptr, buffer.data());
-    return String(buffer.data());
+    GLsizei length = 0;
+    gl::GetActiveUniformBlockName(program, uniformBlockIndex, buffer.size(), &length, buffer.data());
+    if (!length)
+        return String();
+    return String(buffer.data(), length);
 }
 
 void GraphicsContextGLOpenGL::uniformBlockBinding(PlatformGLObject program, GCGLuint uniformBlockIndex, GCGLuint uniformBlockBinding)
@@ -2300,41 +2308,29 @@ void GraphicsContextGLOpenGL::drawRangeElements(GCGLenum mode, GCGLuint start, G
     gl::DrawRangeElements(mode, start, end, count, type, reinterpret_cast<void*>(offset));
 }
 
-void GraphicsContextGLOpenGL::drawBuffers(const Vector<GCGLenum>& buffers)
+void GraphicsContextGLOpenGL::drawBuffers(GCGLsizei n, const GCGLenum* bufs)
 {
-    UNUSED_PARAM(buffers);
+    gl::DrawBuffers(n, bufs);
 }
 
 void GraphicsContextGLOpenGL::clearBufferiv(GCGLenum buffer, GCGLint drawbuffer, const GCGLint* values, GCGLuint srcOffset)
 {
-    UNUSED_PARAM(buffer);
-    UNUSED_PARAM(drawbuffer);
-    UNUSED_PARAM(values);
-    UNUSED_PARAM(srcOffset);
+    gl::ClearBufferiv(buffer, drawbuffer, values + srcOffset);
 }
 
 void GraphicsContextGLOpenGL::clearBufferuiv(GCGLenum buffer, GCGLint drawbuffer, const GCGLuint* values, GCGLuint srcOffset)
 {
-    UNUSED_PARAM(buffer);
-    UNUSED_PARAM(drawbuffer);
-    UNUSED_PARAM(values);
-    UNUSED_PARAM(srcOffset);
+    gl::ClearBufferuiv(buffer, drawbuffer, values + srcOffset);
 }
 
 void GraphicsContextGLOpenGL::clearBufferfv(GCGLenum buffer, GCGLint drawbuffer, const GCGLfloat* values, GCGLuint srcOffset)
 {
-    UNUSED_PARAM(buffer);
-    UNUSED_PARAM(drawbuffer);
-    UNUSED_PARAM(values);
-    UNUSED_PARAM(srcOffset);
+    gl::ClearBufferfv(buffer, drawbuffer, values + srcOffset);
 }
 
 void GraphicsContextGLOpenGL::clearBufferfi(GCGLenum buffer, GCGLint drawbuffer, GCGLfloat depth, GCGLint stencil)
 {
-    UNUSED_PARAM(buffer);
-    UNUSED_PARAM(drawbuffer);
-    UNUSED_PARAM(depth);
-    UNUSED_PARAM(stencil);
+    gl::ClearBufferfi(buffer, drawbuffer, depth, stencil);
 }
 
 void GraphicsContextGLOpenGL::deleteQuery(PlatformGLObject query)

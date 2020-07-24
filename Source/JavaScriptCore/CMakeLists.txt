@@ -70,6 +70,8 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/IntlCollatorPrototype.cpp
     runtime/IntlDateTimeFormatConstructor.cpp
     runtime/IntlDateTimeFormatPrototype.cpp
+    runtime/IntlDisplayNamesConstructor.cpp
+    runtime/IntlDisplayNamesPrototype.cpp
     runtime/IntlLocalePrototype.cpp
     runtime/IntlNumberFormatConstructor.cpp
     runtime/IntlNumberFormatPrototype.cpp
@@ -830,12 +832,13 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/DataView.h
     runtime/DateInstance.h
     runtime/DateInstanceCache.h
+    runtime/DeferredWorkTimer.h
     runtime/DefinePropertyAttributes.h
     runtime/DeletePropertySlot.h
     runtime/DirectArgumentsOffset.h
     runtime/DirectEvalExecutable.h
     runtime/DisallowScope.h
-    runtime/DisallowVMReentry.h
+    runtime/DisallowVMEntry.h
     runtime/DumpContext.h
     runtime/ECMAMode.h
     runtime/EnsureStillAliveHere.h
@@ -968,7 +971,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/ParseInt.h
     runtime/PrivateName.h
     runtime/ProgramExecutable.h
-    runtime/PromiseTimer.h
     runtime/PropertyDescriptor.h
     runtime/PropertyMapHashTable.h
     runtime/PropertyName.h

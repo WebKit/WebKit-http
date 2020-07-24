@@ -35,6 +35,7 @@
 #include "ControlFlowProfiler.h"
 #include "DateInstanceCache.h"
 #include "DeleteAllCodeEffort.h"
+#include "DisallowVMEntry.h"
 #include "ExceptionEventLocation.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
@@ -127,6 +128,7 @@ class Identifier;
 class Interpreter;
 class IntlCollator;
 class IntlDateTimeFormat;
+class IntlDisplayNames;
 class IntlLocale;
 class IntlNumberFormat;
 class IntlPluralRules;
@@ -159,7 +161,7 @@ class JSWebAssemblyTable;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
 class ObjCCallbackFunction;
-class PromiseTimer;
+class DeferredWorkTimer;
 class RegExp;
 class RegExpCache;
 class Register;
@@ -377,6 +379,7 @@ public:
     std::unique_ptr<IsoHeapCellType> callbackObjectHeapCellType;
     std::unique_ptr<IsoHeapCellType> dateInstanceHeapCellType;
     std::unique_ptr<IsoHeapCellType> errorInstanceHeapCellType;
+    std::unique_ptr<IsoHeapCellType> finalizationRegistryCellType;
     std::unique_ptr<IsoHeapCellType> globalLexicalEnvironmentHeapCellType;
     std::unique_ptr<IsoHeapCellType> globalObjectHeapCellType;
     std::unique_ptr<IsoHeapCellType> injectedScriptHostSpaceHeapCellType;
@@ -399,6 +402,7 @@ public:
 #endif
     std::unique_ptr<IsoHeapCellType> intlCollatorHeapCellType;
     std::unique_ptr<IsoHeapCellType> intlDateTimeFormatHeapCellType;
+    std::unique_ptr<IsoHeapCellType> intlDisplayNamesHeapCellType;
     std::unique_ptr<IsoHeapCellType> intlLocaleHeapCellType;
     std::unique_ptr<IsoHeapCellType> intlNumberFormatHeapCellType;
     std::unique_ptr<IsoHeapCellType> intlPluralRulesHeapCellType;
@@ -550,12 +554,14 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedFunctionCodeBlockSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedModuleProgramCodeBlockSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedProgramCodeBlockSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(finalizationRegistrySpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakObjectRefSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakSetSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakMapSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(withScopeSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlCollatorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlDateTimeFormatSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlDisplayNamesSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlLocaleSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlNumberFormatSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlPluralRulesSpace)
@@ -709,8 +715,8 @@ public:
     Weak<NativeExecutable> m_slowBoundExecutable;
     Weak<NativeExecutable> m_slowCanConstructBoundExecutable;
 
-    Ref<PromiseTimer> promiseTimer;
-    
+    Ref<DeferredWorkTimer> deferredWorkTimer;
+
     JSCell* currentlyDestructingCallbackObject;
     const ClassInfo* currentlyDestructingCallbackObjectClassInfo { nullptr };
 
@@ -945,6 +951,7 @@ public:
     bool hasCheckpointOSRSideState() const { return m_checkpointSideState.size(); }
     void scanSideState(ConservativeRoots&) const;
 
+    unsigned disallowVMEntryCount { 0 };
     VMEntryScope* entryScope;
 
     JSObject* stringRecursionCheckFirstObject { nullptr };

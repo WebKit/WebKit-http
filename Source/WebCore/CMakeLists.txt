@@ -480,11 +480,14 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webaudio/MediaStreamAudioSourceNode.idl
     Modules/webaudio/OfflineAudioCompletionEvent.idl
     Modules/webaudio/OfflineAudioContext.idl
+    Modules/webaudio/OfflineAudioContextOptions.idl
     Modules/webaudio/OscillatorNode.idl
     Modules/webaudio/PannerNode.idl
     Modules/webaudio/PannerOptions.idl
     Modules/webaudio/PanningModelType.idl
     Modules/webaudio/PeriodicWave.idl
+    Modules/webaudio/PeriodicWaveConstraints.idl
+    Modules/webaudio/PeriodicWaveOptions.idl
     Modules/webaudio/ScriptProcessorNode.idl
     Modules/webaudio/WaveShaperNode.idl
     Modules/webaudio/WebKitAudioContext.idl

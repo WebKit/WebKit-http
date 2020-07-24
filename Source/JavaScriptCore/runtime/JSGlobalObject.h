@@ -138,6 +138,8 @@ constexpr bool typeExposedByDefault = true;
     macro(JSPromise, promise, promise, JSPromise, Promise, object, typeExposedByDefault) \
     macro(BigInt, bigInt, bigIntObject, BigIntObject, BigInt, object, Options::useBigInt()) \
     macro(WeakObjectRef, weakObjectRef, weakObjectRef, JSWeakObjectRef, WeakRef, object, Options::useWeakRefs()) \
+    macro(FinalizationRegistry, finalizationRegistry, finalizationRegistry, JSFinalizationRegistry, FinalizationRegistry, object, Options::useWeakRefs()) \
+
 
 #define FOR_EACH_BUILTIN_DERIVED_ITERATOR_TYPE(macro) \
     macro(StringIterator, stringIterator, stringIterator, JSStringIterator, StringIterator, iterator, typeExposedByDefault) \
@@ -227,6 +229,9 @@ struct GlobalObjectMethodTable {
     typedef void (*PromiseRejectionTrackerPtr)(JSGlobalObject*, JSPromise*, JSPromiseRejectionOperation);
     PromiseRejectionTrackerPtr promiseRejectionTracker;
 
+    typedef void (*ReportUncaughtExceptionAtEventLoopPtr)(JSGlobalObject*, Exception*);
+    ReportUncaughtExceptionAtEventLoopPtr reportUncaughtExceptionAtEventLoop;
+
     typedef String (*DefaultLanguageFunctionPtr)();
     DefaultLanguageFunctionPtr defaultLanguage;
 
@@ -292,6 +297,7 @@ public:
     LazyProperty<JSGlobalObject, IntlCollator> m_defaultCollator;
     LazyProperty<JSGlobalObject, Structure> m_collatorStructure;
     LazyProperty<JSGlobalObject, Structure> m_dateTimeFormatStructure;
+    LazyProperty<JSGlobalObject, Structure> m_displayNamesStructure;
     LazyProperty<JSGlobalObject, Structure> m_localeStructure;
     LazyProperty<JSGlobalObject, Structure> m_numberFormatStructure;
     LazyProperty<JSGlobalObject, Structure> m_pluralRulesStructure;
@@ -453,21 +459,6 @@ public:
     WeakRandom m_weakRandom;
     RegExpGlobalData m_regExpGlobalData;
 
-    JSCallee* stackOverflowFrameCallee() const { return m_stackOverflowFrameCallee.get(); }
-
-    InlineWatchpointSet& arrayIteratorProtocolWatchpointSet() { return m_arrayIteratorProtocolWatchpointSet; }
-    InlineWatchpointSet& mapIteratorProtocolWatchpointSet() { return m_mapIteratorProtocolWatchpointSet; }
-    InlineWatchpointSet& setIteratorProtocolWatchpointSet() { return m_setIteratorProtocolWatchpointSet; }
-    InlineWatchpointSet& stringIteratorProtocolWatchpointSet() { return m_stringIteratorProtocolWatchpointSet; }
-    InlineWatchpointSet& mapSetWatchpointSet() { return m_mapSetWatchpointSet; }
-    InlineWatchpointSet& setAddWatchpointSet() { return m_setAddWatchpointSet; }
-    InlineWatchpointSet& arraySpeciesWatchpointSet() { return m_arraySpeciesWatchpointSet; }
-    InlineWatchpointSet& arrayJoinWatchpointSet() { return m_arrayJoinWatchpointSet; }
-    InlineWatchpointSet& numberToStringWatchpointSet()
-    {
-        RELEASE_ASSERT(Options::useJIT());
-        return m_numberToStringWatchpointSet;
-    }
     // If this hasn't been invalidated, it means the array iterator protocol
     // is not observable to user code yet.
     InlineWatchpointSet m_arrayIteratorProtocolWatchpointSet;
@@ -493,6 +484,23 @@ public:
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSetWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeAddWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_numberPrototypeToStringWatchpoint;
+
+public:
+    JSCallee* stackOverflowFrameCallee() const { return m_stackOverflowFrameCallee.get(); }
+
+    InlineWatchpointSet& arrayIteratorProtocolWatchpointSet() { return m_arrayIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& mapIteratorProtocolWatchpointSet() { return m_mapIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& setIteratorProtocolWatchpointSet() { return m_setIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& stringIteratorProtocolWatchpointSet() { return m_stringIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& mapSetWatchpointSet() { return m_mapSetWatchpointSet; }
+    InlineWatchpointSet& setAddWatchpointSet() { return m_setAddWatchpointSet; }
+    InlineWatchpointSet& arraySpeciesWatchpointSet() { return m_arraySpeciesWatchpointSet; }
+    InlineWatchpointSet& arrayJoinWatchpointSet() { return m_arrayJoinWatchpointSet; }
+    InlineWatchpointSet& numberToStringWatchpointSet()
+    {
+        RELEASE_ASSERT(Options::useJIT());
+        return m_numberToStringWatchpointSet;
+    }
 
     bool isArrayPrototypeIteratorProtocolFastAndNonObservable();
     bool isMapPrototypeIteratorProtocolFastAndNonObservable();
@@ -792,6 +800,7 @@ public:
 #endif // ENABLE(WEBASSEMBLY)
     Structure* collatorStructure() { return m_collatorStructure.get(this); }
     Structure* dateTimeFormatStructure() { return m_dateTimeFormatStructure.get(this); }
+    Structure* displayNamesStructure() { return m_displayNamesStructure.get(this); }
     Structure* numberFormatStructure() { return m_numberFormatStructure.get(this); }
     Structure* localeStructure() { return m_localeStructure.get(this); }
     Structure* pluralRulesStructure() { return m_pluralRulesStructure.get(this); }
@@ -823,6 +832,8 @@ public:
 
     void setUnhandledRejectionCallback(VM& vm, JSObject* function) { m_unhandledRejectionCallback.set(vm, function); }
     JSObject* unhandledRejectionCallback() const { return m_unhandledRejectionCallback.get(); }
+
+    static void reportUncaughtExceptionAtEventLoop(JSGlobalObject*, Exception*);
 
     JSObject* arrayBufferConstructor() const { return m_arrayBufferStructure.constructor(this); }
 

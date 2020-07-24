@@ -1,3 +1,680 @@
+2020-07-23  Per Arne Vollan  <pvollan@apple.com>
+
+        Crash in block in WebKit::LaunchServicesDatabaseObserver::LaunchServicesDatabaseObserver
+        https://bugs.webkit.org/show_bug.cgi?id=214702
+
+        Reviewed by Chris Dumez.
+
+        Calling xpc_connection_send_message in the block in WebKit::LaunchServicesDatabaseObserver::LaunchServicesDatabaseObserver will
+        sometimes crash because the XPC connection object is invalid. The block is called on a secondary thread, and the m_connections
+        member variable needs to be protected by a lock. Also, make sure the XPC connections objects in m_connections are valid by
+        retaining them when captured in a block. This is done by redeclaring a local XPC connection variable as an OSObjectPtr instead
+        of a raw XPC connection object.
+
+        No new tests, since I have not been able to reproduce this issue.
+
+        * NetworkProcess/cocoa/LaunchServicesDatabaseObserver.h:
+        * NetworkProcess/cocoa/LaunchServicesDatabaseObserver.mm:
+        (WebKit::LaunchServicesDatabaseObserver::LaunchServicesDatabaseObserver):
+        (WebKit::LaunchServicesDatabaseObserver::startObserving):
+        (WebKit::LaunchServicesDatabaseObserver::handleEvent):
+        * Shared/Cocoa/XPCEndpoint.mm:
+        (WebKit::XPCEndpoint::XPCEndpoint):
+
+2020-07-23  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: developerExtrasEnabled should be respected when opening local Web Inspector (part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=214669
+
+        Reviewed by Devin Rousso and Joseph Pecoraro.
+
+        * UIProcess/Inspector/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::save):
+        (WebKit::WebInspectorProxy::append): Add missing check for developerExtrasEnabled.
+
+2020-07-23  Sihui Liu  <sihui_liu@appe.com>
+
+        Allow IndexedDB in third-party frames
+        https://bugs.webkit.org/show_bug.cgi?id=214583
+        <rdar://problem/61278487>
+
+        Reviewed by Geoffrey Garen.
+
+        Do no append extra space to displayName if host is empty.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchDataAndApply):
+
+2020-07-23  David Quesada  <david_quesada@apple.com>
+
+        Unable to present file upload picker after interactively dismissing a previously opened picker
+        https://bugs.webkit.org/show_bug.cgi?id=209613
+        rdar://problem/60931009
+
+        Reviewed by Daniel Bates.
+
+        -[<UIDocumentPickerViewController> documentPickerWasCancelled:] doesn't get called if you
+        dismiss the view controller using the interactive swipe dismissal gesture added in iOS 13.
+        As a result, the web view will continue to think it's showing a file picker after dismissing
+        it this way, meaning you can't present any other file pickers from the same web view. Fix
+        this by implementing UIAdaptivePresentationControllerDelegate in WKFileUploadPanel to cancel
+        and tear down the file picker operation when the view controller is interactively dismised.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (-[WKFileUploadPanel showFilePickerMenu]):
+        (-[WKFileUploadPanel presentationControllerDidDismiss:]):
+
+2020-07-23  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Datalist dropdown scrollbar position does not match visible region
+        https://bugs.webkit.org/show_bug.cgi?id=214656
+
+        Reviewed by Wenson Hsieh.
+
+        Currently, the content insets for the dropdown are set on an NSScrollView's contentView,
+        rather than the NSScrollView itself. On the latest macOS, this results in accurate state
+        within the NSScrollView, leading to an inaccurate scrollbar position. To fix, set the
+        content insets directly on the NSScrollView.
+
+        However, on older macOS, setting content insets on the NSScrollView causes the view to start
+        out slightly scrolled (by a value equal to the top inset). This issue is solved by preserving
+        the existing behavior (setting insets on the contentView) on older macOS.
+
+        Also, set the style of the embedded NSTableView to NSTableViewStyleFullWidth, to ensure the
+        view respects the insets we specify.
+
+        No new tests, as the change is purely visual and affects native UI.
+
+        * UIProcess/mac/WebDataListSuggestionsDropdownMac.mm:
+        (-[WKDataListSuggestionTableView initWithElementRect:]):
+        (-[WKDataListSuggestionsController initWithInformation:inView:]):
+
+2020-07-23  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] WebKit::ArgumentCoder<BlobPart>::decode() and encode() should use enum BlobPart::Type
+        <https://webkit.org/b/214665>
+        <rdar://problem/65777948>
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<BlobPart>::encode):
+        - Change BlobPart::Type enums to use fully qualified name.
+        - Encode using WebCore::BlobPart::Type value.
+        - Change break statements to early return statements.
+        - Add ASSERT_NOT_REACHED() to catch bugs.
+        (IPC::ArgumentCoder<BlobPart>::decode):
+        - Change BlobPart::Type enums to use fully qualified name.
+        - Decode using Optional<WebCore::BlobPart::Type> variable.
+        - Change break statements to early return statements.
+        - Remove default: label, move `return WTF::nullopt` to the end
+          of the method, and add ASSERT_NOT_REACHED() to catch bugs.
+
+2020-07-23  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] FilterOperation decode/encode should use early returns
+        <https://webkit.org/b/214667>
+        <rdar://problem/65946400>
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FilterOperation>::encode):
+        - Change break statements to early return statements.
+        - Add ASSERT_NOT_REACHED() to catch bugs.
+        (IPC::decodeFilterOperation):
+        - Change break statements to early return statements.
+        - Remove call to `decoder.markInvalid()` since it is redundant.
+        - Return `false` from FilterOperation::APPLE_INVERT_LIGHTNESS
+          label to match FilterOperation::NONE and
+          FilterOperation::REFERENCE.
+        - Add ASSERT_NOT_REACHED() to catch bugs.
+        - Change final return statement from `true` to `false` since
+          valid decoding returns `true` earlier.
+
+2020-07-23  Brady Eidson  <beidson@apple.com>
+
+        Add Gamepad tests that exercise the native frameworks
+        <rdar://problem/65343674> and https://bugs.webkit.org/show_bug.cgi?id=214188
+
+        Reviewed by Tim Horton.
+
+        Add some testing-only SPI for TestWebKitAPI.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _numberOfConnectedGamepadsForTesting]):
+        (-[WKProcessPool _setUsesOnlyHIDGamepadProviderForTesting:]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+        (WebKit::UIGamepadProvider::numberOfConnectedGamepads const):
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::numberOfConnectedGamepadsForTesting):
+        (WebKit::WebProcessPool::setUsesOnlyHIDGamepadProviderForTesting):
+        * UIProcess/WebProcessPool.h:
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add feature flag for WebM & VP9
+        https://bugs.webkit.org/show_bug.cgi?id=214672
+        <rdar://problem/65959506>
+
+        Reviewed by Beth Dakin.
+
+        * FeatureFlags/WebKit.plist:
+        * Shared/WebPreferences.yaml:
+        * Shared/WebPreferencesDefaultValues.cpp:
+        (WebKit::defaultVP9DecoderEnabled):
+        (WebKit::defaultWebMParserEnabled):
+        * Shared/WebPreferencesDefaultValues.h:
+
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-07-22  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][32bit] ConnectionWin.cpp(327): error C2664: 'BOOL RegisterWaitForSingleObject(...)': cannot convert argument 3 from 'void (__cdecl *)(...)' to 'WAITORTIMERCALLBACK'
+        https://bugs.webkit.org/show_bug.cgi?id=214658
+
+        Reviewed by Darin Adler.
+
+        __cdecl and __stdcall calling conventions don't match.
+        <https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions>
+
+        * Platform/IPC/Connection.h: Added WINAPI to Connection::EventListener::callback method.
+
+2020-07-22  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: [IPC hardening] WebKit::ObjCObjectGraph::decode() and encode() should use enum ObjCType type
+        <https://webkit.org/b/214618>
+        <rdar://problem/65777899>
+
+        Unreviewed fix to get rid of extra namespace blocks.
+
+        * Shared/mac/ObjCObjectGraph.mm:
+        (enum class WebKit::ObjCType):
+        - Move enum class definition back to its original location.
+        (WTF::EnumTraits<WebKit::ObjCType>):
+        - Move to the end of the file.  Noticed this worked in
+          ColorSpaceData.mm.
+
+2020-07-22  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] WebKit::ObjCObjectGraph::decode() and encode() should use enum ObjCType type
+        <https://webkit.org/b/214618>
+        <rdar://problem/65777899>
+
+        Unreviewed fix to include the better header.
+
+        * Shared/mac/ObjCObjectGraph.mm:
+        - Switch #include from OptionSet.h to EnumTraits.h.
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r264710; add a HAVE_AVPLAYER_VIDEORANGEOVERRIDE guard.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::updatePageScreenProperties):
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        [macOS] Adopt AVPlayer.videoRangeOverride
+        https://bugs.webkit.org/show_bug.cgi?id=213902
+        <rdar://problem/63953509>
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::screenPropertiesDidChange):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::updatePageScreenProperties):
+
+2020-07-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Scrolling tesla.com on iPad is not smooth
+        https://bugs.webkit.org/show_bug.cgi?id=214627
+        <rdar://problem/65568979>
+
+        Reviewed by Tim Horton.
+
+        This is the iOS equivalent of the fix in r264203; if the user is scrolling (or we're animating for
+        scroll snap), layout should not trigger scroll position changes via computation of the current snap
+        location.
+
+        To fix this, we need to send data from the UI process to the web process about which scrolling tree
+        nodes the user is scrolling. That's done via RemoteScrollingUIState, which will, in the long term,
+        become a more general UI -> WebProcess scrolling state updating mechanism. For now, it just keeps
+        track of nodes undergoing scroll snap and user scrolls (only the latter is hooked up for now).
+
+        * Shared/RemoteLayerTree/RemoteScrollingUIState.cpp: Added.
+        (WebKit::RemoteScrollingUIState::encode const):
+        (WebKit::RemoteScrollingUIState::decode):
+        (WebKit::RemoteScrollingUIState::addNodeWithActiveScrollSnap):
+        (WebKit::RemoteScrollingUIState::removeNodeWithActiveScrollSnap):
+        (WebKit::RemoteScrollingUIState::addNodeWithActiveUserScroll):
+        (WebKit::RemoteScrollingUIState::removeNodeWithActiveUserScroll):
+        * Shared/RemoteLayerTree/RemoteScrollingUIState.h: Added.
+        (WebKit::RemoteScrollingUIState::changes const):
+        (WebKit::RemoteScrollingUIState::clearChanges):
+        (WebKit::RemoteScrollingUIState::nodesWithActiveScrollSnap const):
+        (WebKit::RemoteScrollingUIState::nodesWithActiveUserScrolls const):
+        * SourcesCocoa.txt:
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::RemoteScrollingCoordinatorProxy):
+        (WebKit::RemoteScrollingCoordinatorProxy::sendUIStateChangedIfNecessary):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp:
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeWillStartPanGesture):
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeWillStartScroll):
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeDidEndScroll):
+        * UIProcess/RemoteLayerTree/RemoteScrollingTree.h:
+        * UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollViewForScrollingNodeID const):
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeWillStartPanGesture):
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeWillStartScroll):
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidEndScroll):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::scrollWillStart const):
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::scrollDidEnd const):
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::scrollViewWillStartPanGesture const):
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.h:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.messages.in:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm:
+        (WebKit::RemoteScrollingCoordinator::isUserScrollInProgress const):
+        (WebKit::RemoteScrollingCoordinator::isScrollSnapInProgress const):
+        (WebKit::RemoteScrollingCoordinator::scrollingStateInUIProcessChanged):
+
+2020-07-22  David Kilzer  <ddkilzer@apple.com>
+
+        [IPC hardening] WebKit::ObjCObjectGraph::decode() and encode() should use enum ObjCType type
+        <https://webkit.org/b/214618>
+        <rdar://problem/65777899>
+
+        Reviewed by Youenn Fablet.
+
+        * Shared/mac/ObjCObjectGraph.h:
+        - Drive-by fix to use #pragma once.  This is included in some
+          plain C++ source files.
+
+        * Shared/mac/ObjCObjectGraph.mm:
+        (WebKit::ObjCType):
+        - Move enum definition to the top of the file so that the
+          EnumTraits<> can be defined after it, but before it's used.
+        (WTF::EnumTraits<WebKit::ObjCType>): Add.
+        - Define so that IPC::Decoder and IPC::Encoder can validate enum
+          values.
+        (WebKit::ObjCObjectGraph::encode):
+        - Encode using WebKit::ObjCType value.
+        - Add ObjCType::Null label so that default: label can be
+          removed.  Change break statements to early return statements.
+        - Move ASSERT_NOT_REACHED() to the end of the method.
+        (WebKit::ObjCObjectGraph::decode):
+        - Decode using WebKit::ObjCType value.
+        - Change break statements to early return statements.
+        - Remove default: label, and move `return false` to the end of
+          the method.  Add ASSERT_NOT_REACHED().
+
+2020-07-22  Megan Gardner  <megan_gardner@apple.com>
+
+        Tapped DataDetected links present sub-menus from the wrong location.
+        https://bugs.webkit.org/show_bug.cgi?id=214628
+        <rdar://problem/64808642>
+
+        When getting the positionInformation associated with presenting DataDetectors UI
+        we were not indicating that we need the linkIndicator data. This caused the
+        resulting CGRect to not be filled out, and we were returning a zeroed out CGRect
+        to the DataDetectors framework for the location that it should present the subMenu from.
+        Setting this bit ensures that all the necessary data is calculated and returned
+        when a DataDetector link is tapped.
+
+        Reviewed by Wenson Hsieh.
+
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        (WebKit::WebChromeClient::showDataDetectorsUIForElement):
+
+2020-07-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] ITP: use the database store unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=214590
+
+        Reviewed by Adrian Perez de Castro.
+
+        The memory store is now considered legacy.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.cpp:
+        (WebKit::ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore): Use
+        FileSystem::pathByAppendingComponent() to create the database path.
+        (WebKit::ResourceLoadStatisticsDatabaseStore::openITPDatabase): Ensure the directory exists before trying to
+        open the database.
+        * UIProcess/soup/WebProcessPoolSoup.cpp:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess): Always enable the ITP databae by default.
+
+2020-07-19  Darin Adler  <darin@apple.com>
+
+        Remove live ranges from Editor.h and EditorClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=214261
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/mac/WKPrintingView.mm:
+        (-[WKPrintingView rectForPage:]): Use NSZeroRect.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::shouldDeleteRange): Updated for live
+        range changes and also removed gratuitous call to notImplemented
+        since the function is implemented.
+        (WebKit::WebEditorClient::shouldBeginEditing): Ditto.
+        (WebKit::WebEditorClient::shouldEndEditing): Ditto.
+        (WebKit::WebEditorClient::shouldInsertNode): Ditto.
+        (WebKit::WebEditorClient::shouldInsertText): Ditto.
+        (WebKit::WebEditorClient::shouldChangeSelectedRange): Ditto.
+        (WebKit::WebEditorClient::shouldApplyStyle): Ditto.
+        (WebKit::WebEditorClient::shouldMoveRangeAfterDelete): Ditto.
+        (WebKit::WebEditorClient::didBeginEditing): Ditto.
+        (WebKit::WebEditorClient::didEndEditing): Ditto.
+        (WebKit::WebEditorClient::willWriteSelectionToPasteboard): Ditto.
+        (WebKit::WebEditorClient::getClientPasteboardData): Ditto.
+        (WebKit::WebEditorClient::performTwoStepDrop): Ditto.
+        (WebKit::WebEditorClient::overflowScrollPositionChanged): Ditto.
+        (WebKit::WebEditorClient::subFrameScrollPositionChanged): Ditto.
+        (WebKit::WebEditorClient::setInputMethodState): Ditto.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.h: Updated
+        for changes to EditorClient.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::getMarkedRangeAsync): Updated to reduce
+        the use of local values and live ranges.
+        (WebKit::WebPage::getSelectedRangeAsync): Ditto.
+        (WebKit::WebPage::characterIndexForPointAsync): Ditto.
+        (WebKit::WebPage::firstRectForCharacterRangeAsync): Ditto.
+        (WebKit::WebPage::setCompositionAsync): Ditto.
+        * WebProcess/WebPage/glib/WebPageGLib.cpp:
+        (WebKit::WebPage::getPlatformEditorState const): Ditto.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPlatformEditorState const): Ditto.
+        (WebKit::WebPage::selectWithGesture): Ditto.
+        (WebKit::WebPage::autocorrectionContext): Ditto.
+        (WebKit::focusedElementPositionInformation): Ditto.
+        (WebKit::WebPage::requestDocumentEditingContext): Ditto.
+
+2020-07-21  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add experimental MSE WebM parser
+        https://bugs.webkit.org/show_bug.cgi?id=214529
+        <rdar://problem/65782467>
+
+        Reviewed by Eric Carlson.
+
+        Add an Experimental setting to enable the MSE WebM parser (off by default).
+
+        * Shared/WebPreferences.yaml:
+
+2020-07-21  Tim Horton  <timothy_horton@apple.com>
+
+        watchOS: Web Content process crashes when it tries to open files
+        https://bugs.webkit.org/show_bug.cgi?id=214614
+        <rdar://problem/65900517>
+
+        Reviewed by Darin Adler.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+        Allow reading kern.maxfilesperproc, as it is allowed on macOS and in the Network process sandbox, and libc needs it.
+
+2020-07-21  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Layout tests exiting early with crashes
+        https://bugs.webkit.org/show_bug.cgi?id=214612
+        <rdar://problem/65897905>
+
+        Reviewed by Brent Fulgham.
+
+        This is caused by the WebContent process making a syscall not allowed by the sandbox.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2020-07-21  David Kilzer  <ddkilzer@apple.com>
+
+        WebKit::ColorSpaceData::decode() does not need default: case
+        <https://webkit.org/b/214587>
+        <rdar://problem/65777868>
+
+        Reviewed by Darin Adler.
+
+        * Shared/mac/ColorSpaceData.mm:
+        (WebKit::ColorSpaceData::decode):
+        - Remove default: case and add ASSERT_NOT_REACHED() and
+          move `return false;` to bottom of the method.
+
+2020-07-21  James Savage  <james.savage@apple.com>
+
+        Unable to call WKScriptMessageHandlerWithReply's replyHandler with a nil errorMessage in Swift
+        https://bugs.webkit.org/show_bug.cgi?id=214581
+        <rdar://problem/65639342>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/Cocoa/WKScriptMessageHandlerWithReply.h: Modify the block
+        signature to allow nil for either argument.
+
+2020-07-21  Kate Cheney  <katherine_cheney@apple.com>
+
+        Frequent Network error messages: "ResourceLoadStatisticsDatabaseStore::topPrevalentResourceWithUserInteractionDaysSinceUserInteractionStatement query failed to step, error message: no more rows available"
+        https://bugs.webkit.org/show_bug.cgi?id=214597
+        <rdar://65884740>
+
+        Reviewed by John Wilander.
+
+        We should not log an error message when no rows are returned when running
+        telemetry queries, because this is not an error.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.cpp:
+        (WebKit::getMedianOfPrevalentResourcesWithUserInteraction):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::getTopPrevelentResourceDaysSinceUI const):
+        Remove unnecessary error logging and only check for telemetry results if the
+        query returns a row.
+
+2020-07-21  Youenn Fablet  <youenn@apple.com>
+
+        NetworkConnectionToWebProcess should not handle NetworkRTCProvider messages
+        https://bugs.webkit.org/show_bug.cgi?id=214547
+
+        Reviewed by Alex Christensen.
+
+        Normally NetworkRTCProvider is created when starting to monitor the network.
+        In case network process is crashing though, there might be requests to open RTC socket on the new network process which has not started to monitor the network.
+        In that case, we will go through NetworkConnectionToWebProcess as NetworkRTCProvider is not yet created.
+        To properly handle this case, on web process side, we send an IPC message to explictly create the NetworkRTCProvider.
+        Once done, we set the IPC connection to the socket factory which will start sending messages to open sockets if needed.
+        Until its connection is set, the socket factory will buffer messages to open sockets.
+        Covered by test no longer crashing in debug.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::didReceiveMessage):
+        (WebKit::NetworkConnectionToWebProcess::createRTCProvider):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * WebProcess/Network/webrtc/LibWebRTCNetwork.cpp:
+        (WebKit::LibWebRTCNetwork::setAsActive):
+        (WebKit::LibWebRTCNetwork::setConnection):
+        (WebKit::LibWebRTCNetwork::setSocketFactoryConnection):
+        * WebProcess/Network/webrtc/LibWebRTCNetwork.h:
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp:
+        (WebKit::LibWebRTCSocketFactory::setConnection):
+        (WebKit::LibWebRTCSocketFactory::createServerTcpSocket):
+        (WebKit::LibWebRTCSocketFactory::createUdpSocket):
+        (WebKit::LibWebRTCSocketFactory::createClientTcpSocket):
+        (WebKit::LibWebRTCSocketFactory::createNewConnectionSocket):
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.h:
+
+2020-07-21  Youenn Fablet  <youenn@apple.com>
+
+        Fetch/XHR loads done by extensions should opt out of response sanitisation done in network process
+        https://bugs.webkit.org/show_bug.cgi?id=214588
+        <rdar://problem/65060560>
+
+        Reviewed by Alex Christensen.
+
+        Send to network process the CORS disabling patterns.
+        Disable sanitization for fetch/xhr loads whose pages have a matching pattern.
+
+        Covered by API test.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::setCORSDisablingPatterns):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::shouldDisableCORSForRequestTo const):
+        (WebKit::NetworkProcess::setCORSDisablingPatterns):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::shouldSanitizeResponse):
+        (WebKit::NetworkResourceLoader::sanitizeResponseIfPossible):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::parseAndAllowAccessToCORSDisablingPatterns):
+        (WebKit::m_limitsNavigationsToAppBoundDomains):
+        (WebKit::WebPage::~WebPage):
+        (WebKit::WebPage::updateCORSDisablingPatterns):
+        (WebKit::WebPage::synchronizeCORSDisablingPatternsWithNetworkProcess):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::ensureNetworkProcessConnection):
+
+2020-07-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::platformView const): Add new override.
+
+2020-07-21  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Adopt VTRegisterSupplementalVideoDecoderIfAvailable
+        https://bugs.webkit.org/show_bug.cgi?id=214585
+        <rdar://problem/65863651>
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::enableVP9Decoder):
+
+2020-07-21  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] WebKitSettings:enable-private-browsing missing G_PARAM_DEPRECATED
+        https://bugs.webkit.org/show_bug.cgi?id=214554
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/glib/WebKitSettings.cpp:
+        (webkit_settings_class_init):
+
+2020-07-21  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.29.1 release
+
+        * wpe/NEWS: Add release notes for 2.29.1.
+
+2020-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Fix ITP data summary when using the memory store and blocking all third-party cookies
+        https://bugs.webkit.org/show_bug.cgi?id=214401
+
+        Reviewed by Michael Catanzaro.
+
+        The memory store behaves differently than the database one, it only includes prevalent resources in the list,
+        while the database store includes all resources when cooking blocking policy is All.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::aggregatedThirdPartyData const): Only check isPrevalentResource if
+        third party cookie blocking mode is not All to decide whether to include the domain in the report.
+
+2020-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Prepare unit tests for GTK4
+        https://bugs.webkit.org/show_bug.cgi?id=214251
+
+        Reviewed by Adrian Perez de Castro.
+
+        Make it possible to test input methods.
+
+        * UIProcess/API/glib/InputMethodFilter.h:
+        * UIProcess/API/gtk/InputMethodFilterGtk.cpp:
+        (WebKit::InputMethodFilter::filterKeyEvent): Added to receive the key event properties instead of the GdkEvent.
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseSynthesizeMouseEvent): Create a GdkEvent for right clicks since it's needed by GTK3 API.
+        (webkitWebViewBaseSynthesizeKeyEvent): Send key press and release events to the IM filter.
+
+2020-07-20  Megan Gardner  <megan_gardner@apple.com>
+
+        Add OK button to Date/Time form controls.
+        https://bugs.webkit.org/show_bug.cgi?id=214195
+        <rdar://problem/65006000>
+
+        Reviewed by Darin Adler.
+
+        Add 'OK' button to add clarity to UI, and increase the default size of the control to
+        ensure space for both buttons. Also fixed a crash that happened when closing the control before
+        the animation completed.
+
+        * UIProcess/ios/forms/WKDateTimeInputControl.mm:
+        (-[WKDateTimeContextMenuViewController preferredContentSize]):
+        (-[WKDateTimePicker contextMenuInteraction:configurationForMenuAtLocation:]):
+        (-[WKDateTimePicker contextMenuInteraction:willDisplayMenuForConfiguration:animator:]):
+        (-[WKDateTimePicker contextMenuInteraction:willEndForConfiguration:animator:]):
+        (-[WKDateTimePicker ok:]):
+
+2020-07-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Non unified build fixes, midsummer 2020 edition
+        https://bugs.webkit.org/show_bug.cgi?id=213616
+
+        Unreviewed build fix.
+
+        * NetworkProcess/soup/WebSocketTaskSoup.cpp: Add missing inclusion of NetworkProcess.h
+
+2020-07-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: developerExtrasEnabled should be respected when opening local Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=214573
+        <rdar://problem/65848496>
+
+        Reviewed by David Kilzer.
+
+        Ensure that WKPreferences.developerExtrasEnabled is true prior to opening a Web Inspector
+        window. This matches the check in WebCore when deciding to show "Inspect Element" menu item.
+
+        * UIProcess/Inspector/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::connect):
+        (WebKit::WebInspectorProxy::openLocalInspectorFrontend):
+
+2020-07-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] WebPopupItem should always be forward declared as struct
+        https://bugs.webkit.org/show_bug.cgi?id=214569
+
+        Unreviewed build fix.
+
+        No new tests needed.
+
+        * UIProcess/API/wpe/WebKitWebViewClient.h: Forward-declare WebPopupItem as a struct.
+
 2020-07-20  Alex Christensen  <achristensen@webkit.org>
 
         REGRESSION(r263551) Main thread often hangs while saving cookies

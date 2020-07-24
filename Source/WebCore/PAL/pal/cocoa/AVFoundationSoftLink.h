@@ -82,6 +82,10 @@ SOFT_LINK_CLASS_FOR_HEADER(PAL, AVSpeechUtterance)
 SOFT_LINK_CLASS_FOR_HEADER(PAL, AVAudioRoutingArbiter)
 #endif
 
+#if HAVE(AVROUTEPICKERVIEW)
+SOFT_LINK_CLASS_FOR_HEADER(PAL, AVRoutePickerView)
+#endif
+
 #if !PLATFORM(WATCHOS)
 SOFT_LINK_CLASS_FOR_HEADER(PAL, AVRouteDetector)
 SOFT_LINK_CLASS_FOR_HEADER(PAL, AVVideoPerformanceMetrics)
@@ -245,10 +249,11 @@ SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVMetadataKeySpaceISOUserData, 
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVMetadataKeySpaceHLSDateRange, NSString *)
 #define AVMetadataKeySpaceHLSDateRange PAL::get_AVFoundation_AVMetadataKeySpaceHLSDateRange()
 
-#if PLATFORM(MAC)
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVStreamDataParserContentKeyRequestProtocolVersionsKey, NSString *)
-#define AVStreamDataParserContentKeyRequestProtocolVersionsKey PAL::get_AVFoundation_AVStreamDataParserContentKeyRequestProtocolVersionsKey()
-#endif
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(PAL, AVFoundation, AVVideoRangeSDR, NSString *)
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(PAL, AVFoundation, AVVideoRangeHLG, NSString *)
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(PAL, AVFoundation, AVVideoRangeHDR10, NSString *)
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(PAL, AVFoundation, AVVideoRangeDolbyVisionPQ, NSString *)
 
 #if PLATFORM(IOS_FAMILY)
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVURLAssetBoundNetworkInterfaceName, NSString *)
@@ -291,8 +296,6 @@ SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVAudioSessionInterruptionTypeK
 #define AVAudioSessionInterruptionTypeKey PAL::get_AVFoundation_AVAudioSessionInterruptionTypeKey()
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVAudioSessionInterruptionOptionKey, NSString *)
 #define AVAudioSessionInterruptionOptionKey PAL::get_AVFoundation_AVAudioSessionInterruptionOptionKey()
-SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVRouteDetectorMultipleRoutesDetectedDidChangeNotification, NSString *)
-#define AVRouteDetectorMultipleRoutesDetectedDidChangeNotification PAL::get_AVFoundation_AVRouteDetectorMultipleRoutesDetectedDidChangeNotification()
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVAudioSessionMediaServicesWereResetNotification, NSString *)
 #define AVAudioSessionMediaServicesWereResetNotification PAL::get_AVFoundation_AVAudioSessionMediaServicesWereResetNotification()
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVAudioSessionRouteChangeNotification, NSString *)
@@ -305,5 +308,15 @@ SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVAudioSessionRouteChangeReason
 SOFT_LINK_FUNCTION_FOR_HEADER(PAL, AVFoundation, AVCaptureSessionSetAuthorizedToUseCameraInMultipleForegroundAppLayout, void, (AVCaptureSession *session), (session))
 #define AVCaptureSessionSetAuthorizedToUseCameraInMultipleForegroundAppLayout softLink_AVFoundation_AVCaptureSessionSetAuthorizedToUseCameraInMultipleForegroundAppLayout
 #endif // PLATFORM(IOS_FAMILY) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
+
+#if !PLATFORM(WATCHOS)
+SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVRouteDetectorMultipleRoutesDetectedDidChangeNotification, NSString *)
+#define AVRouteDetectorMultipleRoutesDetectedDidChangeNotification PAL::get_AVFoundation_AVRouteDetectorMultipleRoutesDetectedDidChangeNotification()
+#endif // HAVE(WATCHOS)
+
+#if HAVE(AVROUTEPICKERVIEW)
+SOFT_LINK_CONSTANT_FOR_HEADER(PAL, AVFoundation, AVOutputContextOutputDevicesDidChangeNotification, NSString *)
+#define AVOutputContextOutputDevicesDidChangeNotification PAL::get_AVFoundation_AVOutputContextOutputDevicesDidChangeNotification()
+#endif // HAVE(AVROUTEPICKERVIEW)
 
 #endif // USE(AVFOUNDATION)

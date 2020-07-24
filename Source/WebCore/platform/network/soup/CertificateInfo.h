@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "CertificateInfoBase.h"
+#include "CertificateSummary.h"
 #include "NotImplemented.h"
 #include <libsoup/soup.h>
 #include <wtf/Vector.h>
@@ -40,13 +40,15 @@ namespace WebCore {
 class ResourceError;
 class ResourceResponse;
 
-class CertificateInfo  : public CertificateInfoBase {
+class CertificateInfo {
 public:
     CertificateInfo();
     explicit CertificateInfo(const WebCore::ResourceResponse&);
     explicit CertificateInfo(const WebCore::ResourceError&);
     explicit CertificateInfo(GTlsCertificate*, GTlsCertificateFlags);
     WEBCORE_EXPORT ~CertificateInfo();
+
+    CertificateInfo isolatedCopy() const { notImplemented(); return { }; }
 
     GTlsCertificate* certificate() const { return m_certificate.get(); }
     void setCertificate(GTlsCertificate* certificate) { m_certificate = certificate; }
@@ -55,7 +57,7 @@ public:
 
     bool containsNonRootSHA1SignedCertificate() const { notImplemented(); return false; }
 
-    Optional<SummaryInfo> summaryInfo() const { notImplemented(); return WTF::nullopt; }
+    Optional<CertificateSummary> summary() const { notImplemented(); return WTF::nullopt; }
 
     bool isEmpty() const { return !m_certificate; }
 

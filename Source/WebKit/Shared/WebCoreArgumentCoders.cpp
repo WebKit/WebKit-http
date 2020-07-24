@@ -2344,38 +2344,40 @@ void ArgumentCoder<FilterOperation>::encode(Encoder& encoder, const FilterOperat
     case FilterOperation::NONE:
     case FilterOperation::REFERENCE:
         ASSERT_NOT_REACHED();
-        break;
+        return;
     case FilterOperation::GRAYSCALE:
     case FilterOperation::SEPIA:
     case FilterOperation::SATURATE:
     case FilterOperation::HUE_ROTATE:
         encoder << downcast<BasicColorMatrixFilterOperation>(filter).amount();
-        break;
+        return;
     case FilterOperation::INVERT:
     case FilterOperation::OPACITY:
     case FilterOperation::BRIGHTNESS:
     case FilterOperation::CONTRAST:
         encoder << downcast<BasicComponentTransferFilterOperation>(filter).amount();
-        break;
+        return;
     case FilterOperation::APPLE_INVERT_LIGHTNESS:
         ASSERT_NOT_REACHED(); // APPLE_INVERT_LIGHTNESS is only used in -apple-color-filter.
-        break;
+        return;
     case FilterOperation::BLUR:
         encoder << downcast<BlurFilterOperation>(filter).stdDeviation();
-        break;
+        return;
     case FilterOperation::DROP_SHADOW: {
         const auto& dropShadowFilter = downcast<DropShadowFilterOperation>(filter);
         encoder << dropShadowFilter.location();
         encoder << dropShadowFilter.stdDeviation();
         encoder << dropShadowFilter.color();
-        break;
+        return;
     }
     case FilterOperation::DEFAULT:
         encoder << downcast<DefaultFilterOperation>(filter).representedType();
-        break;
+        return;
     case FilterOperation::PASSTHROUGH:
-        break;
+        return;
     }
+
+    ASSERT_NOT_REACHED();
 }
 
 bool decodeFilterOperation(Decoder& decoder, RefPtr<FilterOperation>& filter)
@@ -2388,7 +2390,6 @@ bool decodeFilterOperation(Decoder& decoder, RefPtr<FilterOperation>& filter)
     case FilterOperation::NONE:
     case FilterOperation::REFERENCE:
         ASSERT_NOT_REACHED();
-        decoder.markInvalid();
         return false;
     case FilterOperation::GRAYSCALE:
     case FilterOperation::SEPIA:
@@ -2398,7 +2399,7 @@ bool decodeFilterOperation(Decoder& decoder, RefPtr<FilterOperation>& filter)
         if (!decoder.decode(amount))
             return false;
         filter = BasicColorMatrixFilterOperation::create(amount, type);
-        break;
+        return true;
     }
     case FilterOperation::INVERT:
     case FilterOperation::OPACITY:
@@ -2408,17 +2409,17 @@ bool decodeFilterOperation(Decoder& decoder, RefPtr<FilterOperation>& filter)
         if (!decoder.decode(amount))
             return false;
         filter = BasicComponentTransferFilterOperation::create(amount, type);
-        break;
+        return true;
     }
     case FilterOperation::APPLE_INVERT_LIGHTNESS:
         ASSERT_NOT_REACHED(); // APPLE_INVERT_LIGHTNESS is only used in -apple-color-filter.
-        break;
+        return false;
     case FilterOperation::BLUR: {
         Length stdDeviation;
         if (!decoder.decode(stdDeviation))
             return false;
         filter = BlurFilterOperation::create(stdDeviation);
-        break;
+        return true;
     }
     case FilterOperation::DROP_SHADOW: {
         IntPoint location;
@@ -2431,21 +2432,22 @@ bool decodeFilterOperation(Decoder& decoder, RefPtr<FilterOperation>& filter)
         if (!decoder.decode(color))
             return false;
         filter = DropShadowFilterOperation::create(location, stdDeviation, color);
-        break;
+        return true;
     }
     case FilterOperation::DEFAULT: {
         FilterOperation::OperationType representedType;
         if (!decoder.decode(representedType))
             return false;
         filter = DefaultFilterOperation::create(representedType);
-        break;
+        return true;
     }
     case FilterOperation::PASSTHROUGH:
         filter = PassthroughFilterOperation::create();
-        break;
+        return true;
     }
             
-    return true;
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 
@@ -2476,47 +2478,43 @@ bool ArgumentCoder<FilterOperations>::decode(Decoder& decoder, FilterOperations&
 
 void ArgumentCoder<BlobPart>::encode(Encoder& encoder, const BlobPart& blobPart)
 {
-    encoder << static_cast<uint32_t>(blobPart.type());
+    encoder << blobPart.type();
     switch (blobPart.type()) {
-    case BlobPart::Data:
+    case BlobPart::Type::Data:
         encoder << blobPart.data();
-        break;
-    case BlobPart::Blob:
+        return;
+    case BlobPart::Type::Blob:
         encoder << blobPart.url();
-        break;
+        return;
     }
+    ASSERT_NOT_REACHED();
 }
 
 Optional<BlobPart> ArgumentCoder<BlobPart>::decode(Decoder& decoder)
 {
-    BlobPart blobPart;
-
-    Optional<uint32_t> type;
+    Optional<BlobPart::Type> type;
     decoder >> type;
     if (!type)
         return WTF::nullopt;
 
     switch (*type) {
-    case BlobPart::Data: {
+    case BlobPart::Type::Data: {
         Optional<Vector<uint8_t>> data;
         decoder >> data;
         if (!data)
             return WTF::nullopt;
-        blobPart = BlobPart(WTFMove(*data));
-        break;
+        return BlobPart(WTFMove(*data));
     }
-    case BlobPart::Blob: {
+    case BlobPart::Type::Blob: {
         URL url;
         if (!decoder.decode(url))
             return WTF::nullopt;
-        blobPart = BlobPart(url);
-        break;
+        return BlobPart(url);
     }
-    default:
-        return WTF::nullopt;
     }
 
-    return blobPart;
+    ASSERT_NOT_REACHED();
+    return WTF::nullopt;
 }
 
 void ArgumentCoder<TextIndicatorData>::encode(Encoder& encoder, const TextIndicatorData& textIndicatorData)

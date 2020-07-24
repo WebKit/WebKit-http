@@ -215,10 +215,6 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
     }
 
 #if USE(LIBWEBRTC)
-    if (decoder.messageReceiverName() == Messages::NetworkRTCProvider::messageReceiverName()) {
-        rtcProvider().didReceiveMessage(connection, decoder);
-        return;
-    }
     if (decoder.messageReceiverName() == Messages::NetworkRTCMonitor::messageReceiverName()) {
         rtcProvider().didReceiveNetworkRTCMonitorMessage(connection, decoder);
         return;
@@ -272,6 +268,14 @@ NetworkRTCProvider& NetworkConnectionToWebProcess::rtcProvider()
     return *m_rtcProvider;
 }
 #endif
+
+void NetworkConnectionToWebProcess::createRTCProvider(CompletionHandler<void()>&& callback)
+{
+#if USE(LIBWEBRTC)
+    rtcProvider();
+#endif
+    callback();
+}
 
 CacheStorageEngineConnection& NetworkConnectionToWebProcess::cacheStorageConnection()
 {
@@ -1146,6 +1150,11 @@ void NetworkConnectionToWebProcess::checkProcessLocalPortForActivity(const Messa
 void NetworkConnectionToWebProcess::broadcastConsoleMessage(JSC::MessageSource source, JSC::MessageLevel level, const String& message)
 {
     connection().send(Messages::NetworkProcessConnection::BroadcastConsoleMessage(source, level, message), 0);
+}
+
+void NetworkConnectionToWebProcess::setCORSDisablingPatterns(WebCore::PageIdentifier pageIdentifier, Vector<String>&& patterns)
+{
+    networkProcess().setCORSDisablingPatterns(pageIdentifier, WTFMove(patterns));
 }
 
 } // namespace WebKit

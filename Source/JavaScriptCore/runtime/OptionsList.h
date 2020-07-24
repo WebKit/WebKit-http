@@ -76,7 +76,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
 // and cannot be modified thereafter.
 
 #define FOR_EACH_JSC_OPTION(v)                                          \
-    v(Bool, useKernTCSM, true, Normal, "Note: this needs to go before other options since they depend on this value.") \
+    v(Bool, useKernTCSM, false, Normal, "Note: this needs to go before other options since they depend on this value.") \
     v(Bool, validateOptions, false, Normal, "crashes if mis-typed JSC options were passed to the VM") \
     v(Unsigned, dumpOptions, 0, Normal, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
     v(OptionString, configFile, nullptr, Normal, "file to configure JSC options and logging location") \
@@ -94,6 +94,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Unsigned, softReservedZoneSize, 128 * KB, Normal, "A buffer greater than reservedZoneSize that reserves space for stringifying exceptions.") \
     v(Unsigned, reservedZoneSize, 64 * KB, Normal, "The amount of stack space we guarantee to our clients (and to interal VM code that does not call out to clients).") \
     \
+    v(Bool, crashOnDisallowedVMEntry, ASSERT_ENABLED, Normal, "Forces a crash if we attempt to enter the VM when disallowed") \
     v(Bool, crashIfCantAllocateJITMemory, false, Normal, nullptr) \
     v(Unsigned, jitMemoryReservationSize, 0, Normal, "Set this number to change the executable allocation size in ExecutableAllocatorFixedVMPool. (In bytes.)") \
     \
@@ -486,8 +487,10 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, useEagerWebAssemblyModuleHashing, false, Normal, "Unnamed WebAssembly modules are identified in backtraces through their hash, if available.") \
     v(Bool, useWebAssemblyReferences, false, Normal, "Allow types from the wasm references spec.") \
     v(Bool, useWebAssemblyMultiValues, true, Normal, "Allow types from the wasm mulit-values spec.") \
+    /* FIXME: We should make sure finalizers don't run for detached windows before enabling WeakRefs by default. https://bugs.webkit.org/show_bug.cgi?id=214508 */ \
     v(Bool, useWeakRefs, false, Normal, "Expose the WeakRef constructor.") \
     v(Bool, useBigInt, true, Normal, "If true, we will enable BigInt support.") \
+    v(Bool, useIntlDisplayNames, false, Normal, "Expose the Intl.DisplayNames constructor.") \
     v(Bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.") \
     v(Bool, forcePolyProto, false, Normal, "If true, create_this will always create an object with a poly proto structure.") \
     v(Bool, forceMiniVMMode, false, Normal, "If true, it will force mini VM mode on.") \

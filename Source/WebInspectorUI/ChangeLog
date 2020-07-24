@@ -1,3 +1,83 @@
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-07-22  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Sources tab empty, sidebar nonfunctional
+        https://bugs.webkit.org/show_bug.cgi?id=214611
+        <rdar://problem/65898051>
+
+        Reviewed by Devin Rousso.
+
+        This is caused when a subresource fails its initial load. This generates a
+        networking IssueMessage without a source code location, which is not adequately handled.
+
+        * UserInterface/Views/IssueTreeElement.js:
+        (WI.IssueTreeElement.prototype._updateTitles):
+        (WI.IssueTreeElement):
+        If there is no sourceCodeLocation for the issue, then don't try to compute line numbers.
+
+2020-07-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: unable to save files that are base64 encoded
+        https://bugs.webkit.org/show_bug.cgi?id=214601
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/SourceCode.js:
+        (WI.SourceCode.prototype.get base64Encoded): Added.
+        Expose if the current content is base64 encoded. The current content is already exposed.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        Include the base64 encoded state in the save data.
+
+2020-07-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Styles: don't blur the add class input when a class is added
+        https://bugs.webkit.org/show_bug.cgi?id=214604
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._addClassInputKeyPressed):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._addClassInputBlur):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._addClassFromInput): Added.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container):
+        Drive-by: don't show a scrollbar unless needed.
+
+2020-07-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(?): file names are not shown in the open resource dialog
+        https://bugs.webkit.org/show_bug.cgi?id=214605
+
+        Reviewed by Brian Burg.
+
+        When a `DocumentFragment` is added to a parent node, the children of the `DocumentFragment`
+        are added as children of the parent instead of the `DocumentFragment` itself, effectively
+        emptying the `DocumentFragment`, meaning that adding that `DocumentFragment` to a parent
+        node again will basically do nothing as there are no children for that `DocumentFragment`.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype._updateTitleElements):
+        Because the `_mainTitleElement`/`_subtitleElement` is cleared (`removeChildren`), if the
+        `_mainTitle`/`_subtitle` is a `DocumentFragment` nothing will be added due to the above.
+        Instead, if the `_mainTitle`/`_subtitle` is a `DocumentFragment`, change it to be the
+        `textContent` of the `_mainTitleElement`/`_subtitleElement` so that the above does not
+        happen and so that future calls to `_updateTitleElements` won't make any changes the
+        `_mainTitle`/`_subtitle` is now a `String` which matches the `textContent`.
+
 2020-07-15  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Tab bar colors of undocked Inspector should match Safari in Big Sur

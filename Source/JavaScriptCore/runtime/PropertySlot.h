@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2020 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -21,6 +21,7 @@
 #pragma once
 
 #include "DOMAnnotation.h"
+#include "DisallowVMEntry.h"
 #include "GetVM.h"
 #include "JSCJSValue.h"
 #include "PropertyName.h"
@@ -112,10 +113,12 @@ public:
         ModuleNamespace, // ModuleNamespaceObject's environment access.
     };
 
-    explicit PropertySlot(const JSValue thisValue, InternalMethodType internalMethodType)
+    explicit PropertySlot(const JSValue thisValue, InternalMethodType internalMethodType, VM* vmForInquiry = nullptr)
         : m_thisValue(thisValue)
         , m_internalMethodType(internalMethodType)
     {
+        if (isVMInquiry())
+            disallowVMEntry.emplace(*vmForInquiry);
     }
 
     // FIXME: Remove this slotBase / receiver behavior difference in custom values and custom accessors.
@@ -139,6 +142,7 @@ public:
     bool isTaintedByOpaqueObject() const { return m_isTaintedByOpaqueObject; }
 
     InternalMethodType internalMethodType() const { return m_internalMethodType; }
+    bool isVMInquiry() const { return m_internalMethodType == InternalMethodType::VMInquiry; }
 
     void disableCaching()
     {
@@ -398,6 +402,9 @@ private:
     InternalMethodType m_internalMethodType;
     AdditionalDataType m_additionalDataType { AdditionalDataType::None };
     bool m_isTaintedByOpaqueObject { false };
+public:
+    Optional<DisallowVMEntry> disallowVMEntry;
+private:
     union {
         DOMAttributeAnnotation domAttribute;
         ModuleNamespaceSlot moduleNamespaceSlot;

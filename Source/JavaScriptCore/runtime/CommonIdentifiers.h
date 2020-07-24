@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2020 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -34,8 +34,10 @@
     macro(Collator) \
     macro(Date) \
     macro(DateTimeFormat) \
+    macro(DisplayNames) \
     macro(Error) \
     macro(EvalError) \
+    macro(FinalizationRegistry) \
     macro(Function) \
     macro(Infinity) \
     macro(Intl) \

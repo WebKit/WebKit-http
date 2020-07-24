@@ -208,7 +208,7 @@ bool CDMSessionAVStreamSession::update(Uint8Array* key, RefPtr<Uint8Array>& next
 
     RefPtr<SourceBufferPrivateAVFObjC> protectedSourceBuffer;
     for (auto& sourceBuffer : m_sourceBuffers) {
-        if (sourceBuffer->protectedTrackID() != -1) {
+        if (sourceBuffer->protectedTrackID() != notFound) {
             protectedSourceBuffer = sourceBuffer;
             break;
         }
@@ -227,7 +227,7 @@ bool CDMSessionAVStreamSession::update(Uint8Array* key, RefPtr<Uint8Array>& next
 
         RetainPtr<NSDictionary> options;
         if (!m_protocolVersions.isEmpty()) {
-            options = @{ AVStreamDataParserContentKeyRequestProtocolVersionsKey: createNSArray(m_protocolVersions, [] (int version) -> NSNumber * {
+            options = @{ PAL::get_AVFoundation_AVStreamDataParserContentKeyRequestProtocolVersionsKey(): createNSArray(m_protocolVersions, [] (int version) -> NSNumber * {
                 return version ? @(version) : nil;
             }).get() };
         }

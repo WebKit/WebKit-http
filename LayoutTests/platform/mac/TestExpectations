@@ -143,6 +143,8 @@ fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
 
 webkit.org/b/188061 [ Debug ] webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination.html [ Slow ]
 
+[ Debug ] webgl/2.0.0/conformance2/state/gl-object-get-calls.html [ Slow ]
+
 # Perf tests are very flaky, because they run in parallel with other tests.
 perf
 
@@ -1053,6 +1055,8 @@ webkit.org/b/153883 webgl/1.0.3/conformance/extensions/oes-texture-half-float-li
 
 webkit.org/b/153871 imported/w3c/web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html [ Pass Failure ]
 
+webkit.org/b/207146 media/media-source/media-source-seek-redundant-append.html [ Pass Timeout ]
+
 # These tests are already run with run-jsc-stress-tests
 webkit.org/b/153879 js/basic-set.html [ Skip ]
 webkit.org/b/154753 js/basic-map.html [ Skip ]
@@ -1908,8 +1912,6 @@ webkit.org/b/212215 media/video-isplayingtoautomotiveheadunit.html [ Pass Failur
 
 webkit.org/b/212219 media/track/track-cue-missing.html [ Pass Failure ]
 
-webkit.org/b/212218 webrtc/datachannel/gather-candidates-networkprocess-crash.html [ Pass Timeout ]
-
 webkit.org/b/212226 imported/w3c/web-platform-tests/css/css-grid/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-008.html [ ImageOnlyFailure ]
 
 webkit.org/b/212488 [ Catalina ] media/video-play-audio-require-user-gesture.html [ Pass Timeout ]
@@ -1921,11 +1923,15 @@ fast/text/text-styles/-apple-system [ Pass ]
 
 webkit.org/b/214155 imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/blob.https.html [ Pass Failure ]
 
-# This test requires system platform support.
-platform/mac/media/mediacapabilities/vp9-decodingInfo-sw.html [ Skip ]
+# These test requires system platform support.
+[ Catalina Mojave ] media/media-source/media-source-webm.html [ Skip ]
+[ Catalina Mojave ] platform/mac/media/mediacapabilities/vp9-decodingInfo-sw.html [ Skip ]
 
 webkit.org/b/214422 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/suspend-after-construct.html [ Pass Failure ]
 
 webkit.org/b/214498 imported/w3c/web-platform-tests/cors/remote-origin.htm [ Pass ]
 
 webkit.org/b/214512 imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Failure ]
+
+webkit.org/b/214643 imported/w3c/web-platform-tests/css/css-pseudo/marker-hit-testing.html [ Pass Failure ]
+

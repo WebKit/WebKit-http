@@ -634,7 +634,7 @@ LLINT_SLOW_PATH_DECL(slow_path_try_get_by_id)
     auto bytecode = pc->as<OpTryGetById>();
     const Identifier& ident = codeBlock->identifier(bytecode.m_property);
     JSValue baseValue = getOperand(callFrame, bytecode.m_base);
-    PropertySlot slot(baseValue, PropertySlot::PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(baseValue, PropertySlot::PropertySlot::InternalMethodType::VMInquiry, &vm);
 
     baseValue.getPropertySlot(globalObject, ident, slot);
     JSValue result = slot.getPureResult();
@@ -1093,7 +1093,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_private_name)
     LLINT_CHECK_EXCEPTION();
     ASSERT(property.isPrivateName());
 
-    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::GetOwnProperty);
     asObject(baseValue)->getPrivateField(globalObject, property, slot);
     LLINT_CHECK_EXCEPTION();
 
@@ -2314,6 +2314,16 @@ extern "C" void llint_write_barrier_slow(CallFrame* callFrame, JSCell* cell)
 {
     VM& vm = callFrame->codeBlock()->vm();
     vm.heap.writeBarrier(cell);
+}
+
+extern "C" SlowPathReturnType llint_check_vm_entry_permission(VM* vm, ProtoCallFrame*)
+{
+    ASSERT_UNUSED(vm, vm->disallowVMEntryCount);
+    if (Options::crashOnDisallowedVMEntry())
+        CRASH();
+
+    // Else return, and let doVMEntry return undefined.
+    return encodeResult(nullptr, nullptr);
 }
 
 extern "C" void llint_dump_value(EncodedJSValue value);

@@ -6201,7 +6201,7 @@ void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext)
 {
     IntRect caret;
     if (auto range = targetFrame->selection().selection().toNormalizedRange())
-        caret = targetFrame->editor().firstRectForRange(createLiveRange(*range).ptr());
+        caret = targetFrame->editor().firstRectForRange(*range);
     caret = targetFrame->view()->contentsToWindow(caret);
     caret.scale(deviceScaleFactor());
 
@@ -6457,14 +6457,14 @@ LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* c
     if (charPos->dwCharPos && !targetFrame->editor().hasComposition())
         return 0;
     IntRect caret;
-    RefPtr<Range> range;
+    Optional<SimpleRange> range;
     if (targetFrame->editor().hasComposition())
         range = targetFrame->editor().compositionRange();
     else
-        range = createLiveRange(targetFrame->selection().selection().toNormalizedRange());
+        range = targetFrame->selection().selection().toNormalizedRange();
     if (range) {
-        range->setStart(range->startContainer(), range->startOffset() + charPos->dwCharPos);
-        caret = targetFrame->editor().firstRectForRange(range.get());
+        range->start.offset += charPos->dwCharPos;
+        caret = targetFrame->editor().firstRectForRange(*range);
     }
     caret = targetFrame->view()->contentsToWindow(caret);
     caret.scale(deviceScaleFactor());
@@ -7765,17 +7765,14 @@ HRESULT WebView::compositionRangeForTesting(_Out_ UINT* startPosition, _Out_ UIN
     if (!frame.editor().canEdit())
         return E_FAIL;
 
-    RefPtr<Range> range = frame.editor().compositionRange();
-
+    auto range = frame.editor().compositionRange();
     if (!range)
         return E_FAIL;
 
-    *startPosition = range->startOffset();
-    *length = range->startOffset() + range->endOffset();
-
+    *startPosition = range->start.offset;
+    *length = range->start.offset + range->end.offset;
     return S_OK;
 }
-
 
 HRESULT WebView::firstRectForCharacterRangeForTesting(UINT location, UINT length, _Out_ RECT* resultRect)
 {
@@ -7791,12 +7788,8 @@ HRESULT WebView::firstRectForCharacterRangeForTesting(UINT location, UINT length
         return E_FAIL;
 
     auto characterRange = CharacterRange(location, length);
-    RefPtr<Range> range = createLiveRange(resolveCharacterRange(makeRangeSelectingNodeContents(*element), characterRange));
-
-    if (!range)
-        return E_FAIL;
-
-    IntRect rect = frame.editor().firstRectForRange(range.get());
+    auto range = resolveCharacterRange(makeRangeSelectingNodeContents(*element), characterRange);
+    IntRect rect = frame.editor().firstRectForRange(range);
     IntRect resultIntRect = frame.view()->contentsToWindow(rect);
 
     resultIntRect.scale(deviceScaleFactor());
@@ -7822,7 +7815,7 @@ HRESULT WebView::selectedRangeForTesting(_Out_ UINT* location, _Out_ UINT* lengt
 
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
-    RefPtr<Range> range = frame.editor().selectedRange();
+    auto range = frame.editor().selectedRange();
     if (!range)
         return E_FAIL;
 

@@ -1,3 +1,146 @@
+2020-07-23  Keith Miller  <keith_miller@apple.com>
+
+        iOS simulator does not support WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=191064
+
+        Reviewed by Yusuke Suzuki.
+
+        Now that it seems we can JIT in the Simulator we should enable
+        WebAssembly there. This just means enabling FTL/B3 so WASM gets
+        enabled.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-07-23  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Datalist dropdown scrollbar position does not match visible region
+        https://bugs.webkit.org/show_bug.cgi?id=214656
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/PlatformHave.h: Define HAVE_NSTABLEVIEWSTYLE.
+
+2020-07-23  Brady Eidson  <beidson@apple.com>
+
+        Add Gamepad tests that exercise the native frameworks
+        <rdar://problem/65343674> and https://bugs.webkit.org/show_bug.cgi?id=214188
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformHave.h:
+
+2020-07-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r264745.
+        https://bugs.webkit.org/show_bug.cgi?id=214681
+
+        Broke 3 web-platform-tests on iOS
+
+        Reverted changeset:
+
+        "iOS simulator does not support WebAssembly"
+        https://bugs.webkit.org/show_bug.cgi?id=191064
+        https://trac.webkit.org/changeset/264745
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add feature flag for WebM & VP9
+        https://bugs.webkit.org/show_bug.cgi?id=214672
+        <rdar://problem/65959506>
+
+        Reviewed by Beth Dakin.
+
+        * wtf/PlatformEnableCocoa.h:
+
+2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Update macOS Version macros
+        https://bugs.webkit.org/show_bug.cgi?id=214653
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * wtf/PlatformHave.h:
+
+2020-07-22  Keith Miller  <keith_miller@apple.com>
+
+        iOS simulator does not support WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=191064
+
+        Reviewed by Yusuke Suzuki.
+
+        Now that it seems we can JIT in the Simulator we should enable
+        WebAssembly there. This just means enabling FTL/B3 so WASM gets
+        enabled.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-07-22  Geoffrey Garen  <ggaren@apple.com>
+
+        WTF::Function adoption should be explicit instead of implicit
+        https://bugs.webkit.org/show_bug.cgi?id=214654
+
+        Reviewed by Darin Adler.
+
+        * wtf/Function.h:
+        (WTF::Function<Out):
+        (WTF::adoptImpl): Added an adopt function for Functions and made the
+        adopting constructor private.
+
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::dispatch): Use new adopt function.
+
+2020-07-22  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r264710; add a HAVE_AVPLAYER_VIDEORANGEOVERRIDE guard.
+
+        * wtf/PlatformHave.h:
+
+2020-07-22  Geoffrey Garen  <ggaren@apple.com>
+
+        JSRunLoopTimer should use WTF::RunLoop rather than custom CF code
+        https://bugs.webkit.org/show_bug.cgi?id=214102
+
+        Unreviewed, re-landing r264242 with crash fixed.
+
+        To support JSC using external locking around a RunLoop timer, we needed
+        to avoid modifying unsynchronized timer state while firing.
+
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::TimerBase::start):
+
+2020-07-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Use AVRoutePickerView when available for choosing AirPlay devices
+        https://bugs.webkit.org/show_bug.cgi?id=213497
+        <rdar://problem/58610662>
+
+        Reviewed by Jer Noble.
+
+        * wtf/PlatformHave.h: Define HAVE_AVROUTEPICKERVIEW.
+
+2020-07-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [ECMA-402] Implement Intl.DisplayNames
+        https://bugs.webkit.org/show_bug.cgi?id=209779
+
+        Reviewed by Ross Kirsling.
+
+        * wtf/text/StringView.h:
+
+2020-07-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Non unified build fixes, midsummer 2020 edition
+        https://bugs.webkit.org/show_bug.cgi?id=213616
+
+        Unreviewed build fix.
+
+        * wtf/text/StringParsingBuffer.h: Add missing inclusion of wtf/text/StringView.h,
+        and removed other now-unneeded header inclusions.
+
 2020-07-19  Geoffrey Garen  <ggaren@apple.com>
 
         There should be only one RunLoop Timer class
