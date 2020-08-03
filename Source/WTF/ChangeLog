@@ -1,3 +1,158 @@
+2020-08-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r265097, r265113, and r265122.
+        https://bugs.webkit.org/show_bug.cgi?id=215065
+
+        Broke AppleSilicon Big Sur
+
+        Reverted changesets:
+
+        "Strip pointers instead of authing for byteOffset to not allow
+        for a possible way to guess data pac"
+        https://bugs.webkit.org/show_bug.cgi?id=214952
+        https://trac.webkit.org/changeset/265097
+
+        "Compute number of PAC bits from what the OS says its address
+        space is"
+        https://bugs.webkit.org/show_bug.cgi?id=214986
+        https://trac.webkit.org/changeset/265113
+
+        "Remove UB from nonPACBitsMask computation"
+        https://bugs.webkit.org/show_bug.cgi?id=214996
+        https://trac.webkit.org/changeset/265122
+
+2020-07-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Have TimingScope track the max event duration
+        https://bugs.webkit.org/show_bug.cgi?id=215006
+
+        Reviewed by Tim Horton.
+
+        Have TimingScope track and print the longest event, as well as the count and
+        mean duration.
+
+        * wtf/TimingScope.cpp:
+        (WTF::TimingScope::scopeDidEnd):
+
+2020-07-30  Keith Miller  <keith_miller@apple.com>
+
+        Remove UB from nonPACBitsMask computation
+        https://bugs.webkit.org/show_bug.cgi?id=214996
+
+        Reviewed by Tadeu Zagallo.
+
+        For non-ARM64E we now set numberOfPACBits to zero, which was causing UB in our computation of the nonPACBitsMask.
+
+        * wtf/CagedPtr.h:
+
+2020-07-30  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Adopt -[AVContentKeyRequest willOutputBeObscuredDueToInsufficientExternalProtectionForDisplays:]
+        https://bugs.webkit.org/show_bug.cgi?id=214659
+        <rdar://problem/63555006>
+
+        Reviewed by Darin Adler.
+        
+        Add a new Observer template class. This allows classes to provide support for listeners without requiring
+        those listeners to subclass from a pure-virtual (and CanMakeWeakPtr capable) client class. Instead, clients
+        can just create one of these Observer objects, and pass a WeakPtr to that observer to the notifying object.
+        When the client object destroys the observer, it is automatically unregistered when the observing object
+        uses a WeakHashSet.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Observer.h: Added.
+        (WTF::Observer<Out):
+
+2020-07-30  Keith Miller  <keith_miller@apple.com>
+
+        Compute number of PAC bits from what the OS says its address space is
+        https://bugs.webkit.org/show_bug.cgi?id=214986
+
+        Reviewed by Saam Barati.
+
+        * wtf/CagedPtr.h:
+        * wtf/PtrTag.h:
+
+2020-07-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win Debug] Unreviewed build fix
+
+        > JavaScriptCore/runtime/JSArrayBufferView.cpp(51): error C2660: 'Gigacage::isEnabled': function does not take 0 arguments
+
+        * wtf/Gigacage.h:
+        (Gigacage::isEnabled): Added isEnabled taking no argument which was adeed to bmalloc in r249556 (Bug 201521).
+
+2020-07-29  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove USE(ZLIB)
+        https://bugs.webkit.org/show_bug.cgi?id=214929
+
+        Reviewed by Darin Adler.
+
+        Remove setting a default value of USE_ZLIB.
+
+        * wtf/PlatformUse.h:
+
+2020-07-28  Karl Rackler  <rackler@apple.com>
+
+        Unreviewed, reverting r264955.
+
+        Reverting because this commit may have caused issues with
+        tests.
+
+        Reverted changeset:
+
+        "WebCoreResourceHandleAsOperationQueueDelegate can use
+        RunLoop::dispatch"
+        https://bugs.webkit.org/show_bug.cgi?id=214771
+        https://trac.webkit.org/changeset/264955
+
+2020-07-27  Geoffrey Garen  <ggaren@apple.com>
+
+        WebCoreResourceHandleAsOperationQueueDelegate can use RunLoop::dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=214771
+
+        Reviewed by Darin Adler.
+
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::dispatch): Migrated the optimization from
+        WebCoreResourceHandleAsOperationQueueDelegate. All Cocoa WebViews begin
+        life with a single SchedulePair scheduled in kCFRunLoopCommonModes, so
+        this optimization is the common case.
+
+        (Note that I did not copy the kCFRunLoopDefaultMode clause from
+        the WebCoreResourceHandleAsOperationQueueDelegate optimization. That's
+        because it's not the common case, and also because it's not correct to
+        do a vanilla disptach() in the case of kCFRunLoopDefaultMode because a
+        vanilla dispatch() would use kCFRunLoopCommonModes.)
+
+2020-07-27  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Disable BIGINT32 optimization temporarily because of SP2 / JS2 regression
+        https://bugs.webkit.org/show_bug.cgi?id=214776
+
+        Reviewed by Darin Adler.
+
+        We disable BIGINT32 optimization because it causes 1% regression in JetStream2 and Speedometer2.
+        We should enable it after we fix the cause of regression.
+
+        * wtf/PlatformUse.h:
+
+2020-07-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE][GTK] Add API to support "Privacy Report"
+        https://bugs.webkit.org/show_bug.cgi?id=213493
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add support for using GRefPtr with GDateTime.
+
+        * wtf/glib/GRefPtr.cpp:
+        (WTF::refGPtr):
+        (WTF::derefGPtr):
+        * wtf/glib/GRefPtr.h:
+
 2020-07-23  Keith Miller  <keith_miller@apple.com>
 
         iOS simulator does not support WebAssembly

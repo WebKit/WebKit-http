@@ -443,6 +443,7 @@ namespace JSC {
 
         void emitJumpSlowCaseIfNotJSCell(VirtualRegister);
         void emitJumpSlowCaseIfNotJSCell(VirtualRegister, RegisterID tag);
+        void emitJumpSlowCaseIfNotJSCell(RegisterID);
 
         void compileGetByIdHotPath(const Identifier*);
 
@@ -527,6 +528,7 @@ namespace JSC {
         void emit_op_get_by_id_with_this(const Instruction*);
         void emit_op_get_by_id_direct(const Instruction*);
         void emit_op_get_by_val(const Instruction*);
+        void emit_op_get_private_name(const Instruction*);
         void emit_op_get_argument_by_val(const Instruction*);
         void emit_op_get_prototype_of(const Instruction*);
         void emit_op_in_by_id(const Instruction*);
@@ -657,6 +659,7 @@ namespace JSC {
         void emitSlow_op_get_by_id_with_this(const Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_by_id_direct(const Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_by_val(const Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_get_private_name(const Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_argument_by_val(const Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_in_by_id(const Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof(const Instruction*, Vector<SlowCaseEntry>::iterator&);

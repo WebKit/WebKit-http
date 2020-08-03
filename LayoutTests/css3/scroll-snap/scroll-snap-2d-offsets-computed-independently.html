@@ -3,11 +3,11 @@
     <head>
         <style>
             #container {
+                position: absolute;
                 width: 400px;
                 height: 400px;
                 overflow: auto;
                 scroll-snap-type: both mandatory;
-                position: absolute;
                 left: 0px;
                 top: 0px;
                 margin: 0;
@@ -59,7 +59,7 @@
             setTimeout(() => {
                 debug(`The scroll offsets are: ${internals.scrollSnapOffsets(container)}`);
                 finishJSTest();
-            }, 1000);
+            }, 0);
         }
         </script>
     </head>

@@ -40,7 +40,6 @@
 #include "NodeRenderStyle.h"
 #include "NodeTraversal.h"
 #include "PseudoElement.h"
-#include "Range.h"
 #include "ScriptDisallowedScope.h"
 #include "Text.h"
 #include "TextIterator.h"
@@ -143,10 +142,18 @@ static bool isTokenDelimiter(UChar character)
     return isHTMLLineBreak(character) || isInPrivateUseArea(character);
 }
 
+static bool isNotSpace(UChar character)
+{
+    if (character == noBreakSpace)
+        return false;
+
+    return isNotHTMLSpace(character);
+}
+
 class ParagraphContentIterator {
 public:
     ParagraphContentIterator(const Position& start, const Position& end)
-        : m_iterator({ *makeBoundaryPoint(start), *makeBoundaryPoint(end) }, TextIteratorIgnoresStyleVisibility)
+        : m_iterator(*makeSimpleRange(start, end), TextIteratorIgnoresStyleVisibility)
         , m_node(start.firstNode())
         , m_pastEndNode(end.firstNode())
     {
@@ -313,6 +320,9 @@ static bool isEnclosingItemBoundaryElement(const Element& element)
         }
     }
 
+    if (element.hasTagName(HTMLNames::tdTag) && displayType == DisplayType::TableCell)
+        return true;
+
     if (element.hasTagName(HTMLNames::spanTag) && displayType == DisplayType::InlineBlock)
         return true;
 
@@ -388,7 +398,7 @@ void TextManipulationController::parse(ManipulationUnit& unit, const String& tex
             unit.tokens.append(ManipulationToken { m_tokenIdentifier.generate(), stringForToken, tokenInfo(&textNode), true });
             startPositionOfCurrentToken = index + 1;
             unit.lastTokenContainsDelimiter = true;
-        } else if (isNotHTMLSpace(character)) {
+        } else if (isNotSpace(character)) {
             if (!isNodeExcluded)
                 unit.areAllTokensExcluded = false;
             positionOfLastNonHTMLSpace = index;

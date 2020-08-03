@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-struct PeriodicWaveOptions : public PeriodicWaveConstraints {
+struct PeriodicWaveOptions : PeriodicWaveConstraints {
     Optional<Vector<float>> real;
     Optional<Vector<float>> imag;
 };

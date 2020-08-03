@@ -92,5 +92,39 @@ webkit.org/b/207496 http/wpt/cache-storage/cache-put-keys.https.any.html [ Pass 
 
 webkit.org/b/214422 imported/w3c/web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/suspend-after-construct.html [ Pass Failure ]
 
-webkit.org/b/214688 editing/selection/shift-click-includes-existing-selection.html [ Pass Failure ]
+webkit.org/b/214730 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCCertificate-postMessage.html [ Skip ]
+webkit.org/b/214730 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCCertificate.html [ Skip ]
+webkit.org/b/214730 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-generateCertificate.html [ Skip ]
+webkit.org/b/214730 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCSctpTransport-constructor.html [ Skip ]
+webkit.org/b/214661 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCSctpTransport-events.html [ Skip ]
+webkit.org/b/214730 [ Debug ] webrtc/simulcast-h264.html [ Skip ]
 
+webkit.org/b/214358 fast/scrolling/ios/programmatic-scroll-while-zoomed.html [ Pass Failure ]
+
+webkit.org/b/214731 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/key-generators/reading-autoincrement-store-cursors.any.serviceworker.html [ Pass Failure ]
+
+webkit.org/b/214732 imported/w3c/web-platform-tests/IndexedDB/key-generators/reading-autoincrement-store.any.serviceworker.html [ Pass Failure ]
+
+webkit.org/b/214734 [ Debug ] imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/moving-between-documents/before-prepare-createHTMLDocument-fetch-error-external-module.html [ Pass Failure ]
+
+webkit.org/b/214735 http/tests/security/xssAuditor/cached-frame.html [ Pass Timeout ]
+
+webkit.org/b/214736 imported/w3c/web-platform-tests/css/css-flexbox/align-self-014.html [ Pass Timeout ]
+
+webkit.org/b/214739 [ Debug ] imported/w3c/web-platform-tests/css/css-flexbox/getcomputedstyle/flexbox_computedstyle_align-content-center.html [ Pass Timeout ]
+
+webkit.org/b/214751 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-canvas-element/security.pattern.fillStyle.sub.html [ Pass Failure ]
+
+webkit.org/b/214752 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/resize-during-playback.html [ Pass Failure ]
+
+webkit.org/b/214755 http/tests/navigation/subframe-pagehide-handler-starts-load2.html [ Pass Timeout ]
+
+webkit.org/b/214757 imported/w3c/web-platform-tests/css/css-fonts/crash-font-face-invalid-descriptor.html [ Pass Timeout ]
+
+webkit.org/b/214824 [ Debug ] js/throw-large-string-oom.html [ Skip ]
+
+webkit.org/b/214877 imported/w3c/web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-drawImage.html [ Pass Failure ]
+
+webkit.org/b/215025 imported/w3c/web-platform-tests/webrtc/RTCSctpTransport-maxChannels.html [ Crash ]
+
+webkit.org/b/215033 imported/w3c/web-platform-tests/websockets/cookies/third-party-cookie-accepted.https.html [ Pass Failure ]

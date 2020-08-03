@@ -35,16 +35,6 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-extern const NSImageHintKey NSImageHintSymbolFont;
-extern const NSImageHintKey NSImageHintSymbolScale;
-
-typedef NS_ENUM(NSInteger, NSImageSymbolScale) {
-    NSImageSymbolScaleDefault = -1,
-    NSImageSymbolScaleSmall = 1,
-    NSImageSymbolScaleMedium = 2,
-    NSImageSymbolScaleLarge = 3,
-};
-
 @interface NSImage ()
 - (void)lockFocusWithRect:(NSRect)rect context:(nullable NSGraphicsContext *)context hints:(nullable NSDictionary *)hints flipped:(BOOL)flipped;
 @end
@@ -52,6 +42,17 @@ typedef NS_ENUM(NSInteger, NSImageSymbolScale) {
 @interface NSImage (NSSystemSymbols)
 + (nullable NSImage *)_imageWithSystemSymbolName:(NSString *) symbolName;
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif
+
+#if HAVE(ALTERNATE_ICONS)
+
+NS_ASSUME_NONNULL_BEGIN
+
+extern const NSImageHintKey NSImageHintSymbolFont;
+extern const NSImageHintKey NSImageHintSymbolScale;
 
 NS_ASSUME_NONNULL_END
 

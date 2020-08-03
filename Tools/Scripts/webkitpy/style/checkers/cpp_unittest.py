@@ -41,7 +41,9 @@ import os.path
 import random
 import re
 import unittest
-from webkitpy.common.unicode_compatibility import decode_if_necessary
+
+from webkitcorepy import string_utils
+
 from webkitpy.style.checkers import cpp as cpp_style
 from webkitpy.style.checkers.cpp import CppChecker
 from webkitpy.style.filter import FilterConfiguration
@@ -2465,7 +2467,7 @@ class CppStyleTest(CppStyleTestBase):
         def do_test(self, raw_bytes, has_invalid_utf8):
             error_collector = ErrorCollector(self.assertTrue)
             self.process_file_data('foo.cpp', 'cpp',
-                                   decode_if_necessary(raw_bytes, encoding='utf8', errors='replace').split('\n'),
+                                   string_utils.decode(raw_bytes, encoding='utf8', errors='replace').split('\n'),
                                    error_collector)
             # The warning appears only once.
             self.assertEqual(
@@ -5946,6 +5948,79 @@ class WebKitStyleTest(CppStyleTestBase):
                           self.perform_lint('void funct(PassRefPtr<ScriptExecutionContext> context)\n'
                                             '{\n'
                                             '}\n', 'test.cpp', parameter_error_rules))
+
+    def test_identifier_names_with_acronyms(self):
+        identifier_error_rules = ('-',
+                                  '+readability/naming/acronym')
+
+        # Start of parameter name.
+        error_start = 'The identifier name "%s" starts with a acronym that is not all lowercase.'\
+                      '  [readability/naming/acronym] [5]'
+
+        self.assertEqual('',
+                         self.perform_lint('void load(URL url);', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_start % 'Url',
+                         self.perform_lint('void load(URL Url);', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_start % 'URL',
+                         self.perform_lint('void load(URL URL);', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('void load(URL urlToLoad);', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_start % 'UrlToLoad',
+                         self.perform_lint('void load(URL UrlToLoad);', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_start % 'URLToLoad',
+                         self.perform_lint('void load(URL URLToLoad);', 'test.cpp', identifier_error_rules))
+
+        self.assertEqual('',
+                         self.perform_lint('friend class URL;', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('enum class URLPart;', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('using namespace URLHelpers;', 'test.cpp', identifier_error_rules))
+
+        self.assertEqual('',
+                         self.perform_lint('explicit URL(HashTableDeletedValueType);', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('WTF_EXPORT_PRIVATE URL(CFURLRef);', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('void URL::invalidate()', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('void URL::URL(const URL& base, const String& relative, const URLTextEncoding* encoding)', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('URL URL::isolatedCopy() const', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('URLParser::URLParser(const String& input, const URL& base, const URLTextEncoding* nonUTF8QueryEncoding)', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('bool URLParser::internalValuesConsistent(const URL& url)', 'test.cpp', identifier_error_rules))
+
+        self.assertEqual('',
+                         self.perform_lint('String m_url;', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('JSRetainPtr<JSStringRef> AccessibilityUIElement::url()', 'test.cpp', identifier_error_rules))
+
+        self.assertEqual(error_start % 'Url::Url',
+                         self.perform_lint('void Url::Url()', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_start % 'UrlParse::UrlParse',
+                         self.perform_lint('void UrlParse::UrlParse()', 'test.cpp', identifier_error_rules))
+
+        # FIXME: Hard to check middle words without knowing that the word to the left doesn't end with an acronym.
+
+        error_end = 'The identifier name "%s" ends with a acronym that is not all uppercase.'\
+                    '  [readability/naming/acronym] [5]'
+
+        # End of parameter name.
+        self.assertEqual(error_end % 'loadurl',
+                         self.perform_lint('void load(URL loadurl);', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_end % 'loadUrl',
+                         self.perform_lint('void load(URL loadUrl);', 'test.cpp', identifier_error_rules))
+        self.assertEqual('',
+                         self.perform_lint('void load(URL loadURL);', 'test.cpp', identifier_error_rules))
+
+        self.assertEqual('',
+                         self.perform_lint('void InspectorFrontendHost::inspectedURLChanged(const String& newURL)', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_end % 'testPathOrUrl',
+                         self.perform_lint('static void changeWindowScaleIfNeeded(const char* testPathOrUrl)', 'test.cpp', identifier_error_rules))
+        self.assertEqual(error_end % 'localPathOrUrl',
+                         self.perform_lint('auto localPathOrUrl = String(testPathOrURL);', 'test.cpp', identifier_error_rules))
 
     def test_comments(self):
         # A comment at the beginning of a line is ok.

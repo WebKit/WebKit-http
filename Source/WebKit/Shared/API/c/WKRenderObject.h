@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKRenderObject_h
-#define WKRenderObject_h
+#pragma once
 
 #include <WebKit/WKBase.h>
 #include <WebKit/WKGeometry.h>
@@ -33,21 +32,19 @@
 extern "C" {
 #endif
 
-WK_EXPORT WKTypeID WKRenderObjectGetTypeID(void);
+WK_EXPORT void WKRenderObjectGetTypeID(void);
 
-WK_EXPORT WKStringRef WKRenderObjectCopyName(WKRenderObjectRef renderObject);
-WK_EXPORT WKStringRef WKRenderObjectCopyTextSnippet(WKRenderObjectRef renderObject);
-WK_EXPORT unsigned WKRenderObjectGetTextLength(WKRenderObjectRef renderObject);
-WK_EXPORT WKStringRef WKRenderObjectCopyElementTagName(WKRenderObjectRef renderObject);
-WK_EXPORT WKStringRef WKRenderObjectCopyElementID(WKRenderObjectRef renderObject);
-WK_EXPORT WKArrayRef WKRenderObjectGetElementClassNames(WKRenderObjectRef renderObject);
+WK_EXPORT void WKRenderObjectCopyName(void);
+WK_EXPORT void WKRenderObjectCopyTextSnippet(void);
+WK_EXPORT void WKRenderObjectGetTextLength(void);
+WK_EXPORT void WKRenderObjectCopyElementTagName(void);
+WK_EXPORT void WKRenderObjectCopyElementID(void);
+WK_EXPORT void WKRenderObjectGetElementClassNames(void);
 
-WK_EXPORT WKPoint WKRenderObjectGetAbsolutePosition(WKRenderObjectRef renderObject);
-WK_EXPORT WKRect WKRenderObjectGetFrameRect(WKRenderObjectRef renderObject);
-WK_EXPORT WKArrayRef WKRenderObjectGetChildren(WKRenderObjectRef renderObject);
+WK_EXPORT void WKRenderObjectGetAbsolutePosition(void);
+WK_EXPORT void WKRenderObjectGetFrameRect(void);
+WK_EXPORT void WKRenderObjectGetChildren(void);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif // WKRenderObject_h

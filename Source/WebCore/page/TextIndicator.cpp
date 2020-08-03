@@ -177,20 +177,6 @@ static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapsho
     return true;
 }
 
-#if PLATFORM(IOS_FAMILY)
-
-static Vector<FloatRect> selectionRects(const SimpleRange& range)
-{
-    Vector<SelectionRect> selectionRects;
-    createLiveRange(range)->collectSelectionRects(selectionRects);
-    Vector<FloatRect> rects;
-    for (auto& selectionRect : selectionRects)
-        rects.append(selectionRect.rect());
-    return rects;
-}
-
-#endif
-
 static bool styleContainsComplexBackground(const RenderStyle& style)
 {
     return style.hasBlendMode() || style.hasBackgroundImage() || style.hasBackdropFilter();
@@ -224,7 +210,7 @@ static Color estimatedBackgroundColorForRange(const SimpleRange& range, const Fr
     auto estimatedBackgroundColor = frame.view() ? frame.view()->documentBackgroundColor() : Color::transparentBlack;
 
     RenderElement* renderer = nullptr;
-    auto commonAncestor = commonInclusiveAncestor(range.start.container, range.end.container);
+    auto commonAncestor = commonInclusiveAncestor(range);
     while (commonAncestor) {
         if (is<RenderElement>(commonAncestor->renderer())) {
             renderer = downcast<RenderElement>(commonAncestor->renderer());
@@ -309,15 +295,18 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Sim
 
     bool useBoundingRectAndPaintAllContentForComplexRanges = data.options.contains(TextIndicatorOption::UseBoundingRectAndPaintAllContentForComplexRanges);
     if (useBoundingRectAndPaintAllContentForComplexRanges && containsOnlyWhiteSpaceText(range)) {
-        if (auto* containerRenderer = commonInclusiveAncestor(range.start.container, range.end.container)->renderer()) {
+        if (auto* containerRenderer = commonInclusiveAncestor(range)->renderer()) {
             data.options.add(TextIndicatorOption::PaintAllContent);
             textRects.append(containerRenderer->absoluteBoundingBoxRect());
         }
     } else if (useBoundingRectAndPaintAllContentForComplexRanges && (treatRangeAsComplexDueToIllegibleTextColors || hasNonInlineOrReplacedElements(range)))
         data.options.add(TextIndicatorOption::PaintAllContent);
 #if PLATFORM(IOS_FAMILY)
-    else if (data.options.contains(TextIndicatorOption::UseSelectionRectForSizing))
-        textRects = selectionRects(range);
+    else if (data.options.contains(TextIndicatorOption::UseSelectionRectForSizing)) {
+        textRects = RenderObject::collectSelectionRects(range).map([&](const auto& rect) -> FloatRect {
+            return rect.rect();
+        });
+    }
 #endif
     else {
         auto textRectHeight = data.options.contains(TextIndicatorOption::TightlyFitContent) ? FrameSelection::TextRectangleHeight::TextHeight : FrameSelection::TextRectangleHeight::SelectionHeight;

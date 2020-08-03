@@ -64,10 +64,12 @@ namespace WebKit {
 
 void WebPage::platformDidReceiveLoadParameters(const LoadParameters& parameters)
 {
+#if HAVE(LSDATABASECONTEXT)
     bool databaseUpdated = LaunchServicesDatabaseManager::singleton().waitForDatabaseUpdate(5_s);
     ASSERT_UNUSED(databaseUpdated, databaseUpdated);
     if (!databaseUpdated)
         WTFLogAlways("Timed out waiting for Launch Services database update.");
+#endif
 
     m_dataDetectionContext = parameters.dataDetectionContext;
 
@@ -127,7 +129,7 @@ void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
         return;
 
     auto [range, options] = WTFMove(*rangeResult);
-    performDictionaryLookupForRange(*frame, createLiveRange(range), options, TextIndicatorPresentationTransition::Bounce);
+    performDictionaryLookupForRange(*frame, range, options, TextIndicatorPresentationTransition::Bounce);
 }
 
 void WebPage::performDictionaryLookupForSelection(Frame& frame, const VisibleSelection& selection, TextIndicatorPresentationTransition presentationTransition)
@@ -137,7 +139,7 @@ void WebPage::performDictionaryLookupForSelection(Frame& frame, const VisibleSel
         return;
 
     auto [range, options] = WTFMove(*result);
-    performDictionaryLookupForRange(frame, createLiveRange(range), options, presentationTransition);
+    performDictionaryLookupForRange(frame, range, options, presentationTransition);
 }
 
 void WebPage::performDictionaryLookupOfCurrentSelection()

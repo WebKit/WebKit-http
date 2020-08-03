@@ -1,3 +1,52 @@
+2020-07-29  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] 2.29.4 fails to link on armv7hl
+        https://bugs.webkit.org/show_bug.cgi?id=214934
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Link ANGLE to with -ldl
+
+        * CMakeLists.txt:
+
+2020-07-29  Kenneth Russell  <kbr@chromium.org>
+
+        Roll ANGLE to 2020-07-28
+        https://bugs.webkit.org/show_bug.cgi?id=214897
+
+        Reviewed by Alex Christensen.
+
+        Roll to current ANGLE revision. Large ChangeLog below has been
+        truncated except for a few significant files.
+
+        Add dependency on zlib wrapper in third_party/zlib/google for both
+        Xcode and CMake builds. Small change to this wrapper for the
+        WinCairo build's system zlib, which doesn't define z_const.
+
+        * .gitignore:
+        * ANGLE.plist:
+        * ANGLE.xcodeproj/project.pbxproj:
+        * CMakeLists.txt:
+        * Configurations/ANGLE-dynamic.xcconfig:
+        * Configurations/ANGLE-static.xcconfig:
+        * GLESv2.cmake:
+        * PlatformWin.cmake:
+        * third_party/zlib/google/compression_utils_portable.cc: Added.
+        * third_party/zlib/google/compression_utils_portable.h: Added.
+
+2020-07-28  Kenneth Russell  <kbr@chromium.org>
+
+        Pause during ANGLE roll script after rebasing and before deleting temporary Git repo
+        https://bugs.webkit.org/show_bug.cgi?id=212717
+
+        Reviewed by Dean Jackson.
+
+        Give the user the opportunity to manually examine the changes
+        relative to upstream ANGLE, and to undo any accidental or
+        undesired ones, before finishing the roll.
+
+        * update-angle.sh:
+
 2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
 
         Update macOS Version macros

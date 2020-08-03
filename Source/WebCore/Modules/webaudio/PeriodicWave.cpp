@@ -45,7 +45,6 @@ namespace WebCore {
     
 using namespace VectorMath;
 
-// FIXME: Remove once old constructor is phased out
 Ref<PeriodicWave> PeriodicWave::create(float sampleRate, Float32Array& real, Float32Array& imaginary)
 {
     ASSERT(real.length() == imaginary.length());
@@ -57,6 +56,11 @@ Ref<PeriodicWave> PeriodicWave::create(float sampleRate, Float32Array& real, Flo
 
 ExceptionOr<Ref<PeriodicWave>> PeriodicWave::create(BaseAudioContext& context, PeriodicWaveOptions&& options)
 {
+    if (context.isStopped())
+        return Exception { InvalidStateError };
+
+    context.lazyInitialize();
+
     Vector<float> real;
     Vector<float> imag;
     

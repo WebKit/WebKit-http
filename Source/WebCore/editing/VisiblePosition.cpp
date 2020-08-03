@@ -39,6 +39,7 @@
 #include "Range.h"
 #include "RenderBlock.h"
 #include "RootInlineBox.h"
+#include "SimpleRange.h"
 #include "Text.h"
 #include "VisibleUnits.h"
 #include <stdio.h>
@@ -730,53 +731,6 @@ void VisiblePosition::showTreeForThis() const
 
 #endif
 
-RefPtr<Range> makeRange(const VisiblePosition& start, const VisiblePosition& end)
-{
-    if (start.isNull() || end.isNull())
-        return nullptr;
-    
-    Position s = start.deepEquivalent().parentAnchoredEquivalent();
-    Position e = end.deepEquivalent().parentAnchoredEquivalent();
-    if (s.isNull() || e.isNull())
-        return nullptr;
-
-    return Range::create(s.containerNode()->document(), s.containerNode(), s.offsetInContainerNode(), e.containerNode(), e.offsetInContainerNode());
-}
-
-VisiblePosition startVisiblePosition(const Range *r, EAffinity affinity)
-{
-    return VisiblePosition(r->startPosition(), affinity);
-}
-
-VisiblePosition endVisiblePosition(const Range *r, EAffinity affinity)
-{
-    return VisiblePosition(r->endPosition(), affinity);
-}
-
-bool setStart(Range* range, const VisiblePosition& visiblePosition)
-{
-    if (!range)
-        return false;
-
-    Position p = visiblePosition.deepEquivalent().parentAnchoredEquivalent();
-    if (!p.containerNode())
-        return false;
-
-    return !range->setStart(*p.containerNode(), p.offsetInContainerNode()).hasException();
-}
-
-bool setEnd(Range* range, const VisiblePosition& visiblePosition)
-{
-    if (!range)
-        return false;
-
-    Position p = visiblePosition.deepEquivalent().parentAnchoredEquivalent();
-    if (!p.containerNode())
-        return false;
-
-    return !range->setEnd(*p.containerNode(), p.offsetInContainerNode()).hasException();
-}
-
 // FIXME: Maybe this should be deprecated too, like the underlying function?
 Element* enclosingBlockFlowElement(const VisiblePosition& visiblePosition)
 {
@@ -847,6 +801,11 @@ TextStream& operator<<(TextStream& stream, const VisiblePosition& visiblePositio
     stream.dumpProperty("affinity", visiblePosition.affinity());
 
     return stream;
+}
+
+Optional<SimpleRange> makeSimpleRange(const VisiblePositionRange& range)
+{
+    return makeSimpleRange(range.start, range.end);
 }
 
 }  // namespace WebCore

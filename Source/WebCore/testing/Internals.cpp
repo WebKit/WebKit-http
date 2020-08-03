@@ -1775,7 +1775,7 @@ ExceptionOr<RefPtr<Range>> Internals::markerRangeForNode(Node& node, const Strin
     auto marker = result.releaseReturnValue();
     if (!marker)
         return nullptr;
-    return RefPtr<Range> { Range::create(node.document(), &node, marker->startOffset(), &node, marker->endOffset()) };
+    return { createLiveRange(makeSimpleRange(node, *marker)) };
 }
 
 ExceptionOr<String> Internals::markerDescriptionForNode(Node& node, const String& markerType, unsigned index)
@@ -2154,12 +2154,12 @@ RefPtr<Range> Internals::rangeFromLocationAndLength(Element& scope, unsigned ran
 
 unsigned Internals::locationFromRange(Element& scope, const Range& range)
 {
-    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), range).location);
+    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), makeSimpleRange(range)).location);
 }
 
 unsigned Internals::lengthFromRange(Element& scope, const Range& range)
 {
-    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), range).length);
+    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), makeSimpleRange(range)).length);
 }
 
 String Internals::rangeAsText(const Range& range)
@@ -2170,19 +2170,19 @@ String Internals::rangeAsText(const Range& range)
 String Internals::rangeAsTextUsingBackwardsTextIterator(const Range& range)
 {
     String result;
-    for (SimplifiedBackwardsTextIterator backwardsIterator(range); !backwardsIterator.atEnd(); backwardsIterator.advance())
+    for (SimplifiedBackwardsTextIterator backwardsIterator(makeSimpleRange(range)); !backwardsIterator.atEnd(); backwardsIterator.advance())
         result.insert(backwardsIterator.text().toString(), 0);
     return result;
 }
 
 Ref<Range> Internals::subrange(Range& range, unsigned rangeLocation, unsigned rangeLength)
 {
-    return createLiveRange(resolveCharacterRange(range, { rangeLocation, rangeLength }));
+    return createLiveRange(resolveCharacterRange(makeSimpleRange(range), { rangeLocation, rangeLength }));
 }
 
-RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
+RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& range, const String& text, unsigned targetOffset)
 {
-    return createLiveRange(findClosestPlainText(searchRange, text, { }, targetOffset));
+    return createLiveRange(findClosestPlainText(makeSimpleRange(range), text, { }, targetOffset));
 }
 
 #if !PLATFORM(MAC)
@@ -3540,6 +3540,25 @@ ExceptionOr<unsigned> Internals::compositingUpdateCount()
         return Exception { InvalidAccessError };
 
     return document->renderView()->compositor().compositingUpdateCount();
+}
+
+ExceptionOr<void> Internals::startTrackingRenderingUpdates()
+{
+    Document* document = contextDocument();
+    if (!document)
+        return Exception { InvalidAccessError };
+
+    document->page()->startTrackingRenderingUpdates();
+    return { };
+}
+
+ExceptionOr<unsigned> Internals::renderingUpdateCount()
+{
+    Document* document = contextDocument();
+    if (!document)
+        return Exception { InvalidAccessError };
+
+    return document->page()->renderingUpdateCount();
 }
 
 ExceptionOr<void> Internals::setCompositingPolicyOverride(Optional<CompositingPolicy> policyOverride)
@@ -5152,6 +5171,15 @@ void Internals::setPageIsFocusedAndActive(bool isFocusedAndActive)
     page.setActivityState(state);
 }
 
+bool Internals::isPageActive() const
+{
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return false;
+    auto& page = *document->page();
+    return page.activityState().contains(ActivityState::WindowIsActive);
+}
+
 #if ENABLE(WEB_RTC)
 void Internals::setH264HardwareEncoderAllowed(bool allowed)
 {
@@ -5522,6 +5550,15 @@ bool Internals::usingAppleInternalSDK() const
 #endif
 }
 
+bool Internals::usingGStreamer() const
+{
+#if USE(GSTREAMER)
+    return true;
+#else
+    return false;
+#endif
+}
+
 void Internals::setCaptureExtraNetworkLoadMetricsEnabled(bool value)
 {
     platformStrategies()->loaderStrategy()->setCaptureExtraNetworkLoadMetricsEnabled(value);
@@ -5672,9 +5709,9 @@ void Internals::testDictionaryLogging()
     page->diagnosticLoggingClient().logDiagnosticMessageWithValueDictionary("testMessage"_s, "testDescription"_s, dictionary, ShouldSample::No);
 }
 
-void Internals::setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest& request, double interval)
+void Internals::setMaximumIntervalForUserGestureForwardingForFetch(double interval)
 {
-    request.setMaximumIntervalForUserGestureForwarding(interval);
+    UserGestureToken::setMaximumIntervalForUserGestureForwardingForFetchForTesting(Seconds(interval));
 }
 
 void Internals::setTransientActivationDuration(double seconds)
@@ -5719,7 +5756,7 @@ Internals::TextIndicatorInfo::~TextIndicatorInfo() = default;
 
 Internals::TextIndicatorInfo Internals::textIndicatorForRange(const Range& range, TextIndicatorOptions options)
 {
-    auto indicator = TextIndicator::createWithRange(range, options.coreOptions(), TextIndicatorPresentationTransition::None);
+    auto indicator = TextIndicator::createWithRange(makeSimpleRange(range), options.coreOptions(), TextIndicatorPresentationTransition::None);
     return indicator->data();
 }
 

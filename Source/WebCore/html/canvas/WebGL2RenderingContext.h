@@ -178,7 +178,6 @@ public:
     void uniformMatrix4fv(WebGLUniformLocation* location, GLboolean transpose, Float32List data, GLuint srcOffset, GLuint srcLength);
 
     // Writing to the drawing buffer
-    void clear(GCGLbitfield mask) final;
     void vertexAttribDivisor(GCGLuint index, GCGLuint divisor);
     void drawArraysInstanced(GCGLenum mode, GCGLint first, GCGLsizei count, GCGLsizei instanceCount);
     void drawElementsInstanced(GCGLenum mode, GCGLsizei count, GCGLenum type, GCGLint64 offset, GCGLsizei instanceCount);
@@ -255,12 +254,12 @@ public:
     void readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLintptr offset);
     void readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, ArrayBufferView& dstData, GLuint dstOffset);
 
-    void renderbufferStorage(GCGLenum target, GCGLenum internalformat, GCGLsizei width, GCGLsizei height) final;
-    void hint(GCGLenum target, GCGLenum mode) final;
     GCGLuint maxTransformFeedbackSeparateAttribs() const;
 
     GraphicsContextGLOpenGL::PixelStoreParams getPackPixelStoreParams() const override;
     GraphicsContextGLOpenGL::PixelStoreParams getUnpackPixelStoreParams(TexImageDimension) const override;
+
+    bool checkAndTranslateAttachments(const char* functionName, GCGLenum, Vector<GCGLenum>&);
 
 private:
     WebGL2RenderingContext(CanvasBase&, GraphicsContextGLAttributes);
@@ -297,6 +296,9 @@ private:
     WebGLFramebuffer* getReadFramebufferBinding() final;
     void restoreCurrentFramebuffer() final;
     bool validateNonDefaultFramebufferAttachment(const char* functionName, GCGLenum attachment);
+    bool validateQueryTarget(const char* functionName, GCGLenum target, GCGLenum* targetKey);
+    void renderbufferStorageImpl(GCGLenum target, GCGLsizei samples, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, const char* functionName) final;
+    void renderbufferStorageHelper(GCGLenum target, GCGLsizei samples, GCGLenum internalformat, GCGLsizei width, GCGLsizei height);
 
     GCGLenum baseInternalFormatFromInternalFormat(GCGLenum internalformat);
     bool isIntegerFormat(GCGLenum internalformat);
@@ -311,6 +313,9 @@ private:
     // Generate GL errors and return 0 if target is invalid or texture bound is
     // null. Otherwise, return the texture bound to the target.
     RefPtr<WebGLTexture> validateTexture3DBinding(const char* functionName, GCGLenum target);
+
+    bool validateTexFuncLayer(const char*, GLenum texTarget, GLint layer);
+    GCGLint maxTextureLevelForTarget(GCGLenum target) final;
 
 #if !USE(ANGLE)
     bool validateTexStorageFuncParameters(GCGLenum target, GCGLsizei levels, GCGLenum internalFormat, GCGLsizei width, GCGLsizei height, const char* functionName);
@@ -352,6 +357,9 @@ private:
     GCGLint m_unpackSkipImages { 0 };
     GCGLint m_uniformBufferOffsetAlignment { 0 };
     GCGLuint m_maxTransformFeedbackSeparateAttribs { 0 };
+    GCGLint m_max3DTextureSize { 0 };
+    GCGLint m_max3DTextureLevel { 0 };
+    GCGLint m_maxArrayTextureLayers { 0 };
 };
 
 } // namespace WebCore

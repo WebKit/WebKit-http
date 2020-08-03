@@ -323,91 +323,6 @@ WebGLAny WebGLRenderingContext::getFramebufferAttachmentParameter(GCGLenum targe
     }
 }
 
-void WebGLRenderingContext::renderbufferStorage(GCGLenum target, GCGLenum internalformat, GCGLsizei width, GCGLsizei height)
-{
-    if (isContextLostOrPending())
-        return;
-    if (target != GraphicsContextGL::RENDERBUFFER) {
-        synthesizeGLError(GraphicsContextGL::INVALID_ENUM, "renderbufferStorage", "invalid target");
-        return;
-    }
-    if (!m_renderbufferBinding || !m_renderbufferBinding->object()) {
-        synthesizeGLError(GraphicsContextGL::INVALID_OPERATION, "renderbufferStorage", "no bound renderbuffer");
-        return;
-    }
-    if (!validateSize("renderbufferStorage", width, height))
-        return;
-    switch (internalformat) {
-    case GraphicsContextGL::DEPTH_COMPONENT16:
-    case GraphicsContextGL::RGBA4:
-    case GraphicsContextGL::RGB5_A1:
-    case GraphicsContextGL::RGB565:
-    case GraphicsContextGL::STENCIL_INDEX8:
-    case ExtensionsGL::SRGB8_ALPHA8_EXT:
-        if (internalformat == ExtensionsGL::SRGB8_ALPHA8_EXT && !m_extsRGB) {
-            synthesizeGLError(GraphicsContextGL::INVALID_ENUM, "renderbufferStorage", "invalid internalformat");
-            return;
-        }
-        m_context->renderbufferStorage(target, internalformat, width, height);
-        m_renderbufferBinding->setInternalFormat(internalformat);
-        m_renderbufferBinding->setIsValid(true);
-        m_renderbufferBinding->setSize(width, height);
-        break;
-    case GraphicsContextGL::DEPTH_STENCIL:
-        if (isDepthStencilSupported())
-            m_context->renderbufferStorage(target, ExtensionsGL::DEPTH24_STENCIL8, width, height);
-        m_renderbufferBinding->setSize(width, height);
-        m_renderbufferBinding->setIsValid(isDepthStencilSupported());
-        m_renderbufferBinding->setInternalFormat(internalformat);
-        break;
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_ENUM, "renderbufferStorage", "invalid internalformat");
-        return;
-    }
-    applyStencilTest();
-}
-
-void WebGLRenderingContext::hint(GCGLenum target, GCGLenum mode)
-{
-    if (isContextLostOrPending())
-        return;
-    bool isValid = false;
-    switch (target) {
-    case GraphicsContextGL::GENERATE_MIPMAP_HINT:
-        isValid = true;
-        break;
-    case ExtensionsGL::FRAGMENT_SHADER_DERIVATIVE_HINT_OES: // OES_standard_derivatives
-        if (m_oesStandardDerivatives)
-            isValid = true;
-        break;
-    }
-    if (!isValid) {
-        synthesizeGLError(GraphicsContextGL::INVALID_ENUM, "hint", "invalid target");
-        return;
-    }
-    m_context->hint(target, mode);
-}
-
-void WebGLRenderingContext::clear(GCGLbitfield mask)
-{
-    if (isContextLostOrPending())
-        return;
-#if !USE(ANGLE)
-    if (mask & ~(GraphicsContextGL::COLOR_BUFFER_BIT | GraphicsContextGL::DEPTH_BUFFER_BIT | GraphicsContextGL::STENCIL_BUFFER_BIT)) {
-        synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clear", "invalid mask");
-        return;
-    }
-    const char* reason = "framebuffer incomplete";
-    if (m_framebufferBinding && !m_framebufferBinding->onAccess(m_context.get(), &reason)) {
-        synthesizeGLError(GraphicsContextGL::INVALID_FRAMEBUFFER_OPERATION, "clear", reason);
-        return;
-    }
-#endif
-    if (!clearIfComposited(mask))
-        m_context->clear(mask);
-    markContextChangedAndNotifyCanvasObserver();
-}
-
 GCGLint WebGLRenderingContext::getMaxDrawBuffers()
 {
     if (!supportsDrawBuffers())
@@ -510,25 +425,6 @@ bool WebGLRenderingContext::validateBlendEquation(const char* functionName, GCGL
         break;
     default:
         synthesizeGLError(GraphicsContextGL::INVALID_ENUM, functionName, "invalid mode");
-        return false;
-    }
-}
-
-bool WebGLRenderingContext::validateCapability(const char* functionName, GCGLenum cap)
-{
-    switch (cap) {
-    case GraphicsContextGL::BLEND:
-    case GraphicsContextGL::CULL_FACE:
-    case GraphicsContextGL::DEPTH_TEST:
-    case GraphicsContextGL::DITHER:
-    case GraphicsContextGL::POLYGON_OFFSET_FILL:
-    case GraphicsContextGL::SAMPLE_ALPHA_TO_COVERAGE:
-    case GraphicsContextGL::SAMPLE_COVERAGE:
-    case GraphicsContextGL::SCISSOR_TEST:
-    case GraphicsContextGL::STENCIL_TEST:
-        return true;
-    default:
-        synthesizeGLError(GraphicsContextGL::INVALID_ENUM, functionName, "invalid capability");
         return false;
     }
 }

@@ -65,7 +65,6 @@
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKit/DOMRange.h>
-#import <WebKit/WKCrashReporter.h>
 #import <WebKit/WKRetainPtr.h>
 #import <WebKit/WKString.h>
 #import <WebKit/WKStringCF.h>
@@ -99,6 +98,7 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/Threading.h>
 #import <wtf/UniqueArray.h>
+#import <wtf/cocoa/CrashReporter.h>
 #import <wtf/cocoa/VectorCocoa.h>
 #import <wtf/text/StringBuilder.h>
 #import <wtf/text/WTFString.h>
@@ -294,7 +294,7 @@ void setPersistentUserStyleSheetLocation(CFStringRef url)
     persistentUserStyleSheetLocation = url;
 }
 
-static bool shouldIgnoreWebCoreNodeLeaks(const string& URLString)
+static bool shouldIgnoreWebCoreNodeLeaks(const string& urlString)
 {
     static char* const ignoreSet[] = {
         // Keeping this infrastructure around in case we ever need it again.
@@ -304,8 +304,8 @@ static bool shouldIgnoreWebCoreNodeLeaks(const string& URLString)
     for (int i = 0; i < ignoreSetCount; i++) {
         // FIXME: ignore case
         string curIgnore(ignoreSet[i]);
-        // Match at the end of the URLString
-        if (!URLString.compare(URLString.length() - curIgnore.length(), curIgnore.length(), curIgnore))
+        // Match at the end of the urlString.
+        if (!urlString.compare(urlString.length() - curIgnore.length(), curIgnore.length(), curIgnore))
             return true;
     }
     return false;
@@ -1645,14 +1645,14 @@ static void dumpBackForwardListForWebView(WebView *view)
 }
 
 #if !PLATFORM(IOS_FAMILY)
-static void changeWindowScaleIfNeeded(const char* testPathOrUR)
+static void changeWindowScaleIfNeeded(const char* testPathOrURL)
 {
-    WTF::String localPathOrUrl = String(testPathOrUR);
+    auto localPathOrURL = String(testPathOrURL);
     float currentScaleFactor = [[[mainFrame webView] window] backingScaleFactor];
     float requiredScaleFactor = 1;
-    if (localPathOrUrl.containsIgnoringASCIICase("/hidpi-3x-"))
+    if (localPathOrURL.containsIgnoringASCIICase("/hidpi-3x-"))
         requiredScaleFactor = 3;
-    else if (localPathOrUrl.containsIgnoringASCIICase("/hidpi-"))
+    else if (localPathOrURL.containsIgnoringASCIICase("/hidpi-"))
         requiredScaleFactor = 2;
     if (currentScaleFactor == requiredScaleFactor)
         return;
@@ -2031,8 +2031,8 @@ static void runTest(const string& inputLine)
     if (!testPath)
         testPath = [url absoluteString];
 
-    NSString *informationString = [@"CRASHING TEST: " stringByAppendingString:testPath];
-    WebKit::setCrashReportApplicationSpecificInformation((__bridge CFStringRef)informationString);
+    auto message = makeString("CRASHING TEST: ", testPath.UTF8String);
+    WTF::setCrashLogMessage(message.utf8().data());
 
     TestOptions options { [url isFileURL] ? [url fileSystemRepresentation] : pathOrURL, command.absolutePath };
 

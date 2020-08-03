@@ -129,14 +129,13 @@
 - (NSArray *)textRects
 {
     _impl->ownerDocument().updateLayoutIgnorePendingStylesheets();
-    return createNSArray(WebCore::RenderObject::absoluteTextRects(*_impl)).autorelease();
+    return createNSArray(WebCore::RenderObject::absoluteTextRects(makeSimpleRange(*_impl))).autorelease();
 }
 
 - (WKDOMRange *)rangeByExpandingToWordBoundaryByCharacters:(NSUInteger)characters inDirection:(WKDOMRangeDirection)direction
 {
-    RefPtr<WebCore::Range> newRange = rangeExpandedByCharactersInDirectionAtWordBoundary(direction == WKDOMRangeDirectionForward ?  _impl->endPosition() : _impl->startPosition(), characters, direction == WKDOMRangeDirectionForward ? WebCore::SelectionDirection::Forward : WebCore::SelectionDirection::Backward);
-
-    return [[[WKDOMRange alloc] _initWithImpl:newRange.get()] autorelease];
+    auto newRange = rangeExpandedByCharactersInDirectionAtWordBoundary(direction == WKDOMRangeDirectionForward ?  _impl->endPosition() : _impl->startPosition(), characters, direction == WKDOMRangeDirectionForward ? WebCore::SelectionDirection::Forward : WebCore::SelectionDirection::Backward);
+    return [[[WKDOMRange alloc] _initWithImpl:createLiveRange(newRange).get()] autorelease];
 }
 
 @end

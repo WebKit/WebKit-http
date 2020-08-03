@@ -1,3 +1,140 @@
+2020-07-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue a temporary extension to the MobileGestalt daemon when the MobileGestalt cache is invalid
+        https://bugs.webkit.org/show_bug.cgi?id=214965
+
+        Reviewed by Geoffrey Garen.
+
+        Declare MobileGestalt queestion identifier.
+
+        * pal/spi/ios/MobileGestaltSPI.h:
+
+2020-07-30  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Adopt -[AVContentKeyRequest willOutputBeObscuredDueToInsufficientExternalProtectionForDisplays:]
+        https://bugs.webkit.org/show_bug.cgi?id=214659
+        <rdar://problem/63555006>
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cocoa/AVFoundationSPI.h:
+
+2020-07-29  Jer Noble  <jer.noble@apple.com>
+
+        Support HDR decode in SW VP9
+        https://bugs.webkit.org/show_bug.cgi?id=214928
+        <rdar://problem/66284848>
+
+        Reviewed by Eric Carlson.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+
+2020-07-28  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] Wrap SPI in feature guards (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=214844
+        <rdar://problem/66178527>
+
+        Unreviewed build fix.
+
+        * pal/spi/mac/NSImageSPI.h: Guard SPI with NS_ASSUME_NONNULL.
+
+2020-07-27  Jonathan Bedard  <jbedard@apple.com>
+
+        [Big Sur] Wrap SPI in feature guards
+        https://bugs.webkit.org/show_bug.cgi?id=214844
+        <rdar://problem/66178527>
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/mac/NSImageSPI.h:
+
+2020-07-27  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT([filteredCookies.get() count] <= 1) on  imported/w3c/web-platform-tests/websockets/cookies/third-party-cookie-accepted.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=214222
+        <rdar://problem/65587120>
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        Replace deprecated _parsedCookiesWithResponseHeaderFields with newer _cookieForSetCookieString alternative.
+
+2020-07-27  Saagar Jha  <saagar@saagarjha.com>
+
+        Remove definition of NSImageSymbolScale, which is part of the beta 3 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=214707
+
+        Reviewed by Jonathan Bedard.
+
+        * pal/spi/mac/NSImageSPI.h: Remove NSImageSymbolScale.
+
+2020-07-27  Megan Gardner  <megan_gardner@apple.com>
+
+        Trying to lookup when WebView is in a popover causes process to hang.
+        https://bugs.webkit.org/show_bug.cgi?id=214773
+        <rdar://problem/52317762>
+
+        Reviewed by Devin Rousso.
+
+        * pal/spi/mac/NSWindowSPI.h:
+
+2020-07-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r264690): [ iOS wk2 ] editing/selection/shift-click-includes-existing-selection.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214688
+        <rdar://problem/65993683>
+
+        Reviewed by Darin Adler.
+
+        Remove logging added in r264882, r264890, r264892, and r264896.
+
+        * pal/spi/ios/GraphicsServicesSPI.h:
+
+2020-07-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, add even more logging to try and diagnose a flaky test
+        https://bugs.webkit.org/show_bug.cgi?id=214688
+        <rdar://problem/65993683>
+
+        Add more GraphicsServices SPI declarations.
+
+        * pal/spi/ios/GraphicsServicesSPI.h:
+
+2020-07-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r264690): [ iOS wk2 ] editing/selection/shift-click-includes-existing-selection.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=214688
+        <rdar://problem/65993683>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/ios/GraphicsServicesSPI.h:
+
+2020-07-24  Brady Eidson  <beidson@apple.com>
+
+        Declare two more things to fix the build after r264874
+
+        * pal/spi/mac/IOKitSPIMac.h:
+
+2020-07-24  Brady Eidson  <beidson@apple.com>
+
+        Maybe the last build fix after r264874
+
+        * pal/spi/mac/IOKitSPIMac.h:
+
+2020-07-23  Alex Christensen  <achristensen@webkit.org>
+
+        Split Windows parts from CFNetworkSPI.h to CFNetworkSPIWin.h
+        https://bugs.webkit.org/show_bug.cgi?id=214719
+
+        Reviewed by Tim Horton.
+
+        * pal/PlatformAppleWin.cmake:
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/win/CFNetworkSPIWin.h: Added.
+
 2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
 
         Update macOS Version macros

@@ -28,7 +28,6 @@
 
 #include "CharacterData.h"
 #include "NodeTraversal.h"
-#include "Range.h"
 
 namespace WebCore {
 
@@ -41,12 +40,6 @@ SimpleRange::SimpleRange(const BoundaryPoint& start, const BoundaryPoint& end)
 SimpleRange::SimpleRange(BoundaryPoint&& start, BoundaryPoint&& end)
     : start(WTFMove(start))
     , end(WTFMove(end))
-{
-}
-
-SimpleRange::SimpleRange(const Range& other)
-    : start(other.startContainer(), other.startOffset())
-    , end(other.endContainer(), other.endOffset())
 {
 }
 
@@ -80,20 +73,6 @@ Optional<SimpleRange> makeRangeSelectingNode(Node& node)
         return WTF::nullopt;
     unsigned offset = node.computeNodeIndex();
     return SimpleRange { { *parent, offset }, { *parent, offset + 1 } };
-}
-
-Optional<SimpleRange> makeSimpleRange(const Optional<BoundaryPoint>& start, const Optional<BoundaryPoint>& end)
-{
-    if (!start || !end)
-        return WTF::nullopt;
-    return { { *start, *end } };
-}
-
-Optional<SimpleRange> makeSimpleRange(Optional<BoundaryPoint>&& start, Optional<BoundaryPoint>&& end)
-{
-    if (!start || !end)
-        return WTF::nullopt;
-    return { { WTFMove(*start), WTFMove(*end) } };
 }
 
 SimpleRange makeRangeSelectingNodeContents(Node& node)
@@ -149,6 +128,11 @@ void IntersectingNodeIterator::advanceSkippingChildren()
         m_node = nullptr;
         m_pastLastNode = nullptr;
     }
+}
+
+RefPtr<Node> commonInclusiveAncestor(const SimpleRange& range)
+{
+    return commonInclusiveAncestor(range.start.container, range.end.container);
 }
 
 }

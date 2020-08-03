@@ -39,6 +39,7 @@
 #include "BytecodeStructs.h"
 #include "CodeBlockInlines.h"
 #include "CodeBlockSet.h"
+#include "ControlFlowProfiler.h"
 #include "DFGCapabilities.h"
 #include "DFGCommon.h"
 #include "DFGJITCode.h"
@@ -509,6 +510,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpTailCallForwardArguments, profile)
         LINK(OpConstructVarargs, profile)
         LINK(OpGetByVal, profile)
+        LINK(OpGetPrivateName, profile)
 
         LINK(OpGetDirectPname, profile)
         LINK(OpGetByIdWithThis, profile)

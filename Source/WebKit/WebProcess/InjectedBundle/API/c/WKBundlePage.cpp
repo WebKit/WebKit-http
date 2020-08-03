@@ -56,8 +56,6 @@
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
 #include "WebPageOverlay.h"
-#include "WebRenderLayer.h"
-#include "WebRenderObject.h"
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/AccessibilityObjectInterface.h>
 #include <WebCore/ApplicationCacheStorage.h>
@@ -578,14 +576,14 @@ uint64_t WKBundlePageGetRenderTreeSize(WKBundlePageRef pageRef)
     return WebKit::toImpl(pageRef)->renderTreeSize();
 }
 
-WKRenderObjectRef WKBundlePageCopyRenderTree(WKBundlePageRef pageRef)
+// This function should be kept around for compatibility with SafariForWebKitDevelopment.
+void WKBundlePageCopyRenderTree(WKBundlePageRef pageRef)
 {
-    return WebKit::toAPI(WebKit::WebRenderObject::create(WebKit::toImpl(pageRef)).leakRef());
 }
 
-WKRenderLayerRef WKBundlePageCopyRenderLayerTree(WKBundlePageRef pageRef)
+// This function should be kept around for compatibility with SafariForWebKitDevelopment.
+void WKBundlePageCopyRenderLayerTree(WKBundlePageRef pageRef)
 {
-    return WebKit::toAPI(WebKit::WebRenderLayer::create(WebKit::toImpl(pageRef)).leakRef());
 }
 
 void WKBundlePageSetPaintedObjectsCounterThreshold(WKBundlePageRef, uint64_t)

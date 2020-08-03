@@ -139,16 +139,30 @@ static const char* TestBytes = R"SWRESOURCE(
 
 async function doTest()
 {
-    const cache = await window.caches.open("mycache");
-    const promise = cache.put("http://example.org/test", new Response(new ArrayBuffer(1024 * 500)));
-    window.webkit.messageHandlers.qt.postMessage("start");
-    promise.then(() => {
-        window.webkit.messageHandlers.qt.postMessage("pass");
-    }, () => {
-        window.webkit.messageHandlers.qt.postMessage("fail");
-    });
+    try {
+        const cache = await window.caches.open("mycache");
+        const promise = cache.put("http://example.org/test", new Response(new ArrayBuffer(1024 * 500)));
+        window.webkit.messageHandlers.qt.postMessage("start");
+        promise.then(() => {
+            window.webkit.messageHandlers.qt.postMessage("pass");
+        }, () => {
+            window.webkit.messageHandlers.qt.postMessage("fail");
+        });
+    } catch (e) {
+        window.webkit.messageHandlers.qt.postMessage("fail with exception " + e);
+    }
 }
-doTest();
+
+window.onload = () => {
+    if (document.visibilityState === 'visible')
+        doTest();
+    else {
+        document.addEventListener("visibilitychange", function() {
+            if (document.visibilityState === 'visible')
+                doTest();
+        });
+    }
+}
 
 function doTestAgain()
 {
@@ -166,13 +180,17 @@ async function test(num)
     index++;
     url = "http://example.org/test" + index;
 
-    const cache = await window.caches.open("mycache");
-    const promise = cache.put(url, new Response(new ArrayBuffer(num * 1024 * 1024)));
-    promise.then(() => {
-        window.webkit.messageHandlers.qt.postMessage("pass");
-    }, () => {
-        window.webkit.messageHandlers.qt.postMessage("fail");
-    });
+    try {
+        const cache = await window.caches.open("mycache");
+        const promise = cache.put(url, new Response(new ArrayBuffer(num * 1024 * 1024)));
+        promise.then(() => {
+            window.webkit.messageHandlers.qt.postMessage("pass");
+        }, () => {
+            window.webkit.messageHandlers.qt.postMessage("fail");
+        });
+    } catch (e) {
+        window.webkit.messageHandlers.qt.postMessage("fail with exception " + e);
+    }
 }
 
 function doTest(num)
@@ -220,7 +238,7 @@ TEST(WebKit, QuotaDelegate)
     auto delegate1 = adoptNS([[QuotaDelegate alloc] init]);
     [webView1 setUIDelegate:delegate1.get()];
     setVisible(webView1.get());
-    
+
     receivedQuotaDelegateCalled = false;
     [webView1 loadRequest:server.request()];
     Util::run(&receivedQuotaDelegateCalled);
@@ -250,6 +268,8 @@ TEST(WebKit, QuotaDelegate)
     [messageHandler setExpectedMessage: @"fail"];
     receivedMessage = false;
     Util::run(&receivedMessage);
+
+    NSLog(@"QuotaDelegate 6");
 }
 
 TEST(WebKit, QuotaDelegateReload)

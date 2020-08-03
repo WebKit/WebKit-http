@@ -1120,8 +1120,6 @@ webkit.org/b/163362 platform/ios/ios/plugin/youtube-flash-plugin-iframe.html [ P
 
 webkit.org/b/164960 http/tests/security/module-correct-mime-types.html [ Slow ]
 
-webkit.org/b/214222 [ Debug ] imported/w3c/web-platform-tests/websockets/cookies/third-party-cookie-accepted.https.html [ Skip ]
-
 webkit.org/b/164961 [ Release ] http/tests/storage/callbacks-are-called-in-correct-context.html [ Timeout ]
 
 webkit.org/b/165165 [ Release ] http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html [ Pass Timeout ]
@@ -1774,8 +1772,6 @@ webkit.org/b/214084 [ Release ] webrtc/libwebrtc/descriptionGetters.html [ Pass 
 
 webkit.org/b/214322 [ Debug ] http/tests/workers/worker-importScripts-banned-mimetype.html [ Pass Crash ]
 
-webkit.org/b/214327 webanimations/accelerated-animation-with-easing.html [ Pass ImageOnlyFailure ]
-
 webkit.org/b/214363 [ Debug ] fast/text-indicator/text-indicator-empty-link.html [ Pass Crash ]
 
 webkit.org/b/214382 [ Release ] imported/w3c/web-platform-tests/websockets/remove-own-iframe-during-onerror.window.html [ Pass Failure ]
@@ -1799,3 +1795,5 @@ webkit.org/b/214468 imported/w3c/web-platform-tests/css/css-values/ch-unit-002.h
 webkit.org/b/214512 imported/w3c/web-platform-tests/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Pass Failure ]
 
 webkit.org/b/214598 fast/scrolling/ios/autoscroll-input-when-very-zoomed.html [ Pass Failure ]
+
+http/tests/in-app-browser-privacy/ [ Pass ]

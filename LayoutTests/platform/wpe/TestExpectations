@@ -626,7 +626,6 @@ webkit.org/b/210487 http/tests/resourceLoadStatistics/switch-session-on-navigati
 webkit.org/b/211563 fast/text-indicator/text-indicator-estimated-color-with-implicit-newline.html [ Failure ]
 
 # Not yet supported on WPE
-webkit.org/b/169988 css3/filters/backdrop [ Skip ]
 Bug(WPE) css3/scroll-snap [ Skip ]
 
 # Only enabled on Mac/iOS so far.
@@ -653,6 +652,8 @@ webkit.org/b/213235 imported/w3c/web-platform-tests/html/semantics/scripting-1/t
 
 webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-language-override-01.html [ Pass ]
 webkit.org/b/214300 imported/w3c/web-platform-tests/css/css-fonts/font-language-override-03.html [ ImageOnlyFailure ]
+
+webkit.org/b/214291 imported/w3c/web-platform-tests/css/css-writing-modes/baseline-with-orthogonal-flow-001.html  [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # 3. UNRESOLVED TESTS
@@ -1503,7 +1504,6 @@ webkit.org/b/173419 fast/events/mouseup-from-button2.html [ Failure ]
 webkit.org/b/173419 fast/events/no-scroll-on-input-text-selection.html [ Failure ]
 webkit.org/b/173419 fast/events/node-event-anchor-lock.html [ Failure ]
 webkit.org/b/173419 fast/events/option-tab.html [ Failure ]
-webkit.org/b/173419 fast/events/platform-wheelevent-in-scrolling-div.html [ Failure ]
 webkit.org/b/173419 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html [ Failure ]
 webkit.org/b/173419 fast/events/platform-wheelevent-paging-x-in-non-scrolling-page.html [ Failure ]
 webkit.org/b/173419 fast/events/platform-wheelevent-paging-x-in-scrolling-div.html [ Failure ]
@@ -1587,9 +1587,7 @@ Bug(WPE) css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.htm
 Bug(WPE) css3/font-feature-settings-font-face-rendering.html [ ImageOnlyFailure ]
 Bug(WPE) css3/font-feature-settings-rendering.html [ ImageOnlyFailure ]
 Bug(WPE) css3/font-variant-all.html [ ImageOnlyFailure ]
-Bug(WPE) css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 Bug(WPE) css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
-Bug(WPE) css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 Bug(WPE) css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
 Bug(WPE) css3/font-variant-synthesis-jdaggett.html [ ImageOnlyFailure ]
 Bug(WPE) css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]

@@ -1,4 +1,3 @@
-//@ skip if ["arm", "mips"].include?($architecture)
 let shouldVendNull = false;
 function vendIterator() {
     if (shouldVendNull)

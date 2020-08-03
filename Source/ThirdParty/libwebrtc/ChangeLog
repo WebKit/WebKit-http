@@ -1,3 +1,81 @@
+2020-07-29  Jer Noble  <jer.noble@apple.com>
+
+        Support HDR decode in SW VP9
+        https://bugs.webkit.org/show_bug.cgi?id=214928
+
+        Reviewed by Eric Carlson.
+
+        Support converting I010 buffers (full-planar, 10-bit data packed into the LSB of a 16-bit int)
+        into CVPixelBuffers (bi-planar, 10-bit data packed into the MSB of a 16-bit int). This requires
+        using functions from libyuv to merge and scale 16-bit planar data, optimized for AVX2. To know
+        that incoming buffers are 10-bit, and whether they're full-range, parse the 'vpcC' atom attached
+        to the CMFormatDescription.
+
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::MergeUVPlane_16):
+        (webrtc::CopyPlane_16):
+        (webrtc::CopyVideoFrameToPixelBuffer):
+        (webrtc::pixelBufferFromFrame):
+        * Source/webrtc/sdk/WebKit/WebKitVP9Decoder.cpp:
+        (webrtc::createWebKitVP9Decoder):
+        (webrtc::startVP9DecoderSession):
+        (webrtc::WebKitVP9DecoderReceiver::createPixelBufferPoolForFormatDescription):
+        (webrtc::WebKitVP9DecoderReceiver::Decoded):
+
+2020-07-28  Youenn Fablet  <youenn@apple.com>
+
+        Disable low latency code path for H264 constrained baseline
+        https://bugs.webkit.org/show_bug.cgi?id=214830
+
+        Reviewed by Eric Carlson.
+
+        In case of baseline profile, use straight VTB encoder.
+        In case of high profile, use low latency code path if enabled.
+        In case of MacOS software code path, enable low latency code path as straight VTB encoder buffers frames.
+
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 initWithCodecInfo:]):
+        (-[RTCVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+
+2020-07-26  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        libwebrtc uint64_t build fixes
+        https://bugs.webkit.org/show_bug.cgi?id=214806
+
+        Reviewed by Darin Adler.
+
+        WebKitGTK currently fails to build with -DENABLE_EXPERIMENTAL_FEATURES=ON because a bunch of
+        libwebrtc headers use integer typedefs without declaring them:
+
+        * Source/webrtc/call/rtx_receive_stream.h:
+        * Source/webrtc/common_video/h264/pps_parser.h:
+        * Source/webrtc/common_video/h264/sps_parser.h:
+        * Source/webrtc/modules/audio_processing/aec3/clockdrift_detector.h:
+        * Source/webrtc/modules/include/module_common_types_public.h:
+        * Source/webrtc/modules/video_coding/decoding_state.h:
+
+2020-07-24  Youenn Fablet  <youenn@apple.com>
+
+        Do not require hardware H264 encoder in case of HAVE_VTB_REQUIREDLOWLATENCY
+        https://bugs.webkit.org/show_bug.cgi?id=214687
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+
+2020-07-24  Youenn Fablet  <youenn@apple.com>
+
+        Remove assertions in RTCVideoEncoderH264 that are wrong in case of simulcast
+        https://bugs.webkit.org/show_bug.cgi?id=214684
+
+        Reviewed by Darin Adler.
+
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 encode:codecSpecificInfo:frameTypes:]):
+        In case of simulcast, the session expected width/height and samples width/height are not matching.
+        This is expected and the session handles it properly.
+
 2020-07-22  Conrad Shultz  <conrad_shultz@apple.com>
 
         Update macOS Version macros

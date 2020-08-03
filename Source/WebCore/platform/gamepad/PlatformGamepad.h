@@ -27,6 +27,7 @@
 
 #if ENABLE(GAMEPAD)
 
+#include "SharedGamepadValue.h"
 #include <wtf/Forward.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/text/WTFString.h>
@@ -43,8 +44,9 @@ public:
     unsigned index() const { return m_index; }
     virtual MonotonicTime lastUpdateTime() const { return m_lastUpdateTime; }
     MonotonicTime connectTime() const { return m_connectTime; }
-    virtual const Vector<double>& axisValues() const = 0;
-    virtual const Vector<double>& buttonValues() const = 0;
+    
+    virtual const Vector<SharedGamepadValue>& axisValues() const = 0;
+    virtual const Vector<SharedGamepadValue>& buttonValues() const = 0;
 
     virtual const char* source() const { return "Unknown"_s; }
 

@@ -292,7 +292,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
 // is enclosed depends on the given direction, using the same rule as -[WebVisiblePosition withinTextUnitOfGranularity:inDirectionAtBoundary:].
 - (DOMRange *)enclosingTextUnitOfGranularity:(WebTextGranularity)granularity inDirectionIfAtBoundary:(WebTextAdjustmentDirection)direction
 {
-    return kit(enclosingTextUnitOfGranularity([self _visiblePosition], toTextGranularity(granularity), toSelectionDirection(direction)).get());
+    return kit(enclosingTextUnitOfGranularity([self _visiblePosition], toTextGranularity(granularity), toSelectionDirection(direction)));
 }
 
 - (WebVisiblePosition *)positionAtStartOrEndOfWord
@@ -416,7 +416,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     for (auto marker : document.markers().markersFor(*node, DocumentMarker::DictationPhraseWithAlternatives)) {
         if (marker->startOffset() <= offset && marker->endOffset() >= offset) {
             *alternatives = createNSArray(WTF::get<Vector<String>>(marker->data())).autorelease();
-            return kit(Range::create(document, node, marker->startOffset(), node, marker->endOffset()).ptr());
+            return kit(makeSimpleRange(*node, *marker));
         }
     }
     return nil;
@@ -433,7 +433,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     auto& document = node->document();
     for (auto marker : document.markers().markersFor(*node, DocumentMarker::Spelling)) {
         if (marker->startOffset() <= offset && marker->endOffset() >= offset)
-            return kit(Range::create(document, node, marker->startOffset(), node, marker->endOffset()).ptr());
+            return kit(makeSimpleRange(*node, *marker));
     }
     return nil;
 }
@@ -475,23 +475,11 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
 
 + (DOMRange *)rangeForFirstPosition:(WebVisiblePosition *)first second:(WebVisiblePosition *)second
 {
-    VisiblePosition firstVP = [first _visiblePosition];
-    VisiblePosition secondVP = [second _visiblePosition];
-    
-    if (firstVP.isNull() || secondVP.isNull())
-        return nil;
-    
-    RefPtr<Range> range;
-    if (firstVP < secondVP) {
-        range = Range::create(firstVP.deepEquivalent().deprecatedNode()->document(),
-                                     firstVP, secondVP);
-    } else {
-        range = Range::create(firstVP.deepEquivalent().deprecatedNode()->document(),
-                                            secondVP, firstVP);
-    }
-    
-    
-    return kit(range.get());
+    auto firstPosition = [first _visiblePosition];
+    auto secondPosition = [second _visiblePosition];
+    if (firstPosition < secondPosition)
+        std::swap(firstPosition, secondPosition);
+    return kit(makeSimpleRange(firstPosition, secondPosition));
 }
 
 @end

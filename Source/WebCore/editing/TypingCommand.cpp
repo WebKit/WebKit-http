@@ -43,6 +43,7 @@
 #include "Logging.h"
 #include "MarkupAccumulator.h"
 #include "MathMLElement.h"
+#include "Range.h"
 #include "RenderElement.h"
 #include "StaticRange.h"
 #include "TextIterator.h"
@@ -332,8 +333,8 @@ void TypingCommand::postTextStateChangeNotificationForDeletion(const VisibleSele
         return;
     postTextStateChangeNotification(AXTextEditTypeDelete, AccessibilityObject::stringForVisiblePositionRange(selection), selection.start());
     VisiblePositionIndexRange range;
-    range.startIndex.value = indexForVisiblePosition(selection.start(), range.startIndex.scope);
-    range.endIndex.value = indexForVisiblePosition(selection.end(), range.endIndex.scope);
+    range.startIndex.value = indexForVisiblePosition(selection.visibleStart(), range.startIndex.scope);
+    range.endIndex.value = indexForVisiblePosition(selection.visibleEnd(), range.endIndex.scope);
     composition()->setRangeDeletedByUnapply(range);
 }
 
@@ -449,7 +450,7 @@ void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
         VisiblePosition p1 = startOfWord(previous, LeftWordIfOnBoundary);
         VisiblePosition p2 = startOfWord(start, LeftWordIfOnBoundary);
         if (p1 != p2) {
-            RefPtr<Range> range = makeRange(p1, p2);
+            auto range = makeSimpleRange(p1, p2);
             String strippedPreviousWord;
             if (range && (commandType == TypingCommand::InsertText || commandType == TypingCommand::InsertLineBreak || commandType == TypingCommand::InsertParagraphSeparator || commandType == TypingCommand::InsertParagraphSeparatorInQuotedContent))
                 strippedPreviousWord = plainText(*range).stripWhiteSpace();
@@ -475,7 +476,7 @@ void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
     }
 }
 
-bool TypingCommand::willAddTypingToOpenCommand(ETypingCommand commandType, TextGranularity granularity, const String& text, RefPtr<Range>&& range)
+bool TypingCommand::willAddTypingToOpenCommand(ETypingCommand commandType, TextGranularity granularity, const String& text, const Optional<SimpleRange>& range)
 {
     m_currentTextToInsert = text;
     m_currentTypingEditAction = editActionForTypingCommand(commandType, granularity, m_compositionType, m_isAutocompletion);
@@ -661,7 +662,7 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
         if (previousPosition.isNull() || enclosingTableCell != enclosingTableCellForPreviousPosition) {
             // When the caret is at the start of the editable area in an empty list item, break out of the list item.
             if (auto deleteListSelection = shouldBreakOutOfEmptyListItem()) {
-                if (willAddTypingToOpenCommand(DeleteKey, granularity, { }, Range::create(document(), deleteListSelection.value().start(), deleteListSelection.value().end()))) {
+                if (willAddTypingToOpenCommand(DeleteKey, granularity, { }, *deleteListSelection.value().firstRange())) {
                     breakOutOfEmptyListItem();
                     typingAddedToOpenCommand(DeleteKey);
                 }
@@ -731,11 +732,11 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
     if (selectionToDelete.isCaret() || !document().selection().shouldDeleteSelection(selectionToDelete))
         return;
     
-    if (!willAddTypingToOpenCommand(DeleteKey, granularity, { }, createLiveRange(*selectionToDelete.firstRange())))
+    if (!willAddTypingToOpenCommand(DeleteKey, granularity, { }, selectionToDelete.firstRange()))
         return;
 
     if (shouldAddToKillRing)
-        document().editor().addRangeToKillRing(createLiveRange(*selectionToDelete.toNormalizedRange()), Editor::KillRingInsertionMode::PrependText);
+        document().editor().addRangeToKillRing(*selectionToDelete.toNormalizedRange(), Editor::KillRingInsertionMode::PrependText);
 
     // Post the accessibility notification before actually deleting the content while selectionToDelete is still valid
     postTextStateChangeNotificationForDeletion(selectionToDelete);
@@ -839,14 +840,14 @@ void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool sh
     if (selectionToDelete.isCaret() || !document().selection().shouldDeleteSelection(selectionToDelete))
         return;
 
-    if (!willAddTypingToOpenCommand(ForwardDeleteKey, granularity, { }, createLiveRange(selectionToDelete.firstRange())))
+    if (!willAddTypingToOpenCommand(ForwardDeleteKey, granularity, { }, selectionToDelete.firstRange()))
         return;
 
     // Post the accessibility notification before actually deleting the content while selectionToDelete is still valid
     postTextStateChangeNotificationForDeletion(selectionToDelete);
 
     if (shouldAddToKillRing)
-        document().editor().addRangeToKillRing(createLiveRange(*selectionToDelete.toNormalizedRange()), Editor::KillRingInsertionMode::AppendText);
+        document().editor().addRangeToKillRing(*selectionToDelete.toNormalizedRange(), Editor::KillRingInsertionMode::AppendText);
     // make undo select what was deleted
     setStartingSelection(selectionAfterUndo);
     CompositeEditCommand::deleteSelection(selectionToDelete, m_smartDelete, /* mergeBlocksAfterDelete*/ true, /* replace*/ false, expandForSpecialElements, /*sanitizeMarkup*/ true);

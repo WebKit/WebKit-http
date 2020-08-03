@@ -53,6 +53,7 @@
 #import "Page.h"
 #import "PublicURLManager.h"
 #import "Quirks.h"
+#import "Range.h"
 #import "RenderView.h"
 #import "RuntimeEnabledFeatures.h"
 #import "SerializedAttachmentData.h"
@@ -668,7 +669,7 @@ bool WebContentReader::readPlainText(const String& text)
     if (!allowPlainText)
         return false;
 
-    addFragment(createFragmentFromText(createLiveRange(context), [text precomposedStringWithCanonicalMapping]));
+    addFragment(createFragmentFromText(context, [text precomposedStringWithCanonicalMapping]));
 
     madeFragmentFromPlainText = true;
     return true;

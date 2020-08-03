@@ -27,7 +27,6 @@
 #include "StaticRange.h"
 
 #include "ContainerNode.h"
-#include "Range.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -40,6 +39,12 @@ StaticRange::StaticRange(SimpleRange&& range)
 Ref<StaticRange> StaticRange::create(SimpleRange&& range)
 {
     return adoptRef(*new StaticRange(WTFMove(range)));
+}
+
+Ref<StaticRange> StaticRange::create(const SimpleRange& range)
+{
+    auto copiedRange = range;
+    return create(WTFMove(copiedRange));
 }
 
 static bool isDocumentTypeOrAttr(Node& node)

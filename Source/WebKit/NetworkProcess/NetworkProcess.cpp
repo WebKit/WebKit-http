@@ -165,7 +165,7 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
 #endif
-#if PLATFORM(COCOA)
+#if HAVE(LSDATABASECONTEXT)
     addSupplement<LaunchServicesDatabaseObserver>();
 #endif
 #if PLATFORM(COCOA) && ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
@@ -1404,6 +1404,10 @@ void NetworkProcess::preconnectTo(PAL::SessionID sessionID, WebPageProxyIdentifi
         return;
 #endif
 
+    auto* networkSession = this->networkSession(sessionID);
+    if (!networkSession)
+        return;
+
     NetworkLoadParameters parameters;
     parameters.request = ResourceRequest { url };
     parameters.webPageProxyID = webPageProxyID;
@@ -1417,7 +1421,7 @@ void NetworkProcess::preconnectTo(PAL::SessionID sessionID, WebPageProxyIdentifi
     parameters.storedCredentialsPolicy = storedCredentialsPolicy;
     parameters.shouldPreconnectOnly = PreconnectOnly::Yes;
 
-    (new PreconnectTask(*this, sessionID, WTFMove(parameters), [](const WebCore::ResourceError&) { }))->start();
+    (new PreconnectTask(*networkSession, WTFMove(parameters), [](const WebCore::ResourceError&) { }))->start();
 #else
     UNUSED_PARAM(url);
     UNUSED_PARAM(userAgent);
@@ -2547,11 +2551,24 @@ void NetworkProcess::resetQuota(PAL::SessionID sessionID, CompletionHandler<void
 void NetworkProcess::renameOriginInWebsiteData(PAL::SessionID sessionID, const URL& oldName, const URL& newName, OptionSet<WebsiteDataType> dataTypes, CompletionHandler<void()>&& completionHandler)
 {
     auto aggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    auto oldOrigin = WebCore::SecurityOriginData::fromURL(oldName);
+    auto newOrigin = WebCore::SecurityOriginData::fromURL(newName);
+
+    if (oldOrigin.isEmpty() || newOrigin.isEmpty())
+        return;
 
     if (dataTypes.contains(WebsiteDataType::LocalStorage)) {
         if (m_storageManagerSet->contains(sessionID))
             m_storageManagerSet->renameOrigin(sessionID, oldName, newName, [aggregator] { });
     }
+
+#if ENABLE(INDEXED_DATABASE)
+    if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
+        auto path = m_idbDatabasePaths.get(sessionID);
+        if (!path.isEmpty())
+            webIDBServer(sessionID).renameOrigin(oldOrigin, newOrigin, [aggregator] { });
+    }
+#endif
 }
 
 #if ENABLE(SERVICE_WORKER)

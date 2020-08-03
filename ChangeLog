@@ -1,3 +1,58 @@
+2020-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK4] Enable API tests
+        https://bugs.webkit.org/show_bug.cgi?id=214344
+
+        Reviewed by Adrian Perez de Castro.
+
+        Build API tests for GTK4 too.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-07-29  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.29.2 release
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2020-07-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.29.4 release
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2020-07-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Support for backdrop-filter
+        https://bugs.webkit.org/show_bug.cgi?id=169988
+
+        Reviewed by Adrian Perez de Castro.
+
+        Enable FILTERS_LEVEL_2 by default for WPE and GTK.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-07-27  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Default to OpenGL ES in arm
+        https://bugs.webkit.org/show_bug.cgi?id=214828
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-07-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Add project.pbxproj editorconfig entry
+        https://bugs.webkit.org/show_bug.cgi?id=214778
+
+        Reviewed by Mark Lam.
+
+        We should use tab for project.pbxproj file.
+
+        * .editorconfig:
+
 2020-07-21  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.29.1 release

@@ -370,7 +370,12 @@ public:
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
-    size_t numberOfConnectedGamepadsForTesting();
+    enum class GamepadType {
+        All,
+        HID,
+        GameControllerFramework,
+    };
+    size_t numberOfConnectedGamepadsForTesting(GamepadType);
     void setUsesOnlyHIDGamepadProviderForTesting(bool);
 
 #if PLATFORM(COCOA)
@@ -680,7 +685,7 @@ private:
     bool m_alwaysUsesComplexTextCodePath { false };
     bool m_shouldUseFontSmoothing { true };
 
-    Vector<String> m_fontWhitelist;
+    Vector<String> m_fontAllowList;
 
     // Messages that were posted before any pages were created.
     // The client should use initialization messages instead, so that a restarted process would get the same state.

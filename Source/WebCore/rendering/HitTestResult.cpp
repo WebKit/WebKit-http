@@ -38,6 +38,7 @@
 #include "HTMLTextAreaElement.h"
 #include "HTMLVideoElement.h"
 #include "PseudoElement.h"
+#include "Range.h"
 #include "RenderBlockFlow.h"
 #include "RenderImage.h"
 #include "RenderInline.h"
@@ -579,11 +580,8 @@ bool HitTestResult::isOverTextInsideFormControlElement() const
     if (position.isNull())
         return false;
 
-    RefPtr<Range> wordRange = enclosingTextUnitOfGranularity(position, TextGranularity::WordGranularity, SelectionDirection::Forward);
-    if (!wordRange)
-        return false;
-
-    return !wordRange->text().isEmpty();
+    auto wordRange = enclosingTextUnitOfGranularity(position, TextGranularity::WordGranularity, SelectionDirection::Forward);
+    return wordRange && hasAnyPlainText(*wordRange);
 }
 
 URL HitTestResult::absoluteLinkURL() const

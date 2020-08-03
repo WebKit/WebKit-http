@@ -4164,12 +4164,14 @@ void WebPage::setActiveColorChooser(WebColorChooser* colorChooser)
 
 void WebPage::didEndColorPicker()
 {
-    m_activeColorChooser->didEndChooser();
+    if (m_activeColorChooser)
+        m_activeColorChooser->didEndChooser();
 }
 
 void WebPage::didChooseColor(const WebCore::Color& color)
 {
-    m_activeColorChooser->didChooseColor(color);
+    if (m_activeColorChooser)
+        m_activeColorChooser->didChooseColor(color);
 }
 
 #endif
@@ -5435,13 +5437,13 @@ void WebPage::hasMarkedText(CompletionHandler<void(bool)>&& completionHandler)
 void WebPage::getMarkedRangeAsync(CompletionHandler<void(const EditingRange&)>&& completionHandler)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    completionHandler(EditingRange::fromRange(frame, createLiveRange(frame.editor().compositionRange()).get()));
+    completionHandler(EditingRange::fromRange(frame, frame.editor().compositionRange()));
 }
 
 void WebPage::getSelectedRangeAsync(CompletionHandler<void(const EditingRange&)>&& completionHandler)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    completionHandler(EditingRange::fromRange(frame, createLiveRange(frame.selection().selection().toNormalizedRange()).get()));
+    completionHandler(EditingRange::fromRange(frame, frame.selection().selection().toNormalizedRange()));
 }
 
 void WebPage::characterIndexForPointAsync(const WebCore::IntPoint& point, CallbackID callbackID)
@@ -5450,8 +5452,8 @@ void WebPage::characterIndexForPointAsync(const WebCore::IntPoint& point, Callba
     auto result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point, hitType);
     auto& frame = result.innerNonSharedNode() ? *result.innerNodeFrame() : m_page->focusController().focusedOrMainFrame();
     auto range = frame.rangeForPoint(result.roundedPointInInnerNodeFrame());
-    auto editingRange = EditingRange::fromRange(frame, range.get());
-    send(Messages::WebPageProxy::UnsignedCallback(static_cast<uint64_t>(editingRange.location), callbackID));
+    auto editingRange = EditingRange::fromRange(frame, range);
+    send(Messages::WebPageProxy::UnsignedCallback(editingRange.location, callbackID));
 }
 
 void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, CallbackID callbackID)
@@ -5531,11 +5533,11 @@ void WebPage::deleteSurrounding(int64_t offset, unsigned characterCount)
         return;
 
     auto selectionStart = selection.visibleStart();
-    auto surroundingRange = makeRange(startOfEditableContent(selectionStart), selectionStart);
+    auto surroundingRange = makeSimpleRange(startOfEditableContent(selectionStart), selectionStart);
     if (!surroundingRange)
         return;
 
-    auto& rootNode = surroundingRange->startContainer().treeScope().rootNode();
+    auto& rootNode = surroundingRange->start.container->treeScope().rootNode();
     auto characterRange = WebCore::CharacterRange(WebCore::characterCount(*surroundingRange) + offset, characterCount);
     auto selectionRange = resolveCharacterRange(makeRangeSelectingNodeContents(rootNode), characterRange);
 

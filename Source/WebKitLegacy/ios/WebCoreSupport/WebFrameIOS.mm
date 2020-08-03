@@ -206,10 +206,7 @@ using namespace WebCore;
 
 - (NSArray *)selectionRectsForCoreRange:(const SimpleRange&)range
 {
-    Vector<SelectionRect> rects;
-    createLiveRange(range)->collectSelectionRects(rects);
-
-    return createNSArray(rects, [] (auto& coreRect) {
+    return createNSArray(RenderObject::collectSelectionRects(range), [] (auto& coreRect) {
         auto webRect = [WebSelectionRect selectionRect];
         webRect.rect = coreRect.rect();
         webRect.writingDirection = coreRect.direction() == TextDirection::LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
@@ -226,7 +223,7 @@ using namespace WebCore;
 
 - (NSArray *)selectionRectsForRange:(DOMRange *)domRange
 {
-    auto range = core(domRange);
+    auto range = makeSimpleRange(core(domRange));
     return range ? [self selectionRectsForCoreRange:*range] : nil;
 }
 
@@ -238,11 +235,8 @@ using namespace WebCore;
 
 - (DOMRange *)wordAtPoint:(CGPoint)point
 {
-    VisiblePosition pos = [self visiblePositionForPoint:point];
-    VisiblePosition start = startOfWord(pos);
-    VisiblePosition end = endOfWord(pos);
-    DOMRange *wordRange = kit(makeRange(start, end).get());
-    return wordRange;   
+    auto position = [self visiblePositionForPoint:point];
+    return kit(makeSimpleRange(startOfWord(position), endOfWord(position)));
 }
 
 - (WebVisiblePosition *)webVisiblePositionForPoint:(CGPoint)point

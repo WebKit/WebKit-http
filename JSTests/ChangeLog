@@ -1,3 +1,319 @@
+2020-08-03  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC][MIPS] Test gardening July 31st edition
+        https://bugs.webkit.org/show_bug.cgi?id=215023
+
+        Unreviewed Gardening.
+
+        * stress/typedarray-access-neutered.js:
+
+2020-07-30  Saam Barati  <sbarati@apple.com>
+
+        Skip stress/operand-should-fit-in-abstract-heap-encoded-payload-format.js
+        https://bugs.webkit.org/show_bug.cgi?id=215001
+
+        Reviewed by Darin Adler.
+
+        The test takes > 4 minutes when run on an idle machine. That's too long.
+
+        * stress/operand-should-fit-in-abstract-heap-encoded-payload-format.js:
+
+2020-07-30  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC][32-bits] interator_next should check for EmptyValue instead of undefined to execute LLInt fast path
+        https://bugs.webkit.org/show_bug.cgi?id=214963
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/invalidate-array-iterator-prototype-next.js: Added.
+
+2020-07-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix bottom-tuple.js test
+        https://bugs.webkit.org/show_bug.cgi?id=214956
+
+        Only thing we would like to check in this test is whether this does not crash.
+
+        * wasm/stress/bottom-tuple.js:
+        (catch): Deleted.
+
+2020-07-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, use requireOptions
+        https://bugs.webkit.org/show_bug.cgi?id=214956
+
+        * wasm/stress/bottom-tuple.js:
+
+2020-07-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add B3::BottomTupleValue node
+        https://bugs.webkit.org/show_bug.cgi?id=214956
+        <rdar://problem/65192877>
+
+        Reviewed by Keith Miller.
+
+        * wasm/stress/bottom-tuple.js: Added.
+        (try.main):
+        (catch):
+
+2020-07-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Upgrade test262
+        https://bugs.webkit.org/show_bug.cgi?id=214949
+
+        Reviewed by Ross Kirsling.
+
+        related-year-zh.js tests are updated and passing.
+
+        * test262/config.yaml:
+        * test262/latest-changes-summary.txt:
+        * test262/test/intl402/DateTimeFormat/prototype/format/related-year-zh.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/related-year-zh.js:
+        (actual.forEach):
+        (verifyFormatParts): Deleted.
+        (verifyFormatParts.df.formatToParts): Deleted.
+        * test262/test/intl402/Segmenter/prototype/segment/segment-grapheme-iterable.js:
+        (const.v.of.seg.segment):
+        * test262/test/intl402/Segmenter/prototype/segment/segment-grapheme.js: Removed.
+        * test262/test/intl402/Segmenter/prototype/segment/segment-sentence-iterable.js:
+        (const.v.of.seg.segment):
+        * test262/test/intl402/Segmenter/prototype/segment/segment-sentence.js: Removed.
+        * test262/test/intl402/Segmenter/prototype/segment/segment-tostring.js:
+        * test262/test/intl402/Segmenter/prototype/segment/segment-word-iterable.js:
+        (const.v.of.seg.segment):
+        * test262/test/intl402/Segmenter/prototype/segment/segment-word.js: Removed.
+        * test262/test262-Revision.txt:
+
+2020-07-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Skip too heavy tests for Debug build
+        https://bugs.webkit.org/show_bug.cgi?id=214939
+
+        Reviewed by Mark Lam.
+
+        They are taking too much time in Debug build and cause timeout. We should skip them.
+
+        * ChakraCore.yaml:
+        * stress/codeblock-destructor-access-unlinkedcodeblock.js:
+        * stress/dfg-to-string-on-string-object-does-not-gc.js:
+        * stress/rest-parameter-many-arguments.js:
+
+2020-07-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        WebAssembly validation for call_indirect is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=214901
+        <rdar://problem/65189677>
+
+        Reviewed by Saam Barati.
+
+        * wasm/stress/validate-call_indirect.js: Added.
+        (try.main):
+        (catch):
+
+2020-07-29  Paulo Matos  <pmatos@igalia.com>
+
+        for..of intrinsics implementation for 32bits
+        https://bugs.webkit.org/show_bug.cgi?id=214737
+
+        Reviewed by Yusuke Suzuki.
+
+        Joint work with Caio Lima <ticaiolima@gmail.com>.
+        Unskip tests previously skipped due to missing for..of intrinsics.
+
+        * stress/for-of-array-different-globals.js:
+        * stress/for-of-iterator-open-osr-at-inlined-return-non-object.js:
+        * stress/for-of-iterator-open-osr-at-iterator-set-local.js:
+        * stress/for-of-iterator-open-return-non-object.js:
+
+2020-07-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Reflect object should have toStringTag with "Reflect"
+        https://bugs.webkit.org/show_bug.cgi?id=214909
+
+        Reviewed by Mark Lam.
+
+        * stress/reflect.js:
+        * test262/expectations.yaml:
+
+2020-07-28  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] add IC support for op_get_private_name
+        https://bugs.webkit.org/show_bug.cgi?id=213545
+
+        Reviewed by Saam Barati.
+
+        Add a crashtest for a crash in an earlier edition of the GPN IC patch.
+
+        * stress/get-private-name-cache-failure.js: Added.
+
+2020-07-27  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC][wasm] Truncating slightly less than INT32_MIN is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=214834
+
+        Reviewed by Darin Adler.
+
+        * wasm/spec-tests/conversions.wast.js:
+        * wasm/stress/trunc-int-min-minus-one.js: Added.
+
+2020-07-28  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: isSymbol() in Source/JavaScriptCore/runtime/JSCell.cpp(188)
+        https://bugs.webkit.org/show_bug.cgi?id=214837
+
+        Reviewed by Darin Adler.
+
+        * stress/jsc-shell-test-properties-should-not-be-enumerable.js: Added.
+
+2020-07-28  Caio Lima  <ticaiolima@gmail.com>
+
+        [32-bits] Skipping some failing tests on ARMv7 and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=214872
+
+        Unreviewed Gardening.
+
+        * stress/ftl-reflect-get-prototype-of.js:
+        * stress/intl-suppored-locales-of.js:
+
+2020-07-25  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Update test262
+        https://bugs.webkit.org/show_bug.cgi?id=214791
+
+        Reviewed by Ross Kirsling.
+
+        * test262/config.yaml:
+        * test262/expectations.yaml:
+        * test262/harness/async-gc.js:
+        * test262/latest-changes-summary.txt:
+        * test262/test/annexB/language/expressions/typeof/emulates-undefined.js: Added.
+        * test262/test/built-ins/FinalizationRegistry/gc-has-one-chance-to-call-cleanupCallback.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/callback-not-callable-throws.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/cleanup-prevented-with-reference.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/cleanup-prevented-with-unregister.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/custom-this.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/holdings-multiple-values.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/length.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/name.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/prop-desc.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/reentrancy.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/return-undefined-with-gc.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/return-undefined.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/this-does-not-have-internal-cells-throws.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/cleanupSome/this-not-object-throws.js:
+        * test262/test/built-ins/FinalizationRegistry/prototype/unregister/unregister-cleaned-up-cell.js:
+        * test262/test/built-ins/WeakRef/prototype/deref/gc-cleanup-not-prevented-with-wr-deref.js:
+        * test262/test/intl402/DisplayNames/length.js:
+        * test262/test262-Revision.txt:
+
+2020-07-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Skip unrelated / too-compute-heavy tests in Apple Watch Series 3
+        https://bugs.webkit.org/show_bug.cgi?id=214768
+
+        Reviewed by Mark Lam.
+
+        We skip following tests in Apple Watch Series 3.
+
+        1. Tests take very long time to reproduce crash.
+        2. Tests for FTL, which are unrelated to Apple Watch Series 3.
+        3. Tests for fast for-of semantics update, which is not supported in 32bit architectures.
+        4. Tests for denormalized numbers where ceil / floor works differently in ARMv7k as expected.
+
+        * ChakraCore.yaml:
+        * stress/for-of-iterator-open-osr-at-inlined-return-non-object.js:
+        * stress/for-of-iterator-open-osr-at-iterator-set-local.js:
+        * stress/for-of-iterator-open-return-non-object.js:
+        * stress/op_bitand.js:
+        * stress/op_bitor.js:
+        * stress/op_bitxor.js:
+        * stress/op_lshift-ConstVar.js:
+        * stress/op_lshift-VarConst.js:
+        * stress/op_lshift-VarVar.js:
+        * stress/op_mul-ConstVar.js:
+        * stress/op_mul-VarConst.js:
+        * stress/op_mul-VarVar.js:
+        * stress/op_rshift-ConstVar.js:
+        * stress/op_rshift-VarConst.js:
+        * stress/op_rshift-VarVar.js:
+        * stress/op_sub-ConstVar.js:
+        * stress/op_sub-VarConst.js:
+        * stress/op_sub-VarVar.js:
+        * stress/op_urshift-ConstVar.js:
+        * stress/op_urshift-VarConst.js:
+        * stress/op_urshift-VarVar.js:
+        * stress/spread-forward-call-varargs-stack-overflow.js:
+        * stress/toctou-having-a-bad-time-new-array.js:
+
+2020-07-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG::AbstractValue::filterByValue should re-filter configured m_value via m_type
+        https://bugs.webkit.org/show_bug.cgi?id=214721
+        <rdar://problem/65882837>
+
+        Reviewed by Mark Lam.
+
+        * stress/speculation-from-structure-and-classinfo-should-agree.js: Added.
+        (bar):
+        (foo):
+
+2020-07-24  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.parse should not modify non-configurable properties.
+        https://bugs.webkit.org/show_bug.cgi?id=163446
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-07-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Do not use hardened Array for Intl supportedLocalesOf
+        https://bugs.webkit.org/show_bug.cgi?id=214676
+
+        Reviewed by Mark Lam.
+
+        * stress/intl-suppored-locales-of.js: Added.
+        (shouldBe):
+
+2020-07-24  Angelos Oikonomopoulos  <angelos@igalia.com>
+
+        Skip crashing test on mips
+        https://bugs.webkit.org/show_bug.cgi?id=214729
+
+        Reviewed by Noam Rosenthal.
+
+        * stress/compare-eq-should-use-known-other-use.js:
+
+2020-07-24  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        REGRESSION(r264639): Intl.DisplayNames tests failing on all architectures
+        https://bugs.webkit.org/show_bug.cgi?id=214589
+
+        Reviewed by Darin Adler.
+
+        Massage the tests for compatibility with ICU 63.1. I don't understand how exactly ICU's
+        behavior has changed between releases, and some of the conditions need to be added in
+        somewhat strange places, but this at least makes the tests pass.
+
+        * stress/intl-displaynames.js:
+        (vm.icuVersion):
+        * stress/intl-parse-unicode-subtags.js:
+        (vm.icuVersion):
+
+2020-07-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Arrow function |this| resolution should not be trapped by with-scope
+        https://bugs.webkit.org/show_bug.cgi?id=214716
+        <rdar://problem/65980639>
+
+        Reviewed by Darin Adler.
+
+        * stress/proxy-trap-this.js: Added.
+        (shouldNotThrow):
+        (const.handler.has):
+        (test):
+
 2020-07-23  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] BigInt can be `false` in boolean context in DFG AI

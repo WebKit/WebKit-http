@@ -166,6 +166,7 @@
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/ResourceLoadStatistics.h>
+#include <WebCore/RuntimeApplicationChecks.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SSLKeyGenerator.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
@@ -288,10 +289,8 @@
 #include "MediaUsageManager.h"
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/WebPageProxyAdditions.h>
-#else
-#define WEB_PAGE_PROXY_ADDITIONS_SETISNAVIGATINGTOAPPBOUNDDOMAIN true
+#if PLATFORM(COCOA)
+#include "DefaultWebBrowserChecks.h"
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -533,8 +532,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
     
     if (m_configuration->preferences()->serviceWorkerEntitlementDisabledForTesting())
         disableServiceWorkerEntitlementInNetworkProcess();
-
-    EndowmentStateTracker::singleton().addClient(*this);
 #endif
 
 #if PLATFORM(COCOA)
@@ -577,7 +574,7 @@ WebPageProxy::~WebPageProxy()
     webPageProxyCounter.decrement();
 #endif
 
-#if PLATFORM(IOS_FAMILY)
+#if PLATFORM(MACCATALYST)
     EndowmentStateTracker::singleton().removeClient(*this);
 #endif
 }
@@ -1393,8 +1390,10 @@ RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, c
 {
     RELEASE_LOG_IF_ALLOWED(Loading, "loadData:");
 
-    if (MIMEType == "text/html"_s && !WEB_PAGE_PROXY_ADDITIONS_SETISNAVIGATINGTOAPPBOUNDDOMAIN)
+#if PLATFORM(IOS_FAMILY)
+    if (MIMEType == "text/html"_s && !isFullWebBrowser())
         m_limitsNavigationsToAppBoundDomains = true;
+#endif
 
     if (m_isClosed) {
         RELEASE_LOG_IF_ALLOWED(Loading, "loadData: page is closed");
@@ -3134,8 +3133,12 @@ static bool shouldTreatURLProtocolAsAppBound(const URL& requestURL)
 bool WebPageProxy::setIsNavigatingToAppBoundDomainAndCheckIfPermitted(bool isMainFrame, const URL& requestURL, Optional<NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain)
 {
 #if PLATFORM(IOS_FAMILY)
-    if (WEB_PAGE_PROXY_ADDITIONS_SETISNAVIGATINGTOAPPBOUNDDOMAIN)
+    if (isFullWebBrowser()) {
+        if (hasProhibitedUsageStrings())
+            m_isNavigatingToAppBoundDomain = NavigatingToAppBoundDomain::No;
         return true;
+    }
+
     if (!isNavigatingToAppBoundDomain) {
         m_isNavigatingToAppBoundDomain = WTF::nullopt;
         return true;
@@ -8918,6 +8921,12 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags newSta
     ASSERT(focusManager);
     focusManager->updatePlaybackAttributesFromMediaState(this, sourceElementID, newState);
 #endif
+
+#if PLATFORM(IOS_FAMILY)
+    if (!m_process->throttler().shouldBeRunnable())
+        return;
+#endif
+
     if (!m_isClosed)
         updatePlayingMediaDidChange(newState);
 }
@@ -8926,6 +8935,16 @@ void WebPageProxy::updatePlayingMediaDidChange(MediaProducer::MediaStateFlags ne
 {
     if (newState == m_mediaState)
         return;
+
+#if PLATFORM(MACCATALYST)
+    // When the page starts playing media for the first time, make sure we register with
+    // the EndowmentStateTracker to get notifications when the application is no longer
+    // user-facing, so that we can appropriately suspend all media playback.
+    if (!m_isListeningForUserFacingStateChangeNotification) {
+        EndowmentStateTracker::singleton().addClient(*this);
+        m_isListeningForUserFacingStateChangeNotification = true;
+    }
+#endif
 
 #if ENABLE(MEDIA_STREAM)
     WebCore::MediaProducer::MediaStateFlags oldMediaCaptureState = m_mediaState & WebCore::MediaProducer::MediaCaptureMask;

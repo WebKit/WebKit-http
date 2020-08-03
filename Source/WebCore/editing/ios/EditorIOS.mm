@@ -267,14 +267,13 @@ void Editor::setDictationPhrasesAsChildOfElement(const Vector<Vector<String>>& d
         return;
     }
 
-    RefPtr<Range> context = document().createRange();
-    context->selectNodeContents(element);
+    auto context = makeRangeSelectingNodeContents(element);
 
     StringBuilder dictationPhrasesBuilder;
     for (auto& interpretations : dictationPhrases)
         dictationPhrasesBuilder.append(interpretations[0]);
 
-    element.appendChild(createFragmentFromText(*context, dictationPhrasesBuilder.toString()));
+    element.appendChild(createFragmentFromText(context, dictationPhrasesBuilder.toString()));
 
     auto weakElement = makeWeakPtr(element);
 
@@ -297,12 +296,12 @@ void Editor::setDictationPhrasesAsChildOfElement(const Vector<Vector<String>>& d
         if (interpretations.size() > 1) {
             auto alternatives = interpretations;
             alternatives.remove(0);
-            document().markers().addMarker(textNode, previousDictationPhraseStart, dictationPhraseLength, DocumentMarker::DictationPhraseWithAlternatives, WTFMove(alternatives));
+            addMarker(textNode, previousDictationPhraseStart, dictationPhraseLength, DocumentMarker::DictationPhraseWithAlternatives, WTFMove(alternatives));
         }
         previousDictationPhraseStart += dictationPhraseLength;
     }
 
-    document().markers().addMarker(textNode, 0, textNode.length(), DocumentMarker::DictationResult, retainPtr(metadata));
+    addMarker(textNode, 0, textNode.length(), DocumentMarker::DictationResult, retainPtr(metadata));
 
     client()->respondToChangedContents();
 }
@@ -352,9 +351,7 @@ void Editor::setTextAsChildOfElement(const String& text, Element& element)
         if (parent)
             element.remove();
 
-        auto context = document().createRange();
-        context->selectNodeContents(element);
-        element.appendChild(createFragmentFromText(context, text));
+        element.appendChild(createFragmentFromText(makeRangeSelectingNodeContents(element), text));
 
         // restore element to document
         if (parent) {

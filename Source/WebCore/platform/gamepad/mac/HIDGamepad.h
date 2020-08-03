@@ -27,107 +27,37 @@
 
 #if ENABLE(GAMEPAD) && PLATFORM(MAC)
 
+#include "HIDDevice.h"
+#include "HIDGamepadElement.h"
 #include "PlatformGamepad.h"
 #include <IOKit/hid/IOHIDDevice.h>
 #include <wtf/HashMap.h>
-#include <wtf/RetainPtr.h>
-#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 
-struct HIDGamepadElement {
-    WTF_MAKE_STRUCT_FAST_ALLOCATED;
-    HIDGamepadElement(double theMin, double theMax, IOHIDElementRef element)
-        : min(theMin)
-        , max(theMax)
-        , rawValue(theMin)
-        , iohidElement(element)
-    {
-    }
-    
-    virtual ~HIDGamepadElement()
-    {
-    }
-
-    double min;
-    double max;
-    double rawValue;
-    RetainPtr<IOHIDElementRef> iohidElement;
-
-    virtual bool isButton() const { return false; }
-    virtual bool isAxis() const { return false; }
-
-    virtual double normalizedValue() = 0;
-};
-
-struct HIDGamepadButton : HIDGamepadElement {
-    HIDGamepadButton(uint32_t thePriority, double min, double max, IOHIDElementRef element)
-        : HIDGamepadElement(min, max, element)
-        , priority(thePriority)
-    {
-    }
-
-    uint32_t priority;
-
-    bool isButton() const final { return true; }
-
-    // Buttons normalize to the range (0.0) - (1.0)
-    double normalizedValue() override
-    {
-        return (rawValue - min) / (max - min);
-    }
-};
-
-struct HIDGamepadAxis : HIDGamepadElement {
-    HIDGamepadAxis(double min, double max, IOHIDElementRef element)
-        : HIDGamepadElement(min, max, element)
-    {
-    }
-
-    bool isAxis() const final { return true; }
-
-    // Axes normalize to the range (-1.0) - (1.0)
-    double normalizedValue() override
-    {
-        return (((rawValue - min) / (max - min)) * 2) - 1;
-    }
-};
-
-enum class HIDInputType {
-    ButtonPress,
-    NotAButtonPress,
-};
-
 class HIDGamepad : public PlatformGamepad {
 public:
-    HIDGamepad(IOHIDDeviceRef, unsigned index);
+    static std::unique_ptr<HIDGamepad> create(IOHIDDeviceRef, unsigned index);
 
-    IOHIDDeviceRef hidDevice() const { return m_hidDevice.get(); }
+    const HIDDevice& hidDevice() const { return m_device; }
 
+    void initialize();
     HIDInputType valueChanged(IOHIDValueRef);
 
-    const Vector<double>& axisValues() const final { return m_axisValues; }
-    const Vector<double>& buttonValues() const final { return m_buttonValues; }
+    const Vector<SharedGamepadValue>& axisValues() const final { return m_axisValues; }
+    const Vector<SharedGamepadValue>& buttonValues() const final { return m_buttonValues; }
 
     const char* source() const final { return "HID"_s; }
 
+protected:
+    HIDGamepad(HIDDevice&&, unsigned index);
+
+    HashMap<IOHIDElementCookie, std::unique_ptr<HIDGamepadElement>> m_elementMap;
+    Vector<SharedGamepadValue> m_buttonValues;
+    Vector<SharedGamepadValue> m_axisValues;
+
 private:
-    void initElements();
-    void initElementsFromArray(CFArrayRef);
-
-    bool maybeAddButton(IOHIDElementRef);
-    bool maybeAddAxis(IOHIDElementRef);
-
-    void getCurrentValueForElement(const HIDGamepadElement&);
-
-    RetainPtr<IOHIDDeviceRef> m_hidDevice;
-
-    HashMap<IOHIDElementCookie, HIDGamepadElement*> m_elementMap;
-
-    Vector<UniqueRef<HIDGamepadButton>> m_buttons;
-    Vector<UniqueRef<HIDGamepadAxis>> m_axes;
-    Vector<double> m_buttonValues;
-    Vector<double> m_axisValues;
+    HIDDevice m_device;
 };
 
 } // namespace WebCore

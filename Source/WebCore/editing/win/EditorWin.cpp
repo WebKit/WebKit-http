@@ -31,6 +31,7 @@
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "Pasteboard.h"
+#include "Range.h"
 #include "windows.h"
 
 namespace WebCore {
@@ -42,7 +43,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, OptionSet<PasteOption> 
         return;
 
     bool chosePlainText;
-    auto fragment = pasteboard->documentFragment(*m_document.frame(), createLiveRange(*range), options.contains(PasteOption::AllowPlainText), chosePlainText);
+    auto fragment = pasteboard->documentFragment(*m_document.frame(), *range, options.contains(PasteOption::AllowPlainText), chosePlainText);
 
     if (fragment && options.contains(PasteOption::AsQuotation))
         quoteFragmentForPasting(*fragment);

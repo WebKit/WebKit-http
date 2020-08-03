@@ -56,6 +56,8 @@ static const char **_argv;
 
 - (void)_handleHIDEvent:(IOHIDEventRef)event
 {
+    [super _handleHIDEvent:event];
+
     [[HIDEventGenerator sharedHIDEventGenerator] markerEventReceived:event];
 }
 

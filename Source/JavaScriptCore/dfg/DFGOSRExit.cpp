@@ -550,7 +550,6 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
         }
     }
 
-#if USE(JSVALUE64)
     if constexpr (validateDFGDoesGC) {
         if (Options::validateDoesGC()) {
             // We're about to exit optimized code. So, there's no longer any optimized
@@ -564,7 +563,6 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
             jit.store32(CCallHelpers::TrustedImm32(DoesGCCheck::encode(true, DoesGCCheck::Special::DFGOSRExit)), vm.heap.addressOfDoesGC());
         }
     }
-#endif
     
     // Need to ensure that the stack pointer accounts for the worst-case stack usage at exit. This
     // could toast some stack that the DFG used. We need to do it before storing to stack offsets
@@ -601,6 +599,7 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
                     auto& recovery = values[i + tmpOffset];
                     // FIXME: We should do what the FTL does and materialize all the JSValues into the scratch buffer.
                     switch (recovery.technique()) {
+
                     case Constant:
                         sideState->tmps[i] = recovery.constant();
                         break;
@@ -611,33 +610,41 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
                         break;
                     }
 
-#if USE(JSVALUE32_64)
-                    case InPair:
-#endif
-                    case InGPR:
-                    case BooleanDisplacedInJSStack:
-                    case CellDisplacedInJSStack:
-                    case DisplacedInJSStack: {
-                        sideState->tmps[i] = reinterpret_cast<JSValue*>(tmpScratch)[i + tmpOffset];
-                        break;
-                    }
-
-                    case UnboxedCellInGPR: {
-#if USE(JSVALUE64)
-                        sideState->tmps[i] = reinterpret_cast<JSValue*>(tmpScratch)[i + tmpOffset];
-#else
-                        EncodedValueDescriptor* valueDescriptor = bitwise_cast<EncodedValueDescriptor*>(tmpScratch + i + tmpOffset);
-                        sideState->tmps[i] = JSValue(JSValue::CellTag, valueDescriptor->asBits.payload);
-#endif
-                        break;
-                    }
-
                     case UnboxedBooleanInGPR: {
                         sideState->tmps[i] = jsBoolean(static_cast<bool>(tmpScratch[i + tmpOffset]));
                         break;
                     }
 
-                    default: 
+#if USE(JSVALUE64)
+                    case BooleanDisplacedInJSStack:
+                    case CellDisplacedInJSStack:
+                    case UnboxedCellInGPR:
+                    case InGPR:
+                    case DisplacedInJSStack: {
+                        sideState->tmps[i] = reinterpret_cast<JSValue*>(tmpScratch)[i + tmpOffset];
+                        break;
+                    }
+#else // USE(JSVALUE32_64)
+                    case InPair:
+                    case DisplacedInJSStack: {
+                        sideState->tmps[i] = reinterpret_cast<JSValue*>(tmpScratch)[i + tmpOffset];
+                        break;
+                    }
+
+                    case CellDisplacedInJSStack:
+                    case UnboxedCellInGPR: {
+                        EncodedValueDescriptor* valueDescriptor = bitwise_cast<EncodedValueDescriptor*>(tmpScratch + i + tmpOffset);
+                        sideState->tmps[i] = JSValue(JSValue::CellTag, valueDescriptor->asBits.payload);
+                        break;
+                    }
+
+                    case BooleanDisplacedInJSStack: {
+                        sideState->tmps[i] = jsBoolean(static_cast<bool>(tmpScratch[i + tmpOffset]));
+                        break;
+                    }
+#endif // USE(JSVALUE64)
+
+                    default:
                         RELEASE_ASSERT_NOT_REACHED();
                         break;
                     }

@@ -675,11 +675,10 @@ bool EventHandler::handleMousePressEventTripleClick(const MouseEventWithHitTestR
 
 static uint64_t textDistance(const Position& start, const Position& end)
 {
-    auto startBoundary = makeBoundaryPoint(start);
-    auto endBoundary = makeBoundaryPoint(end);
-    if (!startBoundary || !endBoundary)
+    auto range = makeSimpleRange(start, end);
+    if (!range)
         return 0;
-    return characterCount({ *startBoundary, *endBoundary }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+    return characterCount(*range, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
 }
 
 bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestResults& event)
@@ -688,7 +687,7 @@ bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestR
 
     m_frame.document()->updateLayoutIgnorePendingStylesheets();
     Node* targetNode = event.targetNode();
-    if (!(targetNode && targetNode->renderer() && m_mouseDownMayStartSelect))
+    if (!targetNode || !targetNode->renderer() || !m_mouseDownMayStartSelect || m_mouseDownDelegatedFocus)
         return false;
 
     // Extend the selection if the Shift key is down, unless the click is in a link.
@@ -2712,6 +2711,8 @@ bool EventHandler::dispatchMouseEvent(const AtomString& eventType, Node* targetN
     if (eventType != eventNames().mousedownEvent)
         return true;
 
+    m_mouseDownDelegatedFocus = false;
+
     // If clicking on a frame scrollbar, do not make any change to which element is focused.
     auto* view = m_frame.view();
     if (view && view->scrollbarAtPoint(platformMouseEvent.position()))
@@ -2731,6 +2732,7 @@ bool EventHandler::dispatchMouseEvent(const AtomString& eventType, Node* targetN
         if (auto* shadowRoot = element->shadowRoot()) {
             if (shadowRoot->delegatesFocus()) {
                 element = findFirstMouseFocusableElementInComposedTree(*element);
+                m_mouseDownDelegatedFocus = true;
                 break;
             }
         }
@@ -2759,6 +2761,9 @@ bool EventHandler::dispatchMouseEvent(const AtomString& eventType, Node* targetN
     if (page && !page->focusController().setFocusedElement(element.get(), m_frame))
         return false;
 
+    if (m_mouseDownDelegatedFocus)
+        element->revealFocusedElement(SelectionRestorationMode::SetDefault);
+
     return true;
 }
 
@@ -2772,15 +2777,6 @@ bool EventHandler::isInsideScrollbar(const IntPoint& windowPoint) const
 
     return false;
 }
-
-#if !USE(GLIB)
-
-bool EventHandler::shouldSwapScrollDirection(const HitTestResult&, const PlatformWheelEvent&) const
-{
-    return false;
-}
-
-#endif
 
 void EventHandler::clearLatchedStateTimerFired()
 {
@@ -2932,20 +2928,17 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
         m_frame.page()->resetLatchingState();
 #endif
 
-    // FIXME: It should not be necessary to do this mutation here.
-    // Instead, the handlers should know convert vertical scrolls appropriately.
-    PlatformWheelEvent adjustedEvent = shouldSwapScrollDirection(result, event) ? event.copySwappingDirection() : event;
-    recordWheelEventForDeltaFilter(adjustedEvent);
+    recordWheelEventForDeltaFilter(event);
 
     if (element) {
         if (isOverWidget) {
             if (WeakPtr<Widget> widget = widgetForElement(*element)) {
                 if (passWheelEventToWidget(event, *widget.get()))
-                    return completeWidgetWheelEvent(adjustedEvent, widget, scrollableArea, scrollableContainer.get());
+                    return completeWidgetWheelEvent(event, widget, scrollableArea, scrollableContainer.get());
             }
         }
 
-        if (!element->dispatchWheelEvent(adjustedEvent)) {
+        if (!element->dispatchWheelEvent(event)) {
             m_isHandlingWheelEvent = false;
             if (scrollableArea && scrollableArea->scrollShouldClearLatchedState()) {
                 // Web developer is controlling scrolling, so don't attempt to latch.
@@ -2953,7 +2946,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
                 scrollableArea->setScrollShouldClearLatchedState(false);
             }
 
-            processWheelEventForScrollSnap(adjustedEvent, scrollableArea);
+            processWheelEventForScrollSnap(event, scrollableArea);
             return true;
         }
     }
@@ -2961,8 +2954,8 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     if (scrollableArea)
         scrollableArea->setScrollShouldClearLatchedState(false);
 
-    bool handledEvent = processWheelEventForScrolling(adjustedEvent, scrollableContainer.get(), scrollableArea);
-    processWheelEventForScrollSnap(adjustedEvent, scrollableArea);
+    bool handledEvent = processWheelEventForScrolling(event, scrollableContainer.get(), scrollableArea);
+    processWheelEventForScrollSnap(event, scrollableArea);
     return handledEvent;
 }
 

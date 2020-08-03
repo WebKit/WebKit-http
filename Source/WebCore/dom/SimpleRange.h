@@ -29,8 +29,6 @@
 
 namespace WebCore {
 
-class Range;
-
 struct SimpleRange {
     BoundaryPoint start;
     BoundaryPoint end;
@@ -44,19 +42,26 @@ struct SimpleRange {
 
     WEBCORE_EXPORT SimpleRange(const BoundaryPoint&, const BoundaryPoint&);
     WEBCORE_EXPORT SimpleRange(BoundaryPoint&&, BoundaryPoint&&);
-
-    // Convenience overloads to help with transition from using a lot of live ranges.
-    // FIXME: Once transition is over, remove and change callers to use makeSimpleRange instead.
-    WEBCORE_EXPORT SimpleRange(const Range&);
-    SimpleRange(const Ref<Range>&);
 };
 
-WEBCORE_EXPORT Optional<SimpleRange> makeSimpleRange(const Optional<BoundaryPoint>&, const Optional<BoundaryPoint>&);
-WEBCORE_EXPORT Optional<SimpleRange> makeSimpleRange(Optional<BoundaryPoint>&&, Optional<BoundaryPoint>&&);
+SimpleRange makeSimpleRangeHelper(BoundaryPoint&&, BoundaryPoint&&);
+Optional<SimpleRange> makeSimpleRangeHelper(Optional<BoundaryPoint>&&, Optional<BoundaryPoint>&&);
+SimpleRange makeSimpleRangeHelper(BoundaryPoint&&);
+Optional<SimpleRange> makeSimpleRangeHelper(Optional<BoundaryPoint>&&);
+
+inline BoundaryPoint makeBoundaryPointHelper(const BoundaryPoint& point) { return point; }
+inline BoundaryPoint makeBoundaryPointHelper(BoundaryPoint&& point) { return WTFMove(point); }
+inline Optional<BoundaryPoint> makeBoundaryPointHelper(const Optional<BoundaryPoint>& point) { return point; }
+inline Optional<BoundaryPoint> makeBoundaryPointHelper(Optional<BoundaryPoint>&& point) { return WTFMove(point); }
+template<typename T> auto makeBoundaryPointHelper(T&& argument) -> decltype(makeBoundaryPoint(std::forward<T>(argument))) { return makeBoundaryPoint(std::forward<T>(argument)); }
+
+template<typename ...T> auto makeSimpleRange(T&& ...arguments) -> decltype(makeSimpleRangeHelper(makeBoundaryPointHelper(std::forward<T>(arguments))...)) { return makeSimpleRangeHelper(makeBoundaryPointHelper(std::forward<T>(arguments))...); }
 
 // FIXME: Would like these to have shorter names; another option is to change prefix to makeSimpleRange.
 WEBCORE_EXPORT Optional<SimpleRange> makeRangeSelectingNode(Node&);
 WEBCORE_EXPORT SimpleRange makeRangeSelectingNodeContents(Node&);
+
+WEBCORE_EXPORT RefPtr<Node> commonInclusiveAncestor(const SimpleRange&);
 
 bool operator==(const SimpleRange&, const SimpleRange&);
 
@@ -110,9 +115,29 @@ inline IntersectingNodeRange intersectingNodes(const SimpleRange& range)
     return { range };
 }
 
-inline SimpleRange::SimpleRange(const Ref<Range>& range)
-    : SimpleRange(range.get())
+inline SimpleRange makeSimpleRangeHelper(BoundaryPoint&& start, BoundaryPoint&& end)
 {
+    return { WTFMove(start), WTFMove(end) };
+}
+
+inline Optional<SimpleRange> makeSimpleRangeHelper(Optional<BoundaryPoint>&& start, Optional<BoundaryPoint>&& end)
+{
+    if (!start || !end)
+        return WTF::nullopt;
+    return makeSimpleRangeHelper(WTFMove(*start), WTFMove(*end));
+}
+
+inline SimpleRange makeSimpleRangeHelper(BoundaryPoint&& point)
+{
+    auto end = point;
+    return makeSimpleRangeHelper(WTFMove(point), WTFMove(end));
+}
+
+inline Optional<SimpleRange> makeSimpleRangeHelper(Optional<BoundaryPoint>&& point)
+{
+    if (!point)
+        return WTF::nullopt;
+    return makeSimpleRangeHelper(WTFMove(*point));
 }
 
 }

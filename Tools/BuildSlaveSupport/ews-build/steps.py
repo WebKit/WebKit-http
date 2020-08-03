@@ -41,6 +41,7 @@ S3URL = 'https://s3-us-west-2.amazonaws.com/'
 S3_RESULTS_URL = 'https://ews-build.s3-us-west-2.amazonaws.com/'
 EWS_BUILD_URL = 'https://ews-build.webkit.org/'
 EWS_URL = 'https://ews.webkit.org/'
+RESULTS_DB_URL = 'https://results.webkit.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
 
@@ -296,7 +297,8 @@ class CheckPatchRelevance(buildstep.BuildStep):
     ]
 
     webkitpy_paths = [
-        'Tools/Scripts/webkitpy/',
+        'Tools/Scripts/webkitpy',
+        'Tools/Scripts/libraries',
     ]
 
     group_to_paths_mapping = {
@@ -1197,7 +1199,7 @@ class RunWebKitPyPython2Tests(WebKitPyTest):
     description = ['webkitpy-tests running ({})'.format(language)]
     jsonFileName = 'webkitpy_test_{}_results.json'.format(language)
     logfiles = {'json': jsonFileName}
-    command = ['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
+    command = ['python', 'Tools/Scripts/test-webkitpy', '--verbose', '--json-output={0}'.format(jsonFileName)]
 
 
 class RunWebKitPyPython3Tests(WebKitPyTest):
@@ -1206,7 +1208,7 @@ class RunWebKitPyPython3Tests(WebKitPyTest):
     description = ['webkitpy-tests running ({})'.format(language)]
     jsonFileName = 'webkitpy_test_{}_results.json'.format(language)
     logfiles = {'json': jsonFileName}
-    command = ['python3', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
+    command = ['python3', 'Tools/Scripts/test-webkitpy', '--verbose', '--json-output={0}'.format(jsonFileName)]
 
 
 class InstallGtkDependencies(shell.ShellCommand):
@@ -1372,6 +1374,7 @@ class AnalyzeCompileWebKitResults(buildstep.BuildStep):
             self.finished(FAILURE)
             message = 'Unable to build WebKit without patch, retrying build'
             self.descriptionDone = message
+            self.send_email_for_build_failure()
             self.build.buildFinished([message], RETRY)
             return defer.succeed(None)
 
@@ -1393,6 +1396,18 @@ class AnalyzeCompileWebKitResults(buildstep.BuildStep):
         for step in self.build.executedSteps:
             if step.name == step_name:
                 return step.results
+
+    def send_email_for_build_failure(self):
+        try:
+            builder_name = self.getProperty('buildername', '')
+            worker_name = self.getProperty('workername', '')
+            build_url = '{}#/builders/{}/builds/{}'.format(self.master.config.buildbotURL, self.build._builderid, self.build.number)
+
+            email_subject = 'Build failure on trunk on {}'.format(builder_name)
+            email_text = 'Failed to build WebKit without patch in {}\n\nBuilder: {}\n\nWorker: {}'.format(build_url, builder_name, worker_name)
+            send_email_to_bot_watchers(email_subject, email_text)
+        except Exception as e:
+            print('Error in sending email for build failure: {}'.format(e))
 
 
 class CompileJSC(CompileWebKit):
@@ -1899,10 +1914,13 @@ class ReRunWebKitTests(RunWebKitTests):
     def send_email_for_flaky_failure(self, test_name):
         try:
             builder_name = self.getProperty('buildername', '')
+            worker_name = self.getProperty('workername', '')
             build_url = '{}#/builders/{}/builds/{}'.format(self.master.config.buildbotURL, self.build._builderid, self.build.number)
+            history_url = '{}?suite=layout-tests&test={}'.format(RESULTS_DB_URL, test_name)
 
             email_subject = 'Flaky test: {}'.format(test_name)
             email_text = 'Test {} flaked in {}\n\nBuilder: {}'.format(test_name, build_url, builder_name)
+            email_text = 'Flaky test: {}\n\nBuild: {}\n\nBuilder: {}\n\nWorker: {}\n\nHistory: {}'.format(test_name, build_url, builder_name, worker_name, history_url)
             send_email_to_bot_watchers(email_subject, email_text)
         except Exception as e:
             # Catching all exceptions here to ensure that failure to send email doesn't impact the build
@@ -1995,22 +2013,26 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
     def send_email_for_flaky_failure(self, test_name):
         try:
             builder_name = self.getProperty('buildername', '')
+            worker_name = self.getProperty('workername', '')
             build_url = '{}#/builders/{}/builds/{}'.format(self.master.config.buildbotURL, self.build._builderid, self.build.number)
+            history_url = '{}?suite=layout-tests&test={}'.format(RESULTS_DB_URL, test_name)
 
             email_subject = 'Flaky test: {}'.format(test_name)
-            email_text = 'Test {} flaked in {}\n\nBuilder: {}'.format(test_name, build_url, builder_name)
-            rc = send_email_to_bot_watchers(email_subject, email_text)
+            email_text = 'Flaky test: {}\n\nBuild: {}\n\nBuilder: {}\n\nWorker: {}\n\nHistory: {}'.format(test_name, build_url, builder_name, worker_name, history_url)
+            send_email_to_bot_watchers(email_subject, email_text)
         except Exception as e:
             print('Error in sending email for flaky failure: {}'.format(e))
 
     def send_email_for_pre_existing_failure(self, test_name):
         try:
             builder_name = self.getProperty('buildername', '')
+            worker_name = self.getProperty('workername', '')
             build_url = '{}#/builders/{}/builds/{}'.format(self.master.config.buildbotURL, self.build._builderid, self.build.number)
+            history_url = '{}?suite=layout-tests&test={}'.format(RESULTS_DB_URL, test_name)
 
             email_subject = 'Pre-existing test failure: {}'.format(test_name)
-            email_text = 'Test {} failed on clean tree run in {}.\nBuilder: {}'.format(test_name, build_url, builder_name)
-            rc = send_email_to_bot_watchers(email_subject, email_text)
+            email_text = 'Test {} failed on clean tree run in {}.\n\nBuilder: {}\n\nWorker: {}\n\nHistory: {}'.format(test_name, build_url, builder_name, worker_name, history_url)
+            send_email_to_bot_watchers(email_subject, email_text)
         except Exception as e:
             print('Error in sending email for pre-existing failure: {}'.format(e))
 
@@ -2526,6 +2548,7 @@ class PrintConfiguration(steps.ShellSequence):
             return 'Unknown'
 
         build_to_name_mapping = {
+            '11.0': 'Big Sur',
             '10.15': 'Catalina',
             '10.14': 'Mojave',
             '10.13': 'High Sierra',

@@ -1,3 +1,287 @@
+2020-08-03  Clark Wang  <clark_wang@apple.com>
+
+        Added AudioBuffer Constructor
+        https://bugs.webkit.org/show_bug.cgi?id=214990
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests. Some now fail due to unsupported sampleRate.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffer-interface/ctor-audiobuffer-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiobuffersource-channels-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/active-processing.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/convolver-response-1-chan-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/convolver-response-2-chan-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/convolver-response-4-chan-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/convolver-setBuffer-already-has-value-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/osc-basic-waveform-expected.txt:
+
+2020-08-03  Kenneth Russell  <kbr@chromium.org>
+
+        [WebGL2] webgl/2.0.0/conformance[2]/textures/image_bitmap* failures
+        https://bugs.webkit.org/show_bug.cgi?id=211484
+
+        Reviewed by Dean Jackson.
+
+        Rebaseline a test which is now passing.
+
+        * web-platform-tests/html/canvas/element/imagebitmap/createImageBitmap-flipY-expected.txt:
+
+2020-08-03  Clark Wang  <clark_wang@apple.com>
+
+        Added Constructor to AnalyserNode
+        https://bugs.webkit.org/show_bug.cgi?id=215040
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/ctor-analyser-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/realtimeanalyser-fft-sizing-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/test-analysernode-expected.txt:
+
+2020-07-31  Chris Dumez  <cdumez@apple.com>
+
+        Add OfflineAudioCompletionEvent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=214994
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+
+2020-07-31  Chris Dumez  <cdumez@apple.com>
+
+        Add constructor for WaveShaperNode
+        https://bugs.webkit.org/show_bug.cgi?id=214989
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline WPT tests now that more checks are passing.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-waveshapernode-interface/ctor-waveshaper-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-waveshapernode-interface/waveshaper-simple-expected.txt:
+
+2020-07-30  Chris Dumez  <cdumez@apple.com>
+
+        OfflineAudioContext.startRendering() should return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=214940
+
+        Reviewed by Eric Carlson.
+
+        A lot of Web Audio web-platform-tests were unable to run properly due to OfflineAudioContext.startRendering()
+        not returning a Promise. Now that we fixed that, a lot of tests are actually running much further. We get a
+        lot of new PASS lines. We also get new FAIL lines too for subtests that are now running and failing but
+        previously could not even run.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/realtimeanalyser-fft-scaling-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-analysernode-interface/test-analyser-gain-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffer-interface/audiobuffer-reuse-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiobuffersource-grain-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiobuffersource-one-sample-loop-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiobuffersource-start-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiosource-onended-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiosource-time-limits-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/sample-accurate-scheduling-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiocontext-interface/audiocontext-suspend-resume-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-connect-order-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/audioparam-connect-audioratesignal-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/audioparam-setValueCurve-exceptions-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/audioparam-summingjunction-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/setTargetAtTime-after-event-within-block-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/setValueAtTime-within-block-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-disconnect-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-input-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-input-non-default-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelsplitternode-interface/audiochannelsplitter-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/convolution-mono-mono-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-max-default-delay-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-max-nondefault-delay-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-maxdelay-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-maxdelaylimit-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-delaynode-interface/delaynode-scheduling-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/detune-limiting-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/osc-basic-waveform-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-automation-basic-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-automation-position-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/test-pannernode-automation-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-waveshapernode-interface/waveshaper-expected.txt:
+
+2020-07-29  Clark Wang  <clark_wang@apple.com>
+
+        Added constructor methods to ChannelMergerNode, ChannelSplitterNode
+        https://bugs.webkit.org/show_bug.cgi?id=214851
+        <rdar://problem/66233763>
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests that now pass, or fail due to a different interface.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/buffer-resampling-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/sub-sample-buffer-stitching-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/k-rate-dynamics-compressor-connections-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioworklet-interface/simple-input-output.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/active-processing.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-basic-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/ctor-channelmerger-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelsplitternode-interface/audiochannelsplitter-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelsplitternode-interface/ctor-channelsplitter-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/detune-limiting-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-distance-clamping-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-scriptprocessornode-interface/simple-input-output-expected.txt:
+
+2020-07-29  Clark Wang  <clark_wang@apple.com>
+
+        Added copyFromChannel, copyToChannel to AudioBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=214926
+
+        Reviewed by Chris Dumez.
+
+       Re-baselined existing tests. Fails on catching sharedBuffer being passed in, but currently
+        WebKit does not support sharedBuffer implementation.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffer-interface/audiobuffer-copy-channel-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffer-interface/audiobuffer-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-waveshapernode-interface/waveshaper-limits-expected.txt:
+
+2020-07-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r265002.
+        https://bugs.webkit.org/show_bug.cgi?id=214919
+
+        Broke imported/w3c/web-platform-tests/webaudio/the-audio-api
+        /the-scriptprocessornode-interface/simple-input-output.html
+
+        Reverted changeset:
+
+        "Added constructor methods to ChannelMergerNode,
+        ChannelSplitterNode"
+        https://bugs.webkit.org/show_bug.cgi?id=214851
+        https://trac.webkit.org/changeset/265002
+
+2020-07-28  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Fix 'align-content' in grid containers with small content area
+        https://bugs.webkit.org/show_bug.cgi?id=214370
+
+        Reviewed by Darin Adler.
+
+        Create a WPT test and import another one.
+
+        * web-platform-tests/css/css-grid/alignment/grid-place-content-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-place-content-001.html: Added.
+        * web-platform-tests/css/css-sizing/available-height-for-replaced-content-001-expected.txt: Added.
+        * web-platform-tests/css/css-sizing/available-height-for-replaced-content-001.html: Added.
+        * web-platform-tests/css/css-sizing/w3c-import.log:
+
+2020-07-28  Chris Dumez  <cdumez@apple.com>
+
+        [EventSource] WebKit fails to UTF-8 encode the Last-Event-ID HTTP header value
+        https://bugs.webkit.org/show_bug.cgi?id=214860
+
+        Reviewed by Alex Christensen and Darin Adler.
+
+        Rebaseline a couple of web-platform-tests that are now passing.
+
+        * web-platform-tests/eventsource/format-field-id-2-expected.txt:
+        * web-platform-tests/eventsource/format-field-id-expected.txt:
+
+2020-07-28  Clark Wang  <clark_wang@apple.com>
+
+        Added constructor methods to ChannelMergerNode, ChannelSplitterNode
+        https://bugs.webkit.org/show_bug.cgi?id=214851
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests that now pass, or fail further along. 
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/buffer-resampling-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audiobuffersourcenode-interface/sub-sample-buffer-stitching-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioparam-interface/k-rate-dynamics-compressor-connections-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-audioworklet-interface/simple-input-output.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/active-processing.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-basic-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/ctor-channelmerger-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelsplitternode-interface/audiochannelsplitter-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelsplitternode-interface/ctor-channelsplitter-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/detune-limiting-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-distance-clamping-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-scriptprocessornode-interface/simple-input-output-expected.txt:
+
+2020-07-28  Rob Buis  <rbuis@igalia.com>
+
+        PerformanceObserver should work with 'type' and not just `entryTypes`
+        https://bugs.webkit.org/show_bug.cgi?id=209216
+
+        Reviewed by Youenn Fablet.
+
+        Add po-observe-type.any.html and po-observe-type.any.worker.html tests and
+        update improved test expectations.
+
+        * web-platform-tests/performance-timeline/performanceobservers.js: Added.
+        (findMatch):
+        (checkEntries):
+        (wait):
+        (checkSorted):
+        * web-platform-tests/performance-timeline/po-observe-type.any-expected.txt: Added.
+        * web-platform-tests/performance-timeline/po-observe-type.any.html: Added.
+        * web-platform-tests/performance-timeline/po-observe-type.any.js: Added.
+        (test):
+        (async_test):
+        * web-platform-tests/performance-timeline/po-observe-type.any.worker-expected.txt: Added.
+        * web-platform-tests/performance-timeline/po-observe-type.any.worker.html: Added.
+        * web-platform-tests/resource-timing/buffered-flag.any-expected.txt:
+        * web-platform-tests/resource-timing/buffered-flag.any.worker-expected.txt:
+        * web-platform-tests/resource-timing/object-not-found-adds-entry-expected.txt:
+        * web-platform-tests/user-timing/buffered-flag.any-expected.txt:
+        * web-platform-tests/user-timing/buffered-flag.any.worker-expected.txt:
+
+2020-07-27  Chris Dumez  <cdumez@apple.com>
+
+        thisValue is not always set correctly when calling JS callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=214847
+
+        Reviewed by Darin Adler.
+
+        Import layout test coverage from upstream WPT. We were failing this new subtest
+        before my fix.
+
+        * web-platform-tests/dom/traversal/TreeWalker-acceptNode-filter-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-acceptNode-filter.html:
+
+2020-07-27  Clark Wang  <clark_wang@apple.com>
+
+        Added Constructor method to OscillatorNode
+        https://bugs.webkit.org/show_bug.cgi?id=214746
+
+        Reviewed by Chris Dumez.
+
+        Re-baselined existing tests that now pass, or fail further along.
+
+        * web-platform-tests/webaudio/idlharness.https.window-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/processing-model/cycle-without-delay-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-channelmergernode-interface/active-processing.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-convolvernode-interface/active-processing.https-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/ctor-oscillator-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/detune-limiting-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-oscillatornode-interface/osc-basic-waveform-expected.txt:
+        * web-platform-tests/webaudio/the-audio-api/the-pannernode-interface/panner-distance-clamping-expected.txt:
+
+2020-07-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, land baseline for web-platform-tests/encoding/eof-shift_jis.html.
+
+        * web-platform-tests/encoding/eof-shift_jis-expected.html: Added.
+
 2020-07-23  Chris Dumez  <cdumez@apple.com>
 
         Add support for SVGAElement's rel / relList attributes

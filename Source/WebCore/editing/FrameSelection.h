@@ -30,7 +30,6 @@
 #include "Element.h"
 #include "IntRect.h"
 #include "LayoutRect.h"
-#include "Range.h"
 #include "ScrollAlignment.h"
 #include "Timer.h"
 #include "VisibleSelection.h"
@@ -144,7 +143,6 @@ public:
 
     WEBCORE_EXPORT Element* rootEditableElementOrDocumentElement() const;
      
-    WEBCORE_EXPORT void moveTo(const Range*);
     WEBCORE_EXPORT void moveTo(const VisiblePosition&, EUserTriggered = NotUserTriggered, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded);
     WEBCORE_EXPORT void moveTo(const VisiblePosition&, const VisiblePosition&, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, EAffinity, EUserTriggered = NotUserTriggered);
@@ -155,7 +153,7 @@ public:
     WEBCORE_EXPORT void setSelection(const VisibleSelection&, OptionSet<SetSelectionOption> = defaultSetSelectionOptions(), AXTextStateChangeIntent = AXTextStateChangeIntent(), CursorAlignOnScroll = AlignCursorOnScrollIfNeeded, TextGranularity = TextGranularity::CharacterGranularity);
 
     enum class ShouldCloseTyping : bool { No, Yes };
-    WEBCORE_EXPORT bool setSelectedRange(Range*, EAffinity, ShouldCloseTyping, EUserTriggered = NotUserTriggered);
+    WEBCORE_EXPORT bool setSelectedRange(const Optional<SimpleRange>&, EAffinity, ShouldCloseTyping, EUserTriggered = NotUserTriggered);
     WEBCORE_EXPORT void selectAll();
     WEBCORE_EXPORT void clear();
     void willBeRemovedFromFrame();
@@ -232,8 +230,6 @@ public:
     WEBCORE_EXPORT UChar characterInRelationToCaretSelection(int amount) const;
     WEBCORE_EXPORT UChar characterBeforeCaretSelection() const;
     WEBCORE_EXPORT UChar characterAfterCaretSelection() const;
-    WEBCORE_EXPORT int wordOffsetInRange(const Range*) const;
-    WEBCORE_EXPORT bool spaceFollowsWordInRange(const Range*) const;
     WEBCORE_EXPORT bool selectionAtDocumentStart() const;
     WEBCORE_EXPORT bool selectionAtSentenceStart() const;
     WEBCORE_EXPORT bool selectionAtWordStart() const;
@@ -333,7 +329,6 @@ private:
     bool dispatchSelectStart();
 
 #if PLATFORM(IOS_FAMILY)
-    bool actualSelectionAtSentenceStart(const VisibleSelection&) const;
     Optional<SimpleRange> rangeByAlteringCurrentSelection(EAlteration, int amount) const;
 #endif
 

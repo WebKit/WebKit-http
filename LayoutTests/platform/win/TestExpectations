@@ -538,9 +538,7 @@ css3/font-feature-settings-rendering.html [ Skip ]
 
 webkit.org/b/149771 css3/font-feature-settings-font-face-rendering.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-override.html [ Skip ] # WontFix
-webkit.org/b/149774 css3/font-variant-petite-caps-synthesis-coverage.html [ Skip ] # WontFix
 webkit.org/b/149774 css3/font-variant-petite-caps-synthesis.html [ Skip ] # WontFix
-webkit.org/b/149774 css3/font-variant-small-caps-synthesis-coverage.html [ Skip ] # WontFix
 webkit.org/b/149774 css3/font-variant-small-caps-synthesis.html [ Skip ] # WontFix
 
 # TODO HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
@@ -2397,7 +2395,7 @@ http/tests/ssl/ping-with-unsafe-redirect.html [ Failure ]
 http/tests/ssl/referer-301.html [ Failure ]
 http/tests/ssl/referer-303.html [ Failure ]
 http/tests/ssl/verify-ssl-enabled.php [ Failure ] # Easy?
-http/tests/xmlhttprequest/access-control-basic-whitelist-request-headers.html [ Failure ]
+http/tests/xmlhttprequest/access-control-basic-allow-list-request-headers.html [ Failure ]
 http/tests/xmlhttprequest/access-control-preflight-headers-async.html [ Pass Failure ] # Easy?
 http/tests/xmlhttprequest/cache-override.html [ Failure ]
 http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html [ Failure ]
@@ -4164,7 +4162,7 @@ webkit.org/b/189836 webanimations/accelerated-animation-suspension.html [ Skip ]
 [ Win10 ] http/tests/security/local-CSS-from-remote.html [ Failure ]
 [ Win10 ] http/tests/security/local-JavaScript-from-remote.html [ Failure ]
 [ Win10 ] http/tests/security/local-iFrame-from-remote.html [ Failure ]
-[ Win10 ] http/tests/security/local-image-from-remote-whitelisted.html [ Failure ]
+[ Win10 ] http/tests/security/local-image-from-remote-allow-list.html [ Failure ]
 [ Win10 ] http/tests/security/local-image-from-remote.html [ Failure ]
 [ Win10 ] http/tests/security/local-video-poster-from-remote.html [ Failure ]
 [ Win10 ] storage/indexeddb/modern/idbindex-getallkeys-1.html [ Failure ]
@@ -4528,3 +4526,4 @@ storage/indexeddb/structured-clone.html [ Skip ]
 
 webkit.org/b/214673 js/weakref-finalizationregistry.html [ Pass Timeout ]
 
+js/dom/promise-rejection-might-stack-overflow.html [ Skip ]

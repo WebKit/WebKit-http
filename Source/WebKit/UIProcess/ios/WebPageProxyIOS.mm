@@ -752,9 +752,12 @@ void WebPageProxy::applicationDidBecomeActive()
     m_process->send(Messages::WebPage::ApplicationDidBecomeActive(), m_webPageID);
 }
 
-void WebPageProxy::extendSelection(WebCore::TextGranularity granularity)
+void WebPageProxy::extendSelection(WebCore::TextGranularity granularity, CompletionHandler<void()>&& completionHandler)
 {
-    m_process->send(Messages::WebPage::ExtendSelection(granularity), m_webPageID);
+    sendWithAsyncReply(Messages::WebPage::ExtendSelection(granularity), [completionHandler = WTFMove(completionHandler)]() mutable {
+        if (completionHandler)
+            completionHandler();
+    });
 }
 
 void WebPageProxy::selectWordBackward()
@@ -1621,22 +1624,15 @@ void WebPageProxy::processWillBecomeForeground()
     }
 }
 
+#if PLATFORM(MACCATALYST)
 void WebPageProxy::isUserFacingChanged(bool isUserFacing)
 {
-#if PLATFORM(MACCATALYST)
     if (!isUserFacing)
         suspendAllMediaPlayback();
     else
         resumeAllMediaPlayback();
-#else
-    UNUSED_PARAM(isUserFacing);
+}
 #endif
-}
-
-void WebPageProxy::isVisibleChanged(bool isVisible)
-{
-    UNUSED_PARAM(isVisible);
-}
 
 #if PLATFORM(IOS)
 void WebPageProxy::grantAccessToAssetServices()

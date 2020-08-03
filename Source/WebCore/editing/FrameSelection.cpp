@@ -55,6 +55,7 @@
 #include "InlineTextBox.h"
 #include "Logging.h"
 #include "Page.h"
+#include "Range.h"
 #include "RenderLayer.h"
 #include "RenderText.h"
 #include "RenderTextControl.h"
@@ -203,12 +204,6 @@ void FrameSelection::moveTo(const VisiblePosition &base, const VisiblePosition &
 void FrameSelection::moveTo(const Position &pos, EAffinity affinity, EUserTriggered userTriggered)
 {
     setSelection(VisibleSelection(pos, affinity, m_selection.isDirectional()), defaultSetSelectionOptions(userTriggered));
-}
-
-void FrameSelection::moveTo(const Range* range)
-{
-    VisibleSelection selection = range ? VisibleSelection(range->startPosition(), range->endPosition()) : VisibleSelection();
-    setSelection(selection);
 }
 
 void FrameSelection::moveTo(const Position &base, const Position &extent, EAffinity affinity, EUserTriggered userTriggered)
@@ -2034,11 +2029,13 @@ void FrameSelection::selectAll()
     }
 }
 
-bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, ShouldCloseTyping closeTyping, EUserTriggered userTriggered)
+bool FrameSelection::setSelectedRange(const Optional<SimpleRange>& range, EAffinity affinity, ShouldCloseTyping closeTyping, EUserTriggered userTriggered)
 {
     if (!range)
         return false;
-    ASSERT(&range->startContainer().document() == &range->endContainer().document());
+
+    if (&range->start.container->document() != &range->end.container->document())
+        return false;
 
     VisibleSelection newSelection(*range, affinity);
 
@@ -2230,8 +2227,9 @@ void FrameSelection::setCaretVisibility(CaretVisibility visibility)
 void FrameSelection::caretBlinkTimerFired()
 {
 #if ENABLE(TEXT_CARET)
+    if (!isCaret())
+        return;
     ASSERT(caretIsVisible());
-    ASSERT(isCaret());
     bool caretPaint = m_caretPaint;
     if (isCaretBlinkingSuspended() && caretPaint)
         return;
@@ -2617,34 +2615,6 @@ UChar FrameSelection::characterAfterCaretSelection() const
     return visiblePosition.characterAfter();
 }
 
-int FrameSelection::wordOffsetInRange(const Range *range) const
-{
-    if (!range)
-        return -1;
-
-    VisibleSelection selection = m_selection;
-    if (!selection.isCaret())
-        return -1;
-
-    // FIXME: This will only work in cases where the selection remains in
-    // the same node after it is expanded. Improve to handle more complicated
-    // cases.
-    int result = selection.start().deprecatedEditingOffset() - range->startOffset();
-    if (result < 0)
-        result = 0;
-    return result;
-}
-
-bool FrameSelection::spaceFollowsWordInRange(const Range *range) const
-{
-    if (!range)
-        return false;
-    Node& node = range->endContainer();
-    int endOffset = range->endOffset();
-    VisiblePosition pos(createLegacyEditingPosition(&node, endOffset), VP_DEFAULT_AFFINITY);
-    return isSpaceOrNewline(pos.characterAfter());
-}
-
 bool FrameSelection::selectionAtDocumentStart() const
 {
     VisibleSelection selection = m_selection;
@@ -2657,15 +2627,6 @@ bool FrameSelection::selectionAtDocumentStart() const
         return false;
 
     return isStartOfDocument(pos);
-}
-
-bool FrameSelection::selectionAtSentenceStart() const
-{
-    VisibleSelection selection = m_selection;
-    if (selection.isNone())
-        return false;
-
-    return actualSelectionAtSentenceStart(selection);
 }
 
 bool FrameSelection::selectionAtWordStart() const
@@ -2713,10 +2674,8 @@ Optional<SimpleRange> FrameSelection::rangeByExtendingCurrentSelection(int amoun
 
 void FrameSelection::selectRangeOnElement(unsigned location, unsigned length, Node& node)
 {
-    RefPtr<Range> resultRange = m_document->createRange();
-    resultRange->setStart(node, location);
-    resultRange->setEnd(node, location + length);
-    VisibleSelection selection = VisibleSelection(*resultRange, SEL_DEFAULT_AFFINITY);
+    auto selection = VisibleSelection { SimpleRange { { node, location }, { node, location + length } } };
+
     // FIXME: The second argument was "true" which implicitly converted to option "FireSelectEvent". Is this correct?
     setSelection(selection, { FireSelectEvent });
 }
@@ -2833,9 +2792,12 @@ VisibleSelection FrameSelection::wordSelectionContainingCaretSelection(const Vis
     return VisibleSelection(startVisiblePos, endVisiblePos);    
 }
 
-bool FrameSelection::actualSelectionAtSentenceStart(const VisibleSelection& sel) const
+bool FrameSelection::selectionAtSentenceStart() const
 {
-    Position startPos(sel.start());
+    if (m_selection.isNone())
+        return false;
+
+    Position startPos(m_selection.start());
     VisiblePosition pos(createLegacyEditingPosition(startPos.deprecatedNode(), startPos.deprecatedEditingOffset()), VP_DEFAULT_AFFINITY);
     if (pos.isNull())
         return false;

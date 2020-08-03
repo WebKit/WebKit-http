@@ -541,6 +541,9 @@ public:
     ExceptionOr<void> startTrackingCompositingUpdates();
     ExceptionOr<unsigned> compositingUpdateCount();
 
+    ExceptionOr<void> startTrackingRenderingUpdates();
+    ExceptionOr<unsigned> renderingUpdateCount();
+
     enum CompositingPolicy { Normal, Conservative };
     ExceptionOr<void> setCompositingPolicyOverride(Optional<CompositingPolicy>);
     ExceptionOr<Optional<CompositingPolicy>> compositingPolicyOverride() const;
@@ -769,7 +772,7 @@ public:
 
     void setPageVisibility(bool isVisible);
     void setPageIsFocusedAndActive(bool);
-
+    bool isPageActive() const;
 
 #if ENABLE(WEB_RTC)
     void setH264HardwareEncoderAllowed(bool allowed);
@@ -836,6 +839,7 @@ public:
     void markContextAsInsecure();
 
     bool usingAppleInternalSDK() const;
+    bool usingGStreamer() const;
 
     struct NowPlayingState {
         String title;
@@ -961,7 +965,7 @@ public:
 
     void testDictionaryLogging();
 
-    void setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest&, double);
+    void setMaximumIntervalForUserGestureForwardingForFetch(double);
     void setTransientActivationDuration(double seconds);
 
     void setIsPlayingToAutomotiveHeadUnit(bool);

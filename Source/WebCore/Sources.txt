@@ -1815,6 +1815,9 @@ platform/encryptedmedia/CDMFactory.cpp
 platform/encryptedmedia/CDMLogging.cpp
 platform/encryptedmedia/CDMPrivate.cpp
 platform/encryptedmedia/CDMProxy.cpp
+platform/gamepad/EmptyGamepadProvider.cpp
+platform/gamepad/GamepadConstants.cpp
+platform/gamepad/GamepadProvider.cpp
 platform/graphics/ANGLEWebKitBridge.cpp
 platform/graphics/BitmapImage.cpp
 platform/graphics/Color.cpp
@@ -2618,6 +2621,7 @@ JSAesCtrParams.cpp
 JSAesGcmParams.cpp
 JSAesKeyParams.cpp
 JSAnalyserNode.cpp
+JSAnalyserOptions.cpp
 JSAnimationEffect.cpp
 JSAnimationEvent.cpp
 JSAnimationPlaybackEvent.cpp
@@ -2627,6 +2631,7 @@ JSAttestationConveyancePreference.cpp
 JSAttr.cpp
 JSAudioBuffer.cpp
 JSAudioBufferCallback.cpp
+JSAudioBufferOptions.cpp
 JSAudioBufferSourceNode.cpp
 JSAudioConfiguration.cpp
 JSAudioContext.cpp
@@ -2709,7 +2714,9 @@ JSCanvasUserInterface.cpp
 JSChannelCountMode.cpp
 JSChannelInterpretation.cpp
 JSChannelMergerNode.cpp
+JSChannelMergerOptions.cpp
 JSChannelSplitterNode.cpp
+JSChannelSplitterOptions.cpp
 JSCharacterData.cpp
 JSChildNode.cpp
 JSClipboard.cpp
@@ -3122,12 +3129,16 @@ JSOESTextureHalfFloat.cpp
 JSOESTextureHalfFloatLinear.cpp
 JSOESVertexArrayObject.cpp
 JSOfflineAudioCompletionEvent.cpp
+JSOfflineAudioCompletionEventInit.cpp
 JSOfflineAudioContext.cpp
 JSOfflineAudioContextOptions.cpp
 JSOffscreenCanvas.cpp
 JSOffscreenCanvasRenderingContext2D.cpp
 JSOptionalEffectTiming.cpp
 JSOscillatorNode.cpp
+JSOscillatorOptions.cpp
+JSOscillatorType.cpp
+JSOverSampleType.cpp
 JSOverconstrainedError.cpp
 JSOverconstrainedErrorEvent.cpp
 JSOverflowEvent.cpp
@@ -3489,6 +3500,7 @@ JSVisibilityState.cpp
 JSVisualViewport.cpp
 JSVoidCallback.cpp
 JSWaveShaperNode.cpp
+JSWaveShaperOptions.cpp
 JSWebAnimation.cpp
 JSWebGL2RenderingContext.cpp
 JSWebGLActiveInfo.cpp
@@ -3565,6 +3577,7 @@ JSWebKitMediaKeySession.cpp
 JSWebKitMediaKeys.cpp
 JSWebKitNamespace.cpp
 JSWebKitOfflineAudioContext.cpp
+JSWebKitOscillatorNode.cpp
 JSWebKitPlaybackTargetAvailabilityEvent.cpp
 JSWebKitPoint.cpp
 JSWebKitTransitionEvent.cpp

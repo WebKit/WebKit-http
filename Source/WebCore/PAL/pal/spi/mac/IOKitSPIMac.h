@@ -32,6 +32,9 @@
 
 #else
 
+#define kIOHIDVendorIDKey "VendorID"
+#define kIOHIDProductIDKey "ProductID"
+
 WTF_EXTERN_C_BEGIN
 typedef struct CF_BRIDGED_TYPE(id) __IOHIDServiceClient * IOHIDServiceClientRef;
 typedef struct CF_BRIDGED_TYPE(id) __IOHIDEventSystemClient * IOHIDEventSystemClientRef;
@@ -54,6 +57,9 @@ IOHIDServiceClientRef IOHIDEventSystemClientCopyServiceForRegistryID(IOHIDEventS
 void IOHIDEventSystemClientRegisterDeviceMatchingBlock(IOHIDEventSystemClientRef, IOHIDServiceClientBlock, void *, void *);
 void IOHIDEventSystemClientUnregisterDeviceMatchingBlock(IOHIDEventSystemClientRef);
 void IOHIDEventSystemClientScheduleWithDispatchQueue(IOHIDEventSystemClientRef, dispatch_queue_t);
+
+CFTypeRef IOHIDServiceClientCopyProperty(IOHIDServiceClientRef service, CFStringRef key);
+
 WTF_EXTERN_C_END
 
 #endif // USE(APPLE_INTERNAL_SDK)

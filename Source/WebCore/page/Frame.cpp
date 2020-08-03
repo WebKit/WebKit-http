@@ -816,30 +816,25 @@ Document* Frame::documentAtPoint(const IntPoint& point)
     return result.innerNode() ? &result.innerNode()->document() : 0;
 }
 
-RefPtr<Range> Frame::rangeForPoint(const IntPoint& framePoint)
+Optional<SimpleRange> Frame::rangeForPoint(const IntPoint& framePoint)
 {
     auto position = visiblePositionForPoint(framePoint);
-    auto positionBoundary = makeBoundaryPoint(position);
-    if (!positionBoundary)
-        return nullptr;
 
     auto containerText = position.deepEquivalent().containerText();
     if (!containerText || !containerText->renderer() || containerText->renderer()->style().userSelect() == UserSelect::None)
-        return nullptr;
+        return WTF::nullopt;
 
-    if (auto previous = makeBoundaryPoint(position.previous())) {
-        auto previousCharacterRange = SimpleRange { *previous, *positionBoundary };
-        if (editor().firstRectForRange(previousCharacterRange).contains(framePoint))
-            return createLiveRange(previousCharacterRange);
+    if (auto previousCharacterRange = makeSimpleRange(position.previous(), position)) {
+        if (editor().firstRectForRange(*previousCharacterRange).contains(framePoint))
+            return *previousCharacterRange;
     }
 
-    if (auto next = makeBoundaryPoint(position.next())) {
-        auto nextCharacterRange = SimpleRange { *positionBoundary, *next };
-        if (editor().firstRectForRange(nextCharacterRange).contains(framePoint))
-            return createLiveRange(nextCharacterRange);
+    if (auto nextCharacterRange = makeSimpleRange(position, position.next())) {
+        if (editor().firstRectForRange(*nextCharacterRange).contains(framePoint))
+            return *nextCharacterRange;
     }
 
-    return nullptr;
+    return WTF::nullopt;
 }
 
 void Frame::createView(const IntSize& viewportSize, const Optional<Color>& backgroundColor,

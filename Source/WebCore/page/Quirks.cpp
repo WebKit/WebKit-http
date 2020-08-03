@@ -366,7 +366,7 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
             return true;
         if (host == "naver.com")
             return true;
-        if (host == "nhl.com" || host.endsWith(".nhl.com"))
+        if (host == "nhl.com" || (host.endsWith(".nhl.com") && !host.startsWith("account.")))
             return true;
         if (host == "nba.com" || host.endsWith(".nba.com"))
             return true;
@@ -960,5 +960,28 @@ Quirks::StorageAccessResult Quirks::triggerOptionalStorageAccessQuirk(const Elem
 #endif
     return Quirks::StorageAccessResult::ShouldNotCancelEvent;
 }
+
+bool Quirks::needsVP9FullRangeFlagQuirk() const
+{
+    if (!needsQuirks())
+        return false;
+
+    if (!m_needsVP9FullRangeFlagQuirk)
+        m_needsVP9FullRangeFlagQuirk = equalLettersIgnoringASCIICase(m_document->url().host(), "www.youtube.com");
+
+    return *m_needsVP9FullRangeFlagQuirk;
+}
+
+bool Quirks::needsHDRPixelDepthQuirk() const
+{
+    if (!needsQuirks())
+        return false;
+
+    if (!m_needsHDRPixelDepthQuirk)
+        m_needsHDRPixelDepthQuirk = equalLettersIgnoringASCIICase(m_document->url().host(), "www.youtube.com");
+
+    return *m_needsHDRPixelDepthQuirk;
+}
+
 
 }

@@ -58,7 +58,6 @@ class Frame;
 class Image;
 class IntRect;
 class Node;
-class Range;
 
 #if PLATFORM(IOS_FAMILY)
 typedef RetainPtr<CGImageRef> DragImageRef;
@@ -93,7 +92,7 @@ DragImageRef createDragImageIconForCachedImageFilename(const String&);
 
 WEBCORE_EXPORT DragImageRef createDragImageForNode(Frame&, Node&);
 WEBCORE_EXPORT DragImageRef createDragImageForSelection(Frame&, TextIndicatorData&, bool forceBlackText = false);
-WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, Range&, bool forceBlackText = false);
+WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, const SimpleRange&, bool forceBlackText = false);
 DragImageRef createDragImageForColor(const Color&, const FloatRect&, float, Path&);
 DragImageRef createDragImageForImage(Frame&, Node&, IntRect& imageRect, IntRect& elementRect);
 DragImageRef createDragImageForLink(Element&, URL&, const String& label, TextIndicatorData&, FontRenderingMode, float deviceScaleFactor);

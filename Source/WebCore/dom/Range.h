@@ -47,9 +47,6 @@ struct SimpleRange;
 class Range : public RefCounted<Range> {
 public:
     WEBCORE_EXPORT static Ref<Range> create(Document&);
-    WEBCORE_EXPORT static Ref<Range> create(Document&, RefPtr<Node>&& startContainer, int startOffset, RefPtr<Node>&& endContainer, int endOffset);
-    WEBCORE_EXPORT static Ref<Range> create(Document&, const Position&, const Position&);
-    WEBCORE_EXPORT static Ref<Range> create(Document&, const VisiblePosition&, const VisiblePosition&);
     WEBCORE_EXPORT ~Range();
 
     Document& ownerDocument() const { return m_ownerDocument; }
@@ -96,15 +93,10 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> surroundContents(Node&);
     WEBCORE_EXPORT ExceptionOr<void> setStartBefore(Node&);
 
-    const Position startPosition() const { return m_start.toPosition(); }
-    const Position endPosition() const { return m_end.toPosition(); }
-    WEBCORE_EXPORT ExceptionOr<void> setStart(const Position&);
-    WEBCORE_EXPORT ExceptionOr<void> setEnd(const Position&);
+    Position startPosition() const { return m_start.toPosition(); }
+    Position endPosition() const { return m_end.toPosition(); }
 
     WEBCORE_EXPORT Node* firstNode() const;
-    WEBCORE_EXPORT Node* pastLastNode() const;
-
-    ShadowRoot* shadowRoot() const;
 
     enum class BoundingRectBehavior : uint8_t {
         RespectClipping = 1 << 0,
@@ -119,10 +111,6 @@ public:
 
     // Transform-friendly
     WEBCORE_EXPORT FloatRect absoluteBoundingRect(OptionSet<BoundingRectBehavior> = { }) const;
-#if PLATFORM(IOS_FAMILY)
-    WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&) const;
-    WEBCORE_EXPORT int collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&) const;
-#endif
 
     void nodeChildrenChanged(ContainerNode&);
     void nodeChildrenWillBeRemoved(ContainerNode&);
@@ -154,7 +142,6 @@ public:
 
 private:
     explicit Range(Document&);
-    Range(Document&, Node* startContainer, int startOffset, Node* endContainer, int endOffset);
 
     void setDocument(Document&);
     ExceptionOr<Node*> checkNodeWOffset(Node&, unsigned offset) const;
@@ -166,18 +153,18 @@ private:
 
     Vector<FloatRect> absoluteRectsForRangeInText(Node*, RenderText&, bool useSelectionHeight, bool& isFixed, OptionSet<BoundingRectBehavior>) const;
 
+    Node* pastLastNode() const;
+
     Ref<Document> m_ownerDocument;
     RangeBoundaryPoint m_start;
     RangeBoundaryPoint m_end;
 };
 
-WEBCORE_EXPORT Ref<Range> rangeOfContents(Node&);
-
 WEBCORE_EXPORT bool areRangesEqual(const Range*, const Range*);
 WEBCORE_EXPORT bool rangesOverlap(const Range*, const Range*);
 
-SimpleRange makeSimpleRange(const Range&);
-SimpleRange makeSimpleRange(const Ref<Range>&);
+WEBCORE_EXPORT SimpleRange makeSimpleRange(const Range&);
+WEBCORE_EXPORT SimpleRange makeSimpleRange(const Ref<Range>&);
 WEBCORE_EXPORT Optional<SimpleRange> makeSimpleRange(const Range*);
 WEBCORE_EXPORT Optional<SimpleRange> makeSimpleRange(const RefPtr<Range>&);
 

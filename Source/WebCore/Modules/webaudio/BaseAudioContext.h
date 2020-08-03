@@ -122,7 +122,7 @@ public:
     void incrementActiveSourceCount();
     void decrementActiveSourceCount();
     
-    ExceptionOr<Ref<AudioBuffer>> createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
+    ExceptionOr<Ref<AudioBuffer>> createBuffer(unsigned numberOfChannels, unsigned length, float sampleRate);
     ExceptionOr<Ref<AudioBuffer>> createBuffer(ArrayBuffer&, bool mixToMono);
 
     // Asynchronous audio file data decoding.
@@ -285,6 +285,15 @@ public:
         bool m_mustReleaseLock;
     };
 
+    // The context itself keeps a reference to all source nodes. The source nodes, then reference all nodes they're connected to.
+    // In turn, these nodes reference all nodes they're connected to. All nodes are ultimately connected to the AudioDestinationNode.
+    // When the context dereferences a source node, it will be deactivated from the rendering graph along with all other nodes it is
+    // uniquely connected to. See the AudioNode::ref() and AudioNode::deref() methods for more details.
+    void refNode(AudioNode&);
+    void derefNode(AudioNode&);
+
+    void lazyInitialize();
+
 protected:
     explicit BaseAudioContext(Document&, const AudioContextOptions& = { });
     BaseAudioContext(Document&, AudioBuffer* renderTarget);
@@ -295,27 +304,22 @@ protected:
 
     AudioDestinationNode* destinationNode() const { return m_destinationNode.get(); }
 
-    void lazyInitialize();
+    bool willBeginPlayback();
+
     void uninitialize();
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "BaseAudioContext"; }
 #endif
 
-    // The context itself keeps a reference to all source nodes.  The source nodes, then reference all nodes they're connected to.
-    // In turn, these nodes reference all nodes they're connected to.  All nodes are ultimately connected to the AudioDestinationNode.
-    // When the context dereferences a source node, it will be deactivated from the rendering graph along with all other nodes it is
-    // uniquely connected to.  See the AudioNode::ref() and AudioNode::deref() methods for more details.
-    void refNode(AudioNode&);
-    void derefNode(AudioNode&);
-
     void addReaction(State, DOMPromiseDeferred<void>&&);
     void setState(State);
+
+    virtual void didFinishOfflineRendering(ExceptionOr<Ref<AudioBuffer>>&&) { }
 
 private:
     void constructCommon();
 
-    bool willBeginPlayback();
     bool willPausePlayback();
 
     bool userGestureRequiredForAudioStart() const { return !isOfflineContext() && m_restrictions & RequireUserGestureForAudioStartRestriction; }

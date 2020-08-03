@@ -32,6 +32,8 @@ namespace WebCore {
 
 class Range;
 
+struct SimpleRange;
+
 // VisiblePosition default affinity is downstream because
 // the callers do not really care (they just want the
 // deep position without regard to line position), and this
@@ -124,12 +126,6 @@ bool operator>=(const VisiblePosition&, const VisiblePosition&);
 
 WEBCORE_EXPORT Optional<BoundaryPoint> makeBoundaryPoint(const VisiblePosition&);
 
-WEBCORE_EXPORT RefPtr<Range> makeRange(const VisiblePosition&, const VisiblePosition&);
-bool setStart(Range*, const VisiblePosition&);
-bool setEnd(Range*, const VisiblePosition&);
-VisiblePosition startVisiblePosition(const Range*, EAffinity);
-VisiblePosition endVisiblePosition(const Range*, EAffinity);
-
 WEBCORE_EXPORT Element* enclosingBlockFlowElement(const VisiblePosition&);
 
 bool isFirstVisiblePositionInNode(const VisiblePosition&, const Node*);
@@ -139,6 +135,15 @@ bool areVisiblePositionsInSameTreeScope(const VisiblePosition&, const VisiblePos
 
 WTF::TextStream& operator<<(WTF::TextStream&, EAffinity);
 WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const VisiblePosition&);
+
+struct VisiblePositionRange {
+    VisiblePosition start;
+    VisiblePosition end;
+
+    bool isNull() const { return start.isNull() || end.isNull(); }
+};
+
+WEBCORE_EXPORT Optional<SimpleRange> makeSimpleRange(const VisiblePositionRange&);
 
 // inlines
 

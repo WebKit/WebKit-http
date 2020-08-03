@@ -36,6 +36,7 @@
 #include <WebCore/HTMLTextFormControlElement.h>
 #include <WebCore/Node.h>
 #include <WebCore/Position.h>
+#include <WebCore/Range.h>
 #include <WebCore/RenderTextControl.h>
 #include <WebCore/VisibleSelection.h>
 #include <WebCore/VisibleUnits.h>
@@ -98,7 +99,10 @@ HRESULT AccessibleText::get_characterExtents(long offset, enum IA2CoordinateType
     if (!node)
         return E_POINTER;
 
-    IntRect boundingRect = m_object->boundsForVisiblePositionRange(VisiblePositionRange(VisiblePosition(Position(node, offset, Position::PositionIsOffsetInAnchor)), VisiblePosition(Position(node, offset+1, Position::PositionIsOffsetInAnchor))));
+    IntRect boundingRect = m_object->boundsForVisiblePositionRange({
+        VisiblePosition(Position(node, offset, Position::PositionIsOffsetInAnchor)),
+        VisiblePosition(Position(node, offset + 1, Position::PositionIsOffsetInAnchor))
+    });
     *width = boundingRect.width();
     *height = boundingRect.height();
     switch (coordType) {
@@ -457,11 +461,11 @@ HRESULT AccessibleText::scrollSubstringTo(long startIndex, long endIndex, enum I
     startIndex = convertSpecialOffset(startIndex);
     endIndex = convertSpecialOffset(endIndex);
 
-    VisiblePositionRange textRange = m_object->visiblePositionRangeForRange(PlainTextRange(startIndex, endIndex-startIndex));
-    if (textRange.start.isNull() || textRange.end.isNull())
+    auto textRange = makeSimpleRange(m_object->visiblePositionRangeForRange(PlainTextRange(startIndex, endIndex-startIndex)));
+    if (!textRange)
         return S_FALSE;
 
-    IntRect boundingBox = makeRange(textRange.start, textRange.end)->absoluteBoundingBox();
+    IntRect boundingBox = createLiveRange(*textRange)->absoluteBoundingBox();
     switch (scrollType) {
     case IA2_SCROLL_TYPE_TOP_LEFT:
         m_object->scrollToGlobalPoint(boundingBox.minXMinYCorner());

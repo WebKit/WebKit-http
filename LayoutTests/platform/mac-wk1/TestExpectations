@@ -660,6 +660,8 @@ webkit.org/b/175867 svg/animations/smil-leak-dynamically-added-element-instances
 
 webkit.org/b/175886 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
 
+webkit.org/b/214760 imported/w3c/web-platform-tests/svg/path/distance/pathlength-path-mutating.svg [ Pass Failure ]
+
 # <rdar://problem/29201698> DumpRenderTree crashed in com.apple.CoreGraphics: CGDataProviderCopyData + 377
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.html [ Crash ]
 
@@ -758,9 +760,6 @@ displaylists/replay-skip-clipped-rect.html [ Failure ]
 
 webkit.org/b/184611 compositing/layer-creation/fixed-overlap-extent.html [ Pass Failure ]
 
-# <rdar://problem/42904780>
-[ Release ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html [ Failure ]
-
 webkit.org/b/189087 svg/animations/animate-end-attribute-numeric-precision.html [ Pass Failure ]
 
 webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-style-changes-001.html [ Pass Failure ]
@@ -818,8 +817,7 @@ webkit.org/b/198459 [ Debug ] inspector/canvas/recording-webgl-full.html [ Slow 
 
 webkit.org/b/196508 compositing/repaint/scroller-with-foreground-layer-repaints.html [ Pass Failure ]
 webkit.org/b/206945 [ Catalina ] compositing/repaint/become-overlay-composited-layer.html [ Pass Failure ]
-webkit.org/b/214647 [ Mojave ] compositing/repaint/iframes/compositing-iframe-scroll-repaint.html [ Failure ]
-webkit.org/b/214388 [ Mojave ] compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html [ Pass Failure ]
+webkit.org/b/214388 [ Mojave ] compositing/repaint/iframes [ Pass Failure ]
 
 webkit.org/b/198676 imported/w3c/web-platform-tests/content-security-policy/reporting/report-only-in-meta.sub.html [ Pass Failure ]
 
@@ -937,8 +935,6 @@ webkit.org/b/209180 inspector/script-profiler/event-type-Other.html [ Pass Failu
 
 webkit.org/b/209182 [ Debug ] inspector/debugger/setShouldBlackboxURL.html [ Pass Failure ]
 
-webkit.org/b/209353 [ Release ] media/video-background-tab-playback.html [ Pass Failure ]
-
 webkit.org/b/209560 imported/w3c/web-platform-tests/xhr/send-response-upload-event-progress.htm [ Pass Crash Failure ]
 
 webkit.org/b/209882 [ Debug ] inspector/page/overrideSetting-ICECandidateFilteringEnabled.html [ Pass Timeout ]
@@ -991,3 +987,9 @@ webkit.org/b/214469 [ Debug ] imported/w3c/web-platform-tests/css/css-position/p
 webkit.org/b/214469 [ Debug ] imported/w3c/web-platform-tests/css/css-scoping/slotted-matches.html [ Skip ]
 
 webkit.org/b/214703 imported/w3c/web-platform-tests/css/css-overflow/overflow-recalc-001.html [ Pass Failure ]
+
+webkit.org/b/214682 imported/w3c/web-platform-tests/css/cssom/stylesheet-same-origin.sub.html [ Pass Failure ]
+
+webkit.org/b/214967 imported/w3c/web-platform-tests/pointerevents/pointerevent_attributes_hoverable_pointers.html [ Pass Failure ]
+
+webkit.org/b/215033 imported/w3c/web-platform-tests/websockets/cookies/third-party-cookie-accepted.https.html [ Pass Failure ]

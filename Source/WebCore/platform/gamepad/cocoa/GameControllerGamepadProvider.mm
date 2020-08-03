@@ -30,13 +30,45 @@
 
 #import "GameControllerGamepad.h"
 #import "GamepadProviderClient.h"
+#import "KnownGamepads.h"
 #import "Logging.h"
 #import <GameController/GameController.h>
+#import <pal/spi/mac/IOKitSPIMac.h>
 #import <wtf/NeverDestroyed.h>
 
 #import "GameControllerSoftLink.h"
 
 namespace WebCore {
+
+#if !HAVE(GCCONTROLLER_HID_DEVICE_CHECK)
+bool GameControllerGamepadProvider::willHandleVendorAndProduct(uint16_t vendorID, uint16_t productID)
+{
+    // Check the vendor/product IDs agains a hard coded list of controllers we expect to work well with
+    // GameController.framework on 10.15.
+    static NeverDestroyed<HashSet<uint32_t>> gameControllerCompatibleGamepads;
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        gameControllerCompatibleGamepads->add(Nimbus1);
+        gameControllerCompatibleGamepads->add(Nimbus2);
+        gameControllerCompatibleGamepads->add(StratusXL1);
+        gameControllerCompatibleGamepads->add(StratusXL2);
+        gameControllerCompatibleGamepads->add(StratusXL3);
+        gameControllerCompatibleGamepads->add(StratusXL4);
+        gameControllerCompatibleGamepads->add(HoripadUltimate);
+        gameControllerCompatibleGamepads->add(GamesirM2);
+        gameControllerCompatibleGamepads->add(XboxOne1);
+        gameControllerCompatibleGamepads->add(XboxOne2);
+        gameControllerCompatibleGamepads->add(XboxOne3);
+        gameControllerCompatibleGamepads->add(Dualshock4_1);
+        gameControllerCompatibleGamepads->add(Dualshock4_2);
+    });
+
+    uint32_t fullProductID = (((uint32_t)vendorID) << 16) | productID;
+    return gameControllerCompatibleGamepads->contains(fullProductID);
+}
+#endif // !HAVE(GCCONTROLLER_HID_DEVICE_CHECK)
+
 
 static const Seconds inputNotificationDelay { 16_ms };
 
@@ -55,6 +87,29 @@ GameControllerGamepadProvider::GameControllerGamepadProvider()
 void GameControllerGamepadProvider::controllerDidConnect(GCController *controller, ConnectionVisibility visibility)
 {
     LOG(Gamepad, "GameControllerGamepadProvider controller %p added", controller);
+
+#if HAVE(MULTIGAMEPADPROVIDER_SUPPORT) && !HAVE(GCCONTROLLER_HID_DEVICE_CHECK)
+    // On macOS 10.15, we use GameController framework for some controllers, but it's much too aggressive in handling devices it shouldn't.
+    // So we check Vendor/Product against an explicit allow-list to determine if we should let GCF handle the device.
+    // (We have the opposite check in HIDGamepadProvider, as well)
+    for (_GCCControllerHIDServiceInfo *serviceInfo in controller.hidServices) {
+        if (!serviceInfo.service)
+            continue;
+
+        auto cfVendorID = adoptCF((CFNumberRef)IOHIDServiceClientCopyProperty(serviceInfo.service, (__bridge CFStringRef)@(kIOHIDVendorIDKey)));
+        auto cfProductID = adoptCF((CFNumberRef)IOHIDServiceClientCopyProperty(serviceInfo.service, (__bridge CFStringRef)@(kIOHIDProductIDKey)));
+
+        int vendorID, productID;
+        CFNumberGetValue(cfVendorID.get(), kCFNumberIntType, &vendorID);
+        CFNumberGetValue(cfProductID.get(), kCFNumberIntType, &productID);
+
+        if (!willHandleVendorAndProduct(vendorID, productID)) {
+            LOG(Gamepad, "GameControllerGamepadProvider::controllerDidConnect - GCController service does not match known VID/PID. Letting the HID provider handle it.");
+            return;
+        }
+    }
+#endif // HAVE(MULTIGAMEPADPROVIDER_SUPPORT) && !HAVE(GCCONTROLLER_HID_DEVICE_CHECK)
+
 
     // When initially starting up the GameController framework machinery,
     // we might get the connection notification for an already-connected controller.

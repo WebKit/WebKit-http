@@ -156,6 +156,10 @@ class iOSBuildFactory(BuildFactory):
     pass
 
 
+class iOSEmbeddedBuildFactory(BuildFactory):
+    skipUpload = True
+
+
 class iOSTestsFactory(TestFactory):
     LayoutTestClass = RunWebKitTests
     willTriggerCrashLogSubmission = True
@@ -163,6 +167,10 @@ class iOSTestsFactory(TestFactory):
 
 class macOSBuildFactory(BuildFactory):
     pass
+
+
+class macOSBuildOnlyFactory(BuildFactory):
+    skipUpload = True
 
 
 class watchOSBuildFactory(BuildFactory):

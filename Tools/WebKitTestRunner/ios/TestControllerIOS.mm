@@ -182,8 +182,11 @@ bool TestController::platformResetStateToConsistentValues(const TestOptions& opt
         m_keyboardDelegateSupportsImagePasteSwizzler = makeUnique<InstanceMethodSwizzler>(UIKeyboardImpl.class, @selector(delegateSupportsImagePaste), reinterpret_cast<IMP>(overrideKeyboardDelegateSupportsImagePaste));
 #endif
 
-    m_inputModeSwizzlers.clear();
-    m_overriddenKeyboardInputMode = nil;
+    if (m_overriddenKeyboardInputMode) {
+        m_overriddenKeyboardInputMode = nil;
+        m_inputModeSwizzlers.clear();
+        [UIKeyboardImpl.sharedInstance prepareKeyboardInputModeFromPreferences:nil];
+    }
 
     m_presentPopoverSwizzlers.clear();
     if (!options.shouldPresentPopovers) {
@@ -230,6 +233,16 @@ bool TestController::platformResetStateToConsistentValues(const TestOptions& opt
         bool hasPresentedViewController = !![webViewController presentedViewController];
         while (hasPresentedViewController && MonotonicTime::now() < waitEndTime) {
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+            hasPresentedViewController = !![webViewController presentedViewController];
+        }
+
+        if (hasPresentedViewController) {
+            // As a last resort, just dismiss the remaining presented view controller ourselves.
+            __block BOOL isDoneDismissingViewController = NO;
+            [webViewController dismissViewControllerAnimated:NO completion:^{
+                isDoneDismissingViewController = YES;
+            }];
+            runUntil(isDoneDismissingViewController, m_currentInvocation->shortTimeout());
             hasPresentedViewController = !![webViewController presentedViewController];
         }
         

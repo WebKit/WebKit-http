@@ -55,7 +55,6 @@
 #include "InsertTextCommand.h"
 #include "MergeIdenticalElementsCommand.h"
 #include "NodeTraversal.h"
-#include "Range.h"
 #include "RemoveNodeCommand.h"
 #include "RemoveNodePreservingChildrenCommand.h"
 #include "RenderBlockFlow.h"
@@ -131,7 +130,7 @@ static String stringForVisiblePositionIndexRange(const VisiblePositionIndexRange
         return String();
     VisiblePosition start = visiblePositionForIndex(range.startIndex.value, range.startIndex.scope.get());
     VisiblePosition end = visiblePositionForIndex(range.endIndex.value, range.endIndex.scope.get());
-    return AccessibilityObject::stringForVisiblePositionRange(VisiblePositionRange(start, end));
+    return AccessibilityObject::stringForVisiblePositionRange({ WTFMove(start), WTFMove(end) });
 }
 
 String AccessibilityUndoReplacedText::textDeletedByUnapply()
@@ -777,7 +776,7 @@ void CompositeEditCommand::replaceTextInNodePreservingMarkers(Text& node, unsign
     replaceTextInNode(node, offset, count, replacementText);
     range.end.offset = range.start.offset + replacementText.length();
     for (auto& marker : markers)
-        document().markers().addMarker(range, marker.type(), marker.data());
+        addMarker(range, marker.type(), marker.data());
 }
 
 Position CompositeEditCommand::positionOutsideTabSpan(const Position& position)
@@ -1420,18 +1419,14 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
             
             startIndex = 0;
             if (startInParagraph) {
-                auto paragraphStart = makeBoundaryPoint(startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent());
-                auto selectionStart = makeBoundaryPoint(visibleStart.deepEquivalent().parentAnchoredEquivalent());
-                if (paragraphStart && selectionStart)
-                    startIndex = characterCount({ *paragraphStart, *selectionStart }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+                if (auto rangeToSelectionStart = makeSimpleRange(startOfParagraphToMove, visibleStart))
+                    startIndex = characterCount(*rangeToSelectionStart, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
             }
 
             endIndex = 0;
             if (endInParagraph) {
-                auto paragraphStart = makeBoundaryPoint(startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent());
-                auto selectionEnd = makeBoundaryPoint(visibleEnd.deepEquivalent().parentAnchoredEquivalent());
-                if (paragraphStart && selectionEnd)
-                    endIndex = characterCount({ *paragraphStart, *selectionEnd }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+                if (auto rangeToSelectionEnd = makeSimpleRange(startOfParagraphToMove, visibleEnd))
+                    endIndex = characterCount(*rangeToSelectionEnd, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
             }
         }
     }
@@ -1444,17 +1439,11 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     Position start = startOfParagraphToMove.deepEquivalent().downstream();
     Position end = endOfParagraphToMove.deepEquivalent().upstream();
      
-    // start and end can't be used directly to create a Range; they are "editing positions"
-    Position startRangeCompliant = start.parentAnchoredEquivalent();
-    Position endRangeCompliant = end.parentAnchoredEquivalent();
-    auto range = Range::create(document(), startRangeCompliant.deprecatedNode(), startRangeCompliant.deprecatedEditingOffset(), endRangeCompliant.deprecatedNode(), endRangeCompliant.deprecatedEditingOffset());
-
     // FIXME: This is an inefficient way to preserve style on nodes in the paragraph to move. It
     // shouldn't matter though, since moved paragraphs will usually be quite small.
     RefPtr<DocumentFragment> fragment;
-    // This used to use a ternary for initialization, but that confused some versions of GCC, see bug 37912
     if (startOfParagraphToMove != endOfParagraphToMove)
-        fragment = createFragmentFromMarkup(document(), serializePreservingVisualAppearance(range.get(), nullptr, AnnotateForInterchange::No, ConvertBlocksToInlines::Yes), emptyString());
+        fragment = createFragmentFromMarkup(document(), serializePreservingVisualAppearance(*makeSimpleRange(start, end), nullptr, AnnotateForInterchange::No, ConvertBlocksToInlines::Yes), emptyString());
 
     // A non-empty paragraph's style is moved when we copy and move it.  We don't move 
     // anything if we're given an empty paragraph, but an empty paragraph can have style
@@ -1504,7 +1493,7 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     if (!editableRoot)
         editableRoot = &document();
 
-    auto destinationIndex = characterCount({ { *editableRoot, 0 }, *makeBoundaryPoint(destination.deepEquivalent().parentAnchoredEquivalent()) }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+    auto destinationIndex = characterCount({ { *editableRoot, 0 }, *makeBoundaryPoint(destination) }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
 
     setEndingSelection(VisibleSelection(destination, originalIsDirectional));
     ASSERT(endingSelection().isCaretOrRange());
