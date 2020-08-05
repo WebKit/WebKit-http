@@ -1,3 +1,162 @@
+2020-07-28  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.4 release
+
+        * wpe/NEWS: Add release notes for 2.28.4.
+
+2020-07-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.28.4 release
+
+        * gtk/NEWS: Add release notes for 2.28.4.
+
+2020-07-09  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.3 release
+
+        * wpe/NEWS: Add release notes for 2.28.3.
+
+2020-07-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.28.3 release
+
+        * gtk/NEWS: Add release notes for 2.28.3.
+
+2020-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Sanitize suggested download filename received from web process
+        https://bugs.webkit.org/show_bug.cgi?id=209300
+        <rdar://problem/59487723>
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::decideDestinationWithSuggestedFilenameAsync):
+
+2020-07-03  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [WPE][GTK] Bubblewrap sandbox should not attempt to bind empty paths
+        https://bugs.webkit.org/show_bug.cgi?id=202880
+
+        Reviewed by Carlos Garcia Campos.
+
+        If an empty path is set in LD_LIBRARY_PATH (e.g. /foo::/bar), we wind up passing
+        --ro-bind-try   --ro-bind-try to bwrap, where the second --ro-bind-try is treated as the
+        source path to mount, and the next flag we pass gets treated as the destination path. The
+        web process crashes with this confusing error:
+
+        bwrap: Can't create file at /.flatpak-info: Read-only file system
+
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp:
+        (WebKit::bindIfExists):
+
+2020-05-28  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK][WPE] Buildfix after r262242
+
+        Unreviewed build fix.
+
+        * Shared/glib/ArgumentCodersGLib.cpp:
+        (IPC::decode):
+
+2020-05-28  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [WPE][GTK] GVariant decoding must copy the serialized data
+        https://bugs.webkit.org/show_bug.cgi?id=212441
+
+        Reviewed by Carlos Garcia Campos.
+
+        I tracked this down to ArgumentCodersGLib.cpp. The problem is that we construct a GVariant
+        using g_variant_new_from_data(), which does not copy or take ownership of the data, so here
+        we accidentally create the GVariant using data we don't own. (Here, the data is owned by the
+        Decoder itself in its internal m_buffer.) Anyway, this is fixable by manually copying and
+        freeing it with the GDestroyNotify parameter, but it's easier to switch to
+        g_variant_new_from_bytes() because GBytes takes ownership when constructed.
+
+        * Shared/glib/ArgumentCodersGLib.cpp:
+        (IPC::decode):
+
+2020-04-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] MiniBrowser opens new windows too small causing failures on some WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=210206
+
+        Reviewed by Carlos Garcia Campos.
+
+        Provide the size of the default window (if is set) when windowRect is called
+        before the window is shown.
+
+        * UIProcess/API/glib/WebKitUIClient.cpp:
+
+2020-03-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Fix build breaks after r259112
+        https://bugs.webkit.org/show_bug.cgi?id=209830
+
+        Unreviewed build fix.
+
+        Replace PLATFORM(WPE) with USE(LIBWPE) within WebWheelEvent.
+
+        * Shared/WebEvent.h:
+        * Shared/WebWheelEvent.cpp:
+        (WebKit::WebWheelEvent::encode const):
+        (WebKit::WebWheelEvent::decode):
+
+2020-03-27  Chris Lord  <clord@igalia.com>
+
+        [GTK][WPE] Enable kinetic scrolling with async scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=209230
+
+        Reviewed by Žan Doberšek.
+
+        Modify WPE mousewheel event delivery so that it includes the necessary
+        phases needed to infer press/release times and allow for kinetic
+        scrolling.
+
+        * Shared/NativeWebWheelEvent.h:
+        * Shared/WebEvent.h:
+        * Shared/WebWheelEvent.cpp:
+        (WebKit::WebWheelEvent::encode const):
+        (WebKit::WebWheelEvent::decode):
+        * Shared/libwpe/NativeWebWheelEventLibWPE.cpp:
+        (WebKit::NativeWebWheelEvent::NativeWebWheelEvent):
+        * Shared/libwpe/WebEventFactory.cpp:
+        (WebKit::WebEventFactory::createWebWheelEvent):
+        * Shared/libwpe/WebEventFactory.h:
+        * UIProcess/API/wpe/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::doneWithTouchEvent):
+        * UIProcess/API/wpe/ScrollGestureController.cpp:
+        (WebKit::ScrollGestureController::handleEvent):
+        * UIProcess/API/wpe/ScrollGestureController.h:
+        (WebKit::ScrollGestureController::phase):
+        * UIProcess/API/wpe/WPEView.cpp:
+        (WKWPE::m_backend):
+
+2020-03-26  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Syscall param sendmsg(msg.msg_iov[0]) points to uninitialised byte(s) in IPC::Connection::sendOutgoingMessage
+        https://bugs.webkit.org/show_bug.cgi?id=146729
+
+        Reviewed by Carlos Garcia Campos.
+
+        The entire MessageInfo is passed to write(), so we have to zero the padding bytes to avoid
+        writing uninitialized memory.
+
+        * Platform/IPC/unix/UnixMessage.h:
+        (IPC::MessageInfo::MessageInfo):
+
+2020-06-01  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [WPE][GTK] pthread_create() fails with EPERM in the second WebKitWebProcess with sandbox on
+        https://bugs.webkit.org/show_bug.cgi?id=212380
+
+        Reviewed by Adrian Perez de Castro.
+
+        Dereference scmp_arg_cmp before use.
+
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp:
+        (WebKit::setupSeccomp):
+
 2020-04-24  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.2 release

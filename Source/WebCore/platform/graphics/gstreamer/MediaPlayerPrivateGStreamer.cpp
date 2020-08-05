@@ -1626,8 +1626,10 @@ GstElement* MediaPlayerPrivateGStreamer::audioSink() const
 MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
 {
     GST_TRACE_OBJECT(pipeline(), "isEndReached: %s, seeking: %s, seekTime: %s", boolForPrinting(m_isEndReached), boolForPrinting(m_isSeeking), m_seekTime.toString().utf8().data());
-    if (m_isEndReached && m_isSeeking)
+    if (m_isSeeking)
         return m_seekTime;
+    if (m_isEndReached)
+        return m_playbackRate > 0 ? durationMediaTime() : MediaTime::zeroTime();
 
     // This constant should remain lower than HTMLMediaElement's maxTimeupdateEventFrequency.
     static const Seconds positionCacheThreshold = 200_ms;
@@ -2410,6 +2412,8 @@ void MediaPlayerPrivateGStreamer::updateBufferingStatus(GstBufferingMode mode, d
 
     if (!m_didDownloadFinish)
         m_isBuffering = true;
+    else
+        m_fillTimer.stop();
 
     m_bufferingPercentage = percentage;
     switch (mode) {
@@ -2986,6 +2990,13 @@ void MediaPlayerPrivateGStreamer::updateDownloadBufferingFlag()
     g_object_get(m_pipeline.get(), "flags", &flags, nullptr);
 
     unsigned flagDownload = getGstPlayFlag("download");
+
+    if (m_url.protocolIsBlob()) {
+        GST_DEBUG_OBJECT(pipeline(), "Blob URI detected. Disabling on-disk buffering");
+        g_object_set(m_pipeline.get(), "flags", flags & ~flagDownload, nullptr);
+        m_fillTimer.stop();
+        return;
+    }
 
     // We don't want to stop downloading if we already started it.
     if (flags & flagDownload && m_readyState > MediaPlayer::ReadyState::HaveNothing && !m_shouldResetPipeline) {

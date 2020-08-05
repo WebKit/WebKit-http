@@ -276,7 +276,7 @@ enum class BindFlags {
 
 static void bindIfExists(Vector<CString>& args, const char* path, BindFlags bindFlags = BindFlags::ReadOnly)
 {
-    if (!path)
+    if (!path || path[0] == '\0')
         return;
 
     const char* bindType;
@@ -641,7 +641,7 @@ static int setupSeccomp()
         int scall = rule.scall;
         int r;
         if (rule.arg)
-            r = seccomp_rule_add(seccomp, SCMP_ACT_ERRNO(EPERM), scall, 1, rule.arg);
+            r = seccomp_rule_add(seccomp, SCMP_ACT_ERRNO(EPERM), scall, 1, *rule.arg);
         else
             r = seccomp_rule_add(seccomp, SCMP_ACT_ERRNO(EPERM), scall, 0);
         if (r == -EFAULT) {

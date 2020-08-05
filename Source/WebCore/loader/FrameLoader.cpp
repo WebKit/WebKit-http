@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
@@ -461,9 +461,11 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
         return;
     }
 
-    if (WTF::protocolIsJavaScript(submission->action())) {
-        if (!m_frame.document()->contentSecurityPolicy()->allowFormAction(URL(submission->action())))
-            return;
+    URL formAction = submission->action();
+    if (!m_frame.document()->contentSecurityPolicy()->allowFormAction(formAction))
+        return;
+
+    if (WTF::protocolIsJavaScript(formAction)) {
         m_isExecutingJavaScriptFormAction = true;
         Ref<Frame> protect(m_frame);
         m_frame.script().executeIfJavaScriptURL(submission->action(), nullptr, DoNotReplaceDocumentIfJavaScriptURL);
@@ -4169,11 +4171,20 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, FrameLoadRequ
         windowRect.setX(*features.x);
     if (features.y)
         windowRect.setY(*features.y);
-    // Zero width and height mean using default size, not minumum one.
+    // Zero width and height mean using default size, not minimum one.
     if (features.width && *features.width)
         windowRect.setWidth(*features.width + (windowRect.width() - viewportSize.width()));
     if (features.height && *features.height)
         windowRect.setHeight(*features.height + (windowRect.height() - viewportSize.height()));
+
+#if PLATFORM(GTK)
+    FloatRect oldWindowRect = oldPage->chrome().windowRect();
+    // Use the size of the previous window if there is no default size.
+    if (!windowRect.width())
+        windowRect.setWidth(oldWindowRect.width());
+    if (!windowRect.height())
+        windowRect.setHeight(oldWindowRect.height());
+#endif
 
     // Ensure non-NaN values, minimum size as well as being within valid screen area.
     FloatRect newWindowRect = DOMWindow::adjustWindowRect(*page, windowRect);

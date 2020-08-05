@@ -4414,7 +4414,7 @@ Path RenderLayer::computeClipPath(const LayoutSize& offsetFromRoot, LayoutRect& 
 
 bool RenderLayer::setupClipPath(GraphicsContext& context, const LayerPaintingInfo& paintingInfo, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
-    if (!renderer().hasClipPath() || context.paintingDisabled())
+    if (!renderer().hasClipPath() || context.paintingDisabled() || paintingInfo.paintDirtyRect.isEmpty())
         return false;
 
     if (!rootRelativeBoundsComputed) {
@@ -4442,13 +4442,12 @@ bool RenderLayer::setupClipPath(GraphicsContext& context, const LayerPaintingInf
         Element* element = renderer().document().getElementById(referenceClipPathOperation->fragment());
         if (element && element->renderer() && is<RenderSVGResourceClipper>(element->renderer())) {
             context.save();
-            float deviceSaleFactor = renderer().document().deviceScaleFactor();
-            FloatRect referenceBox = snapRectToDevicePixels(computeReferenceBox(renderer(), CSSBoxType::ContentBox, paintingOffsetFromRoot, rootRelativeBounds), deviceSaleFactor);
-            FloatPoint offset {referenceBox.location()};
+            auto referenceBox = snapRectToDevicePixels(rootRelativeBounds, renderer().document().deviceScaleFactor());
+            auto offset = referenceBox.location();
             context.translate(offset);
-            FloatRect svgReferenceBox {FloatPoint(), referenceBox.size()};
-            downcast<RenderSVGResourceClipper>(*element->renderer()).applyClippingToContext(renderer(), svgReferenceBox, paintingInfo.paintDirtyRect, context);
-            context.translate(FloatPoint(-offset.x(), -offset.y()));
+            FloatRect svgReferenceBox { {}, referenceBox.size() };
+            downcast<RenderSVGResourceClipper>(*element->renderer()).applyClippingToContext(renderer(), svgReferenceBox, context);
+            context.translate(-offset);
             return true;
         }
     }
@@ -6909,16 +6908,6 @@ void RenderLayer::updateFilterPaintingStrategy()
     
     ensureLayerFilters();
     m_filters->buildFilter(renderer(), page().deviceScaleFactor(), renderer().settings().acceleratedFiltersEnabled() ? RenderingMode::Accelerated : RenderingMode::Unaccelerated);
-}
-
-void RenderLayer::filterNeedsRepaint()
-{
-    // We use the enclosing element so that we recalculate style for the ancestor of an anonymous object.
-    if (Element* element = enclosingElement()) {
-        // FIXME: This really shouldn't have to invalidate layer composition, but tests like css3/filters/effect-reference-delete.html fail if that doesn't happen.
-        element->invalidateStyleAndLayerComposition();
-    }
-    renderer().repaint();
 }
 
 IntOutsets RenderLayer::filterOutsets() const

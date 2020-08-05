@@ -1,3 +1,139 @@
+2020-07-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        When invalidating the clients of an SVG resource we should not go beyond the RenderSVGRoot
+        https://bugs.webkit.org/show_bug.cgi?id=211804
+        <rdar://problem/60308199>
+
+        Reviewed by Zalan Bujtas.
+
+        * svg/in-html/inline-svg-resource-dynamic-update-expected.txt: Added.
+        * svg/in-html/inline-svg-resource-dynamic-update.html: Added.
+
+2020-06-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve CSP compliance under PSON
+        https://bugs.webkit.org/show_bug.cgi?id=212995
+        <rdar://problem/62996186>
+
+        Reviewed by Chris Dumez.
+
+        Add a new test to confirm that CSP rules are honored for form-action operations during process swap.
+        This also rebaselines an existing test, since CSP is now checked before any navigations performed by
+        a form action.
+
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-get-blocked-expected.txt: Rebaselined.
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-self-blocked-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/form-action-src-get-blocked-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/form-action-src-self-blocked.html: Added.
+
+2020-03-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: should also escape the method when Copy as cURL
+        https://bugs.webkit.org/show_bug.cgi?id=209665
+        <rdar://problem/58432154>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/copy-as-curl.html:
+
+2020-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r258741): [GTK] anchor-file-blob-download-includes-backslash.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=209329
+
+        Reviewed by Adrian Perez de Castro.
+
+        Rebaseline tests.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash-expected.txt: Added.
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote-expected.txt: Added.
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes-expected.txt:
+
+2020-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Sanitize suggested download filename received from web process
+        https://bugs.webkit.org/show_bug.cgi?id=209300
+        <rdar://problem/59487723>
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash-expected.txt:
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash.html:
+
+2020-03-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Hovering over countries at https://covidinc.io/ shows bizarre rendering artifacts
+        https://bugs.webkit.org/show_bug.cgi?id=209635
+        <rdar://problem/60935010>
+
+        Reviewed by Said Abou-Hallawa.
+        
+        Ref test that exercises the code path by painting into a tiled compositing
+        layer.
+
+        * svg/clip-path/clip-path-on-overflowing-expected.html: Added.
+        * svg/clip-path/clip-path-on-overflowing.html: Added.
+        * svg/clip-path/mask-nested-clip-path-010-expected.svg:
+        * svg/clip-path/mask-nested-clip-path-010.svg: Copied from imported/mozilla/svg/svg-integration/clipPath-html-03.xhtml,
+        and modified to have a non-zero offset for better testing of the clipping bounds computation.
+        * svg/clip-path/resource-clipper-multiple-repaints-expected.html: Added.
+        * svg/clip-path/resource-clipper-multiple-repaints.html: Added.
+
+2020-05-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Audio messages in web.whatsapp.com only play once.
+        https://bugs.webkit.org/show_bug.cgi?id=211627
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * media/video-src-blob-replay-expected.txt: Added.
+        * media/video-src-blob-replay.html: Added.
+
+2020-05-05  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer] Video loops when ran in rr record --chaos
+        https://bugs.webkit.org/show_bug.cgi?id=211182
+
+        Reviewed by Philippe Normand.
+
+        imported/w3c/web-platform-tests/media-source/mediasource-getvideoplaybackquality.html
+        is now passing.
+
+        * platform/gtk/TestExpectations:
+
+2020-04-27  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer] Rework WebKitWebSrc threading
+        https://bugs.webkit.org/show_bug.cgi?id=209811
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        A test improved its status in TestExpectations from the changes made
+        in this patch.
+
+        * platform/gtk/TestExpectations:
+
+2020-03-20  David Kilzer  <ddkilzer@apple.com>
+
+        Content-Type & Nosniff Ignored on XML External Entity Resources
+        <https://webkit.org/b/191171>
+        <rdar://problem/45763222>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/security/contentTypeOptions/nosniff-xml-external-entity-expected.txt: Add.
+        * http/tests/security/contentTypeOptions/nosniff-xml-external-entity.xhtml: Add.
+
+2020-03-13  Said Abou-Hallawa  <said@apple.com>
+
+        SVGMatrix should have the access right of its owner SVGTransform always
+        https://bugs.webkit.org/show_bug.cgi?id=207462
+
+        Reviewed by Simon Fraser.
+
+        * svg/dom/SVGTransformList-anim-read-only-expected.txt: Added.
+        * svg/dom/SVGTransformList-anim-read-only.html: Added.
+
 2020-04-22  Enrique Ocaña González  <eocanha@igalia.com>
 
         [GStreamer][MSE] Youtube 'live stream'/H264 URLs fail to play, VP8/9 URLs play OK

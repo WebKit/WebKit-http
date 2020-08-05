@@ -1,3 +1,49 @@
+2020-05-07  Daniel Kolesa  <daniel@octaforge.org>
+
+        REGRESSION(r251875): Crash in JSC::StructureIDTable::get on ppc64le: gcSafeMemcpy broken on JSVALUE64 platforms other than x86_64 and aarch64
+        https://bugs.webkit.org/show_bug.cgi?id=210685
+
+        Reviewed by Michael Catanzaro.
+
+        Fix gcSafeMemcpy on non-x86_64/aarch64 64-bit architectures.
+
+        We were hitting an incorrect x86_64 assertion on values larger than
+        mediumCutoff on JSVALUE64 architectures other than x86_64 and aarch64,
+        as the control flow is wrong.
+
+        * heap/GCMemoryOperations.h:
+        (JSC::gcSafeMemcpy):
+
+2020-04-01  Keith Miller  <keith_miller@apple.com>
+
+        Bindings that override getOwnPropertySlotByIndex need to say they MayHaveIndexedAccessors
+        https://bugs.webkit.org/show_bug.cgi?id=209762
+
+        Reviewed by Darin Adler.
+
+        Change indexingType to indexingModeIncludingHistory to more
+        clearly indicate the expected range of possible valid values.
+
+        * runtime/StructureInlines.h:
+        (JSC::Structure::create):
+
+2020-03-13  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Missing arithMode for ArithAbs and ArithNegate in DFGClobberize
+        https://bugs.webkit.org/show_bug.cgi?id=208685
+        <rdar://problem/60115088>
+
+        Reviewed by Saam Barati.
+
+        In the pure case of ArithNegate and ArithAbs in DFGClobberize, their PureValues did not include their
+        respective ArithMode. That means that e.g. a CheckOverflow ArithNegate/Abs could be considered equivalent
+        to an Unchecked version of the same node.
+
+        Thanks to Samuel Groß of Google Project Zero for identifying this bug.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
 2020-02-17  Tadeu Zagallo  <tzagallo@apple.com>
 
         [Wasm] REGRESSION(r256665): Wasm->JS call IC needs to save memory size register
