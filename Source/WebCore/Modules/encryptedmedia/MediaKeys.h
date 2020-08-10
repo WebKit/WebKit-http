@@ -68,7 +68,7 @@ public:
     CDMInstance& cdmInstance() { return m_instance; }
     const CDMInstance& cdmInstance() const { return m_instance; }
 
-    unsigned internalInstanceObjectRefCount() const { return m_instance->refCount(); }
+    unsigned internalInstanceObjectRefCount() const;
 
 protected:
     MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);

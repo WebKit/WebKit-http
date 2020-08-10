@@ -147,6 +147,11 @@ bool MediaKeys::hasOpenSessions() const
         });
 }
 
+unsigned MediaKeys::internalInstanceObjectRefCount() const
+{
+    return m_instance->refCount();
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(ENCRYPTED_MEDIA)
