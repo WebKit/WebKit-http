@@ -57,9 +57,12 @@ static const unsigned s_holdOffMultiplier = 20;
 static const Seconds s_memoryUsagePollerInterval { 1_s };
 static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
 static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
+static size_t s_pollMaximumProcessGPUMemoryCriticalLimit = 0;
+static size_t s_pollMaximumProcessGPUMemoryNonCriticalLimit = 0;
 
 static const char* s_processStatus = "/proc/self/status";
 static const char* s_cmdline = "/proc/self/cmdline";
+static char* s_GPUMemoryUsedFile = nullptr;
 
 static inline String nextToken(FILE* file)
 {
@@ -82,23 +85,32 @@ static inline String nextToken(FILE* file)
     return String(buffer);
 }
 
-size_t readToken(const char* filename, const char* key, size_t fileUnits)
+bool readToken(const char* filename, const char* key, size_t fileUnits, size_t &result)
 {
-    size_t result = static_cast<size_t>(-1);
     FILE* file = fopen(filename, "r");
     if (!file)
-        return result;
+        return false;
 
-    String token = nextToken(file);
-    while (!token.isEmpty()) {
-        if (token == key) {
-            result = nextToken(file).toUInt64() * fileUnits;
+    bool validValue = false;
+    String token;
+    do {
+        token = nextToken(file);
+        if (token.isEmpty())
+            break;
+
+        if (!key) {
+            result = token.toUInt64(&validValue) * fileUnits;
             break;
         }
-        token = nextToken(file);
-    }
+
+        if (token == key) {
+            result = nextToken(file).toUInt64(&validValue) * fileUnits;
+            break;
+        }
+    } while (!token.isEmpty());
+
     fclose(file);
-    return result;
+    return validValue;
 }
 
 static String getProcessName()
@@ -160,19 +172,81 @@ static bool initializeProcessMemoryLimits(size_t &criticalLimit, size_t &nonCrit
     return false;
 }
 
+static bool initializeProcessGPUMemoryLimits(size_t &criticalLimit, size_t &nonCriticalLimit, char **usedFilename)
+{
+    static bool initialized = false;
+    static bool success = false;
+
+    if (initialized)
+        return success;
+
+    initialized = true;
+
+    // Syntax: Case insensitive, unit multipliers (M=Mb, K=Kb, <empty>=bytes).
+    // Example: WPE_POLL_MAX_MEMORY_GPU='150M'
+
+    // GPU memory limit applies only to the WebProcess.
+    if (fnmatch("*WPEWebProcess", getProcessName().utf8().data(), 0))
+        return false;
+
+    // Ensure that both the limit and the file containig the used value are defined.
+    if (!getenv("WPE_POLL_MAX_MEMORY_GPU") || !getenv("WPE_POLL_MAX_MEMORY_GPU_FILE"))
+        return false;
+
+    String s(getenv("WPE_POLL_MAX_MEMORY_GPU"));
+    String value = s.stripWhiteSpace().convertToLowercaseWithoutLocale();
+    size_t units = 1;
+    if (value.endsWith('k'))
+        units = 1024;
+    else if (value.endsWith('m'))
+        units = 1024 * 1024;
+    if (units != 1)
+        value = value.substring(0, value.length()-1);
+    bool ok = false;
+    size_t size = size_t(value.toUInt64(&ok));
+
+    // Ensure that the string can be converted to size_t.
+    if (!ok)
+        return false;
+
+    criticalLimit = size * units;
+    nonCriticalLimit = criticalLimit * 0.95;
+    *usedFilename = getenv("WPE_POLL_MAX_MEMORY_GPU_FILE");
+
+    success = true;
+    return true;
+}
+
+
 MemoryPressureHandler::MemoryUsagePoller::MemoryUsagePoller()
 {
     m_thread = Thread::create("WTF: MemoryPressureHandler", [this] {
         do {
-            size_t vmRSS = readToken(s_processStatus, "VmRSS:", KB);
+            bool underMemoryPressure = false;
+            bool critical = false;
+            size_t value = 0;
 
-            if (!vmRSS)
-                return;
+            if (s_pollMaximumProcessMemoryCriticalLimit) {
+                if (readToken(s_processStatus, "VmRSS:", KB, value)) {
+                    if (value > s_pollMaximumProcessMemoryNonCriticalLimit) {
+                        underMemoryPressure = true;
+                        critical = value > s_pollMaximumProcessMemoryCriticalLimit;
+                    }
+                }
+            }
 
-            if (vmRSS > s_pollMaximumProcessMemoryNonCriticalLimit) {
-                bool isCritical = vmRSS > s_pollMaximumProcessMemoryCriticalLimit;
-                callOnMainThread([isCritical] {
-                    MemoryPressureHandler::singleton().triggerMemoryPressureEvent(isCritical);
+            if (s_pollMaximumProcessGPUMemoryCriticalLimit) {
+                if (readToken(s_GPUMemoryUsedFile, nullptr, 1, value)) {
+                    if (value > s_pollMaximumProcessGPUMemoryNonCriticalLimit) {
+                        underMemoryPressure = true;
+                        critical = value > s_pollMaximumProcessGPUMemoryCriticalLimit;
+                    }
+                }
+            }
+
+            if (underMemoryPressure) {
+                callOnMainThread([critical] {
+                    MemoryPressureHandler::singleton().triggerMemoryPressureEvent(critical);
                 });
                 return;
             }
@@ -219,7 +293,8 @@ void MemoryPressureHandler::install()
         return;
 
     // If the per process limits are not defined, we don't create the memory poller.
-    if (initializeProcessMemoryLimits(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit))
+    if (initializeProcessMemoryLimits(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit) |
+        initializeProcessGPUMemoryLimits(s_pollMaximumProcessGPUMemoryCriticalLimit, s_pollMaximumProcessGPUMemoryNonCriticalLimit, &s_GPUMemoryUsedFile))
         m_memoryUsagePoller = std::make_unique<MemoryUsagePoller>();
 
     m_installed = true;
