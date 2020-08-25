@@ -36,10 +36,10 @@ public:
     }
 
     template<typename F>
-    void notify(T notificationType, F&& callbackFunctor)
+    void notify(T notificationType, F&& callbackFunctor, bool preserveOrdering = false)
     {
         ASSERT(m_isValid.load());
-        if (isMainThread()) {
+        if (!preserveOrdering && isMainThread()) {
             removePendingNotification(notificationType);
             callbackFunctor();
             return;

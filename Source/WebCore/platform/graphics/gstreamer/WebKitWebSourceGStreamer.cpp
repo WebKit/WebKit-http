@@ -735,7 +735,7 @@ static void webKitWebSrcNeedData(WebKitWebSrc* src)
         WebKitWebSrcPrivate* priv = protector->priv;
         if (priv->resource)
             priv->resource->setDefersLoading(false);
-    });
+    }, true);
 }
 
 static void webKitWebSrcEnoughData(WebKitWebSrc* src)
@@ -753,7 +753,7 @@ static void webKitWebSrcEnoughData(WebKitWebSrc* src)
         WebKitWebSrcPrivate* priv = protector->priv;
         if (priv->resource)
             priv->resource->setDefersLoading(true);
-    });
+    }, true);
 }
 
 static gboolean webKitWebSrcSeek(WebKitWebSrc* src, guint64 offset)
