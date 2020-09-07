@@ -94,7 +94,7 @@ void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cook
 
 void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback)
 {
-    // toImpl(cookieManager)->getCookies2(PAL::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
+    toImpl(cookieManager)->getCookies2(PAL::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
 }
 
 void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)
