@@ -31,6 +31,7 @@
 #include <gcrypt.h>
 #include <gst/base/gstbytereader.h>
 #include <wtf/RunLoop.h>
+#include <wtf/glib/WTFGType.h>
 
 using namespace WebCore;
 
@@ -41,7 +42,7 @@ struct _WebKitMediaClearKeyDecryptPrivate {
     RefPtr<CDMProxyClearKey> cdmProxy;
 };
 
-static void finalize(GObject*);
+static void constructed(GObject*);
 static const char* protectionSystemId(WebKitMediaCommonEncryptionDecrypt*);
 static bool cdmProxyAttached(WebKitMediaCommonEncryptionDecrypt* self, const RefPtr<CDMProxy>&);
 static bool decrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* iv, GstBuffer* keyid, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
@@ -63,12 +64,12 @@ static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_STATIC_CAPS("video/x-h264; audio/mpeg; video/x-vp8; video/x-vp9"));
 
 #define webkit_media_clear_key_decrypt_parent_class parent_class
-G_DEFINE_TYPE(WebKitMediaClearKeyDecrypt, webkit_media_clear_key_decrypt, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
+WEBKIT_DEFINE_TYPE(WebKitMediaClearKeyDecrypt, webkit_media_clear_key_decrypt, WEBKIT_TYPE_MEDIA_CENC_DECRYPT)
 
 static void webkit_media_clear_key_decrypt_class_init(WebKitMediaClearKeyDecryptClass* klass)
 {
     GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
-    gobjectClass->finalize = finalize;
+    gobjectClass->constructed = constructed;
 
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
     gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
@@ -91,23 +92,11 @@ static void webkit_media_clear_key_decrypt_class_init(WebKitMediaClearKeyDecrypt
     g_type_class_add_private(klass, sizeof(WebKitMediaClearKeyDecryptPrivate));
 }
 
-static void webkit_media_clear_key_decrypt_init(WebKitMediaClearKeyDecrypt* self)
+static void constructed(GObject*)
 {
     // Downstream we never want this decryptor instantiated.
     GST_ERROR("instantiated Clear Key decryptor");
     RELEASE_ASSERT_NOT_REACHED();
-    WebKitMediaClearKeyDecryptPrivate* priv = WEBKIT_MEDIA_CK_DECRYPT_GET_PRIVATE(self);
-    self->priv = priv;
-    new (priv) WebKitMediaClearKeyDecryptPrivate();
-}
-
-static void finalize(GObject* object)
-{
-    WebKitMediaClearKeyDecrypt* self = WEBKIT_MEDIA_CK_DECRYPT(object);
-    WebKitMediaClearKeyDecryptPrivate* priv = self->priv;
-    priv->~WebKitMediaClearKeyDecryptPrivate();
-
-    GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
 static const char* protectionSystemId(WebKitMediaCommonEncryptionDecrypt*)
