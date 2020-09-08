@@ -1505,6 +1505,10 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 
 void MediaPlayerPrivateGStreamer::processBufferingStats(GstMessage* message)
 {
+#if ENABLE(MEDIA_STREAM) && !GST_CHECK_VERSION(1, 16, 0)
+    if (m_streamPrivate) return;
+#endif
+
     m_buffering = true;
     gst_message_parse_buffering(message, &m_bufferingPercentage);
 
@@ -2115,7 +2119,7 @@ void MediaPlayerPrivateGStreamer::updateStates()
         if (m_currentState == GST_STATE_READY)
             m_readyState = MediaPlayer::HaveNothing;
         else if (m_currentState == GST_STATE_PAUSED) {
-            m_readyState = MediaPlayer::HaveEnoughData;
+            m_readyState = MediaPlayer::HaveCurrentData;
             m_paused = true;
         } else if (m_currentState == GST_STATE_PLAYING)
             m_paused = false;
