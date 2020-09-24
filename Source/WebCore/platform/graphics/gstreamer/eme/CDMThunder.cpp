@@ -118,6 +118,10 @@ const Vector<String>& CDMFactoryThunder::supportedKeySystems() const
         // Yes, this is right, 0 means supported, hence something else means not supported.
         if (!opencdm_is_type_supported(GStreamerEMEUtilities::s_WidevineKeySystem, emptyString.c_str()))
             supportedKeySystems.append(GStreamerEMEUtilities::s_WidevineKeySystem);
+        if (!opencdm_is_type_supported(GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString.c_str())) {
+            supportedKeySystems.append(GStreamerEMEUtilities::s_PlayReadyKeySystems[0]);
+            supportedKeySystems.append(GStreamerEMEUtilities::s_PlayReadyKeySystems[1]);
+        }
 #ifndef NDEBUG
         if (supportedKeySystems.isEmpty() && isThunderRanked()) {
             ASSERT_NOT_REACHED_WITH_MESSAGE("Thunder is up-ranked as preferred decryptor but Thunder is not supporting any encryption system. Is "

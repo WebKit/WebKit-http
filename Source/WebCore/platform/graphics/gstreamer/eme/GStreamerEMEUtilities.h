@@ -31,6 +31,7 @@
 #define WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID "1077efec-c0b2-4d02-ace3-3c1e52e2fb4b"
 #if ENABLE(THUNDER)
 #define WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+#define WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
 #endif
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_common_encryption_decrypt_debug_category);
@@ -129,6 +130,8 @@ public:
 #if ENABLE(THUNDER)
     static constexpr char const* s_WidevineUUID = WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID;
     static constexpr char const* s_WidevineKeySystem = "com.widevine.alpha";
+    static constexpr char const* s_PlayReadyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
+    static constexpr std::array<const char*, 2> s_PlayReadyKeySystems = { "com.microsoft.playready", "com.youtube.playready" };
 #endif
 
     static bool isClearKeyKeySystem(const String& keySystem)
@@ -141,6 +144,11 @@ public:
     {
         return equalIgnoringASCIICase(keySystem, s_WidevineKeySystem);
     }
+
+    static bool isPlayReadyKeySystem(const String& keySystem)
+    {
+        return equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[0]) || equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[1]);
+    }
 #endif
 
     static const char* keySystemToUuid(const String& keySystem)
@@ -151,6 +159,9 @@ public:
 #if ENABLE(THUNDER)
         if (isWidevineKeySystem(keySystem))
             return s_WidevineUUID;
+
+        if (isPlayReadyKeySystem(keySystem))
+            return s_PlayReadyUUID;
 #endif
 
         ASSERT_NOT_REACHED();
