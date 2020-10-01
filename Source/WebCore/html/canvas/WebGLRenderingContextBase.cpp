@@ -826,7 +826,8 @@ void WebGLRenderingContextBase::addActivityStateChangeObserverIfNecessary()
 
     // We are only interested in visibility changes for contexts
     // that are using the high-performance GPU.
-    if (!isHighPerformanceContext(m_context) && !canvas->document().frame()->settings().nonCompositedWebGLEnabled())
+    m_nonCompositedWebGLMode = canvas->document().frame()->settings().nonCompositedWebGLEnabled();
+    if (!isHighPerformanceContext(m_context) && !m_nonCompositedWebGLMode)
         return;
 
     auto* page = canvas->document().page();
@@ -6630,7 +6631,7 @@ void WebGLRenderingContextBase::activityStateDidChange(OptionSet<ActivityState::
     if (changed & ActivityState::IsVisible)
         m_context->setContextVisibility(newActivityState.contains(ActivityState::IsVisible));
 
-    if (htmlCanvas()->document().frame()->settings().nonCompositedWebGLEnabled()) {
+    if (m_nonCompositedWebGLMode) {
         if (((changed & ActivityState::IsSuspended) && (newActivityState & ActivityState::IsSuspended)) ||
             ((changed & ActivityState::IsInWindow) && !(newActivityState & ActivityState::IsInWindow))) {
             if (m_scissorEnabled)

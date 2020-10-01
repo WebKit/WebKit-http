@@ -874,6 +874,7 @@ private:
     WebGLStateTracker::Token m_trackerToken;
     Timer m_checkForContextLossHandlingTimer;
     bool m_isSuspended { false };
+    bool m_nonCompositedWebGLMode { false };
 };
 
 template <typename T>
