@@ -442,6 +442,20 @@ void CDMInstanceSessionThunder::keyUpdatedCallback(KeyIDType&& keyID)
 
     auto keyStatus = status(keyID);
     GST_DEBUG("updated with with key status %s", toString(keyStatus));
+    auto instance = cdmInstanceThunder();
+    if (instance && GStreamerEMEUtilities::isPlayReadyKeySystem(instance->keySystem())) {
+        // PlayReady corner case hack: It happens that the key ID
+        // required by the stream and reported by the CDM have
+        // different endianness of the 4-2-2 GUID components.
+        ASSERT(keyID.size() >= 8);
+        KeyIDType swappedKeyID(keyID);
+        std::swap(swappedKeyID[0], swappedKeyID[3]);
+        std::swap(swappedKeyID[1], swappedKeyID[2]);
+        std::swap(swappedKeyID[4], swappedKeyID[5]);
+        std::swap(swappedKeyID[6], swappedKeyID[7]);
+        GST_MEMDUMP("updated swapped key", swappedKeyID.data(), swappedKeyID.size());
+        m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(swappedKeyID), BoxPtr<OpenCDMSession>()));
+    }
     m_doesKeyStoreNeedMerging |= m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(keyID), BoxPtr<OpenCDMSession>()));
 }
 
