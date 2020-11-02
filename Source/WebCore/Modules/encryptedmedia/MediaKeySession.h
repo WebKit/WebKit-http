@@ -83,6 +83,8 @@ public:
     // ActiveDOMObject
     bool hasPendingActivity() const override;
 
+    unsigned internalInstanceSessionObjectRefCount() const { return m_instanceSession->refCount(); }
+
 private:
     MediaKeySession(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstanceSession>&&);
     void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);

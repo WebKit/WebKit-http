@@ -29,19 +29,16 @@
 #include "GStreamerCommon.h"
 #include "MediaPlayerPrivateGStreamer.h"
 #include "MediaSample.h"
-#include "MediaSourceGStreamer.h"
+#include "MediaSourcePrivateGStreamer.h"
 #include "WebKitMediaSourceGStreamer.h"
 
 namespace WebCore {
 
-class MediaSourceClientGStreamerMSE;
 class AppendPipeline;
 class PlaybackPipeline;
 
 class MediaPlayerPrivateGStreamerMSE : public MediaPlayerPrivateGStreamer {
     WTF_MAKE_NONCOPYABLE(MediaPlayerPrivateGStreamerMSE); WTF_MAKE_FAST_ALLOCATED;
-
-    friend class MediaSourceClientGStreamerMSE;
 
 public:
     explicit MediaPlayerPrivateGStreamerMSE(MediaPlayer*);
@@ -77,11 +74,13 @@ public:
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
-    void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
+    void trackDetected(AppendPipeline&, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
     void notifySeekNeedsDataForTime(const MediaTime&);
 
     void blockDurationChanges();
     void unblockDurationChanges();
+
+    PlaybackPipeline* playbackPipeline() const { return m_playbackPipeline.get(); }
 
 private:
     friend class MediaPlayerFactoryGStreamerMSE;
@@ -101,15 +100,10 @@ private:
 
     bool isMediaSource() const override { return true; }
 
-    void setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE>);
-    RefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient();
-
-    HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline>> m_appendPipelinesMap;
     bool m_eosMarked = false;
     mutable bool m_eosPending = false;
     bool m_gstSeekCompleted = true;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
-    RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     MediaTime m_mediaTimeDuration;
     bool m_mseSeekCompleted = true;
     bool m_areDurationChangesBlocked = false;

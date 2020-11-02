@@ -78,11 +78,7 @@ class WPEPort(Port):
         environment['WEBKIT_EXEC_PATH'] = self._build_path('bin')
         self._copy_value_from_environ_if_set(environment, 'WEBKIT_OUTPUTDIR')
         self._copy_value_from_environ_if_set(environment, 'WEBKIT_TOP_LEVEL')
-        self._copy_value_from_environ_if_set(environment, 'USE_PLAYBIN3')
-        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG')
-        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_DUMP_DOT_DIR')
-        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_FILE')
-        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_NO_COLOR')
+        self._copy_value_from_environ_if_set(environment, 'WEBKIT_DEBUG')
         self._copy_value_from_environ_if_set(environment, 'LIBGL_ALWAYS_SOFTWARE')
         return environment
 

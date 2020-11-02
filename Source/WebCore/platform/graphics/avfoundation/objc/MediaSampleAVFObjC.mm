@@ -46,7 +46,7 @@ static inline void releaseUint8Vector(void *array, const void*)
     WTF::VectorMalloc::free(array);
 }
 
-RefPtr<MediaSampleAVFObjC> MediaSampleAVFObjC::createImageSample(Vector<uint8_t>&& array, unsigned long width, unsigned long height)
+RefPtr<MediaSampleAVFObjC> MediaSampleAVFObjC::createImageSample(Vector<uint8_t>&& array, unsigned width, unsigned height)
 {
     CVPixelBufferRef pixelBuffer = nullptr;
     auto status = CVPixelBufferCreateWithBytes(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, array.data(), width * 4, releaseUint8Vector, array.releaseBuffer().leakPtr(), NULL, &pixelBuffer);
@@ -318,20 +318,6 @@ void MediaSampleAVFObjC::setAsDisplayImmediately(MediaSample& sample)
         CFMutableDictionaryRef attachments = checked_cf_cast<CFMutableDictionaryRef>(CFArrayGetValueAtIndex(attachmentsArray, i));
         CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
     }
-}
-
-String MediaSampleAVFObjC::toJSONString() const
-{
-    auto object = JSON::Object::create();
-
-    object->setObject("pts"_s, presentationTime().toJSONObject());
-    object->setObject("opts"_s, outputPresentationTime().toJSONObject());
-    object->setObject("dts"_s, decodeTime().toJSONObject());
-    object->setObject("duration"_s, duration().toJSONObject());
-    object->setInteger("flags"_s, static_cast<unsigned>(flags()));
-    object->setObject("presentationSize"_s, presentationSize().toJSONObject());
-
-    return object->toJSONString();
 }
 
 }

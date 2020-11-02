@@ -12,6 +12,8 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/GStreamerCommon.cpp
         platform/graphics/gstreamer/GstAllocatorFastMalloc.cpp
         platform/graphics/gstreamer/GStreamerRegistryScanner.cpp
+        platform/graphics/gstreamer/GStreamerVideoFrameHolder.cpp
+        platform/graphics/gstreamer/ImageDecoderGStreamer.cpp
         platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp
         platform/graphics/gstreamer/MediaEngineConfigurationFactoryGStreamer.cpp
         platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
@@ -30,8 +32,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/mse/GStreamerMediaDescription.cpp
         platform/graphics/gstreamer/mse/GStreamerRegistryScannerMSE.cpp
         platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp
-        platform/graphics/gstreamer/mse/MediaSourceClientGStreamerMSE.cpp
-        platform/graphics/gstreamer/mse/MediaSourceGStreamer.cpp
+        platform/graphics/gstreamer/mse/MediaSourcePrivateGStreamer.cpp
         platform/graphics/gstreamer/mse/PlaybackPipeline.cpp
         platform/graphics/gstreamer/mse/SourceBufferPrivateGStreamer.cpp
         platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamer.cpp
@@ -50,8 +51,8 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/mediastream/gstreamer/GStreamerVideoCaptureSource.cpp
         platform/mediastream/gstreamer/GStreamerVideoCapturer.cpp
         platform/mediastream/gstreamer/GStreamerVideoFrameLibWebRTC.cpp
-        platform/mediastream/gstreamer/MockGStreamerAudioCaptureSource.cpp
-        platform/mediastream/gstreamer/MockGStreamerVideoCaptureSource.cpp
+        platform/mediastream/gstreamer/MockRealtimeAudioSourceGStreamer.cpp
+        platform/mediastream/gstreamer/MockRealtimeVideoSourceGStreamer.cpp
         platform/mediastream/gstreamer/RealtimeIncomingAudioSourceLibWebRTC.cpp
         platform/mediastream/gstreamer/RealtimeIncomingVideoSourceLibWebRTC.cpp
         platform/mediastream/gstreamer/RealtimeMediaSourceCenterLibWebRTC.cpp
@@ -164,9 +165,11 @@ if (ENABLE_ENCRYPTED_MEDIA)
     )
 
     list(APPEND WebCore_SOURCES
+        platform/encryptedmedia/CDMProxy.cpp
+        platform/encryptedmedia/CDMUtilities.cpp
         platform/encryptedmedia/clearkey/CDMClearKey.cpp
-
         platform/graphics/gstreamer/eme/CDMFactoryGStreamer.cpp
+        platform/graphics/gstreamer/eme/CDMProxyClearKey.cpp
     )
 
     list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -176,6 +179,27 @@ if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_LIBRARIES
         ${LIBGCRYPT_LIBRARIES} -lgpg-error
     )
+
+    if (ENABLE_THUNDER)
+        list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
+            "${WEBCORE_DIR}/platform/encryptedmedia/opencdm"
+        )
+
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+            ${THUNDER_INCLUDE_DIRS}
+        )
+
+        list(APPEND WebCore_LIBRARIES
+            ${THUNDER_LIBRARIES}
+        )
+
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/eme/CDMProxyThunder.cpp
+            platform/graphics/gstreamer/eme/CDMThunder.cpp
+            platform/graphics/gstreamer/eme/WebKitThunderDecryptorGStreamer.cpp
+        )
+    endif ()
+
 endif ()
 
 if (USE_CAIRO)

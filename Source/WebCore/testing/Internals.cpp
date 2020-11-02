@@ -498,6 +498,7 @@ void Internals::resetToConsistentState(Page& page)
     WebCore::DeprecatedGlobalSettings::setUsesMockScrollAnimator(false);
 #if ENABLE(VIDEO_TRACK)
     page.group().captionPreferences().setTestingMode(true);
+    page.group().captionPreferences().setCaptionDisplayMode(CaptionUserPreferences::ForcedOnly);
     page.group().captionPreferences().setCaptionsStyleSheetOverride(emptyString());
     page.group().captionPreferences().setTestingMode(false);
 #endif
@@ -5471,5 +5472,17 @@ String Internals::focusRingColor()
     OptionSet<StyleColor::Options> options;
     return RenderTheme::singleton().focusRingColor(options).cssText();
 }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+unsigned Internals::mediaKeysInternalInstanceObjectRefCount(const MediaKeys& mediaKeys) const
+{
+    return mediaKeys.internalInstanceObjectRefCount();
+}
+
+unsigned Internals::mediaKeySessionInternalInstanceSessionObjectRefCount(const MediaKeySession& mediaKeySession) const
+{
+    return mediaKeySession.internalInstanceSessionObjectRefCount();
+}
+#endif
 
 } // namespace WebCore

@@ -952,6 +952,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/MIMETypeRegistry.h
     platform/MediaSample.h
     platform/MediaSelectionOption.h
+    platform/MediaStrategy.h
     platform/NotImplemented.h
     platform/OrientationNotifier.h
     platform/PODInterval.h
@@ -1022,13 +1023,33 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/animation/AnimationUtilities.h
     platform/animation/TimingFunction.h
 
+    platform/audio/AudioArray.h
+    platform/audio/AudioBus.h
+    platform/audio/AudioChannel.h
+    platform/audio/AudioDestination.h
     platform/audio/AudioHardwareListener.h
+    platform/audio/AudioIOCallback.h
     platform/audio/AudioSession.h
     platform/audio/AudioSourceProvider.h
     platform/audio/AudioStreamDescription.h
     platform/audio/PlatformAudioData.h
     platform/audio/PlatformMediaSession.h
     platform/audio/PlatformMediaSessionManager.h
+
+    platform/encryptedmedia/CDMEncryptionScheme.h
+    platform/encryptedmedia/CDMFactory.h
+    platform/encryptedmedia/CDMInstance.h
+    platform/encryptedmedia/CDMInstanceSession.h
+    platform/encryptedmedia/CDMKeyStatus.h
+    platform/encryptedmedia/CDMKeySystemConfiguration.h
+    platform/encryptedmedia/CDMMediaCapability.h
+    platform/encryptedmedia/CDMMessageType.h
+    platform/encryptedmedia/CDMPrivate.h
+    platform/encryptedmedia/CDMProxy.h
+    platform/encryptedmedia/CDMRequirement.h
+    platform/encryptedmedia/CDMRestrictions.h
+    platform/encryptedmedia/CDMSessionType.h
+    platform/encryptedmedia/CDMUtilities.h
 
     platform/gamepad/GamepadProvider.h
     platform/gamepad/GamepadProviderClient.h
@@ -1538,3 +1559,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     ${WebCore_DERIVED_SOURCES_DIR}/WebKitFontFamilyNames.h
     ${WebCore_DERIVED_SOURCES_DIR}/WritableStreamInternalsBuiltins.h
 )
+
+if (ENABLE_OPENCDM)
+    list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS platform/encryptedmedia/CDMOpenCDMTypes.h)
+endif ()

@@ -843,4 +843,7 @@ enum CompositingPolicy {
     boolean systemHasBattery();
 
     DOMString mediaMIMETypeForExtension(DOMString extension);
+
+    [Conditional=ENCRYPTED_MEDIA] unsigned long mediaKeysInternalInstanceObjectRefCount(MediaKeys mediaKeys);
+    [Conditional=ENCRYPTED_MEDIA] unsigned long mediaKeySessionInternalInstanceSessionObjectRefCount(MediaKeySession session);
 };

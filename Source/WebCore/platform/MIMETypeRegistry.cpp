@@ -64,6 +64,10 @@
 #define ADDITIONAL_SYSTEM_PREVIEW_TYPES
 #endif
 
+#if USE(GSTREAMER)
+#include "ImageDecoderGStreamer.h"
+#endif
+
 namespace WebCore {
 
 const HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::supportedImageMIMETypes()
@@ -449,6 +453,11 @@ bool MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(const String& mimeType
 
 #if HAVE(AVASSETREADER)
     if (ImageDecoderAVFObjC::supportsContainerType(mimeType))
+        return true;
+#endif
+
+#if USE(GSTREAMER)
+    if (ImageDecoderGStreamer::supportsContainerType(mimeType))
         return true;
 #endif
 

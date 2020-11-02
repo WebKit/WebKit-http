@@ -1,3 +1,127 @@
+2020-07-24  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] gst_buffer_unmap: assertion 'GST_IS_BUFFER (buffer)' failed
+        https://bugs.webkit.org/show_bug.cgi?id=213364
+
+        Reviewed by Philippe Normand.
+
+        * TestWebKitAPI/Tests/WebCore/gstreamer/GstMappedBuffer.cpp:
+        (TestWebKitAPI::TEST_F): Added
+        GStreamerTest::mappedOwnedBufferDestruction and
+        GStreamerTest::mappedBufferValidityUnmapEarly tests.
+
+2020-07-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] gst_buffer_unmap: assertion 'GST_IS_BUFFER (buffer)' failed
+        https://bugs.webkit.org/show_bug.cgi?id=213364
+
+        Reviewed by Philippe Normand.
+
+        Reworked tests for GstMappedBuffer and added tests for
+        GstMappedOwnedBuffer.
+
+        * TestWebKitAPI/Tests/WebCore/gstreamer/GstMappedBuffer.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2020-07-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Rename createBoxPtr into adoptBoxPtr
+        https://bugs.webkit.org/show_bug.cgi?id=214171
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/BoxPtr.cpp:
+        (TestWebKitAPI::TEST): Used the renamed function.
+
+2020-07-10  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][EME][OpenCDM] Implement OpenCDM support
+        https://bugs.webkit.org/show_bug.cgi?id=213550
+
+        Reviewed by Philippe Normand.
+
+        Added support to build OpenCDM and its dependencies. There is an
+        opt in env var to get JHBuild building Thunder its Widevine
+        dependencies. We also include a couple of GStreamer patches needed
+        to get key IDs in the decryptors.
+
+        Widevine is obviously proprietary and as you need to be licensed
+        to access it, you need credentials to build it.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/gst-plugins-bad-0006-mssdemux-parse-protection-data.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0002-Check-if-an-upstream-demuxer-provided-a-default-kid.patch: Added.
+        * gtk/install-dependencies:
+        * jhbuild/jhbuildrc_common.py:
+        (init):
+        * wpe/install-dependencies:
+
+2020-07-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [WTF] Implement new BoxPtr alias
+        https://bugs.webkit.org/show_bug.cgi?id=212379
+
+        Reviewed by Darin Adler.
+
+        Tests for BoxPtr.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/BoxPtr.cpp: Added.
+        (TestWebKitAPI::BoxPtrLogger::create):
+        (TestWebKitAPI::BoxPtrLogger::BoxPtrLogger):
+        (TestWebKitAPI::boxPtrLoggerDeleter):
+        (TestWebKitAPI::TEST):
+
+2020-05-21  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GStreamer][GTK][WPE] Expose and honor the media content types requiring hardware support setting
+        https://bugs.webkit.org/show_bug.cgi?id=211950
+
+        Reviewed by Adrian Perez de Castro.
+
+        Exercise the new mediaContentTypesRequiringHardwareSupport setting.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2020-04-30  Philippe Normand  <pnormand@igalia.com>
+
+        [SOUP] http/tests/media/video-accept-encoding.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=211228
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server):
+
+2020-04-23  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Add mock release/debug options to the update script
+
+        Rubber-stamped by Carlos Alberto Lopez Perez.
+
+        These options are now required after r260560. They're not used
+        though because JHBuild itself doesn't have the notion of build
+        configuration, unlike the Flatpak SDK.
+
+        * Scripts/update-webkit-libs-jhbuild:
+
+2020-04-10  Alicia Boya García  <aboya@igalia.com>
+
+        [WTF] DataMutex: Add runUnlocked()
+        https://bugs.webkit.org/show_bug.cgi?id=209811
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Tests for runUnlocked() and DataMutex checks are introduced.
+
+        * TestWebKitAPI/Tests/WTF/DataMutex.cpp:
+        (TestWebKitAPI::TEST):
+
 2020-04-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK] MiniBrowser opens new windows too small causing failures on some WPT tests

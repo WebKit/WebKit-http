@@ -29,6 +29,12 @@
 #include <wtf/text/WTFString.h>
 
 #define WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID "1077efec-c0b2-4d02-ace3-3c1e52e2fb4b"
+#if ENABLE(THUNDER)
+#define WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+#define WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
+#endif
+
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_common_encryption_decrypt_debug_category);
 
 namespace WebCore {
 class InitData {
@@ -40,12 +46,18 @@ public:
     InitData(const String& systemId, GstBuffer* initData)
         : m_systemId(systemId)
     {
-        auto mappedInitData = GstMappedBuffer::create(initData, GST_MAP_READ);
+        auto mappedInitData = GstMappedOwnedBuffer::create(initData);
         if (!mappedInitData) {
-            GST_ERROR("cannot map %s protection data", systemId.utf8().data());
+            GST_CAT_LEVEL_LOG(webkit_media_common_encryption_decrypt_debug_category, GST_LEVEL_ERROR, nullptr, "cannot map %s protection data", systemId.utf8().data());
             ASSERT_NOT_REACHED();
         }
         m_payload = mappedInitData->createSharedBuffer();
+    }
+
+    InitData(const String& systemId, RefPtr<SharedBuffer>&& payload)
+        : m_systemId(systemId)
+        , m_payload(WTFMove(payload))
+    {
     }
 
     void append(InitData&& initData)
@@ -64,7 +76,7 @@ public:
         m_payload->append(*initData.payload());
     }
 
-    const RefPtr<SharedBuffer> payload() const { return m_payload; }
+    const RefPtr<SharedBuffer>& payload() const { return m_payload; }
     const String& systemId() const { return m_systemId; }
     String payloadContainerType() const
     {
@@ -115,16 +127,42 @@ class GStreamerEMEUtilities {
 public:
     static constexpr char const* s_ClearKeyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID;
     static constexpr char const* s_ClearKeyKeySystem = "org.w3.clearkey";
+#if ENABLE(THUNDER)
+    static constexpr char const* s_WidevineUUID = WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID;
+    static constexpr char const* s_WidevineKeySystem = "com.widevine.alpha";
+    static constexpr char const* s_PlayReadyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
+    static constexpr std::array<const char*, 2> s_PlayReadyKeySystems = { "com.microsoft.playready", "com.youtube.playready" };
+#endif
 
     static bool isClearKeyKeySystem(const String& keySystem)
     {
         return equalIgnoringASCIICase(keySystem, s_ClearKeyKeySystem);
     }
 
+#if ENABLE(THUNDER)
+    static bool isWidevineKeySystem(const String& keySystem)
+    {
+        return equalIgnoringASCIICase(keySystem, s_WidevineKeySystem);
+    }
+
+    static bool isPlayReadyKeySystem(const String& keySystem)
+    {
+        return equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[0]) || equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[1]);
+    }
+#endif
+
     static const char* keySystemToUuid(const String& keySystem)
     {
         if (isClearKeyKeySystem(keySystem))
             return s_ClearKeyUUID;
+
+#if ENABLE(THUNDER)
+        if (isWidevineKeySystem(keySystem))
+            return s_WidevineUUID;
+
+        if (isPlayReadyKeySystem(keySystem))
+            return s_PlayReadyUUID;
+#endif
 
         ASSERT_NOT_REACHED();
         return { };

@@ -58,7 +58,7 @@ public:
     ~MediaKeys();
 
     ExceptionOr<Ref<MediaKeySession>> createSession(ScriptExecutionContext&, MediaKeySessionType);
-    void setServerCertificate(ScriptExecutionContext&, const BufferSource&, Ref<DeferredPromise>&&);
+    void setServerCertificate(const BufferSource&, Ref<DeferredPromise>&&);
 
     void attachCDMClient(CDMClient&);
     void detachCDMClient(CDMClient&);
@@ -67,6 +67,8 @@ public:
     bool hasOpenSessions() const;
     CDMInstance& cdmInstance() { return m_instance; }
     const CDMInstance& cdmInstance() const { return m_instance; }
+
+    unsigned internalInstanceObjectRefCount() const;
 
 protected:
     MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);

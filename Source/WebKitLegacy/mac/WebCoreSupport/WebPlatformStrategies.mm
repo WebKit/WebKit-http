@@ -28,9 +28,12 @@
 #import "WebFrameNetworkingContext.h"
 #import "WebPluginPackage.h"
 #import "WebResourceLoadScheduler.h"
+#import <WebCore/AudioDestination.h>
 #import <WebCore/BlobRegistryImpl.h>
+#import <WebCore/CDMFactory.h>
 #import <WebCore/Color.h>
 #import <WebCore/Frame.h>
+#import <WebCore/MediaStrategy.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PasteboardItemInfo.h>
 #import <WebCore/PlatformPasteboard.h>
@@ -60,6 +63,28 @@ LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 {
     return this;
+}
+
+class WebMediaStrategy final : public MediaStrategy {
+private:
+#if ENABLE(WEB_AUDIO)
+    std::unique_ptr<AudioDestination> createAudioDestination(AudioIOCallback& callback, const String& inputDeviceId,
+        unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate) override
+    {
+        return AudioDestination::create(callback, inputDeviceId, numberOfInputChannels, numberOfOutputChannels, sampleRate);
+    }
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    void registerCDMFactories(Vector<CDMFactory*>& factories) override
+    {
+        return WebCore::CDMFactory::platformRegisterFactories(factories);
+    }
+#endif
+};
+
+MediaStrategy* WebPlatformStrategies::createMediaStrategy()
+{
+    return new WebMediaStrategy;
 }
 
 class WebBlobRegistry final : public BlobRegistry {

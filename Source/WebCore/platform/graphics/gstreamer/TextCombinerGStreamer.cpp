@@ -243,11 +243,13 @@ static void webkitTextCombinerReleasePad(GstElement *element, GstPad *pad)
     WebKitTextCombiner* combiner = WEBKIT_TEXT_COMBINER(element);
     WebKitTextCombinerPad* combinerPad = WEBKIT_TEXT_COMBINER_PAD(pad);
 
-    if (GRefPtr<GstPad> peer = adoptGRef(gst_pad_get_peer(pad))) {
-        GRefPtr<GstElement> parent = adoptGRef(gst_pad_get_parent_element(peer.get()));
+    if (GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD(pad)))) {
+        GRefPtr<GstElement> parent = adoptGRef(gst_pad_get_parent_element(target.get()));
         ASSERT(parent);
-        if (G_TYPE_FROM_INSTANCE(parent.get()) == webVTTEncType)
+        if (G_TYPE_FROM_INSTANCE(parent.get()) == webVTTEncType) {
+            gst_element_set_state(parent.get(), GST_STATE_NULL);
             gst_bin_remove(GST_BIN(combiner), parent.get());
+        }
     }
 
     gst_element_release_request_pad(combiner->funnel, combinerPad->funnelPad);
@@ -271,6 +273,7 @@ static void webkit_text_combiner_class_init(WebKitTextCombinerClass* klass)
         GST_DEBUG_FUNCPTR(webkitTextCombinerReleasePad);
 
     GRefPtr<GstElementFactory> webVTTEncFactory = adoptGRef(gst_element_factory_find("webvttenc"));
+    ASSERT(webVTTEncFactory);
     gst_object_unref(gst_plugin_feature_load(GST_PLUGIN_FEATURE(webVTTEncFactory.get())));
     webVTTEncType = gst_element_factory_get_element_type(webVTTEncFactory.get());
     ASSERT(webVTTEncType);
@@ -290,6 +293,12 @@ static void webkit_text_combiner_pad_class_init(WebKitTextCombinerPadClass* klas
 
 GstElement* webkitTextCombinerNew()
 {
+    // The combiner relies on webvttenc, fail early if it's not there.
+    if (!WebCore::isGStreamerPluginAvailable("subenc")) {
+        WTFLogAlways("WebKit wasn't able to find a WebVTT encoder. Not continuing without platform support for subtitles.");
+        return nullptr;
+    }
+
     return GST_ELEMENT(g_object_new(WEBKIT_TYPE_TEXT_COMBINER, nullptr));
 }
 

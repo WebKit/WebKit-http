@@ -44,12 +44,12 @@
 
 namespace WebCore {
 
-class MediaSourceGStreamer;
+class MediaSourcePrivateGStreamer;
 
 class SourceBufferPrivateGStreamer final : public SourceBufferPrivate {
 
 public:
-    static Ref<SourceBufferPrivateGStreamer> create(MediaSourceGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&);
+    static Ref<SourceBufferPrivateGStreamer> create(MediaSourcePrivateGStreamer*, const ContentType&, MediaPlayerPrivateGStreamerMSE&);
     virtual ~SourceBufferPrivateGStreamer() = default;
 
     void clearMediaSource() { m_mediaSource = nullptr; }
@@ -79,13 +79,22 @@ public:
 
     ContentType type() const { return m_type; }
 
-private:
-    SourceBufferPrivateGStreamer(MediaSourceGStreamer*, Ref<MediaSourceClientGStreamerMSE>, const ContentType&);
-    friend class MediaSourceClientGStreamerMSE;
+#if !RELEASE_LOG_DISABLED
+    const Logger& logger() const final { return m_logger.get(); }
+    const char* logClassName() const override { return "SourceBufferPrivateGStreamer"; }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    WTFLogChannel& logChannel() const final;
+    const Logger& sourceBufferLogger() const final { return m_logger; }
+    const void* sourceBufferLogIdentifier() final { return logIdentifier(); }
+#endif
 
-    MediaSourceGStreamer* m_mediaSource;
+private:
+    SourceBufferPrivateGStreamer(MediaSourcePrivateGStreamer*, const ContentType&, MediaPlayerPrivateGStreamerMSE&);
+
+    MediaSourcePrivateGStreamer* m_mediaSource;
     ContentType m_type;
-    Ref<MediaSourceClientGStreamerMSE> m_client;
+    MediaPlayerPrivateGStreamerMSE& m_playerPrivate;
+    UniqueRef<AppendPipeline> m_appendPipeline;
     SourceBufferPrivateClient* m_sourceBufferPrivateClient { nullptr };
     bool m_isReadyForMoreSamples = true;
     bool m_notifyWhenReadyForMoreSamples = false;

@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-class MediaSampleGStreamer final : public MediaSample {
+class MediaSampleGStreamer : public MediaSample {
 public:
     static Ref<MediaSampleGStreamer> create(GRefPtr<GstSample>&& sample, const FloatSize& presentationSize, const AtomString& trackId)
     {
@@ -37,8 +37,9 @@ public:
     }
 
     static Ref<MediaSampleGStreamer> createFakeSample(GstCaps*, MediaTime pts, MediaTime dts, MediaTime duration, const FloatSize& presentationSize, const AtomString& trackId);
+    static Ref<MediaSampleGStreamer> createImageSample(Vector<uint8_t>&&, unsigned width, unsigned height);
 
-    void applyPtsOffset(MediaTime);
+    void extendToTheBeginning();
     MediaTime presentationTime() const override { return m_pts; }
     MediaTime decodeTime() const override { return m_dts; }
     MediaTime duration() const override { return m_duration; }
@@ -54,11 +55,14 @@ public:
     SampleFlags flags() const override { return m_flags; }
     PlatformSample platformSample() override;
     void dump(PrintStream&) const override;
+    RefPtr<JSC::Uint8ClampedArray> getRGBAImageData() const final;
+
+protected:
+    MediaSampleGStreamer(GRefPtr<GstSample>&&, const FloatSize& presentationSize, const AtomString& trackId);
+    virtual ~MediaSampleGStreamer() = default;
 
 private:
-    MediaSampleGStreamer(GRefPtr<GstSample>&&, const FloatSize& presentationSize, const AtomString& trackId);
     MediaSampleGStreamer(const FloatSize& presentationSize, const AtomString& trackId);
-    virtual ~MediaSampleGStreamer() = default;
 
     MediaTime m_pts;
     MediaTime m_dts;

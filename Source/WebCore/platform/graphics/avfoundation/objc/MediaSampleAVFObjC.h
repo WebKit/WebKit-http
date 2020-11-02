@@ -37,7 +37,7 @@ public:
     static Ref<MediaSampleAVFObjC> create(CMSampleBufferRef sample, int trackID) { return adoptRef(*new MediaSampleAVFObjC(sample, trackID)); }
     static Ref<MediaSampleAVFObjC> create(CMSampleBufferRef sample, AtomString trackID) { return adoptRef(*new MediaSampleAVFObjC(sample, trackID)); }
     static Ref<MediaSampleAVFObjC> create(CMSampleBufferRef sample, VideoRotation rotation = VideoRotation::None, bool mirrored = false) { return adoptRef(*new MediaSampleAVFObjC(sample, rotation, mirrored)); }
-    static RefPtr<MediaSampleAVFObjC> createImageSample(Vector<uint8_t>&&, unsigned long width, unsigned long height);
+    static RefPtr<MediaSampleAVFObjC> createImageSample(Vector<uint8_t>&&, unsigned width, unsigned height);
 
     WEBCORE_EXPORT static void setAsDisplayImmediately(MediaSample&);
 
@@ -69,8 +69,6 @@ public:
     uint32_t videoPixelFormat() const final;
 
     CMSampleBufferRef sampleBuffer() const { return m_sample.get(); }
-
-    String toJSONString() const override;
 
 protected:
     MediaSampleAVFObjC(RetainPtr<CMSampleBufferRef>&& sample)

@@ -114,14 +114,6 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 {
     GST_TRACE("destroying the player (%p)", this);
 
-    // Clear the AppendPipeline map. This should cause the destruction of all the AppendPipeline's since there should
-    // be no alive references at this point.
-#ifndef NDEBUG
-    for (auto iterator : m_appendPipelinesMap)
-        ASSERT(iterator.value->hasOneRef());
-#endif
-    m_appendPipelinesMap.clear();
-
     if (m_source) {
         webKitMediaSrcSetMediaPlayerPrivate(WEBKIT_MEDIA_SRC(m_source.get()), nullptr);
         g_signal_handlers_disconnect_by_data(m_source.get(), this);
@@ -491,7 +483,7 @@ void MediaPlayerPrivateGStreamerMSE::sourceSetup(GstElement* sourceElement)
 
     m_playbackPipeline->setWebKitMediaSrc(WEBKIT_MEDIA_SRC(m_source.get()));
 
-    MediaSourceGStreamer::open(*m_mediaSource.get(), *this);
+    MediaSourcePrivateGStreamer::open(*m_mediaSource.get(), *this);
     g_signal_connect_swapped(m_source.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
     g_signal_connect_swapped(m_source.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
     g_signal_connect_swapped(m_source.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
@@ -657,16 +649,6 @@ bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
     return result;
 }
 
-void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)
-{
-    m_mediaSourceClient = client.ptr();
-}
-
-RefPtr<MediaSourceClientGStreamerMSE> MediaPlayerPrivateGStreamerMSE::mediaSourceClient()
-{
-    return m_mediaSourceClient;
-}
-
 void MediaPlayerPrivateGStreamerMSE::blockDurationChanges()
 {
     ASSERT(isMainThread());
@@ -689,13 +671,9 @@ void MediaPlayerPrivateGStreamerMSE::unblockDurationChanges()
 void MediaPlayerPrivateGStreamerMSE::durationChanged()
 {
     ASSERT(isMainThread());
-    if (!m_mediaSourceClient) {
-        GST_DEBUG("m_mediaSourceClient is null, doing nothing");
-        return;
-    }
 
     MediaTime previousDuration = m_mediaTimeDuration;
-    m_mediaTimeDuration = m_mediaSourceClient->duration();
+    m_mediaTimeDuration = m_mediaSource->duration();
 
     GST_TRACE("previous=%s, new=%s", toString(previousDuration).utf8().data(), toString(m_mediaTimeDuration).utf8().data());
 
@@ -707,15 +685,14 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
             m_playbackPipeline->notifyDurationChanged();
         } else
             m_shouldReportDurationWhenUnblocking = true;
-        m_mediaSource->durationChanged(m_mediaTimeDuration);
     }
 }
 
-void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> appendPipeline, RefPtr<WebCore::TrackPrivateBase> newTrack, bool firstTrackDetected)
+void MediaPlayerPrivateGStreamerMSE::trackDetected(AppendPipeline& appendPipeline, RefPtr<WebCore::TrackPrivateBase> newTrack, bool firstTrackDetected)
 {
-    ASSERT(appendPipeline->track() == newTrack);
+    ASSERT(appendPipeline.track() == newTrack);
 
-    GstCaps* caps = appendPipeline->appsinkCaps();
+    GstCaps* caps = appendPipeline.appsinkCaps();
     ASSERT(caps);
     GST_DEBUG("track ID: %s, caps: %" GST_PTR_FORMAT, newTrack->id().string().latin1().data(), caps);
 
@@ -726,9 +703,9 @@ void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> append
     }
 
     if (firstTrackDetected)
-        m_playbackPipeline->attachTrack(appendPipeline->sourceBufferPrivate(), newTrack, caps);
+        m_playbackPipeline->attachTrack(makeRef(appendPipeline.sourceBufferPrivate()), newTrack, caps);
     else
-        m_playbackPipeline->reattachTrack(appendPipeline->sourceBufferPrivate(), newTrack, caps);
+        m_playbackPipeline->reattachTrack(makeRef(appendPipeline.sourceBufferPrivate()), newTrack, caps);
 }
 
 void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)

@@ -1,3 +1,33 @@
+2020-07-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed. Fixed copy&paste typos of gcrypt -> Thunder
+
+        * Source/cmake/FindThunder.cmake:
+
+2020-07-10  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][EME][OpenCDM] Implement OpenCDM support
+        https://bugs.webkit.org/show_bug.cgi?id=213550
+
+        Reviewed by Philippe Normand.
+
+        Added support to enable OpenCDM and find it it needed.
+
+        * Source/cmake/FindOpenCDM.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2020-04-28  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][MediaStream] Doesn't build with GStreamer 1.10
+        https://bugs.webkit.org/show_bug.cgi?id=210271
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Source/cmake/GStreamerChecks.cmake: Require at least GStreamer
+        1.12 when building with WebRTC/MediaStream enabled.
+
 2020-07-28  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.4 release

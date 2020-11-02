@@ -76,6 +76,10 @@ typedef struct _GstMpegtsSection GstMpegtsSection;
 #endif
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMProxy.h"
+#endif
+
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
@@ -212,7 +216,9 @@ public:
     NativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
-    void enableTrack(TrackPrivateBaseGStreamer::TrackType, unsigned index);
+    void updateEnabledVideoTrack();
+    void updateEnabledAudioTrack();
+    void playbin3SendSelectStreamsIfAppropriate();
 
     // Append pipeline interface
     // FIXME: Use the client interface pattern, AppendPipeline does not need the full interface to this class just for these two functions.
@@ -330,8 +336,8 @@ protected:
     mutable bool m_isLiveStream { false };
     bool m_isPaused { true };
     float m_playbackRate { 1 };
-    GstState m_currentState;
-    GstState m_oldState;
+    GstState m_currentState { GST_STATE_NULL };
+    GstState m_oldState { GST_STATE_NULL };
     GstState m_requestedState { GST_STATE_VOID_PENDING };
     bool m_shouldResetPipeline { false };
     bool m_isSeeking { false };
@@ -373,7 +379,7 @@ protected:
 #if ENABLE(ENCRYPTED_MEDIA)
     Lock m_cdmAttachmentMutex;
     Condition m_cdmAttachmentCondition;
-    RefPtr<const CDMInstance> m_cdmInstance;
+    RefPtr<CDMInstanceProxy> m_cdmInstance;
 
     Lock m_protectionMutex; // Guards access to m_handledProtectionEvents.
     HashSet<uint32_t> m_handledProtectionEvents;
@@ -443,14 +449,14 @@ private:
     void setPlaybinURL(const URL& urlString);
     void loadFull(const String& url, const String& pipelineName);
 
-    void updateTracks();
-    void clearTracks();
+    void updateTracks(GRefPtr<GstStreamCollection>&&);
 
 #if ENABLE(ENCRYPTED_MEDIA)
     bool isCDMAttached() const { return m_cdmInstance; }
     void attemptToDecryptWithLocalInstance();
     void initializationDataEncountered(InitData&&);
-    void setWaitingForKey(bool);
+    InitData parseInitDataFromProtectionMessage(GstMessage*);
+    bool waitForCDMAttachment();
 #endif
 
     Atomic<bool> m_isPlayerShuttingDown;
@@ -489,13 +495,19 @@ private:
     bool m_shouldPreservePitch { false };
     mutable Optional<Seconds> m_lastQueryTime;
     bool m_isLegacyPlaybin;
-    GRefPtr<GstStreamCollection> m_streamCollection;
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStreamPrivate> m_streamPrivate;
 #endif
-    String m_currentAudioStreamId;
-    String m_currentVideoStreamId;
-    String m_currentTextStreamId;
+
+    // playbin3 only:
+    bool m_waitingForStreamsSelectedEvent { true };
+    AtomString m_currentAudioStreamId; // Currently playing.
+    AtomString m_currentVideoStreamId;
+    AtomString m_wantedAudioStreamId; // Set in JavaScript.
+    AtomString m_wantedVideoStreamId;
+    AtomString m_requestedAudioStreamId; // Expected in the next STREAMS_SELECTED message.
+    AtomString m_requestedVideoStreamId;
+
 #if ENABLE(WEB_AUDIO)
     std::unique_ptr<AudioSourceProviderGStreamer> m_audioSourceProvider;
 #endif

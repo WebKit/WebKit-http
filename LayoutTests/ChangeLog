@@ -1,3 +1,259 @@
+2020-07-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] gst_buffer_unmap: assertion 'GST_IS_BUFFER (buffer)' failed
+        https://bugs.webkit.org/show_bug.cgi?id=213364
+
+        Reviewed by Philippe Normand.
+
+        * platform/glib/TestExpectations: flagged
+        imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-to-multiple-video-elements.https.html
+        as Pass.
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Add support for canvas captureStream, tests failing since they were added in r213598
+        https://bugs.webkit.org/show_bug.cgi?id=169811
+
+        Reviewed by Darin Adler.
+
+        Unflag passing tests and rebaseline one platform-specific WPT test expectation which differs
+        from the default by only one line.
+
+        * platform/glib/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+
+2020-07-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] ImageDecoder hits more Debug ASSERTs
+        https://bugs.webkit.org/show_bug.cgi?id=214191
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/glib/TestExpectations: Unflag no-longer-crashing tests.
+
+2020-07-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][MSE] AV1 support
+        https://bugs.webkit.org/show_bug.cgi?id=207547
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/glib/TestExpectations: Mark media/media-can-play-av1.html as failing until the
+        Flatpak SDK ships gst-plugins-rs.
+
+2020-06-29  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-immediately.https.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=213385
+
+        Reviewed by Philippe Normand.
+
+        * platform/glib/TestExpectations: Removed test from expectations.
+
+2020-06-24  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't claim to support fullscreen mode unless fullScreenEnabled setting is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=213142
+        <rdar://63753327>
+
+        Reviewed by Jer Noble.
+
+        * media/video-supports-fullscreen-expected.txt: Added.
+        * media/video-supports-fullscreen.html: Added.
+        * media/video-fullscreen-only-playback.html: Don't set fullScreenEnabled to false.
+
+        * TestExpectations: Skip the test, it is WK2-only.
+        * platform/wk2/TestExpectations: Expect the test to pass.
+
+2020-06-24  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] webrtc/disable-encryption.html is a crashing flaky
+        https://bugs.webkit.org/show_bug.cgi?id=211166
+        <rdar://problem/63223973>
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations: Unflag webrtc/disable-encryption.html.
+
+2020-06-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME] CDMProxyInstance should not keep CDMInstanceSessions hard referenced
+        https://bugs.webkit.org/show_bug.cgi?id=212689
+
+        Reviewed by Youenn Fablet.
+
+        * media/encrypted-media/clearKey/clearKey-session-life-cycle-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-session-life-cycle.html: Added.
+
+2020-05-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] <img> tag needs to support video formats
+        https://bugs.webkit.org/show_bug.cgi?id=180370
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update TestExpectations for tests using videos for the <img> tag.
+        
+        * http/conf/flatpak-httpd.conf:
+        * platform/glib/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2020-05-18  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer] Remove orphaned tracks in updateTracks()
+        https://bugs.webkit.org/show_bug.cgi?id=211980
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Updated test expectations.
+
+        * platform/gtk/TestExpectations:
+
+2020-05-15  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer][MediaStream] Fix missing video size
+        https://bugs.webkit.org/show_bug.cgi?id=211938
+
+        Reviewed by Philippe Normand.
+
+        Updated test expectations.
+
+        * platform/gtk/TestExpectations:
+
+2020-05-14  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] webrtc/disable-encryption.html is a crashing flaky
+        https://bugs.webkit.org/show_bug.cgi?id=211166
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations: Marking webrtc/disable-encryption.html as no longer flaky.
+
+2020-05-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Audio messages in web.whatsapp.com only play once.
+        https://bugs.webkit.org/show_bug.cgi?id=211627
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * media/video-src-blob-replay-expected.txt: Added.
+        * media/video-src-blob-replay.html: Added.
+
+2020-05-11  Charlie Turner  <cturner@igalia.com>
+
+        [WPE] Layout test media/encrypted-media/mock-MediaKeySystemAccess.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=181225
+
+        Reviewed by Darin Adler.
+
+        * platform/gtk/TestExpectations: The test is no longer crashing.
+        * platform/wpe/TestExpectations: Ditto.
+
+2020-05-05  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer] Video loops when ran in rr record --chaos
+        https://bugs.webkit.org/show_bug.cgi?id=211182
+
+        Reviewed by Philippe Normand.
+
+        imported/w3c/web-platform-tests/media-source/mediasource-getvideoplaybackquality.html
+        is now passing.
+
+        * platform/gtk/TestExpectations:
+
+2020-05-05  Charlie Turner  <cturner@igalia.com>
+
+        [EME] media/encrypted-media/encrypted-media-can-play-type.html is outdated
+        https://bugs.webkit.org/show_bug.cgi?id=154848
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Remove out-of-date EME tests and expectations.
+
+        * gpu-process/TestExpectations:
+        * media/encrypted-media/encrypted-media-events-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-events.html: Removed.
+        * media/encrypted-media/encrypted-media-not-loaded-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-not-loaded.html: Removed.
+        * media/encrypted-media/encrypted-media-syntax-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-syntax.html: Removed.
+        * media/encrypted-media/encrypted-media-v2-events-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-v2-events.html: Removed.
+        * media/encrypted-media/encrypted-media-v2-syntax-expected.txt: Removed.
+        * media/encrypted-media/encrypted-media-v2-syntax.html: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/mac/media/encrypted-media/encrypted-media-can-play-type-expected.txt: Removed.
+        * platform/win/TestExpectations:
+        * platform/win/media/encrypted-media/encrypted-media-can-play-type-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+
+2020-04-30  Philippe Normand  <pnormand@igalia.com>
+
+        [SOUP] http/tests/media/video-accept-encoding.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=211228
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unflag passing tests.
+
+2020-04-30  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] fast/mediastream/get-user-media-device-id.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=190576
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations: Unskip now-passing mediastream tests.
+
+2020-04-28  Philippe Normand  <pnormand@igalia.com>
+
+        media/track/track-load-error-readyState.html passes only when accompanied by some other tests
+        https://bugs.webkit.org/show_bug.cgi?id=210976
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * media/track/track-load-error-readyState-expected.txt:
+        * media/track/track-load-error-readyState.html: Ensure the caption
+        display mode is set to automatic, this is a requirement for the
+        test.
+        * media/track/track-mode-not-changed-by-new-track-expected.txt:
+        * media/track/track-mode-not-changed-by-new-track.html: Ditto.
+
+2020-03-06  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GStreamer] Streaming aac/mp3 audio doesn't always work
+        https://bugs.webkit.org/show_bug.cgi?id=205801
+
+        Reviewed by Philippe Normand.
+
+        The new test checks that end-of-stream (thus, end of playback) isn't triggered when a live
+        audio stream is being played. Live streams don't have Content-Length and are loaded as
+        they are generated (no future data is available immediately). This is simulated by omitting
+        Content-Length and artificially stalling the stream at a given offset.
+
+        * http/tests/media/resources/serve-video.php: Now the file continues to be served after
+        the stall when stallOffset/stallDuration are used.
+        * http/tests/media/video-no-content-length-stall-expected.txt: Added.
+        * http/tests/media/video-no-content-length-stall.html: Added.
+
+2020-02-14  Charles Turner  <cturner@igalia.com>
+
+        [EME][GStreamer] REGRESSION(r256429): Several encrypted-media tests are crashing or failing
+        https://bugs.webkit.org/show_bug.cgi?id=207741
+
+        Skip WPT encrypted-media tests, in-line with the expectations of
+        the GTK port until they have been properly triaged.
+
+        Unreviewed gardening.
+
+        * platform/wpe/TestExpectations: Skip all WPT encrypted-media
+        tests. They behave in incompliant ways and need time for correct
+        triage.
+
 2020-07-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         When invalidating the clients of an SVG resource we should not go beyond the RenderSVGRoot
