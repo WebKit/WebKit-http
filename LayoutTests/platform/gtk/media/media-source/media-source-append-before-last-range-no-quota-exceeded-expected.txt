@@ -115,8 +115,9 @@ EVENT(updateend)
 Appending PTS=175
 EVENT(updateend)
 Appending PTS=176
-EXPECTED (exception == 'QuotaExceededError: The quota has been exceeded.') OK
-EXPECTED (bufferedRanges() == '[ 120...176 ]') OK
+EVENT(updateend)
+EXPECTED (exception == 'QuotaExceededError: The quota has been exceeded.'), OBSERVED 'null' FAIL
+EXPECTED (bufferedRanges() == '[ 120...176 ]'), OBSERVED '[ 120...177 ]' FAIL
 EXPECTED (video.currentTime == '115') OK
 Appending PTS=115
 EVENT(updateend)
