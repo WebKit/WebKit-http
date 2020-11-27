@@ -300,11 +300,9 @@ WEBKIT_DEFINE_TYPE(WebKitWebContext, webkit_web_context, G_TYPE_OBJECT)
 
 static const char* injectedBundleDirectory()
 {
-#if ENABLE(DEVELOPER_MODE)
     const char* bundleDirectory = g_getenv("WEBKIT_INJECTED_BUNDLE_PATH");
     if (bundleDirectory && g_file_test(bundleDirectory, G_FILE_TEST_IS_DIR))
         return bundleDirectory;
-#endif
 
 #if PLATFORM(GTK)
     static const char* injectedBundlePath = LIBDIR G_DIR_SEPARATOR_S "webkit2gtk-" WEBKITGTK_API_VERSION_STRING
