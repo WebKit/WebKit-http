@@ -42,9 +42,14 @@ GStreamerRegistryScanner::GStreamerRegistryScanner(bool isMediaSource)
     : m_isMediaSource(isMediaSource)
 {
     GST_DEBUG_CATEGORY_INIT(webkit_media_gst_registry_scanner_debug, "webkitregistryscanner", 0, "WebKit GStreamer registry scanner");
+#if PLATFORM(BCM_NEXUS) || PLATFORM(BROADCOM)
+    m_audioDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_MARGINAL);
+    m_videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
+#else
     m_audioDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_MARGINAL);
-    m_audioParserFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_NONE);
     m_videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
+#endif
+    m_audioParserFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_NONE);
     m_videoParserFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
     m_demuxerFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DEMUXER, GST_RANK_MARGINAL);
 
@@ -93,6 +98,12 @@ GStreamerRegistryScanner::RegistryLookupResult GStreamerRegistryScanner::hasElem
     if (shouldCheckHardwareClassifier) {
         for (GList* factories = candidates; factories; factories = g_list_next(factories)) {
             auto* factory = reinterpret_cast<GstElementFactory*>(factories->data);
+#if PLATFORM(BCM_NEXUS) || PLATFORM(BROADCOM)
+            if (g_str_has_prefix(GST_OBJECT_NAME(factory), "brcm")) {
+                isUsingHardware = true;
+                break;
+            }
+#endif
             String metadata = gst_element_factory_get_metadata(factory, GST_ELEMENT_METADATA_KLASS);
             auto components = metadata.split('/');
             if (components.contains("Hardware")) {
