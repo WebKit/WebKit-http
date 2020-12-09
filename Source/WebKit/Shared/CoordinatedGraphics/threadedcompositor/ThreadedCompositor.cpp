@@ -122,15 +122,29 @@ void ThreadedCompositor::suspend()
 
     m_compositingRunLoop->suspend();
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
-        m_client.willRenderFrame();
-        if (!m_nonCompositedWebGL) {
-            glClearColor(0, 0, 0, 0);
-            glClear(GL_COLOR_BUFFER_BIT);
-            m_context->swapBuffers();
-        }
-        m_client.didRenderFrame();
         m_scene->setActive(false);
     });
+}
+
+void ThreadedCompositor::suspendToTransparent()
+{
+    // If we're in nonCompositedWebGL mode, the WebGLRenderingContext will have painted the
+    // transparent background. We don't need to do anything besides suspending.
+    if (m_nonCompositedWebGL) {
+        suspend();
+        return;
+    }
+
+    // When not in nonCompositedWebGL, we need to request a redraw to paint the transparent
+    // background, and when the scene is completed, suspend.
+    if (++m_suspendedCount > 1)
+        return;
+
+    // Set the flag for transparent and request a redraw.
+    m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        m_suspendToTransparentState = SuspendToTransparentState::Requested;
+    });
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::resume()
@@ -261,7 +275,10 @@ void ThreadedCompositor::renderLayerTree()
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_scene->applyStateChanges(states);
-    m_scene->paintToCurrentGLContext(viewportTransform, FloatRect { FloatPoint { }, viewportSize }, m_paintFlags);
+    if (m_suspendToTransparentState != SuspendToTransparentState::Requested) {
+        m_scene->paintToCurrentGLContext(viewportTransform, FloatRect { FloatPoint { }, viewportSize }, m_paintFlags);
+    } else
+        m_suspendToTransparentState = SuspendToTransparentState::WaitingForFrameComplete;
 
     m_context->swapBuffers();
 
@@ -287,6 +304,12 @@ void ThreadedCompositor::sceneUpdateFinished()
 #else
             ;
 #endif
+    }
+
+    if (m_suspendToTransparentState == SuspendToTransparentState::WaitingForFrameComplete) {
+        m_compositingRunLoop->suspend();
+        m_scene->setActive(false);
+        m_suspendToTransparentState = SuspendToTransparentState::None;
     }
 
     LockHolder stateLocker(m_compositingRunLoop->stateLock());

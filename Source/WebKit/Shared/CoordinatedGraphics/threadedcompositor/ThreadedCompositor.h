@@ -82,6 +82,7 @@ public:
     void frameComplete();
 
     void suspend();
+    void suspendToTransparent();
     void resume();
 
 private:
@@ -122,6 +123,13 @@ private:
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     Ref<ThreadedDisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
+
+    enum class SuspendToTransparentState {
+        None,
+        Requested,
+        WaitingForFrameComplete
+    };
+    SuspendToTransparentState m_suspendToTransparentState { SuspendToTransparentState::None };
 };
 
 } // namespace WebKit
