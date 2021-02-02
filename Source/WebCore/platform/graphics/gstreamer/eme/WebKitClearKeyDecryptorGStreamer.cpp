@@ -93,6 +93,9 @@ static void webkit_media_clear_key_decrypt_class_init(WebKitMediaClearKeyDecrypt
 
 static void webkit_media_clear_key_decrypt_init(WebKitMediaClearKeyDecrypt* self)
 {
+    // Downstream we never want this decryptor instantiated.
+    GST_ERROR("instantiated Clear Key decryptor");
+    RELEASE_ASSERT_NOT_REACHED();
     WebKitMediaClearKeyDecryptPrivate* priv = WEBKIT_MEDIA_CK_DECRYPT_GET_PRIVATE(self);
     self->priv = priv;
     new (priv) WebKitMediaClearKeyDecryptPrivate();
