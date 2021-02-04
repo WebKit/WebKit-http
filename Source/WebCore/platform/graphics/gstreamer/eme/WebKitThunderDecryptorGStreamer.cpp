@@ -107,7 +107,7 @@ static GRefPtr<GstCaps> createSinkPadTemplateCaps()
 
 static void webkit_media_thunder_decrypt_class_init(WebKitMediaThunderDecryptClass* klass)
 {
-    GST_DEBUG_CATEGORY_INIT(webkitMediaThunderDecryptDebugCategory, "webkitthunder", 0, "Thunder decrypt");
+    GST_DEBUG_CATEGORY_INIT(webkitMediaThunderDecryptDebugCategory, "webkitthunderdecrypt", 0, "Thunder decrypt");
 
     GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
     gobjectClass->finalize = finalize;

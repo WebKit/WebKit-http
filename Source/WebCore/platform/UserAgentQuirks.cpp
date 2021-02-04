@@ -86,6 +86,11 @@ static bool urlRequiresFirefoxBrowser(const URL& url)
 {
     String domain = url.host().toString();
 
+#if ENABLE(THUNDER)
+    if (domain == "www.netflix.com")
+        return true;
+#endif
+
     // This quirk actually has nothing to do with YouTube. It's needed to avoid
     // unsupported browser warnings on Google Docs. After removing this quirk,
     // to reproduce the warnings you will need to sign out of Google, then click

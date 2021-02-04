@@ -94,6 +94,10 @@ TEST(UserAgentTest, Quirks)
     assertUserAgentForURLHasChromeBrowserQuirk("http://typekit.net/");
     assertUserAgentForURLHasChromeBrowserQuirk("http://auth.mayohr.com/");
 
+#if ENABLE(THUNDER)
+    assertUserAgentForURLHasFirefoxBrowserQuirk("http://www.netflix.com/");
+#endif
+
     assertUserAgentForURLHasFirefoxBrowserQuirk("http://accounts.youtube.com/");
     assertUserAgentForURLHasFirefoxBrowserQuirk("http://docs.google.com/");
     assertUserAgentForURLHasFirefoxBrowserQuirk("http://drive.google.com/");
