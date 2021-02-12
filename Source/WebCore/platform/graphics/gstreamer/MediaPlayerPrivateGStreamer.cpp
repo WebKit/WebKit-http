@@ -3602,6 +3602,11 @@ Optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateGStreamer::videoPlayback
     };
 }
 
+unsigned MediaPlayerPrivateGStreamer::decodedFrameCount() const
+{
+    return const_cast<MediaPlayerPrivateGStreamer*>(this)->videoPlaybackQualityMetrics().valueOr(VideoPlaybackQualityMetrics()).totalVideoFrames;
+}
+
 #if ENABLE(ENCRYPTED_MEDIA)
 InitData MediaPlayerPrivateGStreamer::parseInitDataFromProtectionMessage(GstMessage* message)
 {

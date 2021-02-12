@@ -190,6 +190,7 @@ public:
     MediaPlayer::MovieLoadType movieLoadType() const final;
 
     Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
+    unsigned decodedFrameCount() const final;
     void acceleratedRenderingStateChanged() final;
 
 #if USE(TEXTURE_MAPPER_GL)
