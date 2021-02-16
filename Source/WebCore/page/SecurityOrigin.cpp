@@ -292,6 +292,8 @@ bool SecurityOrigin::canAccess(const SecurityOrigin& other) const
     if (canAccess && isLocal())
         canAccess = passesFileCheck(other);
 
+    canAccess |= SecurityPolicy::isAccessWhiteListed(this, &other);
+
     return canAccess;
 }
 
