@@ -320,6 +320,10 @@ WEBKIT_API void
 webkit_web_context_send_message_to_all_extensions   (WebKitWebContext              *context,
                                                      WebKitUserMessage             *message);
 
+WEBKIT_API void
+webkit_web_context_garbage_collect_javascript_objects
+                                                    (WebKitWebContext              *context);
+
 G_END_DECLS
 
 #endif
