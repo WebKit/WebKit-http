@@ -39,7 +39,6 @@
 #include "GStreamerEMEUtilities.h"
 #include "Logging.h"
 #include "MediaKeyMessageType.h"
-#include "MediaKeyStatus.h"
 #include "NotImplemented.h"
 #include "SharedBuffer.h"
 #include "WebKitThunderDecryptorGStreamer.h"
@@ -331,7 +330,6 @@ RefPtr<CDMInstanceSession> CDMInstanceThunder::createSession()
 {
     RefPtr<CDMInstanceSessionThunder> newSession = adoptRef(new CDMInstanceSessionThunder(*this));
     ASSERT(newSession);
-    trackSession(*newSession);
     return newSession;
 }
 
@@ -550,7 +548,6 @@ void CDMInstanceSessionThunder::requestLicense(LicenseType licenseType, const At
         if (!isValid()) {
             GST_WARNING("created invalid session %s", m_sessionID.utf8().data());
             callback(initData.releaseNonNull(), m_sessionID, false, Failed);
-            removeFromInstanceProxy();
             return;
         }
 
@@ -652,8 +649,6 @@ void CDMInstanceSessionThunder::closeSession(const String& sessionID, CloseSessi
     if (m_session && !m_sessionID.isEmpty())
         opencdm_session_close(m_session.get());
 
-    removeFromInstanceProxy();
-
     callback();
 }
 
@@ -686,8 +681,6 @@ void CDMInstanceSessionThunder::removeSessionData(const String& sessionID, Licen
     });
     if (!m_session || m_sessionID.isEmpty() || opencdm_session_remove(m_session.get()))
         sessionFailure();
-
-    removeFromInstanceProxy();
 }
 
 void CDMInstanceSessionThunder::storeRecordOfKeyUsage(const String&)
