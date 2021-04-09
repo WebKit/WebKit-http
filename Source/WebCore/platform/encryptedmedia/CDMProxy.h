@@ -146,7 +146,6 @@ private:
 };
 
 class CDMInstanceProxy;
-class CDMProxyDecryptionClient;
 
 // Handle to a "real" CDM, not the JavaScript facade. This can be used
 // from background threads (i.e. decryptors).
@@ -158,15 +157,14 @@ public:
 
     void updateKeyStore(const KeyStore& newKeyStore);
     void setInstance(CDMInstanceProxy*);
-    void abortWaitingForKey() const;
 
 protected:
     RefPtr<KeyHandle> keyHandle(const KeyIDType&) const;
     bool keyAvailable(const KeyIDType&) const;
     bool keyAvailableUnlocked(const KeyIDType&) const;
-    Optional<Ref<KeyHandle>> tryWaitForKeyHandle(const KeyIDType&, WeakPtr<CDMProxyDecryptionClient>&&) const;
-    Optional<Ref<KeyHandle>> getOrWaitForKeyHandle(const KeyIDType&, WeakPtr<CDMProxyDecryptionClient>&&) const;
-    Optional<KeyHandleValueVariant> getOrWaitForKeyValue(const KeyIDType&, WeakPtr<CDMProxyDecryptionClient>&&) const;
+    Optional<Ref<KeyHandle>> tryWaitForKeyHandle(const KeyIDType&) const;
+    Optional<Ref<KeyHandle>> getOrWaitForKeyHandle(const KeyIDType&) const;
+    Optional<KeyHandleValueVariant> getOrWaitForKeyValue(const KeyIDType&) const;
     void startedWaitingForKey() const;
     void stoppedWaitingForKey() const;
     const CDMInstanceProxy* instance() const { return m_instance; }
@@ -253,12 +251,6 @@ private:
     std::atomic<int> m_numDecryptorsWaitingForKey { 0 };
 
     KeyStore m_keyStore;
-};
-
-class CDMProxyDecryptionClient : public CanMakeWeakPtr<CDMProxyDecryptionClient, WeakPtrFactoryInitialization::Eager> {
-public:
-    virtual bool isAborting() = 0;
-    virtual ~CDMProxyDecryptionClient() = default;
 };
 
 } // namespace WebCore

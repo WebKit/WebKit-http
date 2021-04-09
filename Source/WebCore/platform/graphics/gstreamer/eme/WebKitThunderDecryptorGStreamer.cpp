@@ -177,16 +177,14 @@ static bool decrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffe
         return false;
     }
 
-    CDMProxyThunder::DecryptionContext context = { };
+    CDMProxyThunder::DecryptionContext context;
     context.keyIDBuffer = keyIDBuffer;
     context.ivBuffer = ivBuffer;
     context.dataBuffer = buffer;
     context.numSubsamples = subsampleCount;
     context.subsamplesBuffer = subsampleCount ? subsamplesBuffer : nullptr;
-    context.cdmProxyDecryptionClient = webKitMediaCommonEncryptionDecryptGetCDMProxyDecryptionClient(self);
-    bool result = priv->cdmProxy->decrypt(context);
 
-    return result;
+    return priv->cdmProxy->decrypt(context);
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && ENABLE(THUNDER) && USE(GSTREAMER)

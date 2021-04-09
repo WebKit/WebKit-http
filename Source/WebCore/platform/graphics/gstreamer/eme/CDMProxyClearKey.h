@@ -91,7 +91,6 @@ public:
         const uint8_t* subsamplesBuffer;
         size_t subsamplesBufferSizeInBytes;
         size_t numSubsamples;
-        WeakPtr<CDMProxyDecryptionClient> cdmProxyDecryptionClient;
 
         bool isSubsampled() const { return numSubsamples; }
     };
@@ -108,7 +107,7 @@ private:
     // we will surely have to support more protection schemes. Can we
     // reuse some Crypto APIs in WebCore?
     bool cencSetCounterVector(const cencDecryptContext&);
-    bool cencSetDecryptionKey(cencDecryptContext&);
+    bool cencSetDecryptionKey(const cencDecryptContext&);
     bool cencDecryptFullSample(cencDecryptContext&);
     bool cencDecryptSubsampled(cencDecryptContext&);
 
