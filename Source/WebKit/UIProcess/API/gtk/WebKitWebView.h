@@ -577,6 +577,9 @@ webkit_web_view_set_input_method_context             (WebKitWebView             
 WEBKIT_API WebKitInputMethodContext *
 webkit_web_view_get_input_method_context             (WebKitWebView             *web_view);
 
+WEBKIT_API gboolean
+webkit_web_view_get_is_web_process_responsive        (WebKitWebView             *web_view);
+
 G_END_DECLS
 
 #endif

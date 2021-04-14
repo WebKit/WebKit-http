@@ -200,7 +200,8 @@ enum {
     PROP_IS_CONTROLLED_BY_AUTOMATION,
     PROP_AUTOMATION_PRESENTATION_TYPE,
     PROP_EDITABLE,
-    PROP_PAGE_ID
+    PROP_PAGE_ID,
+    PROP_IS_WEB_PROCESS_RESPONSIVE
 };
 
 typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
@@ -302,6 +303,8 @@ struct _WebKitWebViewPrivate {
     GRefPtr<WebKitAuthenticationRequest> authenticationRequest;
 
     GRefPtr<WebKitWebsiteDataManager> websiteDataManager;
+
+    bool isWebProcessResponsive;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -786,6 +789,8 @@ static void webkitWebViewConstructed(GObject* object)
 
     priv->backForwardList = adoptGRef(webkitBackForwardListCreate(&getPage(webView).backForwardList()));
     priv->windowProperties = adoptGRef(webkitWindowPropertiesCreate());
+
+    priv->isWebProcessResponsive = true;
 }
 
 static void webkitWebViewSetProperty(GObject* object, guint propId, const GValue* value, GParamSpec* paramSpec)
@@ -896,6 +901,9 @@ static void webkitWebViewGetProperty(GObject* object, guint propId, GValue* valu
         break;
     case PROP_PAGE_ID:
         g_value_set_uint64(value, webkit_web_view_get_page_id(webView));
+        break;
+    case PROP_IS_WEB_PROCESS_RESPONSIVE:
+        g_value_set_boolean(value, webkit_web_view_get_is_web_process_responsive(webView));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -1264,6 +1272,23 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
             _("Page Identifier"),
             _("The page identifier."),
             0, G_MAXUINT64, 0,
+            WEBKIT_PARAM_READABLE));
+
+    /**
+     * WebKitWebView:is-web-process-responsive:
+     *
+     * Whether the web process currently associated to the #WebKitWebView is responsive.
+     *
+     * Since: 2.34
+     */
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_IS_WEB_PROCESS_RESPONSIVE,
+        g_param_spec_boolean(
+            "is-web-process-responsive",
+            "Is Web Process Responsive",
+            _("Whether the web process currently associated to the web view is responsive"),
+            TRUE,
             WEBKIT_PARAM_READABLE));
 
     /**
@@ -4590,4 +4615,30 @@ void webkit_web_view_show(WebKitWebView *webView)
     auto viewStateFlags = webView->priv->view->viewState();
     viewStateFlags.add(WebCore::ActivityState::IsInWindow);
     webView->priv->view->setViewState(viewStateFlags);
+}
+
+void webkitWebViewSetIsWebProcessResponsive(WebKitWebView* webView, bool isResponsive)
+{
+    if (webView->priv->isWebProcessResponsive == isResponsive)
+        return;
+
+    webView->priv->isWebProcessResponsive = isResponsive;
+    g_object_notify(G_OBJECT(webView), "is-web-process-responsive");
+}
+
+/**
+ * webkit_web_view_is_web_process_responsive:
+ * @web_view: a #WebKitWebView
+ *
+ * Get whether the current web process of a #WebKitWebView is responsive.
+ *
+ * Returns: %TRUE if the web process attached to @web_view is responsive, or %FALSE otherwise.
+ *
+ * Since: 2.34
+ */
+gboolean webkit_web_view_get_is_web_process_responsive(WebKitWebView* webView)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
+
+    return webView->priv->isWebProcessResponsive;
 }
