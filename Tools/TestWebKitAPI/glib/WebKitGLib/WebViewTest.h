@@ -52,6 +52,7 @@ public:
     void waitUntilLoadFinished();
     void waitUntilTitleChangedTo(const char* expectedTitle);
     void waitUntilTitleChanged();
+    void waitUntilIsWebProcessResponsiveChanged();
     void resizeView(int width, int height);
     void hideView();
     void selectAll();
