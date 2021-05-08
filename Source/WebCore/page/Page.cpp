@@ -440,6 +440,37 @@ void Page::setOverrideViewportArguments(const Optional<ViewportArguments>& viewp
         document->updateViewportArguments();
 }
 
+FloatSize Page::screenSize()
+{
+    return m_overrideScreenSize.valueOr(screenRect(mainFrame().view()).size());
+}
+
+void Page::setOverrideScreenSize(Optional<FloatSize> size)
+{
+    if (size == m_overrideScreenSize)
+        return;
+
+    m_overrideScreenSize = size;
+    if (auto* document = mainFrame().document())
+        document->updateViewportArguments();
+}
+
+#if ENABLE(ORIENTATION_EVENTS)
+int Page::orientation() const
+{
+    return m_overrideOrientation.valueOr(chrome().client().deviceOrientation());
+}
+
+void Page::setOverrideOrientation(Optional<int> orientation)
+{
+    if (orientation == m_overrideOrientation)
+        return;
+
+    m_overrideOrientation = orientation;
+    mainFrame().orientationChanged();
+}
+#endif
+
 ScrollingCoordinator* Page::scrollingCoordinator()
 {
     if (!m_scrollingCoordinator && m_settings->scrollingCoordinatorEnabled()) {
@@ -1252,11 +1283,6 @@ void Page::didCommitLoad()
 #if ENABLE(EDITABLE_REGION)
     m_isEditableRegionEnabled = false;
 #endif
-
-#if HAVE(OS_DARK_MODE_SUPPORT)
-    setUseDarkAppearanceOverride(WTF::nullopt);
-#endif
-
     resetSeenPlugins();
     resetSeenMediaEngines();
 }

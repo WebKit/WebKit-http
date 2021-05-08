@@ -39,9 +39,9 @@
 
 namespace WebCore {
 
-UserGestureEmulationScope::UserGestureEmulationScope(Page& inspectedPage, bool emulateUserGesture)
+UserGestureEmulationScope::UserGestureEmulationScope(Page& inspectedPage, bool emulateUserGesture, Document* document)
     : m_pageChromeClient(inspectedPage.chrome().client())
-    , m_gestureIndicator(emulateUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt)
+    , m_gestureIndicator(emulateUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt, document)
     , m_emulateUserGesture(emulateUserGesture)
     , m_userWasInteracting(false)
 {

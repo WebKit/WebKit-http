@@ -86,6 +86,7 @@ Shared/glib/ProcessExecutablePathGLib.cpp
 Shared/glib/UserMessage.cpp
 Shared/glib/WebContextMenuItemGlib.cpp
 
+Shared/libwpe/ArgumentCodersWPE.cpp
 Shared/libwpe/NativeWebKeyboardEventLibWPE.cpp
 Shared/libwpe/NativeWebMouseEventLibWPE.cpp
 Shared/libwpe/NativeWebTouchEventLibWPE.cpp
@@ -118,6 +119,7 @@ UIProcess/API/glib/WebKitAuthenticationRequest.cpp @no-unify
 UIProcess/API/glib/WebKitAutomationSession.cpp @no-unify
 UIProcess/API/glib/WebKitBackForwardList.cpp @no-unify
 UIProcess/API/glib/WebKitBackForwardListItem.cpp @no-unify
+UIProcess/API/glib/WebKitBrowserInspector.cpp @no-unify
 UIProcess/API/glib/WebKitContextMenuClient.cpp @no-unify
 UIProcess/API/glib/WebKitCookieManager.cpp @no-unify
 UIProcess/API/glib/WebKitCredential.cpp @no-unify
@@ -198,6 +200,7 @@ UIProcess/CoordinatedGraphics/DrawingAreaProxyCoordinatedGraphics.cpp
 
 UIProcess/geoclue/GeoclueGeolocationProvider.cpp
 
+UIProcess/glib/InspectorPlaywrightAgentClientGLib.cpp
 UIProcess/glib/WebPageProxyGLib.cpp
 UIProcess/glib/WebProcessPoolGLib.cpp
 UIProcess/glib/WebProcessProxyGLib.cpp
@@ -219,6 +222,10 @@ UIProcess/linux/MemoryPressureMonitor.cpp
 
 UIProcess/soup/WebCookieManagerProxySoup.cpp
 UIProcess/soup/WebProcessPoolSoup.cpp
+
+UIProcess/wpe/InspectorTargetProxyWPE.cpp
+UIProcess/wpe/WebPageInspectorEmulationAgentWPE.cpp
+UIProcess/wpe/WebPageInspectorInputAgentWPE.cpp
 
 UIProcess/wpe/WebPageProxyWPE.cpp
 
@@ -247,6 +254,8 @@ WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 WebProcess/WebCoreSupport/glib/WebEditorClientGLib.cpp
 
 WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
+
+WebProcess/WebCoreSupport/wpe/WebDragClientWPE.cpp
 
 WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
 

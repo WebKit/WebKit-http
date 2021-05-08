@@ -62,6 +62,7 @@ public:
     // InspectorInstrumentation
     void frameNavigated(Frame&);
     void didClearWindowObjectInWorld(Frame&, DOMWrapperWorld&);
+    void didReceiveMainResourceError(Frame&);
 
 private:
     Inspector::InjectedScript injectedScriptForEval(Inspector::Protocol::ErrorString&, Optional<Inspector::Protocol::Runtime::ExecutionContextId>&&);
@@ -72,7 +73,6 @@ private:
 
     std::unique_ptr<Inspector::RuntimeFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::RuntimeBackendDispatcher> m_backendDispatcher;
-
     InstrumentingAgents& m_instrumentingAgents;
 
     Page& m_inspectedPage;

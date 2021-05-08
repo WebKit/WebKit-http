@@ -38,6 +38,7 @@ list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
 list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/wayland/PlatformDisplayWayland.h
     platform/graphics/wayland/WlUniquePtr.h
+    platform/wpe/SelectionData.h
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS

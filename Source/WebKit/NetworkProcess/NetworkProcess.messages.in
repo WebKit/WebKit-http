@@ -79,6 +79,11 @@ messages -> NetworkProcess LegacyReceiver {
 
     PreconnectTo(PAL::SessionID sessionID, WebKit::WebPageProxyIdentifier webPageProxyID, WebCore::PageIdentifier webPageID, URL url, String userAgent, enum:uint8_t WebCore::StoredCredentialsPolicy storedCredentialsPolicy, enum:bool Optional<WebKit::NavigatingToAppBoundDomain> isNavigatingToAppBoundDomain, enum:bool WebKit::LastNavigationWasAppBound lastNavigationWasAppBound);
 
+    GetAllCookies(PAL::SessionID sessionID) -> (Vector<WebCore::Cookie> cookies) Async
+    SetCookies(PAL::SessionID sessionID, Vector<WebCore::Cookie> cookies) -> (bool success) Async
+    DeleteAllCookies(PAL::SessionID sessionID) -> (bool success) Async
+    SetIgnoreCertificateErrors(PAL::SessionID sessionID, bool ignoreTLSErrors)
+
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     ClearPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
     ClearUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async

@@ -424,6 +424,7 @@ void NetworkDataTaskSoup::didSendRequest(GRefPtr<GInputStream>&& inputStream)
 
     // FIXME: This cannot be eliminated until other code no longer relies on ResourceResponse's NetworkLoadMetrics.
     m_response.setDeprecatedNetworkLoadMetrics(Box<NetworkLoadMetrics>::create(m_networkLoadMetrics));
+    m_response.m_httpRequestHeaderFields = m_networkLoadMetrics.requestHeaders;
     dispatchDidReceiveResponse();
 }
 
@@ -516,6 +517,8 @@ bool NetworkDataTaskSoup::acceptCertificate(GTlsCertificate* certificate, GTlsCe
 {
     ASSERT(m_soupMessage);
     URL url = soupURIToURL(soup_message_get_uri(m_soupMessage.get()));
+    if (m_session->ignoreCertificateErrors())
+        return true;
     auto error = static_cast<NetworkSessionSoup&>(*m_session).soupNetworkSession().checkTLSErrors(url, certificate, tlsErrors);
     if (!error)
         return true;

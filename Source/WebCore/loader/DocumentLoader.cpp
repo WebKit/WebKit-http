@@ -1387,8 +1387,6 @@ void DocumentLoader::detachFromFrame()
     if (!m_frame)
         return;
 
-    InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
-
     observeFrame(nullptr);
 }
 

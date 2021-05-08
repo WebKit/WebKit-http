@@ -34,17 +34,23 @@
 #include "CachedResource.h"
 #include "InspectorWebAgentBase.h"
 #include "LayoutRect.h"
+#include "ProcessIdentifier.h"
 #include <JavaScriptCore/InspectorBackendDispatchers.h>
 #include <JavaScriptCore/InspectorFrontendDispatchers.h>
 #include <wtf/HashMap.h>
 #include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
+namespace Inspector {
+class InjectedScriptManager;
+}
+
 namespace WebCore {
 
 class DOMWrapperWorld;
 class DocumentLoader;
 class Frame;
+class HTMLInputElement;
 class InspectorClient;
 class InspectorOverlay;
 class Page;
@@ -69,12 +75,14 @@ public:
         PingResource,
         BeaconResource,
         WebSocketResource,
+        EventSource,
 #if ENABLE(APPLICATION_MANIFEST)
         ApplicationManifestResource,
 #endif
         OtherResource,
     };
 
+    WEBCORE_EXPORT static String makeFrameID(ProcessIdentifier processID,  FrameIdentifier frameID);
     static bool sharedBufferContent(RefPtr<SharedBuffer>&&, const String& textEncodingName, bool withBase64Encode, String* result);
     static Vector<CachedResource*> cachedResourcesForFrame(Frame*);
     static void resourceContent(Inspector::Protocol::ErrorString&, Frame*, const URL&, String* result, bool* base64Encoded);
@@ -95,6 +103,8 @@ public:
     Inspector::Protocol::ErrorStringOr<void> enable();
     Inspector::Protocol::ErrorStringOr<void> disable();
     Inspector::Protocol::ErrorStringOr<void> reload(Optional<bool>&& ignoreCache, Optional<bool>&& revalidateAllResources);
+    Inspector::Protocol::ErrorStringOr<void> goBack();
+    Inspector::Protocol::ErrorStringOr<void> goForward();
     Inspector::Protocol::ErrorStringOr<void> navigate(const String& url);
     Inspector::Protocol::ErrorStringOr<void> overrideUserAgent(const String&);
     Inspector::Protocol::ErrorStringOr<void> overrideSetting(Inspector::Protocol::Page::Setting, Optional<bool>&& value);
@@ -114,25 +124,35 @@ public:
 #if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
     Inspector::Protocol::ErrorStringOr<void> setForcedAppearance(Optional<Inspector::Protocol::Page::Appearance>&&);
 #endif
+    Inspector::Protocol::ErrorStringOr<void> setTimeZone(const String&);
+    Inspector::Protocol::ErrorStringOr<void> setTouchEmulationEnabled(bool);
     Inspector::Protocol::ErrorStringOr<String> snapshotNode(Inspector::Protocol::DOM::NodeId);
-    Inspector::Protocol::ErrorStringOr<String> snapshotRect(int x, int y, int width, int height, Inspector::Protocol::Page::CoordinateSystem);
+    Inspector::Protocol::ErrorStringOr<String> snapshotRect(int x, int y, int width, int height, Inspector::Protocol::Page::CoordinateSystem, Optional<bool>&& omitDeviceScaleFactor);
 #if ENABLE(WEB_ARCHIVE) && USE(CF)
     Inspector::Protocol::ErrorStringOr<String> archive();
 #endif
-#if !PLATFORM(COCOA)
     Inspector::Protocol::ErrorStringOr<void> setScreenSizeOverride(Optional<int>&& width, Optional<int>&& height);
-#endif
+
+    Inspector::Protocol::ErrorStringOr<void> insertText(const String& text);
+    Inspector::Protocol::ErrorStringOr<Ref<Inspector::Protocol::Page::AXNode>> accessibilitySnapshot(const String& objectId);
+    Inspector::Protocol::ErrorStringOr<void> setInterceptFileChooserDialog(bool enabled);
+    Inspector::Protocol::ErrorStringOr<void> setDefaultBackgroundColorOverride(RefPtr<JSON::Object>&&);
+    Inspector::Protocol::ErrorStringOr<void> createUserWorld(const String&);
+    Inspector::Protocol::ErrorStringOr<void> setBypassCSP(bool);
+    Inspector::Protocol::ErrorStringOr<void> crash();
+    Inspector::Protocol::ErrorStringOr<void> setOrientationOverride(Optional<int>&& angle);
+    Inspector::Protocol::ErrorStringOr<void> setVisibleContentRects(RefPtr<JSON::Object>&& unobscuredContentRect, RefPtr<JSON::Object>&& contentInsets, RefPtr<JSON::Object>&& obscuredInsets, RefPtr<JSON::Object>&& unobscuredInsets);
 
     // InspectorInstrumentation
-    void domContentEventFired();
-    void loadEventFired();
+    void domContentEventFired(Frame&);
+    void loadEventFired(Frame&);
     void frameNavigated(Frame&);
     void frameDetached(Frame&);
-    void loaderDetachedFromFrame(DocumentLoader&);
     void frameStartedLoading(Frame&);
     void frameStoppedLoading(Frame&);
     void frameScheduledNavigation(Frame&, Seconds delay);
     void frameClearedScheduledNavigation(Frame&);
+    void didNavigateWithinPage(Frame&);
 #if ENABLE(DARK_MODE_CSS) || HAVE(OS_DARK_MODE_SUPPORT)
     void defaultAppearanceDidChange(bool useDarkAppearance);
 #endif
@@ -143,6 +163,12 @@ public:
     void didLayout();
     void didScroll();
     void didRecalculateStyle();
+    void runOpenPanel(HTMLInputElement* element, bool* intercept);
+    void frameAttached(Frame&);
+    bool shouldBypassCSP();
+    void willCheckNewWindowPolicy(const URL&);
+    void didCheckNewWindowPolicy(bool allowed);
+    bool doingAccessibilitySnapshot() const { return m_doingAccessibilitySnapshot; };
 
     Frame* frameForId(const Inspector::Protocol::Network::FrameId&);
     WEBCORE_EXPORT String frameId(Frame*);
@@ -151,6 +177,7 @@ public:
 
 private:
     double timestamp();
+    void ensureUserWorldsExistInAllFrames(const Vector<DOMWrapperWorld*>&);
 
     static bool mainResourceContent(Frame*, bool withBase64Encode, String* result);
     static bool dataContent(const char* data, unsigned size, const String& textEncodingName, bool withBase64Encode, String* result);
@@ -162,18 +189,19 @@ private:
     RefPtr<Inspector::PageBackendDispatcher> m_backendDispatcher;
 
     Page& m_inspectedPage;
+    Inspector::InjectedScriptManager& m_injectedScriptManager;
     InspectorClient* m_client { nullptr };
     InspectorOverlay* m_overlay { nullptr };
 
-    // FIXME: Make a WeakHashMap and use it for m_frameToIdentifier and m_loaderToIdentifier.
-    HashMap<Frame*, String> m_frameToIdentifier;
     HashMap<String, WeakPtr<Frame>> m_identifierToFrame;
-    HashMap<DocumentLoader*, String> m_loaderToIdentifier;
     String m_userAgentOverride;
     String m_emulatedMedia;
     String m_bootstrapScript;
     bool m_isFirstLayoutAfterOnLoad { false };
     bool m_showPaintRects { false };
+    bool m_interceptFileChooserDialog { false };
+    bool m_bypassCSP { false };
+    bool m_doingAccessibilitySnapshot { false };
 };
 
 } // namespace WebCore

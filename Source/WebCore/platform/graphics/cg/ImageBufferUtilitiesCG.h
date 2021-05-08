@@ -42,7 +42,7 @@ WEBCORE_EXPORT uint8_t verifyImageBufferIsBigEnough(const void* buffer, size_t b
 CFStringRef jpegUTI();
 RetainPtr<CFStringRef> utiFromImageBufferMIMEType(const String&);
 
-bool encodeImage(CGImageRef, CFStringRef uti, Optional<double> quality, CFMutableDataRef);
+WEBCORE_EXPORT bool encodeImage(CGImageRef, CFStringRef uti, Optional<double> quality, CFMutableDataRef);
 
 String dataURL(CFDataRef, const String& mimeType);
 String dataURL(const ImageData&, const String& mimeType, Optional<double> quality);

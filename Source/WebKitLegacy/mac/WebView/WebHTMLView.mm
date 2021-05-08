@@ -4237,7 +4237,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     _private->handlingMouseDownEvent = NO;
 }
 
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 
 - (void)touch:(WebEvent *)event
 {

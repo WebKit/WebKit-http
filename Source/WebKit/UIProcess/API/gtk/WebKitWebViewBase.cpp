@@ -2272,6 +2272,11 @@ void webkitWebViewBaseResetClickCounter(WebKitWebViewBase* webkitWebViewBase)
 #endif
 }
 
+WebKit::AcceleratedBackingStore* webkitWebViewBaseGetAcceleratedBackingStore(WebKitWebViewBase* webkitWebViewBase)
+{
+    return webkitWebViewBase->priv->acceleratedBackingStore.get();
+}
+
 void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase, const LayerTreeContext& layerTreeContext)
 {
     ASSERT(webkitWebViewBase->priv->acceleratedBackingStore);

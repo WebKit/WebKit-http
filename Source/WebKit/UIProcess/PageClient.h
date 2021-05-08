@@ -312,6 +312,11 @@ public:
     virtual void selectionDidChange() = 0;
 #endif
 
+// Paywright begin
+#if PLATFORM(COCOA)
+    virtual RetainPtr<CGImageRef> takeSnapshotForAutomation() = 0;
+#endif
+// Paywright end
 #if PLATFORM(COCOA) || PLATFORM(GTK)
     virtual RefPtr<ViewSnapshot> takeViewSnapshot(Optional<WebCore::IntRect>&&) = 0;
 #endif
@@ -328,6 +333,7 @@ public:
     virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
 #if PLATFORM(MAC)
     virtual WebCore::IntRect rootViewToWindow(const WebCore::IntRect&) = 0;
+    virtual int browserToolbarHeight() const { return 0; }
 #endif
 #if PLATFORM(IOS_FAMILY)
     virtual void didNotHandleTapAsClick(const WebCore::IntPoint&) = 0;

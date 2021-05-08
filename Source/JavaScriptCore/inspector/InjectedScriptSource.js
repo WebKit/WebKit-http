@@ -136,7 +136,7 @@ let InjectedScript = class InjectedScript
             return;
         }
 
-        if (!(promiseObject instanceof Promise)) {
+        if (InjectedScriptHost.internalConstructorName(promiseObject) !== 'Promise') {
             callback("Object with given id is not a Promise");
             return;
         }

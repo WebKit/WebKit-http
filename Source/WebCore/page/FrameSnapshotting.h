@@ -49,6 +49,7 @@ enum {
     SnapshotOptionsPaintSelectionAndBackgroundsOnly = 1 << 4,
     SnapshotOptionsPaintEverythingExcludingSelection = 1 << 5,
     SnapshotOptionsPaintWithIntegralScaleFactor = 1 << 6,
+    SnapshotOptionsOmitDeviceScaleFactor = 1 << 7,
 };
 typedef unsigned SnapshotOptions;
 

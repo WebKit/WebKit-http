@@ -565,6 +565,14 @@ void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkPro
 
     // Arbitrarily choose the first process pool to host the service worker process.
     auto* processPool = processPools()[0];
+    // Playwright begin
+    for (auto& process : websiteDataStore->processes()) {
+        if (process.processPoolIfExists()) {
+            processPool = process.processPoolIfExists();
+            break;
+        }
+    }
+    // Playwright end
     ASSERT(processPool);
 
     WebProcessProxy* serviceWorkerProcessProxy { nullptr };
@@ -803,7 +811,10 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 #endif
 
     parameters.cacheModel = LegacyGlobalSettings::singleton().cacheModel();
-    parameters.overrideLanguages = configuration().overrideLanguages();
+    if (websiteDataStore && websiteDataStore->languagesForAutomation().size())
+        parameters.overrideLanguages = websiteDataStore->languagesForAutomation();
+    else
+        parameters.overrideLanguages = configuration().overrideLanguages();
 
     parameters.urlSchemesRegisteredAsEmptyDocument = copyToVector(m_schemesToRegisterAsEmptyDocument);
     parameters.urlSchemesRegisteredAsSecure = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsSecure());

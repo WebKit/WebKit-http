@@ -194,7 +194,7 @@ WebCore::IntPoint PageClientImpl::accessibilityScreenToRootView(const WebCore::I
 
 WebCore::IntRect PageClientImpl::rootViewToAccessibilityScreen(const WebCore::IntRect& rect)
 {
-    return rootViewToScreen(rect);    
+    return rootViewToScreen(rect);
 }
 
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)

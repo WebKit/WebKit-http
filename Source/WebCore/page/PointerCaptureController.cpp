@@ -202,7 +202,7 @@ bool PointerCaptureController::preventsCompatibilityMouseEventsForIdentifier(Poi
     return iterator != m_activePointerIdsToCapturingData.end() && iterator->value.preventsCompatibilityMouseEvents;
 }
 
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
+#if ENABLE(TOUCH_EVENTS)
 static bool hierarchyHasCapturingEventListeners(Element* target, const AtomString& eventName)
 {
     for (ContainerNode* curr = target; curr; curr = curr->parentInComposedTree()) {
@@ -490,7 +490,7 @@ void PointerCaptureController::cancelPointer(PointerID pointerId, const IntPoint
     capturingData.pendingTargetOverride = nullptr;
     capturingData.cancelled = true;
 
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
+#if ENABLE(TOUCH_EVENTS)
     capturingData.previousTarget = nullptr;
 #endif
 

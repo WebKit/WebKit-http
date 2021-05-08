@@ -151,6 +151,9 @@ public:
 
     bool isStaleWhileRevalidateEnabled() const { return m_isStaleWhileRevalidateEnabled; }
 
+    void setIgnoreCertificateErrors(bool ignore) { m_ignoreCertificateErrors = ignore; }
+    bool ignoreCertificateErrors() { return m_ignoreCertificateErrors; }
+
 #if ENABLE(SERVICE_WORKER)
     void addSoftUpdateLoader(std::unique_ptr<ServiceWorkerSoftUpdateLoader>&& loader) { m_softUpdateLoaders.add(WTFMove(loader)); }
     void removeSoftUpdateLoader(ServiceWorkerSoftUpdateLoader* loader) { m_softUpdateLoaders.remove(loader); }
@@ -195,6 +198,7 @@ protected:
 #endif
     bool m_isStaleWhileRevalidateEnabled { false };
     std::unique_ptr<PrivateClickMeasurementManager> m_privateClickMeasurement;
+    bool m_ignoreCertificateErrors { false };
 
     HashSet<Ref<NetworkResourceLoader>> m_keptAliveLoads;
 

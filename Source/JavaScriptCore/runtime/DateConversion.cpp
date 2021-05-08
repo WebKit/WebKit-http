@@ -100,17 +100,23 @@ String formatDateTime(const GregorianDateTime& t, DateTimeFormat format, bool as
             appendNumber<2>(builder, offset / 60);
             appendNumber<2>(builder, offset % 60);
 
-#if OS(WINDOWS)
-            TIME_ZONE_INFORMATION timeZoneInformation;
-            GetTimeZoneInformation(&timeZoneInformation);
-            const WCHAR* winTimeZoneName = t.isDST() ? timeZoneInformation.DaylightName : timeZoneInformation.StandardName;
-            String timeZoneName(winTimeZoneName);
+            String timeZoneName;
+            if (!WTF::timeZoneDisplayNameForAutomation().isEmpty()) {
+                timeZoneName = WTF::timeZoneDisplayNameForAutomation();
+            } else {
+ #if OS(WINDOWS)
+                TIME_ZONE_INFORMATION timeZoneInformation;
+                GetTimeZoneInformation(&timeZoneInformation);
+                const WCHAR* winTimeZoneName = t.isDST() ? timeZoneInformation.DaylightName : timeZoneInformation.StandardName;
+                timeZoneName = String(winTimeZoneName);
 #else
-            struct tm gtm = t;
-            char timeZoneName[70];
-            strftime(timeZoneName, sizeof(timeZoneName), "%Z", &gtm);
+                struct tm gtm = t;
+                char tzName[70];
+                strftime(tzName, sizeof(tzName), "%Z", &gtm);
+                timeZoneName = String(tzName);
 #endif
-            if (timeZoneName[0]) {
+            }
+            if (!timeZoneName.isEmpty()) {
                 builder.appendLiteral(" (");
                 builder.append(timeZoneName);
                 builder.append(')');

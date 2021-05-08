@@ -1355,6 +1355,12 @@ static gboolean browserWindowDeleteEvent(GtkWidget *widget, GdkEventAny* event)
 }
 #endif
 
+static void zeroPreferredSize(GtkWidget* widget, gint* minimumSize, gint* naturalSize)
+{
+    *minimumSize = 10;
+    *naturalSize = 10;
+}
+
 static void browser_window_class_init(BrowserWindowClass *klass)
 {
     GObjectClass *gobjectClass = G_OBJECT_CLASS(klass);
@@ -1368,6 +1374,14 @@ static void browser_window_class_init(BrowserWindowClass *klass)
     GtkWidgetClass *widgetClass = GTK_WIDGET_CLASS(klass);
     widgetClass->delete_event = browserWindowDeleteEvent;
 #endif
+
+// Playwrigth begin
+    // Override preferred (which is minimum :-) size to 0 so that we can
+    // emulate arbitrary resolution.
+    GtkWidgetClass* browserWidgetClass = GTK_WIDGET_CLASS(klass);
+    browserWidgetClass->get_preferred_width = zeroPreferredSize;
+    browserWidgetClass->get_preferred_height = zeroPreferredSize;
+// Playwrigth end
 }
 
 /* Public API. */

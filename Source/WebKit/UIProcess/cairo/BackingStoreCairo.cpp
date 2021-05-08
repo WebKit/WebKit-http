@@ -27,9 +27,11 @@
 #include "config.h"
 #include "BackingStore.h"
 
+#include "DrawingAreaProxyCoordinatedGraphics.h"
 #include "ShareableBitmap.h"
 #include "UpdateInfo.h"
 #include "WebPageProxy.h"
+#include "WebPageInspectorController.h"
 #include <WebCore/BackingStoreBackendCairoImpl.h>
 #include <WebCore/CairoUtilities.h>
 #include <WebCore/GraphicsContextImplCairo.h>
@@ -60,6 +62,13 @@ std::unique_ptr<BackingStoreBackendCairo> BackingStore::createBackend()
 #endif
 
     return makeUnique<BackingStoreBackendCairoImpl>(m_size, m_deviceScaleFactor);
+}
+
+cairo_surface_t* BackingStore::surface() const {
+    if (!m_backend)
+        return nullptr;
+
+    return m_backend->surface();
 }
 
 void BackingStore::paint(cairo_t* context, const IntRect& rect)

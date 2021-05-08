@@ -78,6 +78,7 @@ function installDependenciesWithApt {
         libjpeg-dev \
         libkate-dev \
         libfile-copy-recursive-perl \
+        liblcms2-dev \
         libopenjp2-7-dev \
         libpng-dev \
         libseccomp-dev \
@@ -87,10 +88,12 @@ function installDependenciesWithApt {
         libtool \
         libwebp-dev \
         libwoff-dev \
+        libxcb-glx0-dev \
         libxml2-dev \
         libxslt1-dev \
         ninja-build \
         patch \
+        patchelf \
         pkg-config \
         ruby \
         zlib1g-dev"

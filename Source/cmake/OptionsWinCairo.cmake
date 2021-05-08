@@ -32,14 +32,35 @@ if (OpenJPEG_FOUND)
 endif ()
 
 find_package(WOFF2 1.0.2 COMPONENTS dec)
-if (WOFF2_FOUND)
-    SET_AND_EXPOSE_TO_BUILD(USE_WOFF2 ON)
-endif ()
+SET_AND_EXPOSE_TO_BUILD(USE_WOFF2 ON)
 
 find_package(WebP COMPONENTS demux)
 if (WebP_FOUND)
     SET_AND_EXPOSE_TO_BUILD(USE_WEBP ON)
 endif ()
+
+# Playwright begin
+if (NOT LIBVPX_PACKAGE_PATH)
+    set(LIBVPX_PACKAGE_PATH "C:\\vcpkg\\packages\\libvpx_x64-windows")
+endif()
+file(TO_CMAKE_PATH "${LIBVPX_PACKAGE_PATH}" LIBVPX_PACKAGE_PATH)
+message(STATUS "Using LIBVPX_PACKAGE_PATH = ${LIBVPX_PACKAGE_PATH}")
+
+find_library(LIBVPX_CUSTOM_LIBRARY vpxmd.lib
+    HINTS ${LIBVPX_PACKAGE_PATH}/lib
+    REQIRED
+    NO_DEFAULT_PATH
+)
+message(STATUS "Found LIBVPX_CUSTOM_LIBRARY = ${LIBVPX_CUSTOM_LIBRARY}")
+
+find_path(LIBVPX_CUSTOM_INCLUDE_DIR
+    NAMES vpx/vp8.h
+    HINTS ${LIBVPX_PACKAGE_PATH}/include
+    REQUIRED
+    NO_DEFAULT_PATH
+)
+message(STATUS "Found LIBVPX_CUSTOM_INCLUDE_DIR = ${LIBVPX_CUSTOM_INCLUDE_DIR}")
+# Playwright end
 
 # TODO: Add a check for HAVE_RSA_PSS for support of CryptoAlgorithmRSA_PSS
 # https://bugs.webkit.org/show_bug.cgi?id=206635

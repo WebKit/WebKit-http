@@ -33,6 +33,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/WeakPtr.h>
 
+OBJC_CLASS NSArray;
 OBJC_CLASS NSMenu;
 
 namespace WebKit {
@@ -45,6 +46,7 @@ public:
     virtual ~WebContextMenuProxy();
 
     virtual void show();
+    virtual void hide() {}
 
     WebPageProxy* page() const { return m_page.get(); }
 

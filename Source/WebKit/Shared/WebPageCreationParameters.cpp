@@ -156,6 +156,8 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << crossOriginAccessControlCheckEnabled;
     encoder << processDisplayName;
 
+    encoder << shouldPauseInInspectorWhenShown;
+
     encoder << shouldCaptureAudioInUIProcess;
     encoder << shouldCaptureAudioInGPUProcess;
     encoder << shouldCaptureVideoInUIProcess;
@@ -527,7 +529,10 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!processDisplayName)
         return WTF::nullopt;
     parameters.processDisplayName = WTFMove(*processDisplayName);
-    
+
+    if (!decoder.decode(parameters.shouldPauseInInspectorWhenShown))
+        return WTF::nullopt;
+
     if (!decoder.decode(parameters.shouldCaptureAudioInUIProcess))
         return WTF::nullopt;
 

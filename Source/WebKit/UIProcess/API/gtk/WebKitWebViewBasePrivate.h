@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include "AcceleratedBackingStore.h"
 #include "APIPageConfiguration.h"
 #include "GestureController.h"
 #include "InputMethodState.h"
@@ -122,3 +123,5 @@ WebKitInputMethodContext* webkitWebViewBaseGetInputMethodContext(WebKitWebViewBa
 void webkitWebViewBaseSynthesizeCompositionKeyPress(WebKitWebViewBase*, const String& text, Optional<Vector<WebCore::CompositionUnderline>>&&, Optional<WebKit::EditingRange>&&);
 
 void webkitWebViewBaseMakeBlank(WebKitWebViewBase*, bool);
+
+WebKit::AcceleratedBackingStore* webkitWebViewBaseGetAcceleratedBackingStore(WebKitWebViewBase*);

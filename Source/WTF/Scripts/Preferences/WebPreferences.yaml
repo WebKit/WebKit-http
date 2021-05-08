@@ -1010,7 +1010,7 @@ InspectorStartsAttached:
   exposed: [ WebKit ]
   defaultValue:
     WebKit:
-      default: true
+      default: false
 
 InspectorWindowFrame:
   type: String

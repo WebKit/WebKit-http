@@ -289,6 +289,10 @@ RefPtr<Protocol::Runtime::RemoteObject> InjectedScript::wrapObject(JSC::JSValue 
     auto callResult = callFunctionWithEvalEnabled(wrapFunction);
     if (!callResult)
         return nullptr;
+    auto callResultValue = callResult.value();
+    // callResultValue could be missing if the execution was terminated
+    if (!callResultValue)
+        return nullptr;
 
     auto resultValue = toInspectorValue(globalObject(), callResult.value());
     if (!resultValue)

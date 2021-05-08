@@ -4515,6 +4515,18 @@ static RetainPtr<CGImageRef> takeWindowSnapshot(CGSWindowID windowID, bool captu
     return adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, imageOptions));
 }
 
+// Paywright begin
+RetainPtr<CGImageRef> WebViewImpl::takeSnapshotForAutomation() {
+    NSWindow *window = [m_view window];
+
+    CGSWindowID windowID = (CGSWindowID)window.windowNumber;
+    if (!windowID || !window.isVisible)
+        return nullptr;
+
+    return takeWindowSnapshot(windowID, true);
+}
+// Paywright end
+
 RefPtr<ViewSnapshot> WebViewImpl::takeViewSnapshot()
 {
     NSWindow *window = [m_view window];

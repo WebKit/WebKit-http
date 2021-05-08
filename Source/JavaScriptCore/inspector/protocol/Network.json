@@ -321,6 +321,13 @@
                 { "name": "requestId", "$ref": "RequestId", "description": "Identifier for the intercepted Network request to fail." },
                 { "name": "errorType", "$ref": "ResourceErrorType", "description": "Deliver error reason for the request failure." }
             ]
+        },
+        {
+            "name": "setEmulateOfflineState",
+            "description": "Emulate offline state overriding the actual state.",
+            "parameters": [
+                { "name": "offline", "type": "boolean", "description": "True to emulate offline." }
+            ]
         }
     ],
     "events": [

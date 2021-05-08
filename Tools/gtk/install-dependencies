@@ -120,6 +120,7 @@ function installDependenciesWithApt {
         libhyphen-dev \
         libjpeg-dev \
         libkate-dev \
+        liblcms2-dev \
         libmount-dev \
         libmpg123-dev \
         libnotify-dev \
@@ -143,6 +144,7 @@ function installDependenciesWithApt {
         libupower-glib-dev \
         libwebp-dev \
         libwoff-dev \
+        libxcb-glx0-dev \
         libxcomposite-dev \
         libxt-dev \
         libxtst-dev \
@@ -151,6 +153,7 @@ function installDependenciesWithApt {
         nasm \
         ninja-build \
         patch \
+        patchelf \
         ruby \
         xfonts-utils"
 

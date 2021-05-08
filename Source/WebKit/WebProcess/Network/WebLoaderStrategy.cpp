@@ -235,6 +235,11 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
     }
 #endif
 
+    if (m_emulateOfflineState) {
+        scheduleInternallyFailedLoad(resourceLoader);
+        return;
+    }
+
     if (!tryLoadingUsingURLSchemeHandler(resourceLoader, trackingParameters)) {
         WEBLOADERSTRATEGY_RELEASE_LOG_IF_ALLOWED("scheduleLoad: URL will be scheduled with the NetworkProcess");
 
@@ -291,7 +296,8 @@ static void addParametersShared(const Frame* frame, NetworkResourceLoadParameter
     }
 }
 
-void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceLoader, const ResourceRequest& request, const WebResourceLoader::TrackingParameters& trackingParameters, bool shouldClearReferrerOnHTTPSToHTTPRedirect, Seconds maximumBufferingTime)
+// static
+bool WebLoaderStrategy::fillParametersForNetworkProcessLoad(ResourceLoader& resourceLoader, const ResourceRequest& request, const WebResourceLoader::TrackingParameters& trackingParameters, bool shouldClearReferrerOnHTTPSToHTTPRedirect, Seconds maximumBufferingTime, NetworkResourceLoadParameters& loadParameters)
 {
     ResourceLoadIdentifier identifier = resourceLoader.identifier();
     ASSERT(identifier);
@@ -304,7 +310,6 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
 
     auto* frame = resourceLoader.frame();
 
-    NetworkResourceLoadParameters loadParameters;
     loadParameters.identifier = identifier;
     loadParameters.webPageProxyID = trackingParameters.webPageProxyID;
     loadParameters.webPageID = trackingParameters.pageID;
@@ -383,14 +388,11 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
 
     if (loadParameters.options.mode != FetchOptions::Mode::Navigate) {
         ASSERT(loadParameters.sourceOrigin);
-        if (!loadParameters.sourceOrigin) {
-            WEBLOADERSTRATEGY_RELEASE_LOG_ERROR_IF_ALLOWED("scheduleLoad: no sourceOrigin (priority=%d)", static_cast<int>(resourceLoader.request().priority()));
-            scheduleInternallyFailedLoad(resourceLoader);
-            return;
-        }
+        if (!loadParameters.sourceOrigin)
+            return false;
     }
 
-    loadParameters.shouldRestrictHTTPResponseAccess = shouldPerformSecurityChecks();
+    loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
 
     loadParameters.isMainFrameNavigation = resourceLoader.frame() && resourceLoader.frame()->isMainFrame() && resourceLoader.options().mode == FetchOptions::Mode::Navigate;
 
@@ -406,6 +408,17 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     }
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials);
+    return true;
+}
+
+void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceLoader, const ResourceRequest& request, const WebResourceLoader::TrackingParameters& trackingParameters, bool shouldClearReferrerOnHTTPSToHTTPRedirect, Seconds maximumBufferingTime)
+{
+    NetworkResourceLoadParameters loadParameters;
+    if (!fillParametersForNetworkProcessLoad(resourceLoader, request, trackingParameters, shouldClearReferrerOnHTTPSToHTTPRedirect, maximumBufferingTime, loadParameters)) {
+        WEBLOADERSTRATEGY_RELEASE_LOG_ERROR_IF_ALLOWED("scheduleLoad: no sourceOrigin (priority=%d)", static_cast<int>(resourceLoader.request().priority()));
+        scheduleInternallyFailedLoad(resourceLoader);
+        return;
+    }
 
     WEBLOADERSTRATEGY_RELEASE_LOG_IF_ALLOWED("scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=%d)", static_cast<int>(resourceLoader.request().priority()));
     if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ScheduleResourceLoad(loadParameters), 0)) {
@@ -417,7 +430,7 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     }
 
     auto loader = WebResourceLoader::create(resourceLoader, trackingParameters);
-    m_webResourceLoaders.set(identifier, WTFMove(loader));
+    m_webResourceLoaders.set(resourceLoader.identifier(), WTFMove(loader));
 }
 
 void WebLoaderStrategy::scheduleInternallyFailedLoad(WebCore::ResourceLoader& resourceLoader)
@@ -816,7 +829,7 @@ void WebLoaderStrategy::didFinishPreconnection(uint64_t preconnectionIdentifier,
 
 bool WebLoaderStrategy::isOnLine() const
 {
-    return m_isOnLine;
+    return m_emulateOfflineState ? false : m_isOnLine;
 }
 
 void WebLoaderStrategy::addOnlineStateChangeListener(Function<void(bool)>&& listener)
@@ -836,12 +849,23 @@ void WebLoaderStrategy::isResourceLoadFinished(CachedResource& resource, Complet
 
 void WebLoaderStrategy::setOnLineState(bool isOnLine)
 {
+    if (m_emulateOfflineState) {
+        m_isOnLine = isOnLine;
+        return;
+    }
+
     if (m_isOnLine == isOnLine)
         return;
 
     m_isOnLine = isOnLine;
     for (auto& listener : m_onlineStateChangeListeners)
         listener(isOnLine);
+}
+
+void WebLoaderStrategy::setEmulateOfflineState(bool offline) {
+    m_emulateOfflineState = offline;
+    for (auto& listener : m_onlineStateChangeListeners)
+        listener(offline ? false : m_isOnLine);
 }
 
 void WebLoaderStrategy::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)

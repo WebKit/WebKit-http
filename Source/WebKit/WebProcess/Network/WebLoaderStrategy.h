@@ -40,6 +40,7 @@ struct FetchOptions;
 namespace WebKit {
 
 class NetworkProcessConnection;
+class NetworkResourceLoadParameters;
 class WebFrame;
 class WebPage;
 class WebURLSchemeTaskProxy;
@@ -88,8 +89,10 @@ public:
     bool isOnLine() const final;
     void addOnlineStateChangeListener(Function<void(bool)>&&) final;
     void setOnLineState(bool);
+    void setEmulateOfflineState(bool) final;
 
     static uint64_t generateLoadIdentifier();
+    static bool fillParametersForNetworkProcessLoad(WebCore::ResourceLoader&, const WebCore::ResourceRequest&, const WebResourceLoader::TrackingParameters&, bool shouldClearReferrerOnHTTPSToHTTPRedirect, Seconds maximumBufferingTime, NetworkResourceLoadParameters&);
 
 private:
     void scheduleLoad(WebCore::ResourceLoader&, WebCore::CachedResource*, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
@@ -134,6 +137,7 @@ private:
     HashMap<unsigned long, PreconnectCompletionHandler> m_preconnectCompletionHandlers;
     Vector<Function<void(bool)>> m_onlineStateChangeListeners;
     bool m_isOnLine { true };
+    bool m_emulateOfflineState { false };
 };
 
 } // namespace WebKit

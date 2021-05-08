@@ -866,6 +866,9 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 
     m_page->setCanUseCredentialStorage(parameters.canUseCredentialStorage);
 
+    if (parameters.shouldPauseInInspectorWhenShown)
+        m_page->inspectorController().pauseWhenShown();
+
     updateThrottleState();
 }
 
@@ -1651,6 +1654,22 @@ void WebPage::platformDidReceiveLoadParameters(const LoadParameters& loadParamet
 }
 #endif
 
+void WebPage::loadRequestInFrameForInspector(LoadParameters&& loadParameters, WebCore::FrameIdentifier frameID)
+{
+    WebFrame* frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame) {
+        send(Messages::WebPageProxy::DidDestroyNavigation(loadParameters.navigationID));
+        return;
+    }
+
+    // FIXME: use m_pendingNavigationID instead?
+    m_pendingFrameNavigationID = loadParameters.navigationID;
+
+    FrameLoadRequest frameLoadRequest { *frame->coreFrame(), loadParameters.request };
+    frame->coreFrame()->loader().load(WTFMove(frameLoadRequest));
+    ASSERT(!m_pendingFrameNavigationID);
+}
+
 void WebPage::loadRequest(LoadParameters&& loadParameters)
 {
     setLastNavigationWasAppBound(loadParameters.request.isAppBound());
@@ -1911,17 +1930,13 @@ void WebPage::setSize(const WebCore::IntSize& viewSize)
     view->resize(viewSize);
     m_drawingArea->setNeedsDisplay();
 
-#if USE(COORDINATED_GRAPHICS)
     if (view->useFixedLayout())
         sendViewportAttributesChanged(m_page->viewportArguments());
-#endif
 }
 
-#if USE(COORDINATED_GRAPHICS)
 void WebPage::sendViewportAttributesChanged(const ViewportArguments& viewportArguments)
 {
-    FrameView* view = m_page->mainFrame().view();
-    ASSERT(view && view->useFixedLayout());
+    ASSERT(m_page->mainFrame().view() && m_page->mainFrame().view()->useFixedLayout());
 
     // Viewport properties have no impact on zero sized fixed viewports.
     if (m_viewSize.isEmpty())
@@ -1938,20 +1953,18 @@ void WebPage::sendViewportAttributesChanged(const ViewportArguments& viewportArg
 
     ViewportAttributes attr = computeViewportAttributes(viewportArguments, minimumLayoutFallbackWidth, deviceWidth, deviceHeight, 1, m_viewSize);
 
-    // If no layout was done yet set contentFixedOrigin to (0,0).
-    IntPoint contentFixedOrigin = view->didFirstLayout() ? view->fixedVisibleContentRect().location() : IntPoint();
-
-    // Put the width and height to the viewport width and height. In css units however.
-    // Use FloatSize to avoid truncated values during scale.
-    FloatSize contentFixedSize = m_viewSize;
-
-    contentFixedSize.scale(1 / attr.initialScale);
-    view->setFixedVisibleContentRect(IntRect(contentFixedOrigin, roundedIntSize(contentFixedSize)));
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    FrameView* view = m_page->mainFrame().view();
+    // CSS viewport descriptors might be applied to already affected viewport size
+    // if the page enables/disables stylesheets, so need to keep initial viewport size.
+    view->setInitialViewportSize(roundedIntSize(m_viewSize));
+#endif
 
     attr.initialScale = m_page->viewportArguments().zoom; // Resets auto (-1) if no value was set by user.
 
     // This also takes care of the relayout.
     setFixedLayoutSize(roundedIntSize(attr.layoutSize));
+    scaleView(deviceWidth / attr.layoutSize.width());
 
 #if USE(COORDINATED_GRAPHICS)
     m_drawingArea->didChangeViewportAttributes(WTFMove(attr));
@@ -1959,7 +1972,6 @@ void WebPage::sendViewportAttributesChanged(const ViewportArguments& viewportArg
     send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
 #endif
 }
-#endif
 
 void WebPage::scrollMainFrameIfNotAtMaxScrollPosition(const IntSize& scrollOffset)
 {
@@ -2258,6 +2270,7 @@ void WebPage::scaleView(double scale)
     }
 
     m_page->setViewScaleFactor(scale);
+    send(Messages::WebPageProxy::ViewScaleFactorDidChange(scale));
     scalePage(pageScale, scrollPositionAtNewScale);
 }
 
@@ -2362,16 +2375,12 @@ void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArgum
         viewportConfigurationChanged();
 #endif
 
-#if USE(COORDINATED_GRAPHICS)
     FrameView* view = m_page->mainFrame().view();
     if (view && view->useFixedLayout())
         sendViewportAttributesChanged(viewportArguments);
+#if USE(COORDINATED_GRAPHICS)
     else
         m_drawingArea->didChangeViewportAttributes(ViewportAttributes());
-#endif
-
-#if !PLATFORM(IOS_FAMILY) && !USE(COORDINATED_GRAPHICS)
-    UNUSED_PARAM(viewportArguments);
 #endif
 }
 
@@ -3233,6 +3242,104 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(touchEvent.type()), handled));
 }
+
+void WebPage::fakeTouchTap(const WebCore::IntPoint& position, uint8_t modifiers, CompletionHandler<void()>&& completionHandler)
+{
+    SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
+
+    bool handled = false;
+
+    uint32_t id = 0;
+    float radiusX = 1.0;
+    float radiusY = 1.0;
+    float rotationAngle = 0.0;
+    float force = 1.0;
+    const WebCore::IntSize radius(radiusX,radiusY);
+    const WebCore::IntPoint screenPosition = position;
+    OptionSet<WebEvent::Modifier> eventModifiers;
+    eventModifiers = eventModifiers.fromRaw(modifiers);
+
+    {
+        Vector<WebPlatformTouchPoint> touchPoints;
+        WebPlatformTouchPoint::TouchPointState state = WebPlatformTouchPoint::TouchPointState::TouchPressed;
+        touchPoints.append(WebPlatformTouchPoint(id, state, screenPosition, position, radius, rotationAngle, force));
+
+        WebTouchEvent touchEvent(WebEvent::TouchStart, WTFMove(touchPoints), eventModifiers, WallTime::now());
+
+        CurrentEvent currentEvent(touchEvent);
+        handled = handleTouchEvent(touchEvent, m_page.get());
+    }
+    {
+        Vector<WebPlatformTouchPoint> touchPoints;
+        WebPlatformTouchPoint::TouchPointState state = WebPlatformTouchPoint::TouchPointState::TouchReleased;
+        touchPoints.append(WebPlatformTouchPoint(id, state, screenPosition, position, radius, rotationAngle, force));
+
+        WebTouchEvent touchEvent(WebEvent::TouchEnd, WTFMove(touchPoints), eventModifiers, WallTime::now());
+
+        CurrentEvent currentEvent(touchEvent);
+        handled = handleTouchEvent(touchEvent, m_page.get()) || handled;
+    }
+    if (!handled) {
+        FloatPoint adjustedPoint;
+        Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(position, adjustedPoint);
+        Frame* frameRespondingToClick = nodeRespondingToClick ? nodeRespondingToClick->document().frame() : nullptr;
+        IntPoint adjustedIntPoint = roundedIntPoint(adjustedPoint);
+        if (!frameRespondingToClick) {
+            completionHandler();
+            return;
+        }
+        bool shiftKey = eventModifiers.contains(WebEvent::Modifier::ShiftKey);
+        bool ctrlKey = eventModifiers.contains(WebEvent::Modifier::ControlKey);
+        bool altKey = eventModifiers.contains(WebEvent::Modifier::AltKey);
+        bool metaKey = eventModifiers.contains(WebEvent::Modifier::MetaKey);
+        double force = 0.0;
+        SyntheticClickType syntheticClickType = SyntheticClickType::OneFingerTap;
+
+        m_page->mainFrame().eventHandler().mouseMoved(PlatformMouseEvent(
+            adjustedIntPoint,
+            adjustedIntPoint,
+            MouseButton::NoButton,
+            PlatformEvent::Type::MouseMoved,
+            0,
+            shiftKey,
+            ctrlKey,
+            altKey,
+            metaKey,
+            WallTime::now(),
+            force,
+            syntheticClickType
+        ));
+        m_page->mainFrame().eventHandler().handleMousePressEvent(PlatformMouseEvent(
+            adjustedIntPoint,
+            adjustedIntPoint,
+            MouseButton::LeftButton,
+            PlatformEvent::Type::MousePressed,
+            1,
+            shiftKey,
+            ctrlKey,
+            altKey,
+            metaKey,
+            WallTime::now(),
+            force,
+            syntheticClickType
+        ));
+        m_page->mainFrame().eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(
+            adjustedIntPoint,
+            adjustedIntPoint,
+            MouseButton::LeftButton,
+            PlatformEvent::Type::MouseReleased,
+            1,
+            shiftKey,
+            ctrlKey,
+            altKey,
+            metaKey,
+            WallTime::now(),
+            force,
+            syntheticClickType
+        ));
+    }
+    completionHandler();
+}
 #endif
 
 void WebPage::cancelPointer(WebCore::PointerID pointerId, const WebCore::IntPoint& documentPoint)
@@ -3307,6 +3414,11 @@ void WebPage::disconnectInspector(const String& targetId)
 void WebPage::sendMessageToTargetBackend(const String& targetId, const String& message)
 {
     m_inspectorTargetController->sendMessageToTargetBackend(targetId, message);
+}
+
+void WebPage::resumeInspectorIfPausedInNewWindow()
+{
+    m_page->inspectorController().resumeIfPausedInNewWindow();
 }
 
 void WebPage::insertNewlineInQuotedContent()
@@ -3546,6 +3658,7 @@ void WebPage::didCompletePageTransition()
 void WebPage::show()
 {
     send(Messages::WebPageProxy::ShowPage());
+    m_page->inspectorController().didShowNewWindow();
 }
 
 void WebPage::setIsTakingSnapshotsForApplicationSuspension(bool isTakingSnapshotsForApplicationSuspension)
@@ -4228,7 +4341,7 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
 
 #if ENABLE(DRAG_SUPPORT)
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, OptionSet<DragOperation> draggingSourceOperationMask, SelectionData&& selectionData, OptionSet<DragApplicationFlags> flags)
 {
     if (!m_page) {
@@ -6554,6 +6667,9 @@ Ref<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRe
             WebsitePoliciesData::applyToDocumentLoader(WTFMove(*m_pendingWebsitePolicies), documentLoader);
             m_pendingWebsitePolicies = WTF::nullopt;
         }
+    } else if (m_pendingFrameNavigationID) {
+        documentLoader->setNavigationID(m_pendingFrameNavigationID);
+        m_pendingFrameNavigationID = 0;
     }
 
     return documentLoader;

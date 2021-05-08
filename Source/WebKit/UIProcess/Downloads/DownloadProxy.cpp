@@ -42,8 +42,10 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/ResourceResponseBase.h>
 #include <wtf/FileSystem.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/UUID.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -56,7 +58,10 @@ DownloadProxy::DownloadProxy(DownloadProxyMap& downloadProxyMap, WebsiteDataStor
     , m_request(resourceRequest)
     , m_originatingPage(makeWeakPtr(originatingPage))
     , m_frameInfo(API::FrameInfo::create(FrameInfoData { frameInfoData }, originatingPage))
+    , m_uuid(createCanonicalUUIDString())
 {
+    if (auto* instrumentation = m_dataStore->downloadInstrumentation())
+      instrumentation->downloadCreated(m_uuid, m_request, frameInfoData, originatingPage);
 }
 
 DownloadProxy::~DownloadProxy()
@@ -79,6 +84,8 @@ void DownloadProxy::cancel(CompletionHandler<void(API::Data*)>&& completionHandl
             m_legacyResumeData = createData(resumeData);
             completionHandler(m_legacyResumeData.get());
             m_downloadProxyMap.downloadFinished(*this);
+            if (auto* instrumentation = m_dataStore->downloadInstrumentation())
+                instrumentation->downloadFinished(m_uuid, "canceled"_s);
         });
     } else
         completionHandler(nullptr);
@@ -161,6 +168,20 @@ void DownloadProxy::decideDestinationWithSuggestedFilename(const WebCore::Resour
         suggestedFilename = m_suggestedFilename;
     suggestedFilename = MIMETypeRegistry::appendFileExtensionIfNecessary(suggestedFilename, response.mimeType());
 
+    if (auto* instrumentation = m_dataStore->downloadInstrumentation())
+      instrumentation->downloadFilenameSuggested(m_uuid, suggestedFilename);
+
+    if (m_dataStore->allowDownloadForAutomation()) {
+        SandboxExtension::Handle sandboxExtensionHandle;
+        String destination;
+        if (*m_dataStore->allowDownloadForAutomation()) {
+            destination = FileSystem::pathByAppendingComponent(m_dataStore->downloadPathForAutomation(), m_uuid);
+            SandboxExtension::createHandle(destination, SandboxExtension::Type::ReadWrite, sandboxExtensionHandle);
+        }
+        completionHandler(destination, WTFMove(sandboxExtensionHandle), AllowOverwrite::Yes);
+        return;
+    }
+
     m_client->decideDestinationWithSuggestedFilename(*this, response, ResourceResponseBase::sanitizeSuggestedFilename(suggestedFilename), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (AllowOverwrite allowOverwrite, String destination) mutable {
         SandboxExtension::Handle sandboxExtensionHandle;
         if (!destination.isNull())
@@ -179,6 +200,8 @@ void DownloadProxy::didCreateDestination(const String& path)
 void DownloadProxy::didFinish()
 {
     m_client->didFinish(*this);
+    if (auto* instrumentation = m_dataStore->downloadInstrumentation())
+      instrumentation->downloadFinished(m_uuid, String());
 
     // This can cause the DownloadProxy object to be deleted.
     m_downloadProxyMap.downloadFinished(*this);
@@ -189,6 +212,8 @@ void DownloadProxy::didFail(const ResourceError& error, const IPC::DataReference
     m_legacyResumeData = createData(resumeData);
 
     m_client->didFail(*this, error, m_legacyResumeData.get());
+    if (auto* instrumentation = m_dataStore->downloadInstrumentation())
+      instrumentation->downloadFinished(m_uuid, error.localizedDescription());
 
     // This can cause the DownloadProxy object to be deleted.
     m_downloadProxyMap.downloadFinished(*this);

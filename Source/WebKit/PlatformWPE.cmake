@@ -278,6 +278,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/API/wpe"
     "${WEBKIT_DIR}/UIProcess/CoordinatedGraphics"
     "${WEBKIT_DIR}/UIProcess/geoclue"
+    "${WEBKIT_DIR}/UIProcess/glib"
     "${WEBKIT_DIR}/UIProcess/gstreamer"
     "${WEBKIT_DIR}/UIProcess/linux"
     "${WEBKIT_DIR}/UIProcess/soup"
@@ -300,7 +301,16 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
+# Playwright begin
+    "${THIRDPARTY_DIR}/libwebrtc/Source/third_party/libyuv/include"
+# Playwright end
 )
+
+# Playwright begin
+list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
+    "${THIRDPARTY_DIR}/libwebrtc/Source/third_party/libwebm"
+)
+# Playwright end
 
 list(APPEND WebKit_LIBRARIES
     Cairo::Cairo

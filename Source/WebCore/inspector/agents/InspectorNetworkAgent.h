@@ -71,6 +71,7 @@ public:
     static Ref<TextResourceDecoder> createTextDecoder(const String& mimeType, const String& textEncodingName);
     static Optional<String> textContentForCachedResource(CachedResource&);
     static bool cachedResourceContent(CachedResource&, String* result, bool* base64Encoded);
+    static String initiatorIdentifierForEventSource();
 
     // InspectorAgentBase
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) final;
@@ -93,6 +94,7 @@ public:
     Inspector::Protocol::ErrorStringOr<void> interceptWithResponse(const Inspector::Protocol::Network::RequestId&, const String& content, bool base64Encoded, const String& mimeType, Optional<int>&& status, const String& statusText, RefPtr<JSON::Object>&& headers) final;
     Inspector::Protocol::ErrorStringOr<void> interceptRequestWithResponse(const Inspector::Protocol::Network::RequestId&, const String& content, bool base64Encoded, const String& mimeType, int status, const String& statusText, Ref<JSON::Object>&& headers) final;
     Inspector::Protocol::ErrorStringOr<void> interceptRequestWithError(const Inspector::Protocol::Network::RequestId&, Inspector::Protocol::Network::ResourceErrorType) final;
+    Inspector::Protocol::ErrorStringOr<void> setEmulateOfflineState(bool offline) final;
 
     // InspectorInstrumentation
     void willRecalculateStyle();

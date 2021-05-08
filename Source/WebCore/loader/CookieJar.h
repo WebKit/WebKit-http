@@ -42,6 +42,7 @@ struct CookieRequestHeaderFieldProxy;
 class NetworkStorageSession;
 class StorageSessionProvider;
 struct SameSiteInfo;
+class ResourceLoader;
 
 class WEBCORE_EXPORT CookieJar : public RefCounted<CookieJar> {
 public:
@@ -64,6 +65,9 @@ public:
     // Cookie Cache.
     virtual void clearCache() { }
     virtual void clearCacheForHost(const String&) { }
+
+    // Playwright.
+    virtual void setCookieFromResponse(ResourceLoader&, const String&) { }
 
     virtual ~CookieJar();
 protected:

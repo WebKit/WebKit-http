@@ -45,6 +45,7 @@
 #include "DocumentThreadableLoader.h"
 #include "FormData.h"
 #include "Frame.h"
+#include "FormData.h"
 #include "FrameLoader.h"
 #include "HTTPHeaderMap.h"
 #include "HTTPHeaderNames.h"
@@ -57,6 +58,7 @@
 #include "MIMETypeRegistry.h"
 #include "MemoryCache.h"
 #include "NetworkResourcesData.h"
+#include "NetworkStateNotifier.h"
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "ProgressTracker.h"
@@ -307,8 +309,8 @@ static Ref<Protocol::Network::Request> buildObjectForResourceRequest(const Resou
         .setHeaders(buildObjectForHeaders(request.httpHeaderFields()))
         .release();
     if (request.httpBody() && !request.httpBody()->isEmpty()) {
-        auto bytes = request.httpBody()->flatten();
-        requestObject->setPostData(String::fromUTF8WithLatin1Fallback(bytes.data(), bytes.size()));
+        Vector<char> bytes = request.httpBody()->flatten();
+        requestObject->setPostData(base64Encode(bytes));
     }
     return requestObject;
 }
@@ -352,6 +354,8 @@ RefPtr<Protocol::Network::Response> InspectorNetworkAgent::buildObjectForResourc
         .setMimeType(response.mimeType())
         .setSource(responseSource(response.source()))
         .release();
+
+    responseObject->setRequestHeaders(buildObjectForHeaders(response.m_httpRequestHeaderFields));
 
     if (resourceLoader)
         responseObject->setTiming(buildObjectForTiming(response.deprecatedNetworkLoadMetricsOrNull(), *resourceLoader));
@@ -488,8 +492,14 @@ static InspectorPageAgent::ResourceType resourceTypeForLoadType(InspectorInstrum
 
 void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLoader* loader, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
-    auto* cachedResource = loader ? InspectorPageAgent::cachedResource(loader->frame(), request.url()) : nullptr;
-    willSendRequest(identifier, loader, request, redirectResponse, resourceTypeForCachedResource(cachedResource));
+    InspectorPageAgent::ResourceType resourceType;
+    if (request.initiatorIdentifier() == initiatorIdentifierForEventSource()) {
+      resourceType = InspectorPageAgent::EventSource;
+    } else {
+      auto* cachedResource = loader ? InspectorPageAgent::cachedResource(loader->frame(), request.url()) : nullptr;
+      resourceType = resourceTypeForCachedResource(cachedResource);
+    }
+    willSendRequest(identifier, loader, request, redirectResponse, resourceType);
 }
 
 void InspectorNetworkAgent::willSendRequestOfType(unsigned long identifier, DocumentLoader* loader, ResourceRequest& request, InspectorInstrumentation::LoadType loadType)
@@ -1103,8 +1113,7 @@ bool InspectorNetworkAgent::willIntercept(const ResourceRequest& request)
     if (!m_interceptionEnabled)
         return false;
 
-    return shouldIntercept(request.url(), Protocol::Network::NetworkStage::Request)
-        || shouldIntercept(request.url(), Protocol::Network::NetworkStage::Response);
+    return shouldIntercept(request.url(), Protocol::Network::NetworkStage::Response);
 }
 
 bool InspectorNetworkAgent::shouldInterceptRequest(const ResourceRequest& request)
@@ -1187,6 +1196,9 @@ Protocol::ErrorStringOr<void> InspectorNetworkAgent::interceptWithRequest(const 
         return makeUnexpected("Missing pending intercept request for given requestId"_s);
 
     auto& loader = *pendingRequest->m_loader;
+    if (loader.reachedTerminalState())
+        return makeUnexpected("Unable to intercept request, it has already been processed"_s);
+
     ResourceRequest request = loader.request();
     if (!!url)
         request.setURL(URL({ }, url));
@@ -1282,14 +1294,24 @@ Protocol::ErrorStringOr<void> InspectorNetworkAgent::interceptRequestWithRespons
     response.setHTTPStatusCode(status);
     response.setHTTPStatusText(statusText);
     HTTPHeaderMap explicitHeaders;
+    String setCookieValue;
     for (auto& header : headers.get()) {
         auto headerValue = header.value->asString();
         if (!!headerValue)
             explicitHeaders.add(header.key, headerValue);
+        if (equalIgnoringASCIICase(header.key, "Set-Cookie"))
+            setCookieValue = headerValue;
     }
     response.setHTTPHeaderFields(WTFMove(explicitHeaders));
     response.setHTTPHeaderField(HTTPHeaderName::ContentType, response.mimeType());
+
+    auto* frame = loader->frame();
+    if (!setCookieValue.isEmpty() && frame && frame->page())
+        frame->page()->cookieJar().setCookieFromResponse(*loader.get(), setCookieValue);
+
     loader->didReceiveResponse(response, [loader, buffer = data.releaseNonNull()]() mutable {
+        if (loader->reachedTerminalState())
+            return;
         if (buffer->size())
             loader->didReceiveBuffer(WTFMove(buffer), buffer->size(), DataPayloadWholeResource);
         loader->didFinishLoading(NetworkLoadMetrics());
@@ -1327,6 +1349,12 @@ Protocol::ErrorStringOr<void> InspectorNetworkAgent::interceptRequestWithError(c
     }
 
     ASSERT_NOT_REACHED();
+    return { };
+}
+
+Inspector::Protocol::ErrorStringOr<void> InspectorNetworkAgent::setEmulateOfflineState(bool offline)
+{
+    platformStrategies()->loaderStrategy()->setEmulateOfflineState(offline);
     return { };
 }
 
@@ -1369,6 +1397,12 @@ Optional<String> InspectorNetworkAgent::textContentForCachedResource(CachedResou
     }
 
     return WTF::nullopt;
+}
+
+// static
+String InspectorNetworkAgent::initiatorIdentifierForEventSource()
+{
+    return "InspectorNetworkAgent: eventSource"_s;
 }
 
 bool InspectorNetworkAgent::cachedResourceContent(CachedResource& resource, String* result, bool* base64Encoded)

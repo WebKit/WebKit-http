@@ -788,6 +788,7 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // requestStorageAccessConfirm
         shouldAllowDeviceOrientationAndMotionAccess,
         runWebAuthenticationPanel,
+        0, // handleJavaScriptDialog
         decidePolicyForSpeechRecognitionPermissionRequest,
         decidePolicyForMediaKeySystemPermissionRequest
     };

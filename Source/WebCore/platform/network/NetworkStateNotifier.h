@@ -72,6 +72,7 @@ private:
 #endif
 
     Optional<bool> m_isOnLine;
+    Optional<bool> m_emulatedIsOnLine;
     Vector<WTF::Function<void(bool)>> m_listeners;
     Timer m_updateStateTimer;
 

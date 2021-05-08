@@ -29,6 +29,7 @@
 
 #if USE(GRAPHICS_LAYER_TEXTURE_MAPPER)
 
+#include "DrawingArea.h"
 #include "WebPage.h"
 #include <GLES2/gl2.h>
 #include <WebCore/Document.h>
