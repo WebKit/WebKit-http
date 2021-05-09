@@ -484,15 +484,6 @@ IntRect PageClientImpl::rootViewToWindow(const WebCore::IntRect& rect)
     return enclosingIntRect(tempRect);
 }
 
-int PageClientImpl::browserToolbarHeight() const
-{
-    // There are no controls in headless mode.
-    if (_headless)
-        return 0;
-
-    return 55;
-}
-
 IntPoint PageClientImpl::accessibilityScreenToRootView(const IntPoint& point)
 {
     return screenToRootView(point);

@@ -16,6 +16,7 @@
                 { "name": "file", "type": "string", "description": "Output file location." },
                 { "name": "width", "type": "integer" },
                 { "name": "height", "type": "integer" },
+                { "name": "toolbarHeight", "type": "integer" },
                 { "name": "scale", "type": "number", "optional": true }
             ],
             "returns": [
@@ -33,6 +34,7 @@
             "parameters": [
                 { "name": "width", "type": "integer" },
                 { "name": "height", "type": "integer" },
+                { "name": "toolbarHeight", "type": "integer" },
                 { "name": "quality", "type": "integer" }
             ],
             "returns": [

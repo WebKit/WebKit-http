@@ -63,10 +63,10 @@ public:
     void didPaint(cairo_surface_t*);
 #endif
 
-    Inspector::Protocol::ErrorStringOr<String /* screencastID */> startVideo(const String& file, int width, int height, Optional<double>&& scale) override;
+    Inspector::Protocol::ErrorStringOr<String /* screencastID */> startVideo(const String& file, int width, int height, int toolbarHeight, Optional<double>&& scale) override;
     void stopVideo(Ref<StopVideoCallback>&&) override;
 
-    Inspector::Protocol::ErrorStringOr<int /* generation */> startScreencast(int width, int height, int quality) override;
+    Inspector::Protocol::ErrorStringOr<int /* generation */> startScreencast(int width, int height, int toolbarHeight, int quality) override;
     Inspector::Protocol::ErrorStringOr<void> screencastFrameAck(int generation) override;
     Inspector::Protocol::ErrorStringOr<void> stopScreencast() override;
 
@@ -87,6 +87,7 @@ private:
     double m_screencastWidth = 0;
     double m_screencastHeight = 0;
     int m_screencastQuality = 0;
+    int m_screencastToolbarHeight = 0;
     int m_screencastGeneration = 0;
     int m_screencastFramesInFlight = 0;
     String m_currentScreencastID;

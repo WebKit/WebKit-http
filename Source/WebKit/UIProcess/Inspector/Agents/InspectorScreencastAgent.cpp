@@ -93,28 +93,32 @@ void InspectorScreencastAgent::didPaint(cairo_surface_t* surface)
         if (m_screencastFramesInFlight > kMaxFramesInFlight)
             return;
         // Scale image to fit width / height
-        WebCore::IntSize size = m_page.drawingArea()->size();
-        double scale = std::min(m_screencastWidth / size.width(), m_screencastHeight / size.height());
-        cairo_matrix_t transform;
-        cairo_matrix_init_scale(&transform, scale, scale);
-
-        RefPtr<cairo_surface_t> scaledSurface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, ceil(size.width() * scale), ceil(size.height() * scale)));
-        RefPtr<cairo_t> cr = adoptRef(cairo_create(scaledSurface.get()));
-        cairo_transform(cr.get(), &transform);
-        cairo_set_source_surface(cr.get(), surface, 0, 0);
-        cairo_paint(cr.get());
-
+        WebCore::IntSize displaySize = m_page.drawingArea()->size();
+        double scale = std::min(m_screencastWidth / displaySize.width(), m_screencastHeight / displaySize.height());
+        RefPtr<cairo_surface_t> scaledSurface;
+        if (scale < 1) {
+            WebCore::IntSize scaledSize = displaySize;
+            scaledSize.scale(scale);
+            cairo_matrix_t transform;
+            cairo_matrix_init_scale(&transform, scale, scale);
+            scaledSurface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, scaledSize.width(), scaledSize.height());
+            RefPtr<cairo_t> cr = adoptRef(cairo_create(scaledSurface.get()));
+            cairo_transform(cr.get(), &transform);
+            cairo_set_source_surface(cr.get(), surface, 0, 0);
+            cairo_paint(cr.get());
+            surface = scaledSurface.get();
+        }
         unsigned char *data = nullptr;
         size_t len = 0;
-        cairo_image_surface_write_to_jpeg_mem(scaledSurface.get(), &data, &len, m_screencastQuality);
+        cairo_image_surface_write_to_jpeg_mem(surface, &data, &len, m_screencastQuality);
         String result = base64Encode(data, len);
         ++m_screencastFramesInFlight;
-        m_frontendDispatcher->screencastFrame(result, size.width(), size.height());
+        m_frontendDispatcher->screencastFrame(result, displaySize.width(), displaySize.height());
     }
 }
 #endif
 
-Inspector::Protocol::ErrorStringOr<String /* screencastID */> InspectorScreencastAgent::startVideo(const String& file, int width, int height, Optional<double>&& scale)
+Inspector::Protocol::ErrorStringOr<String /* screencastID */> InspectorScreencastAgent::startVideo(const String& file, int width, int height, int toolbarHeight, Optional<double>&& scale)
 {
     if (m_encoder)
         return makeUnexpected("Already recording"_s);
@@ -133,7 +137,7 @@ Inspector::Protocol::ErrorStringOr<String /* screencastID */> InspectorScreencas
     m_currentScreencastID = createCanonicalUUIDString();
 
 #if PLATFORM(MAC)
-    m_encoder->setOffsetTop(m_page.pageClient().browserToolbarHeight());
+    m_encoder->setOffsetTop(toolbarHeight);
 #endif
 
     kickFramesStarted();
@@ -158,7 +162,7 @@ void InspectorScreencastAgent::stopVideo(Ref<StopVideoCallback>&& callback)
       m_framesAreGoing = false;
 }
 
-Inspector::Protocol::ErrorStringOr<int /* generation */> InspectorScreencastAgent::startScreencast(int width, int height, int quality)
+Inspector::Protocol::ErrorStringOr<int /* generation */> InspectorScreencastAgent::startScreencast(int width, int height, int toolbarHeight, int quality)
 {
     if (m_screencast)
         return makeUnexpected("Already screencasting"_s);
@@ -166,6 +170,7 @@ Inspector::Protocol::ErrorStringOr<int /* generation */> InspectorScreencastAgen
     m_screencastWidth = width;
     m_screencastHeight = height;
     m_screencastQuality = quality;
+    m_screencastToolbarHeight = toolbarHeight;
     m_screencastFramesInFlight = 0;
     ++m_screencastGeneration;
     kickFramesStarted();
@@ -224,15 +229,29 @@ void InspectorScreencastAgent::encodeFrame()
         return;
     RetainPtr<CGImageRef> imageRef = m_page.pageClient().takeSnapshotForAutomation();
     if (m_screencast && m_screencastFramesInFlight <= kMaxFramesInFlight) {
+        CGImage* imagePtr = imageRef.get();
+        WebCore::IntSize imageSize(CGImageGetWidth(imagePtr), CGImageGetHeight(imagePtr));
+        WebCore::IntSize displaySize = imageSize;
+        displaySize.contract(0, m_screencastToolbarHeight);
+        double scale = std::min(m_screencastWidth / displaySize.width(), m_screencastHeight / displaySize.height());
+        RetainPtr<CGImageRef> scaledImageRef;
+        if (scale < 1 || m_screencastToolbarHeight) {
+            WebCore::IntSize screencastSize = displaySize;
+            screencastSize.scale(scale);
+            WebCore::IntSize scaledImageSize = imageSize;
+            scaledImageSize.scale(scale);
+            auto colorSpace = adoptCF(CGColorSpaceCreateDeviceRGB());
+            auto context = adoptCF(CGBitmapContextCreate(nullptr, screencastSize.width(), screencastSize.height(), 8, 4 * screencastSize.width(), colorSpace.get(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host));
+            CGContextDrawImage(context.get(), CGRectMake(0, 0, scaledImageSize.width(), scaledImageSize.height()), imagePtr);
+            scaledImageRef = adoptCF(CGBitmapContextCreateImage(context.get()));
+            imagePtr = scaledImageRef.get();
+        }
         auto cfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
-        WebCore::encodeImage(imageRef.get(), CFSTR("public.jpeg"), m_screencastQuality * 0.1, cfData.get());
+        WebCore::encodeImage(imagePtr, CFSTR("public.jpeg"), m_screencastQuality * 0.1, cfData.get());
         Vector<char> base64Data;
         base64Encode(CFDataGetBytePtr(cfData.get()), CFDataGetLength(cfData.get()), base64Data);
         ++m_screencastFramesInFlight;
-        m_frontendDispatcher->screencastFrame(
-            String(base64Data.data(), base64Data.size()),
-            CGImageGetWidth(imageRef.get()),
-            CGImageGetHeight(imageRef.get()));
+        m_frontendDispatcher->screencastFrame(String(base64Data.data(), base64Data.size()), displaySize.width(), displaySize.height());
     }
     if (m_encoder)
         m_encoder->encodeFrame(WTFMove(imageRef));
