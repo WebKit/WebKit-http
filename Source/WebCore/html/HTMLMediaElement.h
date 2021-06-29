@@ -469,8 +469,6 @@ public:
 
     bool isPlaying() const { return m_playing; }
 
-    bool hasPendingActivity() const override;
-
 #if ENABLE(WEB_AUDIO)
     MediaElementAudioSourceNode* audioSourceNode() { return m_audioSourceNode; }
     void setAudioSourceNode(MediaElementAudioSourceNode*);
@@ -645,6 +643,8 @@ private:
     void suspend(ReasonForSuspension) override;
     void resume() override;
     void stop() override;
+    bool virtualHasPendingActivity() const override;
+
     void stopWithoutDestroyingMediaPlayer();
     void contextDestroyed() override;
     

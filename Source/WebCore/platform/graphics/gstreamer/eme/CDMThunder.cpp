@@ -432,7 +432,7 @@ static const char* toString(CDMInstanceSession::KeyStatus status)
 
 CDMInstanceSession::KeyStatus CDMInstanceSessionThunder::status(const KeyIDType& keyID) const
 {
-    ThunderKeyStatus status = m_session && !m_sessionID.isEmpty() ? opencdm_session_status(m_session.get(), keyID.data(), keyID.size()) : StatusPending;
+    ThunderKeyStatus status = m_session && !m_sessionID.isEmpty() ? opencdm_session_status(m_session->get(), keyID.data(), keyID.size()) : StatusPending;
 
     switch (status) {
     case Usable:
@@ -473,9 +473,9 @@ void CDMInstanceSessionThunder::keyUpdatedCallback(KeyIDType&& keyID)
         std::swap(swappedKeyID[4], swappedKeyID[5]);
         std::swap(swappedKeyID[6], swappedKeyID[7]);
         GST_MEMDUMP("updated swapped key", swappedKeyID.data(), swappedKeyID.size());
-        m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(swappedKeyID), BoxPtr<OpenCDMSession>()));
+        m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(swappedKeyID), BoxPtr<OpenCDMSession>(m_session)));
     }
-    m_doesKeyStoreNeedMerging |= m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(keyID), BoxPtr<OpenCDMSession>()));
+    m_doesKeyStoreNeedMerging |= m_keyStore.add(KeyHandle::create(keyStatus, WTFMove(keyID), BoxPtr<OpenCDMSession>(m_session)));
 }
 
 void CDMInstanceSessionThunder::keysUpdateDoneCallback()
@@ -533,8 +533,8 @@ void CDMInstanceSessionThunder::requestLicense(LicenseType licenseType, const At
         callback(initData.releaseNonNull(), { }, false, Failed);
         return;
     }
-    m_session.reset(session);
-    m_sessionID = String::fromUTF8(opencdm_session_id(m_session.get()));
+    m_session = adoptInBoxPtr(session);
+    m_sessionID = String::fromUTF8(opencdm_session_id(m_session->get()));
 
     auto generateChallenge = [this, callback = WTFMove(callback)]() mutable {
         ASSERT(isMainThread());
@@ -601,7 +601,7 @@ void CDMInstanceSessionThunder::updateLicense(const String& sessionID, LicenseTy
             callback(false, WTF::nullopt, WTF::nullopt, WTF::nullopt, SuccessValue::Failed);
         }
     });
-    if (!m_session || m_sessionID.isEmpty() || opencdm_session_update(m_session.get(), response->dataAsUInt8Ptr(), response->size()))
+    if (!m_session || m_sessionID.isEmpty() || opencdm_session_update(m_session->get(), response->dataAsUInt8Ptr(), response->size()))
         sessionFailure();
 }
 
@@ -638,7 +638,7 @@ void CDMInstanceSessionThunder::loadSession(LicenseType, const String& sessionID
             callback(WTF::nullopt, WTF::nullopt, WTF::nullopt, SuccessValue::Failed, sessionLoadFailureFromThunder(response));
         }
     });
-    if (!m_session || m_sessionID.isEmpty() || opencdm_session_load(m_session.get()))
+    if (!m_session || m_sessionID.isEmpty() || opencdm_session_load(m_session->get()))
         sessionFailure();
 }
 
@@ -646,8 +646,15 @@ void CDMInstanceSessionThunder::closeSession(const String& sessionID, CloseSessi
 {
     ASSERT_UNUSED(sessionID, m_sessionID == sessionID);
 
-    if (m_session && !m_sessionID.isEmpty())
-        opencdm_session_close(m_session.get());
+    if (m_session && !m_sessionID.isEmpty()) {
+        opencdm_session_close(m_session->get());
+        m_session = BoxPtr<OpenCDMSession>();
+        auto instance = cdmInstanceThunder();
+        if (instance) {
+            instance->unrefAllKeysFrom(m_keyStore);
+            m_keyStore.unrefAllKeys();
+        }
+    }
 
     callback();
 }
@@ -679,7 +686,7 @@ void CDMInstanceSessionThunder::removeSessionData(const String& sessionID, Licen
             callback(m_keyStore.allKeysAs(MediaKeyStatus::InternalError), WTF::nullopt, SuccessValue::Failed);
         }
     });
-    if (!m_session || m_sessionID.isEmpty() || opencdm_session_remove(m_session.get()))
+    if (!m_session || m_sessionID.isEmpty() || opencdm_session_remove(m_session->get()))
         sessionFailure();
 }
 
