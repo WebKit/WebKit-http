@@ -516,8 +516,8 @@ void CDMInstanceSessionClearKey::updateLicense(const String& sessionId, LicenseT
 
     if (parseLicenseReleaseAcknowledgementFormat(*root)) {
         LOG(EME, "EME - ClearKey - session %s release acknowledged, clearing all known keys", sessionId.utf8().data());
-        parentInstance().removeAllKeysFrom(m_keyStore);
-        m_keyStore.removeAllKeys();
+        parentInstance().unrefAllKeysFrom(m_keyStore);
+        m_keyStore.unrefAllKeys();
         dispatchCallback(true, WTF::nullopt, SuccessValue::Succeeded);
         return;
     }
@@ -595,7 +595,7 @@ void CDMInstanceSessionClearKey::removeSessionData(const String& sessionId, Lice
         message = SharedBuffer::create(messageCString.data(), messageCString.length());
     }
 
-    m_keyStore.removeAllKeys();
+    m_keyStore.unrefAllKeys();
     dispatchCallback(WTFMove(keyStatusVector), Ref<SharedBuffer>(*message), SuccessValue::Succeeded);
 }
 
