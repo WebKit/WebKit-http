@@ -268,13 +268,17 @@ void WorkerThread::suspend()
 {
     m_isSuspended = true;
     runLoop().postTask([&](ScriptExecutionContext&) {
+#if ENABLE(INDEXED_DATABASE)
         if (m_workerGlobalScope)
             m_workerGlobalScope->suspend();
+#endif
 
         m_suspensionSemaphore.wait();
 
+#if ENABLE(INDEXED_DATABASE)
         if (m_workerGlobalScope)
             m_workerGlobalScope->resume();
+#endif
     });
 }
 

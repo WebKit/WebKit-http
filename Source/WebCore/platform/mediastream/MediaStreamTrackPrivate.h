@@ -161,7 +161,9 @@ private:
     bool m_haveProducedData { false };
     bool m_hasSentStartProducedData { false };
     HintValue m_contentHint { HintValue::Empty };
+#if ENABLE(WEB_AUDIO)
     RefPtr<WebAudioSourceProvider> m_audioSourceProvider;
+#endif
     Ref<const Logger> m_logger;
 #if !RELEASE_LOG_DISABLED
     const void* m_logIdentifier;

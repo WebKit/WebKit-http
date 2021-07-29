@@ -193,6 +193,7 @@ void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constrain
 
 AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()
 {
+#if ENABLE(WEB_AUDIO)
 #if PLATFORM(COCOA)
     if (!m_audioSourceProvider)
         m_audioSourceProvider = WebAudioSourceProviderAVFObjC::create(*this);
@@ -201,6 +202,8 @@ AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()
         m_audioSourceProvider = AudioSourceProviderGStreamer::create(*this);
 #endif
     return m_audioSourceProvider.get();
+#endif
+    return nullptr;
 }
 
 void MediaStreamTrackPrivate::sourceStarted()

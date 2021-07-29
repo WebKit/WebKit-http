@@ -163,6 +163,7 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
             auto& page = reinterpret_cast<View*>(data)->page();
             page.handleWheelEvent(WebKit::NativeWebWheelEvent(event, page.deviceScaleFactor(), WebWheelEvent::Phase::PhaseNone, WebWheelEvent::Phase::PhaseNone));
         },
+#if ENABLE(TOUCH_EVENTS)
         // handle_touch_event
         [](void* data, struct wpe_input_touch_event* event)
         {
@@ -182,6 +183,7 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
 
             page.handleTouchEvent(touchEvent);
         },
+#endif
         // padding
         nullptr,
         nullptr,

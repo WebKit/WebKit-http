@@ -67,7 +67,7 @@ static GstTagList* mediaStreamTrackPrivateGetTags(MediaStreamTrackPrivate* track
             static_cast<int>(VideoTrackPrivate::Kind::Main), nullptr);
 
         auto& settings = track->settings();
-        gst_tag_list_add(tagList.get(), GST_TAG_MERGE_APPEND, WEBKIT_MEDIA_TRACK_TAG_WIDTH, settings.width(),
+        gst_tag_list_add(taglist, GST_TAG_MERGE_APPEND, WEBKIT_MEDIA_TRACK_TAG_WIDTH, settings.width(),
             WEBKIT_MEDIA_TRACK_TAG_HEIGHT, settings.height(), nullptr);
     }
 

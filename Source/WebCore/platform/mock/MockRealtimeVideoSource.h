@@ -60,6 +60,7 @@ protected:
     void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
     MediaSample::VideoRotation sampleRotation() const final { return m_deviceOrientation; }
     void generatePresets() override;
+    ImageBuffer* imageBuffer() const;
 
 private:
     const RealtimeMediaSourceCapabilities& capabilities() final;

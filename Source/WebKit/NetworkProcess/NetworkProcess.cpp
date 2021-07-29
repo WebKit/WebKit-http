@@ -409,7 +409,9 @@ void NetworkProcess::createNetworkConnectionToWebProcess(ProcessIdentifier ident
 
     m_storageManagerSet->addConnection(connection.connection());
 
+#if ENABLE(INDEXED_DATABASE)
     webIDBServer(sessionID).addConnection(connection.connection(), identifier);
+#endif
 }
 
 void NetworkProcess::clearCachedCredentials()
@@ -1424,8 +1426,7 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    path = m_serviceWorkerInfo.get(sessionID).databasePath;
-    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
+    if (auto path = m_serviceWorkerInfo.get(sessionID).databasePath; !path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
         swServerForSession(sessionID).getOriginsWithRegistrations([callbackAggregator = callbackAggregator.copyRef()](const HashSet<SecurityOriginData>& securityOrigins) mutable {
             for (auto& origin : securityOrigins)
                 callbackAggregator->m_websiteData.entries.append({ origin, WebsiteDataType::ServiceWorkerRegistrations, 0 });
@@ -2244,6 +2245,7 @@ WebIDBServer& NetworkProcess::webIDBServer(PAL::SessionID sessionID)
         return this->createWebIDBServer(sessionID);
     }).iterator->value;
 }
+#endif
 
 void NetworkProcess::ensurePathExists(const String& path)
 {
@@ -2280,6 +2282,7 @@ void NetworkProcess::performNextStorageTask()
     task.performTask();
 }
 
+#if ENABLE(INDEXED_DATABASE)
 void NetworkProcess::collectIndexedDatabaseOriginsForVersion(const String& path, HashSet<WebCore::SecurityOriginData>& securityOrigins)
 {
     if (path.isEmpty())
@@ -2561,7 +2564,9 @@ void NetworkProcess::getLocalStorageOriginDetails(PAL::SessionID sessionID, Comp
 void NetworkProcess::connectionToWebProcessClosed(IPC::Connection& connection, PAL::SessionID sessionID)
 {
     m_storageManagerSet->removeConnection(connection);
+#if ENABLE(INDEXED_DATABASE)
     webIDBServer(sessionID).removeConnection(connection);
+#endif
 }
 
 NetworkConnectionToWebProcess* NetworkProcess::webProcessConnection(ProcessIdentifier identifier) const
