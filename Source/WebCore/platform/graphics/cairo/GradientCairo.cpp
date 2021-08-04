@@ -215,12 +215,21 @@ static cairo_pattern_t* createConic(float xo, float yo, float r, float angleRadi
 
 cairo_pattern_t* Gradient::createPlatformGradient(float globalAlpha)
 {
+    cairo_matrix_t matrix = toCairoMatrix(m_gradientSpaceTransformation);
+    cairo_matrix_invert(&matrix);
+
     cairo_pattern_t* gradient = WTF::switchOn(m_data,
         [&] (const LinearData& data) -> cairo_pattern_t* {
             return cairo_pattern_create_linear(data.point0.x(), data.point0.y(), data.point1.x(), data.point1.y());
         },
         [&] (const RadialData& data) -> cairo_pattern_t* {
-            return cairo_pattern_create_radial(data.point0.x(), data.point0.y(), data.startRadius, data.point1.x(), data.point1.y(), data.endRadius);
+            cairo_pattern_t *gradient = cairo_pattern_create_radial(data.point0.x(), data.point0.y(), data.startRadius, data.point1.x(), data.point1.y(), data.endRadius);
+            if (data.aspectRatio != 1) {
+                cairo_matrix_translate(&matrix, data.point0.x(), data.point0.y());
+                cairo_matrix_scale(&matrix, 1.0, data.aspectRatio);
+                cairo_matrix_translate(&matrix, -data.point0.x(), -data.point0.y());
+            }
+            return gradient;
         },
 #if PLATFORM(GTK) || PLATFORM(WPE)
         [&] (const ConicData& data)  -> cairo_pattern_t* {
@@ -256,8 +265,6 @@ cairo_pattern_t* Gradient::createPlatformGradient(float globalAlpha)
         break;
     }
 
-    cairo_matrix_t matrix = toCairoMatrix(m_gradientSpaceTransformation);
-    cairo_matrix_invert(&matrix);
     cairo_pattern_set_matrix(gradient, &matrix);
 
     return gradient;
