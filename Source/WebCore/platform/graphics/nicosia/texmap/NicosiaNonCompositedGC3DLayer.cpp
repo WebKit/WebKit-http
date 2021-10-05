@@ -46,6 +46,11 @@ using namespace WebCore;
 
 static std::unique_ptr<GLContext> s_windowContext;
 
+static void terminateWindowContext()
+{
+    s_windowContext = nullptr;
+}
+
 NonCompositedGC3DLayer::NonCompositedGC3DLayer(GraphicsContextGLOpenGL& context)
     : m_context(context)
     , m_contentLayer(Nicosia::ContentLayer::create(Nicosia::ContentLayerTextureMapperImpl::createFactory(*this)))
@@ -58,8 +63,10 @@ NonCompositedGC3DLayer::NonCompositedGC3DLayer(GraphicsContextGLOpenGL& context,
 {
     switch (destination) {
     case GraphicsContextGLOpenGL::Destination::DirectlyToHostWindow:
-        if (!s_windowContext)
+        if (!s_windowContext) {
             s_windowContext = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(hostWindow->nativeWindowID()), &PlatformDisplay::sharedDisplayForCompositing());
+            std::atexit(terminateWindowContext);
+        }
         break;
     case GraphicsContextGLOpenGL::Destination::Offscreen:
         ASSERT_NOT_REACHED();
