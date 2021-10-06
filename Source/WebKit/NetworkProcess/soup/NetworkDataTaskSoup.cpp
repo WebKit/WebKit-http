@@ -1063,9 +1063,18 @@ void NetworkDataTaskSoup::networkEvent(GSocketClientEvent event, GIOStream* stre
     case G_SOCKET_CLIENT_CONNECTING:
         m_networkLoadMetrics.connectStart = deltaTime;
         break;
-    case G_SOCKET_CLIENT_CONNECTED:
-        // Web Timing considers that connection time involves dns, proxy & TLS negotiation...
-        // so we better pick G_SOCKET_CLIENT_COMPLETE for connectEnd
+    case G_SOCKET_CLIENT_CONNECTED: {
+            // Web Timing considers that connection time involves dns, proxy & TLS negotiation...
+            // so we better pick G_SOCKET_CLIENT_COMPLETE for connectEnd
+            const char* enableTCPkeepalive = getenv("WEBKIT_TCP_KEEPALIVE");
+            if( enableTCPkeepalive && enableTCPkeepalive[0] != '0' ) {
+                RELEASE_ASSERT(G_IS_SOCKET_CONNECTION(stream));
+                GSocket* socket = g_socket_connection_get_socket(G_SOCKET_CONNECTION(stream));
+                if( socket != NULL ) {
+                    g_socket_set_keepalive(socket, TRUE);
+                }
+            }
+        }
         break;
     case G_SOCKET_CLIENT_PROXY_NEGOTIATING:
         break;
