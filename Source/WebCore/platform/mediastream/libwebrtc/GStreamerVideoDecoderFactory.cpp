@@ -29,7 +29,6 @@
 #include "webrtc/media/base/codec.h"
 #include "webrtc/modules/video_coding/codecs/h264/include/h264.h"
 #include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
-#include "webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.h"
 #include "webrtc/modules/video_coding/include/video_codec_interface.h"
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
@@ -39,6 +38,10 @@
 #include <wtf/StdMap.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/WTFString.h>
+
+#if WEBRTC_USE_BUILTIN_VPX
+#include "webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.h"
+#endif
 
 GST_DEBUG_CATEGORY(webkit_webrtcdec_debug);
 #define GST_CAT_DEFAULT webkit_webrtcdec_debug
@@ -382,13 +385,13 @@ public:
     static std::unique_ptr<webrtc::VideoDecoder> Create()
     {
         auto factory = GstDecoderFactory("video/x-vp8");
-
+#if WEBRTC_USE_BUILTIN_VPX
         if (factory && !g_strcmp0(GST_OBJECT_NAME(GST_OBJECT(factory.get())), "vp8dec")) {
             GST_INFO("Our best GStreamer VP8 decoder is vp8dec, better use the one from LibWebRTC");
 
             return std::unique_ptr<webrtc::VideoDecoder>(new webrtc::LibvpxVp8Decoder());
         }
-
+#endif
         return std::unique_ptr<webrtc::VideoDecoder>(new VP8Decoder());
     }
 };

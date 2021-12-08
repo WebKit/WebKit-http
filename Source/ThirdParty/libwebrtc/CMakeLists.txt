@@ -1,9 +1,11 @@
 
 set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(Vpx 1.7.0)
-if (NOT LIBVPX_FOUND)
-    message(FATAL_ERROR "libvpx is needed for USE_LIBWEBRTC.")
+if (ENABLE_WEBRTC_VPX AND NOT WEBRTC_ENABLE_BUILTIN_VPX)
+    find_package(Vpx 1.7.0)
+    if (NOT LIBVPX_FOUND)
+        message(FATAL_ERROR "libvpx is needed for USE_LIBWEBRTC.")
+    endif ()
 endif ()
 
 find_package(LibEvent)
@@ -16,9 +18,11 @@ if (NOT ALSALIB_FOUND)
     message(FATAL_ERROR "alsa-lib is needed for USE_LIBWEBRTC.")
 endif ()
 
-find_package(Opus 1.3)
-if (NOT LIBOPUS_FOUND)
-    message(FATAL_ERROR "libopus is needed for USE_LIBWEBRTC.")
+if (ENABLE_WEBRTC_OPUS AND NOT WEBRTC_ENABLE_BUILTIN_OPUS)
+    find_package(Opus 1.3)
+    if (NOT LIBOPUS_FOUND)
+        message(FATAL_ERROR "libopus is needed for USE_LIBWEBRTC.")
+    endif ()
 endif ()
 
 set(webrtc_SOURCES
@@ -382,12 +386,6 @@ set(webrtc_SOURCES
     Source/webrtc/api/audio_codecs/isac/audio_decoder_isac_float.cc
     Source/webrtc/api/audio_codecs/isac/audio_encoder_isac_fix.cc
     Source/webrtc/api/audio_codecs/isac/audio_encoder_isac_float.cc
-    Source/webrtc/api/audio_codecs/opus/audio_decoder_opus.cc
-    Source/webrtc/api/audio_codecs/opus/audio_decoder_multi_channel_opus.cc
-    Source/webrtc/api/audio_codecs/opus/audio_encoder_opus.cc
-    Source/webrtc/api/audio_codecs/opus/audio_encoder_opus_config.cc
-    Source/webrtc/api/audio_codecs/opus/audio_encoder_multi_channel_opus.cc
-    Source/webrtc/api/audio_codecs/opus/audio_encoder_multi_channel_opus_config.cc
     Source/webrtc/api/audio_options.cc
     Source/webrtc/api/call/transport.cc
     Source/webrtc/api/candidate.cc
@@ -792,12 +790,6 @@ set(webrtc_SOURCES
     Source/webrtc/modules/audio_coding/codecs/isac/main/source/transform.c
     Source/webrtc/modules/audio_coding/codecs/legacy_encoded_audio_frame.cc
     Source/webrtc/modules/audio_coding/codecs/legacy_encoded_audio_frame.h
-    Source/webrtc/modules/audio_coding/codecs/opus/audio_coder_opus_common.cc
-    Source/webrtc/modules/audio_coding/codecs/opus/audio_decoder_opus.cc
-    Source/webrtc/modules/audio_coding/codecs/opus/audio_decoder_multi_channel_opus_impl.cc
-    Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_opus.cc
-    Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_multi_channel_opus_impl.cc
-    Source/webrtc/modules/audio_coding/codecs/opus/opus_interface.c
     Source/webrtc/modules/audio_coding/codecs/pcm16b/audio_decoder_pcm16b.cc
     Source/webrtc/modules/audio_coding/codecs/pcm16b/audio_encoder_pcm16b.cc
     Source/webrtc/modules/audio_coding/codecs/pcm16b/pcm16b.c
@@ -847,11 +839,8 @@ set(webrtc_SOURCES
     Source/webrtc/modules/audio_device/fine_audio_buffer.cc
     Source/webrtc/modules/audio_device/linux/alsasymboltable_linux.cc
     Source/webrtc/modules/audio_device/linux/audio_device_alsa_linux.cc
-    Source/webrtc/modules/audio_device/linux/audio_device_pulse_linux.cc
     Source/webrtc/modules/audio_device/linux/audio_mixer_manager_alsa_linux.cc
-    Source/webrtc/modules/audio_device/linux/audio_mixer_manager_pulse_linux.cc
     Source/webrtc/modules/audio_device/linux/latebindingsymboltable_linux.cc
-    Source/webrtc/modules/audio_device/linux/pulseaudiosymboltable_linux.cc
     Source/webrtc/modules/audio_mixer/audio_frame_manipulator.cc
     Source/webrtc/modules/audio_mixer/audio_mixer_impl.cc
     Source/webrtc/modules/audio_mixer/default_output_rate_calculator.cc
@@ -1137,10 +1126,7 @@ set(webrtc_SOURCES
     # Source/webrtc/modules/video_coding/codecs/i420/i420.cc
     Source/webrtc/modules/video_coding/codecs/vp8/default_temporal_layers.cc
     Source/webrtc/modules/video_coding/codecs/vp8/screenshare_layers.cc
-    Source/webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.cc
-    Source/webrtc/modules/video_coding/codecs/vp8/libvpx_interface.cc
     Source/webrtc/modules/video_coding/codecs/vp8/temporal_layers_checker.cc
-    Source/webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_encoder.cc
     Source/webrtc/modules/video_coding/codecs/vp9/svc_config.cc
     Source/webrtc/modules/video_coding/codecs/vp9/svc_rate_allocator.cc
     Source/webrtc/modules/video_coding/decoder_database.cc
@@ -1452,6 +1438,34 @@ set(webrtc_SOURCES
     $<TARGET_OBJECTS:libsrtp>
 )
 
+if (ENABLE_WEBRTC_VPX AND WEBRTC_ENABLE_BUILTIN_VPX)
+    list(APPEND webrtc_SOURCES
+        Source/webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.cc
+        Source/webrtc/modules/video_coding/codecs/vp8/libvpx_interface.cc
+        Source/webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_encoder.cc
+    )
+endif ()
+
+if (ENABLE_WEBRTC_OPUS AND WEBRTC_ENABLE_BUILTIN_OPUS)
+    list(APPEND webrtc_SOURCES
+        Source/webrtc/api/audio_codecs/opus/audio_decoder_opus.cc
+        Source/webrtc/api/audio_codecs/opus/audio_decoder_multi_channel_opus.cc
+        Source/webrtc/api/audio_codecs/opus/audio_encoder_opus.cc
+        Source/webrtc/api/audio_codecs/opus/audio_encoder_opus_config.cc
+        Source/webrtc/api/audio_codecs/opus/audio_encoder_multi_channel_opus.cc
+        Source/webrtc/api/audio_codecs/opus/audio_encoder_multi_channel_opus_config.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/audio_coder_opus_common.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/audio_decoder_opus.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/audio_decoder_multi_channel_opus_impl.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_opus.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_multi_channel_opus_impl.cc
+        Source/webrtc/modules/audio_coding/codecs/opus/opus_interface.c
+        Source/webrtc/modules/audio_device/linux/audio_device_pulse_linux.cc
+        Source/webrtc/modules/audio_device/linux/audio_mixer_manager_pulse_linux.cc
+        Source/webrtc/modules/audio_device/linux/pulseaudiosymboltable_linux.cc
+    )
+endif ()
+
 if (WTF_CPU_X86_64 OR WTF_CPU_X86)
     list(APPEND webrtc_SOURCES
         Source/webrtc/common_audio/fir_filter_sse.cc
@@ -1483,8 +1497,6 @@ target_compile_definitions(webrtc PRIVATE
   HAVE_WEBRTC_VOICE
   JSON_USE_EXCEPTION=0
   NON_WINDOWS_DEFINE
-  OPUS_BUILD
-  OPUS_EXPORT=
   SCTP_PROCESS_LEVEL_LOCKS
   SCTP_SIMPLE_ALLOCATOR
   SCTP_USE_OPENSSL_SHA1
@@ -1494,15 +1506,11 @@ target_compile_definitions(webrtc PRIVATE
   WEBRTC_CODEC_G722
   WEBRTC_CODEC_ILBC
   WEBRTC_CODEC_ISAC
-  WEBRTC_CODEC_OPUS
   WEBRTC_CODEC_RED
   WEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE
   WEBRTC_INTELLIGIBILITY_ENHANCER=0
   WEBRTC_LINUX
   WEBRTC_NS_FLOAT
-  WEBRTC_OPUS_SUPPORT_120MS_PTIME=0
-  WEBRTC_OPUS_VARIABLE_COMPLEXITY=0
-  WEBRTC_USE_BUILTIN_OPUS=1
   WEBRTC_POSIX
   WEBRTC_USE_BUILTIN_ISAC_FIX=1
   WEBRTC_USE_BUILTIN_ISAC_FLOAT=0
@@ -1524,7 +1532,7 @@ elseif (WTF_CPU_ARM64)
     )
 endif()
 
-target_include_directories(webrtc PRIVATE
+list(APPEND webrtc_INCLUDE_DIRECTORIES
     Source
     Source/third_party/abseil-cpp
     Source/third_party/boringssl/src/include
@@ -1536,10 +1544,6 @@ target_include_directories(webrtc PRIVATE
     Source/third_party/libsrtp/crypto/include
     Source/third_party/libsrtp/include
     Source/third_party/libyuv/include
-    Source/third_party/opus/src/celt
-    Source/third_party/opus/src/include
-    Source/third_party/opus/src/silk
-    Source/third_party/opus/src/silk/float
     Source/third_party/usrsctp
     Source/third_party/usrsctp/usrsctplib
     Source/third_party/usrsctp/usrsctplib/usrsctplib
@@ -1551,11 +1555,48 @@ target_include_directories(webrtc PRIVATE
     Source/webrtc/modules/audio_coding/codecs/isac/main/include
 )
 
-target_link_libraries(webrtc ${VPX_LIBRARY})
+if (ENABLE_WEBRTC_VPX)
+    if (NOT WEBRTC_ENABLE_BUILTIN_VPX)
+        target_compile_definitions(webrtc PRIVATE
+            WEBRTC_USE_BUILTIN_VPX=0
+        )
+
+        target_link_libraries(webrtc ${VPX_LIBRARY})
+    else ()
+        target_compile_definitions(webrtc PRIVATE
+            WEBRTC_USE_BUILTIN_VPX=1
+        )
+    endif ()
+endif ()
+
+target_include_directories(webrtc PRIVATE ${webrtc_INCLUDE_DIRECTORIES})
 
 target_link_libraries(webrtc ${EVENT_LIBRARY})
 
-target_link_libraries(webrtc ${OPUS_LIBRARY})
+if (ENABLE_WEBRTC_OPUS)
+    if (NOT WEBRTC_ENABLE_BUILTIN_OPUS)
+        target_compile_definitions(webrtc PRIVATE
+            WEBRTC_USE_BUILTIN_OPUS=0
+        )
+        target_link_libraries(webrtc ${OPUS_LIBRARY})
+    else ()
+        target_compile_definitions(webrtc PRIVATE
+            OPUS_BUILD
+            OPUS_EXPORT=
+            WEBRTC_CODEC_OPUS
+            WEBRTC_OPUS_SUPPORT_120MS_PTIME=0
+            WEBRTC_OPUS_VARIABLE_COMPLEXITY=0
+            WEBRTC_USE_BUILTIN_OPUS=1
+        )
+
+        list(APPEND webrtc_INCLUDE_DIRECTORIES
+            Source/third_party/opus/src/celt
+            Source/third_party/opus/src/include
+            Source/third_party/opus/src/silk
+            Source/third_party/opus/src/silk/float
+        )
+    endif ()
+endif ()
 
 # libsrtp package compilation
 set(libsrtp_SOURCES

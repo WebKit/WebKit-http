@@ -30,9 +30,12 @@
 #include "webrtc/media/base/codec.h"
 #include "webrtc/modules/video_coding/codecs/h264/include/h264.h"
 #include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
-#include "webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_encoder.h"
 #include "webrtc/modules/video_coding/include/video_codec_interface.h"
 #include "webrtc/modules/video_coding/utility/simulcast_utility.h"
+
+#if WEBRTC_USE_BUILTIN_VPX
+#include "webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_encoder.h"
+#endif
 
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
@@ -500,9 +503,10 @@ std::unique_ptr<webrtc::VideoEncoder> GStreamerVideoEncoderFactory::CreateVideoE
 
         if (encoder)
             return makeUnique<GStreamerVP8Encoder>(format);
-
+#if WEBRTC_USE_BUILTIN_VPX
         GST_INFO("Using VP8 Encoder from LibWebRTC.");
         return makeUniqueWithoutFastMallocCheck<webrtc::LibvpxVp8Encoder>();
+#endif
     }
 
     if (format.name == cricket::kH264CodecName)
