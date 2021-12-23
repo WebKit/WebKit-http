@@ -36,12 +36,14 @@ AudioAllocationSettings::AudioAllocationSettings()
                    &priority_bitrate_raw_, &bitrate_priority_},
                   field_trial::FindFullName("WebRTC-Audio-Allocation"));
 
+#if defined(WEBRTC_USE_BUILTIN_OPUS) && WEBRTC_USE_BUILTIN_OPUS
   // TODO(mflodman): Keep testing this and set proper values.
   // Note: This is an early experiment currently only supported by Opus.
   if (send_side_bwe_with_overhead_) {
     constexpr int kMaxPacketSizeMs = WEBRTC_OPUS_SUPPORT_120MS_PTIME ? 120 : 60;
     min_overhead_bps_ = kOverheadPerPacket * 8 * 1000 / kMaxPacketSizeMs;
   }
+#endif
   // priority_bitrate_raw will override priority_bitrate.
   if (priority_bitrate_raw_ && !priority_bitrate_->IsZero()) {
     RTC_LOG(LS_WARNING) << "'priority_bitrate' and '_raw' are mutually "
