@@ -1,7 +1,7 @@
 
 set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if (ENABLE_WEBRTC_VPX AND NOT WEBRTC_ENABLE_BUILTIN_VPX)
+if (ENABLE_WEBRTC_VPX)
     find_package(Vpx 1.7.0)
     if (NOT LIBVPX_FOUND)
         message(FATAL_ERROR "libvpx is needed for USE_LIBWEBRTC.")
@@ -18,7 +18,7 @@ if (NOT ALSALIB_FOUND)
     message(FATAL_ERROR "alsa-lib is needed for USE_LIBWEBRTC.")
 endif ()
 
-if (ENABLE_WEBRTC_OPUS AND NOT WEBRTC_ENABLE_BUILTIN_OPUS)
+if (ENABLE_WEBRTC_OPUS)
     find_package(Opus 1.3)
     if (NOT LIBOPUS_FOUND)
         message(FATAL_ERROR "libopus is needed for USE_LIBWEBRTC.")
@@ -1438,7 +1438,7 @@ set(webrtc_SOURCES
     $<TARGET_OBJECTS:libsrtp>
 )
 
-if (ENABLE_WEBRTC_VPX AND WEBRTC_ENABLE_BUILTIN_VPX)
+if (ENABLE_WEBRTC_VPX)
     list(APPEND webrtc_SOURCES
         Source/webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.cc
         Source/webrtc/modules/video_coding/codecs/vp8/libvpx_interface.cc
@@ -1446,7 +1446,7 @@ if (ENABLE_WEBRTC_VPX AND WEBRTC_ENABLE_BUILTIN_VPX)
     )
 endif ()
 
-if (ENABLE_WEBRTC_OPUS AND WEBRTC_ENABLE_BUILTIN_OPUS)
+if (ENABLE_WEBRTC_OPUS)
     list(APPEND webrtc_SOURCES
         Source/webrtc/api/audio_codecs/opus/audio_decoder_opus.cc
         Source/webrtc/api/audio_codecs/opus/audio_decoder_multi_channel_opus.cc
@@ -1460,9 +1460,6 @@ if (ENABLE_WEBRTC_OPUS AND WEBRTC_ENABLE_BUILTIN_OPUS)
         Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_opus.cc
         Source/webrtc/modules/audio_coding/codecs/opus/audio_encoder_multi_channel_opus_impl.cc
         Source/webrtc/modules/audio_coding/codecs/opus/opus_interface.c
-        Source/webrtc/modules/audio_device/linux/audio_device_pulse_linux.cc
-        Source/webrtc/modules/audio_device/linux/audio_mixer_manager_pulse_linux.cc
-        Source/webrtc/modules/audio_device/linux/pulseaudiosymboltable_linux.cc
     )
 endif ()
 
@@ -1556,47 +1553,34 @@ list(APPEND webrtc_INCLUDE_DIRECTORIES
 )
 
 if (ENABLE_WEBRTC_VPX)
-    if (NOT WEBRTC_ENABLE_BUILTIN_VPX)
-        target_compile_definitions(webrtc PRIVATE
-            WEBRTC_USE_BUILTIN_VPX=0
-        )
+    target_compile_definitions(webrtc PRIVATE
+        WEBRTC_USE_BUILTIN_VPX=1
+     )
 
-        target_link_libraries(webrtc ${VPX_LIBRARY})
-    else ()
-        target_compile_definitions(webrtc PRIVATE
-            WEBRTC_USE_BUILTIN_VPX=1
-        )
-    endif ()
+    target_link_libraries(webrtc ${VPX_LIBRARY})
+endif ()
+
+if (ENABLE_WEBRTC_OPUS)
+    target_compile_definitions(webrtc PRIVATE
+        OPUS_BUILD
+        OPUS_EXPORT=
+        WEBRTC_CODEC_OPUS
+        WEBRTC_OPUS_SUPPORT_120MS_PTIME=0
+        WEBRTC_OPUS_VARIABLE_COMPLEXITY=0
+        WEBRTC_USE_BUILTIN_OPUS=1
+    )
+    list(APPEND webrtc_INCLUDE_DIRECTORIES
+        Source/third_party/opus/src/celt
+        Source/third_party/opus/src/include
+        Source/third_party/opus/src/silk
+        Source/third_party/opus/src/silk/float
+    )
+    target_link_libraries(webrtc ${OPUS_LIBRARY})
 endif ()
 
 target_include_directories(webrtc PRIVATE ${webrtc_INCLUDE_DIRECTORIES})
 
 target_link_libraries(webrtc ${EVENT_LIBRARY})
-
-if (ENABLE_WEBRTC_OPUS)
-    if (NOT WEBRTC_ENABLE_BUILTIN_OPUS)
-        target_compile_definitions(webrtc PRIVATE
-            WEBRTC_USE_BUILTIN_OPUS=0
-        )
-        target_link_libraries(webrtc ${OPUS_LIBRARY})
-    else ()
-        target_compile_definitions(webrtc PRIVATE
-            OPUS_BUILD
-            OPUS_EXPORT=
-            WEBRTC_CODEC_OPUS
-            WEBRTC_OPUS_SUPPORT_120MS_PTIME=0
-            WEBRTC_OPUS_VARIABLE_COMPLEXITY=0
-            WEBRTC_USE_BUILTIN_OPUS=1
-        )
-
-        list(APPEND webrtc_INCLUDE_DIRECTORIES
-            Source/third_party/opus/src/celt
-            Source/third_party/opus/src/include
-            Source/third_party/opus/src/silk
-            Source/third_party/opus/src/silk/float
-        )
-    endif ()
-endif ()
 
 # libsrtp package compilation
 set(libsrtp_SOURCES

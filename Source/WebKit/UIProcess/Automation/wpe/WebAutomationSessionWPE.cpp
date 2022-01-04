@@ -29,6 +29,8 @@
 #include "WebAutomationSessionMacros.h"
 #include "WebPageProxy.h"
 
+#include <wpe/wpe.h>
+
 namespace WebKit {
 using namespace WebCore;
 
