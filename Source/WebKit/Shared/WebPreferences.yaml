@@ -203,6 +203,14 @@ WebSecurityEnabled:
   type: bool
   defaultValue: true
 
+AllowRunningOfInsecureContent:
+  type: bool
+  defaultValue: false
+
+AllowDisplayOfInsecureContent:
+  type: bool
+  defaultValue: false
+
 AllowUniversalAccessFromFileURLs:
   type: bool
   defaultValue: false
