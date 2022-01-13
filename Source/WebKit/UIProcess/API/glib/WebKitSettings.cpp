@@ -3118,7 +3118,7 @@ void webkit_settings_set_user_agent(WebKitSettings* settings, const char* userAg
     String userAgentString;
     if (userAgent && *userAgent) {
         userAgentString = String::fromUTF8(userAgent);
-        g_return_if_fail(WebCore::isValidUserAgentHeaderValue(userAgentString));
+        g_return_if_fail(WebCore::isValidHTTPHeaderValue(userAgentString));
     } else
         userAgentString = WebCore::standardUserAgent("");
 
