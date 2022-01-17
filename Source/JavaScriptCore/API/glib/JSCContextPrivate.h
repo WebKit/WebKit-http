@@ -26,7 +26,7 @@
 #include <wtf/glib/GRefPtr.h>
 
 GRefPtr<JSCContext> jscContextGetOrCreate(JSGlobalContextRef);
-JSGlobalContextRef jscContextGetJSContext(JSCContext*);
+G_BEGIN_DECLS JSC_API JSGlobalContextRef jscContextGetJSContext(JSCContext*); G_END_DECLS
 GRefPtr<JSCValue> jscContextGetOrCreateValue(JSCContext*, JSValueRef);
 void jscContextValueDestroyed(JSCContext*, JSValueRef);
 JSC::JSObject* jscContextGetJSWrapper(JSCContext*, gpointer);
