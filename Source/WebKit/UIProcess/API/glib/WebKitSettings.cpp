@@ -175,6 +175,9 @@ enum {
     PROP_ENABLE_NON_COMPOSITED_WEBGL,
 #endif
     PROP_MEDIA_CONTENT_TYPES_REQUIRING_HARDWARE_SUPPORT,
+    PROP_ENABLE_WEBSECURITY,
+    PROP_ALLOW_RUNNING_OF_INSECURE_CONTENT,
+    PROP_ALLOW_DISPLAY_OF_INSECURE_CONTENT,
 };
 
 static void webKitSettingsDispose(GObject* object)
@@ -413,6 +416,15 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
     case PROP_MEDIA_CONTENT_TYPES_REQUIRING_HARDWARE_SUPPORT:
         webkit_settings_set_media_content_types_requiring_hardware_support(settings, g_value_get_string(value));
         break;
+    case PROP_ENABLE_WEBSECURITY:
+        webkit_settings_set_enable_websecurity(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ALLOW_RUNNING_OF_INSECURE_CONTENT:
+        webkit_settings_set_allow_running_of_insecure_content(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ALLOW_DISPLAY_OF_INSECURE_CONTENT:
+        webkit_settings_set_allow_display_of_insecure_content(settings, g_value_get_boolean(value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
         break;
@@ -611,6 +623,15 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
 #endif
     case PROP_MEDIA_CONTENT_TYPES_REQUIRING_HARDWARE_SUPPORT:
         g_value_set_string(value, webkit_settings_get_media_content_types_requiring_hardware_support(settings));
+        break;
+    case PROP_ENABLE_WEBSECURITY:
+        g_value_set_boolean(value, webkit_settings_get_enable_websecurity(settings));
+        break;
+    case PROP_ALLOW_RUNNING_OF_INSECURE_CONTENT:
+        g_value_set_boolean(value, webkit_settings_get_allow_running_of_insecure_content(settings));
+        break;
+    case PROP_ALLOW_DISPLAY_OF_INSECURE_CONTENT:
+        g_value_set_boolean(value, webkit_settings_get_allow_display_of_insecure_content(settings));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -1590,6 +1611,47 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
             _("List of media content types requiring hardware support."),
             nullptr, // A null string forces the default value.
             readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:enable-websecurity:
+     *
+     * Enable or disable support for Web Security on pages.
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ENABLE_WEBSECURITY,
+        g_param_spec_boolean("enable-websecurity",
+            _("Enable websecurity"),
+            _("Whether websecurity should be enabled."),
+            TRUE,
+            readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:allow-running-of-insecure-content:
+     *
+     * Allow running of insecure content on pages
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ALLOW_RUNNING_OF_INSECURE_CONTENT,
+        g_param_spec_boolean("allow-running-of-insecure-content",
+            _("Allow running insecure content"),
+            _("Whether running insecure content should be allowed."),
+            FALSE,
+            readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:allow-display-of-insecure-content:
+     *
+     * Allow display of insecure content on pages
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ALLOW_DISPLAY_OF_INSECURE_CONTENT,
+        g_param_spec_boolean("allow-display-of-insecure-content",
+            _("Allow display insecure content"),
+            _("Whether display insecure content should be allowed."),
+            FALSE,
+            readWriteConstructParamFlags));
+
+
 }
 
 WebPreferences* webkitSettingsGetPreferences(WebKitSettings* settings)
@@ -3934,3 +3996,109 @@ void webkit_settings_set_media_content_types_requiring_hardware_support(WebKitSe
     priv->mediaContentTypesRequiringHardwareSupport = mediaContentTypesRequiringHardwareSupportString.utf8();
     g_object_notify(G_OBJECT(settings), "media-content-types-requiring-hardware-support");
 }
+
+/**
+ * webkit_settings_get_enable_websecurity:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-websecurity property.
+ *
+ * Returns: %TRUE If websecurity support is enabled or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_enable_websecurity(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->webSecurityEnabled();
+}
+
+/**
+ * webkit_settings_set_enable_websecurity:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-websecurity property.
+ */
+void webkit_settings_set_enable_websecurity(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->webSecurityEnabled();
+    if (currentValue == enabled)
+        return;
+
+    priv->preferences->setWebSecurityEnabled(enabled);
+    g_object_notify(G_OBJECT(settings), "enable-websecurity");
+}
+
+/**
+ * webkit_settings_get_allow_running_of_insecure_content:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:allow-running-of-insecure-content property.
+ *
+ * Returns: %TRUE If running of insecure content is allowed or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_allow_running_of_insecure_content(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->allowRunningOfInsecureContent();
+}
+
+/**
+ * webkit_settings_set_allow_running_of_insecure_content:
+ * @settings: a #WebKitSettings
+ * @allowed: Value to be set
+ *
+ * Set the #WebKitSettings:allow-running-of-insecure-content property.
+ */
+void webkit_settings_set_allow_running_of_insecure_content(WebKitSettings* settings, gboolean allowed)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->allowRunningOfInsecureContent();
+    if (currentValue == allowed)
+        return;
+
+    priv->preferences->setAllowRunningOfInsecureContent(allowed);
+    g_object_notify(G_OBJECT(settings), "allow-running-of-insecure-content");
+}
+
+/**
+ * webkit_settings_get_allow_display_of_insecure_content:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:allow-display-of-insecure-content property.
+ *
+ * Returns: %TRUE If display of insecure content is allowed or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_allow_display_of_insecure_content(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->allowDisplayOfInsecureContent();
+}
+
+/**
+ * webkit_settings_set_allow_display_of_insecure_content:
+ * @settings: a #WebKitSettings
+ * @allowed: Value to be set
+ *
+ * Set the #WebKitSettings:allow-display-of-insecure-content property.
+ */
+void webkit_settings_set_allow_display_of_insecure_content(WebKitSettings* settings, gboolean allowed)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->allowDisplayOfInsecureContent();
+    if (currentValue == allowed)
+        return;
+
+    priv->preferences->setAllowDisplayOfInsecureContent(allowed);
+    g_object_notify(G_OBJECT(settings), "allow-display-of-insecure-content");
+}
+

@@ -476,6 +476,27 @@ WEBKIT_API void
 webkit_settings_set_media_content_types_requiring_hardware_support (WebKitSettings *settings,
                                                                     const gchar *content_types);
 
+WEBKIT_API gboolean
+webkit_settings_get_enable_websecurity                         (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_websecurity                         (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
+webkit_settings_get_allow_running_of_insecure_content          (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_allow_running_of_insecure_content          (WebKitSettings *settings,
+                                                                gboolean        allowed);
+
+WEBKIT_API gboolean
+webkit_settings_get_allow_display_of_insecure_content          (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_allow_display_of_insecure_content          (WebKitSettings *settings,
+                                                                gboolean        allowed);
+
 G_END_DECLS
 
 #endif /* WebKitSettings_h */
