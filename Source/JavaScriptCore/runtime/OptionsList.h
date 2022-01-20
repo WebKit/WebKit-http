@@ -493,6 +493,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, forceOSRExitToLLInt, false, Normal, "If true, we always exit to the LLInt. If false, we exit to whatever is most convenient.") \
     v(Unsigned, getByValICMaxNumberOfIdentifiers, 4, Normal, "Number of identifiers we see in the LLInt that could cause us to bail on generating an IC for get_by_val.") \
     v(Bool, useClassFields, false, Normal, "If true, the parser will understand data fields inside classes.") \
+    v(Bool, disableConsoleLog, false, Normal, "Disable printing of JS console logs.") \
 
 enum OptionEquivalence {
     SameOption,
