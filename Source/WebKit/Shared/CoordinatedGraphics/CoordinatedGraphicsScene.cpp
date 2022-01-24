@@ -172,10 +172,10 @@ void updateImageBacking(TextureMapperLayer& layer,
     backingStore.updateTile(1, rect, rect, WTFMove(update.buffer), rect.location());
 }
 
-void removeLayer(Nicosia::CompositionLayer& layer)
+void removeLayer(Nicosia::CompositionLayer& layer, Vector<RefPtr<WebCore::TextureMapperPlatformLayerProxy>>& proxiesToInvalidate)
 {
     layer.accessCommitted(
-        [](const Nicosia::CompositionLayer::LayerState& committed)
+        [&proxiesToInvalidate](const Nicosia::CompositionLayer::LayerState& committed)
         {
             if (committed.backingStore) {
                 auto& compositionState = backingStoreImpl(*committed.backingStore).compositionState();
@@ -183,7 +183,7 @@ void removeLayer(Nicosia::CompositionLayer& layer)
             }
 
             if (committed.contentLayer)
-                contentLayerImpl(*committed.contentLayer).proxy().invalidate();
+                proxiesToInvalidate.append(&contentLayerImpl(*committed.contentLayer).proxy());
 
             if (committed.imageBacking) {
                 auto& compositionState = imageBackingImpl(*committed.imageBacking).compositionState();
@@ -262,8 +262,9 @@ void CoordinatedGraphicsScene::updateSceneState()
 
             m_nicosia.state = state;
 
+            Vector<RefPtr<WebCore::TextureMapperPlatformLayerProxy>> proxiesToInvalidate;
             for (auto& layer : removedLayers)
-                removeLayer(*layer);
+                removeLayer(*layer, proxiesToInvalidate);
             removedLayers = { };
 
             // Iterate the current state's set of layers, updating state values according to
@@ -272,7 +273,7 @@ void CoordinatedGraphicsScene::updateSceneState()
             for (auto& compositionLayer : m_nicosia.state.layers) {
                 auto& layer = texmapLayer(*compositionLayer);
                 compositionLayer->commitState(
-                    [this, &layer, &compositionLayer, &layersByBacking]
+                    [this, &layer, &compositionLayer, &layersByBacking, &proxiesToInvalidate]
                     (const Nicosia::CompositionLayer::LayerState& layerState)
                     {
                         if (layerState.delta.positionChanged)
@@ -342,6 +343,7 @@ void CoordinatedGraphicsScene::updateSceneState()
                             auto& impl = contentLayerImpl(*layerState.contentLayer);
                             layersByBacking.contentLayer.append(
                                 { std::ref(layer), std::ref(impl.proxy()), layerState.delta.contentLayerChanged });
+                            proxiesToInvalidate.removeAll(&impl.proxy());
                         } else if (layerState.imageBacking) {
                             auto& impl = imageBackingImpl(*layerState.imageBacking);
                             layersByBacking.imageBacking.append(
@@ -355,6 +357,9 @@ void CoordinatedGraphicsScene::updateSceneState()
                             layer.setAnimatedBackingStoreClient(nullptr);
                     });
             }
+
+            for (auto& proxy : proxiesToInvalidate)
+                proxy->invalidate();
         });
 
     // Iterate through each backing type of layers and gather backing store
@@ -434,8 +439,12 @@ void CoordinatedGraphicsScene::purgeGLResources()
         m_nicosia.scene->accessState(
             [](Nicosia::Scene::State& state)
             {
+                Vector<RefPtr<WebCore::TextureMapperPlatformLayerProxy>> proxiesToInvalidate;
                 for (auto& layer : state.layers)
-                    removeLayer(*layer);
+                    removeLayer(*layer, proxiesToInvalidate);
+                for (auto& proxy : proxiesToInvalidate)
+                    proxy->invalidate();
+
                 state.layers = { };
                 state.rootLayer = nullptr;
             });
