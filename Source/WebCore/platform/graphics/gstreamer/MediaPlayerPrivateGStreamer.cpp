@@ -1707,13 +1707,6 @@ bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 // Returns the size of the video.
 FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
 {
-#if USE(GSTREAMER_HOLEPUNCH)
-    // When using the holepuch we may not be able to get the video frames size, so we can't use
-    // it. But we need to report some non empty naturalSize for the player's GraphicsLayer
-    // to be properly created.
-    return s_holePunchDefaultFrameSize;
-#endif
-
 #if ENABLE(MEDIA_STREAM)
     if (!m_isLegacyPlaybin && !m_wantedVideoStreamId.isEmpty()) {
         RefPtr<VideoTrackPrivateGStreamer> videoTrack = m_videoTracks.get(m_wantedVideoStreamId);
@@ -1733,6 +1726,13 @@ FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
 
     if (!m_videoSize.isEmpty())
         return m_videoSize;
+
+#if USE(GSTREAMER_HOLEPUNCH)
+    // When using the holepuch we may not be able to get the video frames size, so we can't use
+    // it. But we need to report some non empty naturalSize for the player's GraphicsLayer
+    // to be properly created.
+    return s_holePunchDefaultFrameSize;
+#endif
 
     auto sampleLocker = holdLock(m_sampleMutex);
     if (!GST_IS_SAMPLE(m_sample.get()))
