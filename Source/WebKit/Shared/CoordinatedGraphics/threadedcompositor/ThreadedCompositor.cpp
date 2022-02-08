@@ -155,6 +155,7 @@ void ThreadedCompositor::resume()
 
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
         m_scene->setActive(true);
+        m_suspendToTransparentState = SuspendToTransparentState::None;
     });
     m_compositingRunLoop->resume();
 }
